@@ -199,6 +199,8 @@ certs:
     # Setup MySQL user
     mysql -u root -e "CREATE USER '$productId'@'localhost' IDENTIFIED BY '$mysqlPassword';"
     echo Line 201
+    echo With quotes "$productId"
+    echo Without quotes $productId
     mysql -u $productId --password="$mysqlPassword" -e "CREATE DATABASE $productId;"
     echo Line 203
     mysql -u root -e "GRANT ALL PRIVILEGES ON $productId.* TO '$productId'@'localhost';"
