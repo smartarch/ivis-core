@@ -195,10 +195,14 @@ certs:
     mysqlPassword=`pwgen 12 -1`
     mysqlRoPassword=`pwgen 12 -1`
     
+    echo Line 198 
     # Setup MySQL user
     mysql -u root -e "CREATE USER '$productId'@'localhost' IDENTIFIED BY '$mysqlPassword';"
-    mysql -u $productId --password="$mysqlPassword" -e "CREATE database $productId;"
+    echo Line 201
+    mysql -u $productId --password="$mysqlPassword" -e "CREATE DATABASE $productId;"
+    echo Line 203
     mysql -u root -e "GRANT ALL PRIVILEGES ON $productId.* TO '$productId'@'localhost';"
+    echo Line 205
     
     # Add new user for the $productId daemon to run as
     useradd $productId || true
