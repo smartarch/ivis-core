@@ -192,7 +192,8 @@ certs:
         apiCerts=""
     fi
 
-    mysqlPassword=`pwgen 12 -1`
+    #mysqlPassword=`pwgen 12 -1`
+    mysqlPassword=1234
     mysqlRoPassword=`pwgen 12 -1`
     
     # Setup MySQL user
