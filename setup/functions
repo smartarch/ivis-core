@@ -251,6 +251,7 @@ function reinstallModules {
             (cd $idx && rm -rf node_modules && npm install)
         fi
     done
+    echo Reinstalling done
 }
 
 
