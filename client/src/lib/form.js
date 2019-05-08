@@ -100,7 +100,7 @@ class Form extends Component {
         evt.preventDefault();
 
         if (this.props.onSubmitAsync) {
-            await owner.formHandleChangedError(async () => await this.props.onSubmitAsync());
+            await owner.formHandleErrors(async () => await this.props.onSubmitAsync());
         }
     }
 
@@ -1364,7 +1364,7 @@ const withForm = createComponentMixin([], [], (TargetClass, InnerClass) => {
         return this.state.formState.get('isDisabled');
     };
 
-    proto.formHandleChangedError = async function(fn) {
+    proto.formHandleErrors = async function(fn) {
         const t = this.props.t;
         try {
             await fn();

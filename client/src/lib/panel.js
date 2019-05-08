@@ -35,7 +35,7 @@ export class Panel extends Component {
                     );
                 } else {
                     menuItems.push(
-                        <DropdownActionLink key={itemIdx} onClickAsync={async () => this.props.onPanelMenuAction(item.action)}>{item.label}</DropdownActionLink>
+                        <DropdownActionLink key={itemIdx} onClickAsync={async () => await this.props.onPanelMenuAction(item.action)}>{item.label}</DropdownActionLink>
                     );
                 }
                 itemIdx += 1;

@@ -58,7 +58,7 @@ export const panelMenuMixin = createComponentMixin([], [], (TargetClass, InnerCl
         resetMenu(this);
     };
 
-    inst.onPanelMenuAction = function(action) {
+    inst.onPanelMenuAction = async function(action) {
         const entry = this._panelMenu.get(action);
         if (entry) {
             if (!entry.disabled && entry.action) {

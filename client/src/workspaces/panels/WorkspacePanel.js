@@ -69,7 +69,7 @@ export default class WorkspacePanel extends Component {
             const permanentLinkConfig = getPermanentLinkConfigFromLocationState(this.props.location);
 
             return (
-                <Panel title={this.props.panel.name} panelMenu={this.state.panelMenu} onPanelMenuAction={action => this.contentNode.onPanelMenuAction(action)}>
+                <Panel title={this.props.panel.name} panelMenu={this.state.panelMenu} onPanelMenuAction={async action => await this.contentNode.onPanelMenuAction(action)}>
                     <div className={styles.panelUntrustedContentWrapper}>
                         <WorkspacePanelContent
                             ref={node => this.contentNode = node}

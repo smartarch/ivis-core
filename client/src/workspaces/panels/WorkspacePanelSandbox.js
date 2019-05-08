@@ -56,7 +56,7 @@ export default class WorkspacePanelSandbox extends PureComponent {
     }
 
     async onPanelMenuAction(method, params) {
-        this.contentNode.onPanelMenuAction(params.action);
+        await this.contentNode.onPanelMenuAction(params.action);
     }
 
     render() {
