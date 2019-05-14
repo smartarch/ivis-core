@@ -644,6 +644,10 @@ class QueryProcessor {
             script_fields: {}
         };
 
+        if ('from' in query.docs) {
+            elsQry.from = query.docs.from;
+        }
+
         if ('limit' in query.docs) {
             elsQry.size = query.docs.limit;
         }

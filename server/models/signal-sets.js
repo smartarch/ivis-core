@@ -91,12 +91,18 @@ async function listRecordsDTAjax(context, sigSetId, params) {
         // shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSetId, 'query') is already called inside signals.listVisibleForListTx
         const sigs = await signals.listVisibleForListTx(tx, context, sigSetId);
 
+        //TODO check for case when visibles list change between calls
+
         const sigSet = await tx('signal_sets').where('id', sigSetId).first();
 
         if (sigSet.type !== SignalSetType.COMPUTED) {
-            return await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+            //return
+            const b =await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+            return b;
         } else {
             throw new Error('Not implemented for computed sets yet');
+            // TODO check for deep pagination problem possibly solvable by setting totalrecordsfiltered
+            //query(context, [toQuery(sigSet,params)])
         }
     });
 }
