@@ -37,6 +37,7 @@ function toQuery(sigSet, signals, params) {
 
     query.docs = docs;
 
+    query.params = {withId: true};
     return query;
 }
 

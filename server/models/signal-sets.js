@@ -121,7 +121,7 @@ async function listRecordsESAjax(context, sigSet, params, signals) {
         const data = [];
         for (let doc of queryResult.docs) {
             const record = [];
-            record.push('testID');
+            record.push(doc['_id']);
             for (let signal of signals){
                record.push(doc[signal.cid]);
             }
@@ -422,6 +422,9 @@ async function getLastId(context, sigSet) {
 
 /* queries = [
     {
+        params: {
+            withId
+        },
         sigSetCid: <sigSetCid>,
 
         signals: [<sigCid>, ...],

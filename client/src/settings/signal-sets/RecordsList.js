@@ -55,7 +55,7 @@ export default class RecordsList extends Component {
             render: data => <code>{data}</code>
         };
 
-        if (!isComputed) {
+        if (isComputed) {
             idColumn.orderable = false;
         }
 

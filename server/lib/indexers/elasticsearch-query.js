@@ -680,8 +680,13 @@ class QueryProcessor {
             total: elsResp.hits.total
         };
 
+        const withId = query.params.withId && query.params.withId === true;
         for (const hit of elsResp.hits.hits) {
             const doc = {};
+
+            if (withId){
+               doc._id = hit._id;
+            }
 
             for (const sig of query.docs.signals) {
                 const sigFld = signalMap[sig];
