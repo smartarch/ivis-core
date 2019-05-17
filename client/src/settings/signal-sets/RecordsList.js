@@ -48,12 +48,19 @@ export default class RecordsList extends Component {
         const deletePermitted = !isComputed && signalSet.permissions.includes('deleteRecord');
 
         const columns = [];
+
+        const idColumn = {
+            data: 0,
+            title: t('ID'),
+            render: data => <code>{data}</code>
+        };
+
+        if (!isComputed) {
+            idColumn.orderable = false;
+        }
+
         columns.push(
-            {
-                data: 0,
-                title: t('ID'),
-                render: data => <code>{data}</code>
-            }
+            idColumn
         );
 
         let dataIdx = 1;
@@ -101,10 +108,15 @@ export default class RecordsList extends Component {
         }
 
         let content;
+        /*
         if (isComputed) {
             content = t('Not implemented yet for computed sets');
         } else {
-            content = <>{tableRestActionDialogRender(this)}
+
+         */
+        content =
+            <>
+                {tableRestActionDialogRender(this)}
                 {createPermitted &&
                 <Toolbar>
                     <LinkButton to={`/settings/signal-sets/${sigSetId}/records/create`} className="btn-primary"
@@ -113,8 +125,8 @@ export default class RecordsList extends Component {
                 }
                 <Table ref={node => this.table = node} withHeader dataUrl={`rest/signal-set-records-table/${sigSetId}`}
                        columns={columns}/>
-            </>
-        }
+            </>;
+        // }
 
         return (
             <Panel title={t('Records')}>

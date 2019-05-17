@@ -18,7 +18,7 @@ const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
 const {SignalType} = require('../../shared/signals');
 
-const contextHelpers = require('../lib/context-helpers');
+const {toQuery, fromQueryResult} = require('../lib/dt-es-converter');
 
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
@@ -97,14 +97,42 @@ async function listRecordsDTAjax(context, sigSetId, params) {
 
         if (sigSet.type !== SignalSetType.COMPUTED) {
             //return
-            const b =await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+            const b = await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
             return b;
         } else {
-            throw new Error('Not implemented for computed sets yet');
-            // TODO check for deep pagination problem possibly solvable by setting totalrecordsfiltered
-            //query(context, [toQuery(sigSet,params)])
+            const b = await listRecordsESAjax(context, sigSet, params, sigs);
+            return b;
         }
     });
+}
+
+async function listRecordsESAjax(context, sigSet, params, signals) {
+    // TODO check for deep pagination problem possibly solvable by setting totalrecordsfiltered
+    // 10000 is max-result-window default
+    if (params.length + params.start < 10000) {
+        const result = {
+            draw: params.draw,
+        };
+
+        const queryResult = await fromQueryResult(await query(context, [toQuery(sigSet, signals, params)]));
+        result.recordsTotal = queryResult.total;
+        result.recordsFiltered = queryResult.total;
+
+        const data = [];
+        for (let doc of queryResult.docs) {
+            const record = [];
+            record.push('testID');
+            for (let signal of signals){
+               record.push(doc[signal.cid]);
+            }
+            data.push(record);
+        }
+        result.data = data;
+
+        return result;
+    } else {
+        throw new Error('Pagination over 10000 is not supported.');
+    }
 }
 
 

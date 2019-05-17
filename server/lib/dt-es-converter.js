@@ -4,7 +4,7 @@ const em = require('./extension-manager');
 
 // TODO better cids or ids? or need both?
 function toQuery(sigSet, signals, params) {
-    const columns = ['id', ...signals.map(sig => sig.cid)];
+    const columns = [...signals.map(sig => sig.cid)];
 
     // TODO params.search with params.columns[x].searchable
 
@@ -16,14 +16,19 @@ function toQuery(sigSet, signals, params) {
     const docs = {
         limit: params.length,
         from: params.start,
-        signals
+        signals: columns
     };
 
     const sort = [];
 
     for (const order of params.order) {
+
+        if (order.column === 0) {
+            continue;
+        }
+
         sort.push({
-            sigCid: columns[order.column],
+            sigCid: columns[order.column - 1],
             order: order.dir
         })
     }
@@ -35,4 +40,10 @@ function toQuery(sigSet, signals, params) {
     return query;
 }
 
+function fromQueryResult(result) {
+    const res = result[0];
+    return res;
+}
+
 module.exports.toQuery = toQuery;
+module.exports.fromQueryResult = fromQueryResult;
