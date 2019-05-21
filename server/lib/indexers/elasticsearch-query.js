@@ -2,8 +2,8 @@
 
 const moment = require('moment');
 const elasticsearch = require('../elasticsearch');
-const { SignalType } = require('../../../shared/signals');
-const { getIndexName, getFieldName } = require('./elasticsearch-common');
+const {SignalType} = require('../../../shared/signals');
+const {getIndexName, getFieldName} = require('./elasticsearch-common');
 
 const handlebars = require('handlebars');
 const log = require('../log');
@@ -256,11 +256,11 @@ class QueryProcessor {
                 if (agg.bucketGroup) {
                     const minMax = await _fetchMinAndMaxForAgg(agg);
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
-                    
+
                     if (!bucketGroup) {
                         throw new Error(`Unknown bucket group ${agg.bucketGroup}`);
                     }
-                    
+
                     if (bucketGroup.min === undefined || bucketGroup.min > minMax.min) {
                         bucketGroup.min = minMax.min;
                     }
@@ -317,7 +317,7 @@ class QueryProcessor {
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
                     step = bucketGroup.step;
                     offset = bucketGroup.offset;
-                    
+
                 } else {
                     throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or buckteGroup have to be specified.');
                 }
@@ -517,7 +517,7 @@ class QueryProcessor {
                 return {
                     bool: {
                         should: filter,
-                        minimum_should_match : 1
+                        minimum_should_match: 1
                     }
                 };
             }
@@ -567,7 +567,7 @@ class QueryProcessor {
                         rngCond += ' && ' + attrCond;
 
                     } else if (field.type === SignalType.PAINLESS) {
-                        const rngOp = { gte: '>=', gt: '>', lte: '<=', lt: '<' };
+                        const rngOp = {gte: '>=', gt: '>', lte: '<=', lt: '<'};
                         rngCond += ' && result' + rngOp[rngAttr] + 'params.' + rngAttr;
 
                     } else {
@@ -609,7 +609,15 @@ class QueryProcessor {
                 };
             }
 
-        } else {
+        } else if (flt.type === 'wildcard') {
+            const field = signalMap[flt.sigCid];
+            const elsFld = this.getField(field);
+            return {
+                wildcard: {
+                    [elsFld.field]: flt.value
+                }
+            }
+        }  else {
             throw new Error(`Unknown filter type "${flt.type}"`);
         }
     }
@@ -684,8 +692,8 @@ class QueryProcessor {
         for (const hit of elsResp.hits.hits) {
             const doc = {};
 
-            if (withId){
-               doc._id = hit._id;
+            if (withId) {
+                doc._id = hit._id;
             }
 
             for (const sig of query.docs.signals) {
@@ -693,7 +701,7 @@ class QueryProcessor {
 
                 if (sigFld.type === SignalType.PAINLESS || sigFld.type === SignalType.PAINLESS_DATE_TIME) {
                     if (hit.fields) {
-                    const valSet = hit.fields[getFieldName(sigFld.id)];
+                        const valSet = hit.fields[getFieldName(sigFld.id)];
                         if (valSet) {
                             doc[sig] = valSet[0];
                         }

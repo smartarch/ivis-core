@@ -116,7 +116,7 @@ async function listRecordsESAjax(context, sigSet, params, signals) {
 
         const queryResult = await fromQueryResult(await query(context, [toQuery(sigSet, signals, params)]));
         result.recordsTotal = queryResult.total;
-        result.recordsFiltered = queryResult.total;
+        result.recordsFiltered = queryResult.total < 10000 ? queryResult.total : 10000;
 
         const data = [];
         for (let doc of queryResult.docs) {
@@ -515,7 +515,7 @@ async function query(context, queries) {
                         checkFilter(fltChild);
                     }
 
-                } else if (flt.type === 'range' || flt.type === 'mustExist') {
+                } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
                     const sig = signalMap[flt.sigCid];
                     if (!sig) {
                         shares.throwPermissionDenied();

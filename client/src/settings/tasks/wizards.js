@@ -24,8 +24,8 @@ from elasticsearch import Elasticsearch
 data = json.loads(sys.stdin.readline())
 config = data.get('config')
 params = data.get('params')
-param_map = params.get('map')
-param_ns = params.get('namespaces')
+params_map = params.get('map')
+params_ns = params.get('namespaces')
 es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
 
 if config is None or config.get('index') is None:
