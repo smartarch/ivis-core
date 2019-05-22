@@ -29,7 +29,7 @@ function toQuery(sigSet, signals, params) {
                 continue;
             }
 
-            if (signals[i - 1].type === SignalType.TEXT && signals[i - 1].type === SignalType.KEYWORD) {
+            if (signals[i - 1].type === SignalType.TEXT || signals[i - 1].type === SignalType.KEYWORD) {
                 filter.children.push({
                     type: 'wildcard',
                     sigCid: columns[i - 1],
