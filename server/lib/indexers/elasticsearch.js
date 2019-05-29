@@ -3,7 +3,7 @@
 const elasticsearch = require('../elasticsearch');
 const {enforce} = require('../helpers');
 const interoperableErrors = require('../../../shared/interoperable-errors');
-const { IndexMethod} = require('../../../shared/signals');
+const {IndexMethod} = require('../../../shared/signals');
 const {SignalSetType} = require('../../../shared/signal-sets');
 const {getIndexName, getFieldName, createIndex, extendMapping} = require('./elasticsearch-common');
 const contextHelpers = require('../context-helpers');
@@ -70,6 +70,10 @@ async function init() {
 }
 
 
+async function getDocsCount(sigSet) {
+    const count = await elasticsearch.cat.count({index: getIndexName(sigSet), h: 'count'});
+    return count.trim();
+}
 
 async function onCreateStorage(sigSet) {
     await createIndex(sigSet, {});
@@ -232,4 +236,5 @@ module.exports.onUpdateRecord = onUpdateRecord;
 module.exports.onRemoveRecord = onRemoveRecord;
 module.exports.index = index;
 module.exports.init = init;
+module.exports.getDocsCount = getDocsCount;
 module.exports.emitter = emitter;

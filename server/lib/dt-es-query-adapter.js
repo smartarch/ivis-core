@@ -3,7 +3,14 @@ const em = require('./extension-manager');
 const {SignalType} = require('../../shared/signals');
 
 
-// TODO better cids or ids? or need both?
+/**
+ * Create ES query from DT params.
+ * Query is acceptable by
+ * @param sigSet
+ * @param signals
+ * @param params
+ * @returns {{sigSetCid: *}}
+ */
 function toQuery(sigSet, signals, params) {
     const columns = [...signals.map(sig => sig.cid)];
 
@@ -71,8 +78,25 @@ function toQuery(sigSet, signals, params) {
     return query;
 }
 
-function fromQueryResult(result) {
-    const res = result[0];
+/**
+ *
+ * @param result
+ * @param signals
+ * @return Object {total: <Total number of documents>, data: <Batch of data from query>}
+ */
+function fromQueryResult(result, signals) {
+    const res = {};
+    const data = [];
+    for (let doc of result[0].docs) {
+        const record = [];
+        record.push(doc['_id']);
+        for (let signal of signals) {
+            record.push(doc[signal.cid]);
+        }
+        data.push(record);
+    }
+    res.data = data;
+    res.total = result[0].total;
     return res;
 }
 
