@@ -58,9 +58,9 @@ async function index(cid, method) {
                 const response = await elasticsearch.search({
                     index: indexName,
                     body: {
-                        _source: ['_id'],
+                        _source: ['id'],
                         sort: {
-                            _id: {
+                            id: {
                                 order: 'desc'
                             }
                         },
@@ -69,7 +69,7 @@ async function index(cid, method) {
                 });
 
                 if (response.hits.hits.length > 0) {
-                    last = response.hits.hits[0]._id;
+                    last = response.hits.hits[0].id;
                 }
             } else {
                 method = IndexMethod.FULL;

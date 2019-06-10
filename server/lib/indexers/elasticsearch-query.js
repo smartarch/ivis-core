@@ -693,7 +693,7 @@ class QueryProcessor {
             const doc = {};
 
             if (withId) {
-                doc._id = hit._id;
+                doc.id = hit.id;
             }
 
             for (const sig of query.docs.signals) {

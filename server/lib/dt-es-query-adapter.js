@@ -89,7 +89,7 @@ function fromQueryResult(result, signals) {
     const data = [];
     for (let doc of result[0].docs) {
         const record = [];
-        record.push(doc['_id']);
+        record.push(doc['id']);
         for (let signal of signals) {
             record.push(doc[signal.cid]);
         }
