@@ -3,7 +3,7 @@
 const config = require('../lib/config');
 const knex = require('../lib/knex');
 const {JobState, RunStatus, HandlerMsgType, JobMsgType} = require('../../shared/jobs');
-const { TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
+const {TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
 const {SignalSetType} = require('../../shared/signal-sets');
 const log = require('../lib/log');
 const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-common');
@@ -12,6 +12,7 @@ const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputD
 const {getAdminContext} = require('../lib/context-helpers');
 const createSigSet = require('../models/signal-sets').create;
 const createSignal = require('../models/signals').create;
+const resolveAbs = require('../../shared/templates').resolveAbs;
 
 const es = require('../lib/elasticsearch');
 const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
@@ -173,8 +174,9 @@ async function afterDelay(msg, task, job) {
     await processRunMsg(msg, task, job);
 }
 
+
 /**
- * Prepare parameter specification for a job, like transformations from cid to field names in es.
+ * Prepare entities specifications for a job, like index name in es.
  * @param jobParams Stored job parameters
  * @param taskParams Set task parameters
  * @returns {Promise<void>}
@@ -185,69 +187,99 @@ async function getEntitiesFromParams(jobParams, taskParams) {
         signals: {}
     };
 
-    for (let param of taskParams) {
+    const getParamFromRef = (prefix,ref) =>{
+        //return jobParams[resolveAbs(prefix, ref)];
+        return jobParams[ref];
+    };
 
-        /* TODO check whether param can be undefined, if not throw error here for unspecified one
-        let paramValue = jobParams[param.id];
-        if (paramValue === undefined){
-                    throw new Error(`Job doesn't specify parameter ${param.id}.`);
-        }
-        */
+    const loadEntities = async function checkParams(prefix, params) {
 
-        switch (param.type) {
-            // TODO add support for fieldsets
-            case 'signalSet': {
-                const cid = jobParams[param.id];
+        for (let param of params) {
 
-                if (!cid) {
-                    throw new Error(`Job doesn't specify parameter ${param.id}.`);
+            /* TODO check whether param can be undefined, if not throw error here for unspecified one
+            let paramValue = jobParams[param.id];
+            if (paramValue === undefined){
+                        throw new Error(`Job doesn't specify parameter ${param.id}.`);
+            }
+            */
+
+            switch (param.type) {
+                // TODO add support for fieldsets
+                case 'signalSet': {
+
+                    const cid = jobParams[param.id];
+
+                    if (!cid) {
+                        throw new Error(`Job doesn't specify parameter ${param.id}.`);
+                    }
+
+                    if (entities.signalSets[cid]) {
+                        // info already stored
+                        continue;
+                    }
+
+                    const sigSet = await knex('signal_sets').where({cid: cid}).first();
+                    if (!sigSet) {
+                        throw new Error(`Set with cid ${cid} not found.`);
+                    }
+
+                    entities.signalSets[cid] = {
+                        index: getIndexName(sigSet),
+                        namespace: sigSet.namespace
+                    };
+                    break;
                 }
 
-                const sigSet = await knex('signal_sets').where({cid: cid}).first();
-                if (!sigSet) {
-                    throw new Error(`Set with cid ${cid} not found.`);
+                case 'signal': {
+                    const signalSetCid = param.signalSetRef ? getParamFromRef(prefix, param.signalSetRef) : param.signalSet; // TODO: This is wrong because it does not handle nested params
+                    // It needs to use resolvAbs (as in models/signal-sets.js
+                    if (!signalSetCid) {
+                        throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
+                    }
+
+                    const sigCid = jobParams[param.id];
+                    if (!sigCid) {
+                        throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
+                    }
+
+                    if (entities.signals[sigCid]) {
+                        // info already stored
+                        continue;
+                    }
+
+
+                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${param.cid} not found.`);
+                    }
+                    const sig = await knex('signals').select('id').where({cid: sigCid, set: sigSet.id}).first();
+                    if (!sig) {
+                        throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
+                    }
+
+                    entities.signals[sigCid] = {
+                        field: getFieldName(sig.id),
+                        namespace: sig.namespace
+                    };
+                    break;
                 }
 
-                entities.signalSets[cid] = {
-                    index: getIndexName(sigSet),
-                    namespace: sigSet.namespace
-                };
-                break;
+                case 'fieldset': {
+                    if (param.children) {
+                            await checkParams(prefix, param.children);
+                    }
+                    break;
+                }
+
+                default:
+                    break;
             }
 
-            case 'signal': {
-                const signalSetCid = param.signalSetRef ? jobParams[param.signalSetRef] : param.signalSet; // TODO: This is wrong because it does not handle nested params
-                                                                                                           // It needs to use resolvAbs (as in models/signal-sets.js
-                if (!signalSetCid) {
-                    throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
-                }
 
-                const sigCid = jobParams[param.id];
-                if (!sigCid) {
-                    throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
-                }
-
-                const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                if (!sigSet) {
-                    throw new Error(`Signal set with cid ${param.cid} not found.`);
-                }
-                const sig = await knex('signals').select('id').where({cid: sigCid, set: sigSet.id}).first();
-                if (!sig) {
-                    throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
-                }
-
-                entities.signals[sigCid] = {
-                    field: getFieldName(sig.id),
-                    namespace: sig.namespace
-                };
-                break;
-            }
-
-            default:
-                break;
         }
-    }
+    };
 
+    await loadEntities('/',taskParams);
     return entities;
 }
 
@@ -797,7 +829,7 @@ async function loadJobState(id) {
         } else {
             log.error(LOG_ID, err);
         }
-        
+
         return null;
     }
 }
