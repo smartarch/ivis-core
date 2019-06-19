@@ -89,11 +89,16 @@ export function withComponentMixins(mixins, delegateFuns) {
         }
 
         class ComponentMixinsOuter extends React.Component {
+            constructor(props) {
+                super(props);
+
+                this._decoratorInnerInstanceRefFn = node => this._decoratorInnerInstance = node
+            }
             render() {
                 let innerFn = parentProps => {
                     const props = {
                         ...parentProps,
-                        _decoratorInnerInstanceRefFn: node => this._decoratorInnerInstance = node
+                        _decoratorInnerInstanceRefFn: this._decoratorInnerInstanceRefFn
                     };
 
                     return <DecoratedInner {...props}/>
