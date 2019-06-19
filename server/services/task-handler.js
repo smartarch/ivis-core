@@ -12,7 +12,7 @@ const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputD
 const {getAdminContext} = require('../lib/context-helpers');
 const createSigSet = require('../models/signal-sets').create;
 const createSignal = require('../models/signals').create;
-const resolveAbs = require('../../shared/templates').resolveAbs;
+const {resolveAbs, getFieldsetPrefix} = require('../../shared/templates');
 
 const es = require('../lib/elasticsearch');
 const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
@@ -187,12 +187,35 @@ async function getEntitiesFromParams(jobParams, taskParams) {
         signals: {}
     };
 
-    const getParamFromRef = (prefix,ref) =>{
-        //return jobParams[resolveAbs(prefix, ref)];
-        return jobParams[ref];
-    };
+    function getJobParamByRef(prefix = '/', ref) {
 
-    const loadEntities = async function checkParams(prefix, params) {
+        const abs = ref ? resolveAbs(prefix, ref) : prefix;
+
+        let walker = jobParams;
+        const path = abs.split('/');
+        // Path always starts with slash
+        for (let i = 1; i < path.length; i++) {
+
+            if (path[i] === '') {
+                continue;
+            }
+
+            if (path[i].charAt(0) === '[') {
+                walker = walker[path[i].slice(1, -1)];
+            } else {
+                walker = walker[path[i]];
+            }
+
+            if (!walker) {
+                throw new Error(`Reference ${ref} not valid`);
+            }
+        }
+
+        return walker;
+    }
+
+    // Walks all subtrees of params and gets info for signals and signalSets found
+    async function loadFromParams(prefix, jobParamSpec, params) {
 
         for (let param of params) {
 
@@ -204,10 +227,9 @@ async function getEntitiesFromParams(jobParams, taskParams) {
             */
 
             switch (param.type) {
-                // TODO add support for fieldsets
                 case 'signalSet': {
 
-                    const cid = jobParams[param.id];
+                    const cid = jobParamSpec[param.id];
 
                     if (!cid) {
                         throw new Error(`Job doesn't specify parameter ${param.id}.`);
@@ -231,13 +253,18 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                 }
 
                 case 'signal': {
-                    const signalSetCid = param.signalSetRef ? getParamFromRef(prefix, param.signalSetRef) : param.signalSet; // TODO: This is wrong because it does not handle nested params
-                    // It needs to use resolvAbs (as in models/signal-sets.js
+
+                    const signalSetCid = param.signalSetRef ? getJobParamByRef(prefix, param.signalSetRef) : param.signalSet;
                     if (!signalSetCid) {
                         throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
                     }
 
-                    const sigCid = jobParams[param.id];
+                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${param.cid} not found.`);
+                    }
+
+                    const sigCid = jobParamSpec[param.id];
                     if (!sigCid) {
                         throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
                     }
@@ -248,10 +275,6 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                     }
 
 
-                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                    if (!sigSet) {
-                        throw new Error(`Signal set with cid ${param.cid} not found.`);
-                    }
                     const sig = await knex('signals').select('id').where({cid: sigCid, set: sigSet.id}).first();
                     if (!sig) {
                         throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
@@ -266,7 +289,11 @@ async function getEntitiesFromParams(jobParams, taskParams) {
 
                 case 'fieldset': {
                     if (param.children) {
-                            await checkParams(prefix, param.children);
+                        let idx = 0;
+                        for (const child of jobParamSpec[param.id]) {
+                            await loadFromParams(getFieldsetPrefix(prefix, param, idx), child, param.children);
+                            idx++;
+                        }
                     }
                     break;
                 }
@@ -277,9 +304,9 @@ async function getEntitiesFromParams(jobParams, taskParams) {
 
 
         }
-    };
+    }
 
-    await loadEntities('/',taskParams);
+    await loadFromParams('/', jobParams, taskParams);
     return entities;
 }
 
