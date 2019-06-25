@@ -17,7 +17,8 @@ import {
     InputField,
     TableSelect,
     TextArea,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import interoperableErrors
@@ -151,7 +152,8 @@ export default class CUD extends Component {
         return data;
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -167,10 +169,24 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving user ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-            if (submitSuccessful) {
-                this.navigateToWithFlashMessage('/settings/users', 'success', t('User saved'));
+            if (submitResult) {
+                if (this.props.entity) {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/users', 'success', t('User udpated'));
+                    } else {
+                        await this.getFormValuesFromURL(`rest/users/${this.props.entity.id}`);
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('User udpated'));
+                    }
+                } else {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/users', 'success', t('User saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/users/${submitResult}/edit`, 'success', t('User saved'));
+                    }
+                }
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -243,6 +259,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {isEdit && canDelete &&
                         <LinkButton className="btn-danger" icon="remove" label={t('Delete User')}
                                     to={`/settings/users/${this.props.entity.id}/delete`}/>}

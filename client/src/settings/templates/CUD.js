@@ -136,14 +136,15 @@ export default class CUD extends Component {
 
         const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-        alert(submitResult);
         if (submitResult) {
             if (this.props.entity) {
-                await this.loadFormValues();
-                this.enableForm();
-                this.clearFormStatusMessage();
-                this.hideFormValidation();
-                this.setFlashMessage('success', t('Template saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Template updated'));
+                }
             } else {
                 if (submitAndLeave) {
                     this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template saved'));
