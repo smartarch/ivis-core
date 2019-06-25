@@ -202,13 +202,17 @@ export default class Develop extends Component {
         return spec;
     }
 
+    getFormValuesMutator(data){
+        this.inputMutator(data);
+    }
+
     inputMutator(data) {
         this.getTypeSpec(data.type).dataIn(data);
     }
 
     @withAsyncErrorHandler
     async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`, ::this.inputMutator);
+        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
     }
 
     resizeTabPaneContent() {
@@ -231,7 +235,7 @@ export default class Develop extends Component {
     }
 
     componentDidMount() {
-        this.getFormValuesFromEntity(this.props.entity, ::this.inputMutator);
+        this.getFormValuesFromEntity(this.props.entity);
         this.resizeTabPaneContent();
     }
 

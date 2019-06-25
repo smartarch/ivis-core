@@ -88,25 +88,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.painlessScript = data.settings && data.settings.painlessScript;
-
-                if (data.weight_list === null) {
-                    data.shownInList = false;
-                    data.weight_list = '0';
-                } else {
-                    data.shownInList = true;
-                    data.weight_list = data.weight_list.toString();
-                }
-
-                if (data.weight_edit === null) {
-                    data.shownInEdit = false;
-                    data.weight_edit = '0';
-                } else {
-                    data.shownInEdit = true;
-                    data.weight_edit = data.weight_edit.toString();
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
             if (this.props.signalSet.type === SignalSetType.COMPUTED) {
                 this.disableForm();
             }
@@ -164,6 +146,26 @@ export default class CUD extends Component {
         }
 
         validateNamespace(t, state);
+    }
+
+    getFormValuesMutator(data) {
+        data.painlessScript = data.settings && data.settings.painlessScript;
+
+        if (data.weight_list === null) {
+            data.shownInList = false;
+            data.weight_list = '0';
+        } else {
+            data.shownInList = true;
+            data.weight_list = data.weight_list.toString();
+        }
+
+        if (data.weight_edit === null) {
+            data.shownInEdit = false;
+            data.weight_edit = '0';
+        } else {
+            data.shownInEdit = true;
+            data.weight_edit = data.weight_edit.toString();
+        }
     }
 
     submitFormValuesMutator(data) {
