@@ -114,7 +114,7 @@ export default class CUD extends Component {
             state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
 
             if (newVal) {
-               this.fetchTaskParams(newVal);
+                this.fetchTaskParams(newVal);
             }
         }
     }
@@ -205,6 +205,34 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
+    submitFormValuesMutator(data) {
+        if (this.props.entity) {
+            data.settings = this.props.entity.settings;
+        }
+
+        const triggers = [];
+        for (const setUid of data.sets) {
+            const prefix = SETS_PREFIX + setUid + '_';
+            let trigger = data[prefix + 'trigger'];
+            if (trigger) {
+                triggers.push(trigger)
+            }
+        }
+        data.signal_sets_triggers = triggers;
+
+        const params = this.paramTypes.getParams(data.taskParams, data);
+
+        const paramPrefix = this.paramTypes.getParamPrefix();
+        for (const paramId in data) {
+            if (paramId.startsWith(paramPrefix)) {
+                delete data[paramId];
+            }
+        }
+
+        delete data.taskParams;
+        data.params = params;
+        return data;
+    }
 
     async submitHandler() {
         const t = this.props.t;
@@ -227,33 +255,7 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-                if (this.props.entity) {
-                    data.settings = this.props.entity.settings;
-                }
-
-                const triggers = [];
-                for (const setUid of data.sets) {
-                    const prefix = SETS_PREFIX + setUid + '_';
-                    let trigger = data[prefix + 'trigger'];
-                    if (trigger) {
-                        triggers.push(trigger)
-                    }
-                }
-                data.signal_sets_triggers = triggers;
-
-                const params = this.paramTypes.getParams(data.taskParams, data);
-
-                const paramPrefix = this.paramTypes.getParamPrefix();
-                for (const paramId in data) {
-                    if (paramId.startsWith(paramPrefix)) {
-                        delete data[paramId];
-                    }
-                }
-
-                delete data.taskParams;
-                data.params = params;
-            });
+            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
 
             if (submitSuccessful) {

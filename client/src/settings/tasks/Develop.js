@@ -254,6 +254,11 @@ export default class Develop extends Component {
         await this.run();
     }
 
+    submitFormValuesMutator(data) {
+        this.getTypeSpec(data.type).dataOut(data);
+        return data;
+    }
+
     async save() {
         const t = this.props.t;
 
@@ -265,9 +270,7 @@ export default class Develop extends Component {
 
         this.disableForm();
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/tasks/${this.props.entity.id}`, data => {
-            this.getTypeSpec(data.type).dataOut(data);
-        });
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/tasks/${this.props.entity.id}`);
 
         if (submitSuccessful) {
             await this.loadFormValues();
@@ -357,8 +360,8 @@ export default class Develop extends Component {
                         onClickAsync={() => this.run()}/>
         } else if (this.state.saveState === SaveState.CHANGED) {
             saveAndRunBtn = <Button className="btn-primary"
-                    label={this.saveRunLabels[this.state.saveState]}
-                    onClickAsync={() => this.saveAndRun()}/>
+                                    label={this.saveRunLabels[this.state.saveState]}
+                                    onClickAsync={() => this.saveAndRun()}/>
         }
 
         return (

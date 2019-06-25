@@ -139,11 +139,16 @@ export default class CUD extends Component {
         }
 
         if (passwordMsgs.length > 1) {
-           passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
+            passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
         }
 
         state.setIn(['password', 'error'], passwordMsgs.length > 0 ? passwordMsgs : null);
         state.setIn(['password2', 'error'], password !== password2 ? t('Passwords must match') : null);
+    }
+
+    submitFormValuesMutator(data) {
+        delete data.password2;
+        return data;
     }
 
     async submitHandler() {
@@ -162,9 +167,7 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving user ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-                delete data.password2;
-            });
+            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
             if (submitSuccessful) {
                 this.navigateToWithFlashMessage('/settings/users', 'success', t('User saved'));
@@ -206,21 +209,21 @@ export default class CUD extends Component {
         const canDelete = userId !== 1 && ivisConfig.user.id !== userId;
 
         const rolesColumns = [
-            { data: 1, title: t('Name') },
-            { data: 2, title: t('Description') },
+            {data: 1, title: t('Name')},
+            {data: 2, title: t('Description')},
         ];
 
         return (
             <Panel title={isEdit ? t('Edit User') : t('Create User')}>
                 {isEdit && canDelete &&
-                    <DeleteModalDialog
-                        stateOwner={this}
-                        visible={this.props.action === 'delete'}
-                        deleteUrl={`rest/users/${this.props.entity.id}`}
-                        backUrl={`/settings/users/${this.props.entity.id}/edit`}
-                        successUrl="/settings/users"
-                        deletingMsg={t('Deleting user ...')}
-                        deletedMsg={t('User deleted')}/>
+                <DeleteModalDialog
+                    stateOwner={this}
+                    visible={this.props.action === 'delete'}
+                    deleteUrl={`rest/users/${this.props.entity.id}`}
+                    backUrl={`/settings/users/${this.props.entity.id}/edit`}
+                    successUrl="/settings/users"
+                    deletingMsg={t('Deleting user ...')}
+                    deletedMsg={t('User deleted')}/>
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
@@ -230,15 +233,19 @@ export default class CUD extends Component {
                     <InputField id="phone_cell" label={t('Cell')}/>
                     <TextArea id="address" label={t('Address')}/>
 
-                    <InputField id="password" label={t('Password')} type="password" />
-                    <InputField id="password2" label={t('Repeat Password')} type="password" />
+                    <InputField id="password" label={t('Password')} type="password"/>
+                    <InputField id="password2" label={t('Repeat Password')} type="password"/>
 
-                    <TableSelect id="role" label={t('Role')} withHeader dropdown dataUrl={'rest/shares-roles-table/global'} columns={rolesColumns} selectionLabelIndex={1}/>
+                    <TableSelect id="role" label={t('Role')} withHeader dropdown
+                                 dataUrl={'rest/shares-roles-table/global'} columns={rolesColumns}
+                                 selectionLabelIndex={1}/>
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        {isEdit && canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete User')} to={`/settings/users/${this.props.entity.id}/delete`}/>}
+                        {isEdit && canDelete &&
+                        <LinkButton className="btn-danger" icon="remove" label={t('Delete User')}
+                                    to={`/settings/users/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

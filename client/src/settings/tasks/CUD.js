@@ -90,6 +90,25 @@ export default class CUD extends Component {
         return wizards.get(wizardType);
     }
 
+    submitFormValuesMutator(data) {
+        if (!this.props.entity) {
+            const wizard = CUD.getWizard(data.wizard);
+            if (wizard) {
+                wizard(data);
+            } else {
+                data.settings = {
+                    params: [],
+                    code: ''
+                };
+            }
+
+            delete data.wizard;
+        } else {
+            data.settings = this.props.entity.settings;
+        }
+        return data;
+    }
+
     async submitHandler() {
         const t = this.props.t;
 
@@ -105,23 +124,7 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (!this.props.entity) {
-                const wizard = CUD.getWizard(data.wizard);
-                if (wizard) {
-                    wizard(data);
-                } else {
-                    data.settings = {
-                        params: [],
-                        code: ''
-                    };
-                }
-
-                delete data.wizard;
-            } else {
-                data.settings = this.props.entity.settings;
-            }
-        });
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
 
         if (submitSuccessful) {

@@ -17,7 +17,8 @@ import {
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -98,7 +99,27 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    async submitHandler() {
+    submitFormValuesMutator(data) {
+        // TODO update processing to be based on template types
+        if (!this.props.entity) {
+            if (data.type === 'jsx') {
+                data.settings = {
+                    params: [],
+                    jsx: '',
+                    scss: ''
+                };
+            }
+
+            delete data.wizard;
+        } else {
+            data.settings = this.props.entity.settings;
+        }
+
+        return data;
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -113,24 +134,10 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (!this.props.entity) {
-                // FIXME - process wizard
-                if (data.type === 'jsx') {
-                    data.settings = {
-                        params: [],
-                        jsx: '',
-                        scss: ''
-                    };
-                }
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-                delete data.wizard;
-            } else {
-                data.settings = this.props.entity.settings;
-            }
-        });
-
-        if (submitSuccessful) {
+        alert(submitResult);
+        if (submitResult) {
             if (this.props.entity) {
                 await this.loadFormValues();
                 this.enableForm();
@@ -138,7 +145,11 @@ export default class CUD extends Component {
                 this.hideFormValidation();
                 this.setFlashMessage('success', t('Template saved'));
             } else {
-                this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/templates/${submitResult}/edit`, 'success', t('Template saved'));
+                }
             }
         } else {
             this.enableForm();
@@ -182,6 +193,7 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        {isEdit && <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')} onClickAsync={async () => await this.submitHandler(true)}/>}
                         { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/templates/${this.props.entity.id}/delete`}/> }
                     </ButtonRow>
                 </Form>

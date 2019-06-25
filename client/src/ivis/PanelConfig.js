@@ -266,6 +266,14 @@ export class SaveDialog extends Component {
         }
     }
 
+    submitFormValuesMutator(data) {
+        data.template = owner.props.panel.template;
+        data.builtin_template = owner.props.panel.builtin_template;
+        data.params = owner.getPanelConfig();
+        data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
+        return data;
+    }
+
     async submitHandler() {
         const t = this.props.t;
         const owner = this.props.panelConfigOwner;
@@ -289,12 +297,7 @@ export class SaveDialog extends Component {
 
                 const workspaceId = this.getFormValue('workspace');
 
-                const newPanelId = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, `rest/panels/${workspaceId}`, data => {
-                    data.template = owner.props.panel.template;
-                    data.builtin_template = owner.props.panel.builtin_template;
-                    data.params = owner.getPanelConfig();
-                    data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
-                });
+                const newPanelId = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, `rest/panels/${workspaceId}`);
 
                 if (newPanelId) {
                     this.setState({

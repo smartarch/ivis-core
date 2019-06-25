@@ -99,6 +99,11 @@ export default class Account extends Component {
         state.setIn(['password2', 'error'], password !== password2 ? t('Passwords must match') : null);
     }
 
+    submitFormValuesMutator(data) {
+        delete data.password2;
+        return data;
+    }
+
     async submitHandler() {
         const t = this.props.t;
 
@@ -106,9 +111,7 @@ export default class Account extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Resetting password ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, 'rest/password-reset', data => {
-                delete data.password2;
-            });
+            const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, 'rest/password-reset');
 
             if (submitSuccessful) {
                 this.navigateToWithFlashMessage('/login', 'success', t('Password reset'));
