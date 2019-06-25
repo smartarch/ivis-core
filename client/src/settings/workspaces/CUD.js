@@ -17,7 +17,7 @@ import {
     InputField,
     TableSelect,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/jsx";
 import "brace/mode/scss";
