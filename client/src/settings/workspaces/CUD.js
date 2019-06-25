@@ -60,9 +60,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.orderBefore = data.orderBefore.toString();
-            });
+            this.getFormValuesFromEntity(this.props.entity);
 
         } else {
             this.populateFormValues({
@@ -87,12 +85,17 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
+    getFormValuesMutator(data) {
+        data.orderBefore = data.orderBefore.toString();
+    }
+
     submitFormValuesMutator(data) {
         data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
         return data;
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -108,10 +111,24 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-            if (submitSuccessful) {
-                this.navigateToWithFlashMessage('/settings/workspaces', 'success', t('Workspace saved'));
+            if (submitResult) {
+                if (this.props.entity) {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/workspaces', 'success', t('Workspace updated'));
+                    } else {
+                        await this.loadFormValues();
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('Workspace updated'));
+                    }
+                } else {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/workspaces', 'success', t('Workspace saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${submitResult}/edit`, 'success', t('Workspace saved'));
+                    }
+                }
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -175,6 +192,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>d
                         {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                to={`/settings/workspaces/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

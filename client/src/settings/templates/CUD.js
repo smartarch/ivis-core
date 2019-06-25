@@ -61,9 +61,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.elevated_access = !!data.elevated_access;
-            });
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 name: '',
@@ -79,6 +77,10 @@ export default class CUD extends Component {
     @withAsyncErrorHandler
     async loadFormValues() {
         await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
+    }
+
+    getFormValuesMutator(data) {
+        data.elevated_access = !!data.elevated_access;
     }
 
     localValidateFormValues(state) {
@@ -161,14 +163,14 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
-        const canDelete =  isEdit && this.props.entity.permissions.includes('delete');
+        const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const typeOptions = [
-            { key: 'jsx', label: t('JSX template') }
+            {key: 'jsx', label: t('JSX template')}
         ];
 
         const wizardOptions = [
-            { key: 'blank', label: t('Blank') }
+            {key: 'blank', label: t('Blank')}
         ];
 
         return (
@@ -188,14 +190,17 @@ export default class CUD extends Component {
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
                     <Dropdown id="type" label={t('Type')} options={typeOptions}/>
-                    { !isEdit && <Dropdown id="wizard" label={t('Wizard')} options={wizardOptions}/> }
-                    { ivisConfig.globalPermissions.editTemplatesWithElevatedAccess && <CheckBox id="elevated_access" text={t('Elevated Access')}/> }
+                    {!isEdit && <Dropdown id="wizard" label={t('Wizard')} options={wizardOptions}/>}
+                    {ivisConfig.globalPermissions.editTemplatesWithElevatedAccess &&
+                    <CheckBox id="elevated_access" text={t('Elevated Access')}/>}
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        {isEdit && <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')} onClickAsync={async () => await this.submitHandler(true)}/>}
-                        { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/templates/${this.props.entity.id}/delete`}/> }
+                        {isEdit && <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')}
+                                           onClickAsync={async () => await this.submitHandler(true)}/>}
+                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                                  to={`/settings/templates/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

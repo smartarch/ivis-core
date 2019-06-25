@@ -63,10 +63,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.password = '';
-                data.password2 = '';
-            });
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 username: '',
@@ -79,6 +76,11 @@ export default class CUD extends Component {
                 namespace: ivisConfig.user.namespace
             });
         }
+    }
+
+    getFormValuesMutator(data) {
+        data.password = '';
+        data.password2 = '';
     }
 
     localValidateFormValues(state) {

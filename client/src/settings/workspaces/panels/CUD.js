@@ -223,14 +223,7 @@ export default class CUD extends Component {
         const getDefaultBuiltinTemplate = () => anyBuiltinTemplate() ? Object.keys(getBuiltinTemplates())[0] : null;
 
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                this.paramTypes.setFields(data.templateParams, data.params, data);
-                data.orderBefore = data.orderBefore.toString();
-                data.templateType = data.template ? 'user' : 'builtin';
-                if (!data.builtin_template) {
-                    data.builtin_template = getDefaultBuiltinTemplate();
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
 
         } else {
             this.populateFormValues({
@@ -243,6 +236,15 @@ export default class CUD extends Component {
                 orderBefore: 'end',
                 templateType: 'user'
             });
+        }
+    }
+
+    getFormValuesMutator(data) {
+        this.paramTypes.setFields(data.templateParams, data.params, data);
+        data.orderBefore = data.orderBefore.toString();
+        data.templateType = data.template ? 'user' : 'builtin';
+        if (!data.builtin_template) {
+            data.builtin_template = getDefaultBuiltinTemplate();
         }
     }
 

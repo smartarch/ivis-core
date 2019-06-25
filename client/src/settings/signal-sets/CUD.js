@@ -82,11 +82,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
-                    data.record_id_template = '';
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
             if (this.props.entity.type === SignalSetType.COMPUTED) {
                 this.disableForm();
             }
@@ -98,6 +94,13 @@ export default class CUD extends Component {
                 record_id_template: '',
                 namespace: ivisConfig.user.namespace
             });
+        }
+    }
+
+
+    getFormValuesMutator(data) {
+        if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
+            data.record_id_template = '';
         }
     }
 
@@ -180,7 +183,8 @@ export default class CUD extends Component {
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
 
-                    <InputField id="record_id_template" label={t('Record ID template')} help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
+                    <InputField id="record_id_template" label={t('Record ID template')}
+                                help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
 

@@ -60,10 +60,7 @@ export default class RecordsCUD extends Component {
 
     componentDidMount() {
         if (this.props.record) {
-            this.getFormValuesFromEntity(this.props.record, data => {
-                this.fieldTypes.populateFields(data, data.signals);
-                data.existingId = this.props.record.id;
-            });
+            this.getFormValuesFromEntity(this.props.record);
 
         } else {
             const data = {
@@ -74,6 +71,11 @@ export default class RecordsCUD extends Component {
 
             this.populateFormValues(data);
         }
+    }
+
+    getFormValuesMutator(data) {
+        this.fieldTypes.populateFields(data, data.signals);
+        data.existingId = this.props.record.id;
     }
 
     localValidateFormValues(state) {
