@@ -82,7 +82,11 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity);
+            this.getFormValuesFromEntity(this.props.entity, data => {
+                if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
+                    data.record_id_template = '';
+                }
+            });
             if (this.props.entity.type === SignalSetType.COMPUTED) {
                 this.disableForm();
             }
@@ -137,7 +141,11 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
+            if (data.record_id_template.trim() === '') {
+                data.record_id_template = null;
+            }
+        });
 
         if (submitSuccessful) {
             this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Signal set saved'));
