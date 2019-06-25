@@ -17,7 +17,7 @@ import {
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../../lib/form";
 import {
     withAsyncErrorHandler,
@@ -184,7 +184,8 @@ export default class CUD extends Component {
         return data;
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -199,10 +200,25 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-        if (submitSuccessful) {
-            this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal saved'));
+        if (submitResult) {
+
+            if (this.props.entity) {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Signal updated'));
+                }
+            } else {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals/${submitResult}/edit`, 'success', t('Signal saved'));
+                }
+            }
         } else {
             this.enableForm();
             this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -226,7 +242,6 @@ export default class CUD extends Component {
                     deletingMsg={t('Deleting signal ...')}
                     deletedMsg={t('Signal deleted')}/>
                 }
-
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="cid" label={t('Id')}/>
                     <InputField id="name" label={t('Name')}/>
@@ -260,6 +275,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/signal-sets/${this.props.signalSet.id}/signals/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

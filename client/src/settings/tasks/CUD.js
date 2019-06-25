@@ -12,7 +12,7 @@ import {
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -109,7 +109,8 @@ export default class CUD extends Component {
         return data;
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -124,18 +125,24 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
 
-        if (submitSuccessful) {
+        if (submitResult) {
             if (this.props.entity) {
-                await this.loadFormValues();
-                this.enableForm();
-                this.clearFormStatusMessage();
-                this.hideFormValidation();
-                this.setFlashMessage('success', t('Task saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task updated'));
+                } else {
+                    await this.loadFormValues();
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Task updated'));
+                }
             } else {
-                this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/tasks/${submitResult}/edit`, 'success', t('Task saved'));
+                }
             }
         } else {
             this.enableForm();
@@ -181,6 +188,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="ok" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/tasks/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

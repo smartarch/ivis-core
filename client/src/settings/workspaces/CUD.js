@@ -118,7 +118,7 @@ export default class CUD extends Component {
                     if (submitAndLeave) {
                         this.navigateToWithFlashMessage('/settings/workspaces', 'success', t('Workspace updated'));
                     } else {
-                        await this.loadFormValues();
+                        await this.getFormValuesFromURL(`rest/workspaces/${this.props.entity.id}`);
                         this.enableForm();
                         this.setFormStatusMessage('success', t('Workspace updated'));
                     }
@@ -193,7 +193,7 @@ export default class CUD extends Component {
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
-                                onClickAsync={async () => await this.submitHandler(true)}/>d
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                to={`/settings/workspaces/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
