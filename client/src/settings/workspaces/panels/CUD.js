@@ -19,7 +19,7 @@ import {
     InputField,
     TableSelect,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../../lib/form";
 import "brace/mode/html";
 import "brace/mode/json";
@@ -310,7 +310,8 @@ export default class CUD extends Component {
         return data;
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         if (this.getFormValue('template') && !this.getFormValue('templateParams')) {
@@ -331,10 +332,25 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-            if (submitSuccessful) {
-                this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel saved'));
+            if (submitResult) {
+
+                if (this.props.entity) {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel updated'));
+                    } else {
+                        await this.loadFormValues();
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('Panel updated'));
+                    }
+                } else {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels/${submitResult}/edit`, 'success', t('Panel saved'));
+                    }
+                }
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -462,6 +478,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                to={`/settings/workspaces/${this.props.workspace.id}/panels/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

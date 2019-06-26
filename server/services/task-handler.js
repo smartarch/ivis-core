@@ -280,7 +280,7 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                         throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
                     }
 
-                    entities.signals[sigCid] = {
+                    entities.signals[signalSetCid][sigCid] = {
                         field: getFieldName(sig.id),
                         namespace: sig.namespace
                     };
