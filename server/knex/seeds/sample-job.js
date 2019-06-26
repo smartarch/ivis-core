@@ -54,9 +54,10 @@ entities= data['entities']
 # Task parameters' values
 # from params we get cid of signal/signal set and from according key in entities dictionary 
 # we can access data for that entity (like es index or namespace)
-source = entities.signals[params['source']]
-sig_set = entities.signalSets[params['sigSet']]
-ts = entities.signals[params['ts']]
+
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
 window = int(params['window'])
 
 values = []
@@ -65,7 +66,7 @@ if state is not None:
 queue = deque(values, maxlen=window)
 
 if state is None or state.get('index') is None:
-    ns = sig_set.namespace
+    ns = sig_set['namespace']
   
     msg = {}
     msg['type'] = 'sets'
@@ -90,6 +91,8 @@ if state is None or state.get('index') is None:
     })
     msg['sigSet']['signals'] = signals
 
+    print(msg)
+
     ret = os.write(3,json.dumps(msg) + '\\n')
     state = json.loads(sys.stdin.readline())
     error = state.get('error')
@@ -110,23 +113,24 @@ if state is not None and state.get('last') is not None:
 else:
   query_content = {'match_all': {}}
 
+
 query = {
     'size': 10000,
-    '_source': [source.field, ts.field],
-    'sort': [{ts.field: 'asc'}],
+    '_source': [source['field'], ts['field']],
+    'sort': [{ts['field']: 'asc'}],
     'query': query_content
 }
 
 results = helpers.scan(es,
                        preserve_order=True,
                        query=query,
-                       index=sig_set.index
+                       index=sig_set['index']
                        )
 
 i = 0
 for item in results:
-  last = item["_source"][ts.field]
-  val = item["_source"][source.field]
+  last = item["_source"][ts['field']]
+  val = item["_source"][source['field']]
   if val is not None:
     queue.append(val)
   else:

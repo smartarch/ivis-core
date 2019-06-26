@@ -259,23 +259,27 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                         throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
                     }
 
-                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                    if (!sigSet) {
-                        throw new Error(`Signal set with cid ${param.cid} not found.`);
-                    }
-
                     const sigCid = jobParamSpec[param.id];
                     if (!sigCid) {
                         throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
                     }
 
-                    if (entities.signals[sigCid]) {
-                        // info already stored
-                        continue;
+                    if (entities.signals[signalSetCid]) {
+                        if (entities.signals[signalSetCid][sigCid]) {
+                            // info already stored
+                            continue;
+                        }
+                    } else {
+                        entities.signals[signalSetCid] = {};
+                    }
+
+                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${param.cid} not found.`);
                     }
 
 
-                    const sig = await knex('signals').select('id').where({cid: sigCid, set: sigSet.id}).first();
+                    const sig = await knex('signals').where({cid: sigCid, set: sigSet.id}).first();
                     if (!sig) {
                         throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
                     }
