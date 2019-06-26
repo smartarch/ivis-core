@@ -780,8 +780,8 @@ async function onRunRequest(jobId, request) {
                     }
                     break;
                 case  JobMsgType.STORE_STATE:
-                    if (req.config) {
-                        await storeRunState(jobId, req.config);
+                    if (req[STATE_FIELD]) {
+                        await storeRunState(jobId, req[STATE_FIELD]);
                     }
                     break;
                 default:

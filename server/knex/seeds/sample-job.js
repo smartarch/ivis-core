@@ -54,7 +54,6 @@ entities= data['entities']
 # Task parameters' values
 # from params we get cid of signal/signal set and from according key in entities dictionary 
 # we can access data for that entity (like es index or namespace)
-
 sig_set = entities['signalSets'][params['sigSet']]
 ts = entities['signals'][params['sigSet']][params['ts']]
 source = entities['signals'][params['sigSet']][params['source']]
@@ -91,9 +90,7 @@ if state is None or state.get('index') is None:
     })
     msg['sigSet']['signals'] = signals
 
-    print(msg)
-
-    ret = os.write(3,json.dumps(msg) + '\\n')
+    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
     state = json.loads(sys.stdin.readline())
     error = state.get('error')
     if error:
@@ -105,7 +102,7 @@ if state is not None and state.get('last') is not None:
   last = state['last']
   query_content = {
     "range" : {
-      ts.field : {
+      ts['field'] : {
         "gt" : last
       }
     }
@@ -150,7 +147,7 @@ state["values"] = list(queue)
 msg = {}
 msg["type"] = "store"
 msg["state"] = state
-ret = os.write(3,json.dumps(msg))
+ret = os.write(3,(json.dumps(msg).encode()))
 os.close(3)`
     });
 
@@ -201,13 +198,13 @@ state = data.get('state')
 params= data['params']
 entities= data['entities']
 
-source = entities.signals[params['source']]
-sig_set = entities.signalSets[params['sigSet']]
-ts = entities.signals[params['ts']]
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
 interval = params['interval']
 
 if state is None or state.get('index') is None:
-    ns = sig_set.namespace
+    ns = sig_set['namespace']
   
     msg = {}
     msg['type'] = 'sets'
@@ -260,7 +257,7 @@ if state is None or state.get('index') is None:
     })
     msg['sigSet']['signals'] = signals
 
-    ret = os.write(3,json.dumps(msg) + '\\n')
+    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
     state = json.loads(sys.stdin.readline())
     error = state.get('error')
     if error:
@@ -272,7 +269,7 @@ if state is not None and state.get('last') is not None:
   last = state['last']
   query_content = {
     "range" : {
-      ts.field : {
+      ts['field'] : {
         "gte" : last
       }
     }
@@ -295,23 +292,23 @@ query = {
     "aggs": {
       "stats": {
         "date_histogram": {
-          "field": ts.field,
+          "field": ts['field'],
           "interval": interval+"m"
         },
         "aggs": {
           "avg": {
             "avg": {
-              "field": source.field
+              "field": source['field']
             }
           },
           "max": {
             "max" : {
-              "field": source.field
+              "field": source['field']
             }
           },
           "min": {
             "min" : {
-              "field": source.field
+              "field": source['field']
             }
           }
         }
@@ -319,7 +316,7 @@ query = {
     }
   }
 
-res = es.search(index=sig_set.index, body=query)
+res = es.search(index=sig_set['index'], body=query)
 
 for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
@@ -336,7 +333,7 @@ msg={}
 msg={"type": "store"}
 state['last'] = last
 msg["state"] = state
-ret = os.write(3,json.dumps(msg))
+ret = os.write(3,(json.dumps(msg).encode()))
 os.close(3)`
     });
 
