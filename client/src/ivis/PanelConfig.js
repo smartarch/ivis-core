@@ -267,6 +267,7 @@ export class SaveDialog extends Component {
     }
 
     submitFormValuesMutator(data) {
+        const owner = this.props.panelConfigOwner;
         data.template = owner.props.panel.template;
         data.builtin_template = owner.props.panel.builtin_template;
         data.params = owner.getPanelConfig();
