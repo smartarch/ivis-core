@@ -290,7 +290,10 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        const params = this.paramTypes.getParams(data.templateParams, data);
+        let params = null;
+        if (data.templateParams) {
+            params = this.paramTypes.getParams(data.templateParams, data);
+        }
 
         data.params = params;
 
