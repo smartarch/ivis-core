@@ -187,7 +187,6 @@ export default class CUD extends Component {
             'indexed',
             'name',
             'namespace',
-            'originalHash',
             'painlessScript',
             'permissions',
             'set',

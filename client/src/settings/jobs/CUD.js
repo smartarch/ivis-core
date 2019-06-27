@@ -237,7 +237,6 @@ export default class CUD extends Component {
             'min_gap',
             'name',
             'namespace',
-            'originalHash',
             'params',
             'permissions',
             'sets',

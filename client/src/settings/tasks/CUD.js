@@ -113,7 +113,6 @@ export default class CUD extends Component {
             'id',
             'name',
             'namespace',
-            'originalHash',
             'permissions',
             'settings',
             'type'

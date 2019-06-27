@@ -113,7 +113,6 @@ export default class RecordsCUD extends Component {
 
         return filterData(data, [
             'id',
-            'originalHash',
             'signals'
         ]);
     }

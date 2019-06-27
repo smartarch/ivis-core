@@ -153,7 +153,6 @@ export default class CUD extends Component {
         return filterData(data,
             [
                 'id',
-                'originalHash',
                 'address',
                 'email',
                 'name',

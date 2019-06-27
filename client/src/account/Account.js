@@ -119,7 +119,6 @@ export default class Account extends Component {
             'id',
             'name',
             'namespace',
-            'originalHash',
             'password',
             'phone_cell',
             'role',
