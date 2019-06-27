@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
-import {Button, ButtonRow, Form, FormSendMethod, InputField, StaticField, withForm} from "../../lib/form";
+import {Button, ButtonRow, filterData, Form, FormSendMethod, InputField, StaticField, withForm} from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
@@ -60,10 +60,7 @@ export default class RecordsCUD extends Component {
 
     componentDidMount() {
         if (this.props.record) {
-            this.getFormValuesFromEntity(this.props.record, data => {
-                this.fieldTypes.populateFields(data, data.signals);
-                data.existingId = this.props.record.id;
-            });
+            this.getFormValuesFromEntity(this.props.record);
 
         } else {
             const data = {
@@ -74,6 +71,11 @@ export default class RecordsCUD extends Component {
 
             this.populateFormValues(data);
         }
+    }
+
+    getFormValuesMutator(data) {
+        this.fieldTypes.populateFields(data, data.signals);
+        data.existingId = this.props.record.id;
     }
 
     localValidateFormValues(state) {
@@ -101,6 +103,20 @@ export default class RecordsCUD extends Component {
         this.fieldTypes.localValidate(state);
     }
 
+    submitFormValuesMutator(data) {
+        if (this.state.autoId) {
+            delete data.id;
+        }
+
+        const signals = this.fieldTypes.getSignals(data);
+        data.signals = signals;
+
+        return filterData(data, [
+            'id',
+            'signals'
+        ]);
+    }
+
     async submitHandler() {
         const t = this.props.t;
         const sigSetId = this.props.signalSet.id;
@@ -119,24 +135,7 @@ export default class RecordsCUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (this.state.autoId) {
-                delete data.id;
-            }
-
-            const signals = this.fieldTypes.getSignals(data);
-
-            const fieldPrefix = this.fieldTypes.getPrefix();
-            for (const fieldId in data) {
-                if (fieldId.startsWith(fieldPrefix)) {
-                    delete data[fieldId];
-                }
-            }
-
-            data.signals = signals;
-
-            delete data.existingId;
-        });
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
         if (submitSuccessful) {
             this.navigateToWithFlashMessage(`/settings/signal-sets/${sigSetId}/records`, 'success', t('Record saved'));
@@ -158,7 +157,8 @@ export default class RecordsCUD extends Component {
         if (isEdit) {
             if (this.state.autoId) {
                 idField =
-                    <StaticField id="id" className={styles.formDisabled} label={t('ID')} help={t('The ID will be automatically updated on save.')} withValidation>
+                    <StaticField id="id" className={styles.formDisabled} label={t('ID')}
+                                 help={t('The ID will be automatically updated on save.')} withValidation>
                         {this.getFormValue('id')}
                     </StaticField>;
             } else {
@@ -187,7 +187,7 @@ export default class RecordsCUD extends Component {
                     successUrl={`/settings/signal-sets/${sigSetId}/records`}
                     deletingMsg={t('Deleting record ...')}
                     deletedMsg={t('Record deleted')}
-                    name={isEdit && this.props.record.id} />
+                    name={isEdit && this.props.record.id}/>
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
@@ -197,7 +197,8 @@ export default class RecordsCUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/signal-sets/${sigSetId}/records/${recordIdBase64}/delete`}/>}
+                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                                  to={`/settings/signal-sets/${sigSetId}/records/${recordIdBase64}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

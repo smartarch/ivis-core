@@ -3,7 +3,7 @@
 const config = require('../lib/config');
 const knex = require('../lib/knex');
 const {JobState, RunStatus, HandlerMsgType, JobMsgType} = require('../../shared/jobs');
-const { TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
+const {TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
 const {SignalSetType} = require('../../shared/signal-sets');
 const log = require('../lib/log');
 const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-common');
@@ -12,9 +12,10 @@ const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputD
 const {getAdminContext} = require('../lib/context-helpers');
 const createSigSet = require('../models/signal-sets').create;
 const createSignal = require('../models/signals').create;
+const {resolveAbs, getFieldsetPrefix} = require('../../shared/templates');
 
 const es = require('../lib/elasticsearch');
-const CONFIG_FIELD = require('../lib/task-handler').esConstants.CONFIG_FIELD;
+const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
 const INDEX_JOBS = require('../lib/task-handler').esConstants.INDEX_JOBS;
 const TYPE_JOBS = require('../lib/task-handler').esConstants.TYPE_JOBS;
 
@@ -22,9 +23,6 @@ const LOG_ID = 'Task-handler';
 
 // Job handlers
 const pythonHandler = require('./jobs/python-handler');
-
-const externals = {};
-externals.ivisConfig = 'ivisConfig';
 
 // Stores all incoming messages, meant to be processed
 const workQueue = [];
@@ -36,7 +34,7 @@ let running = false;
 const inProcessMsgs = new Map();
 
 // Check interval is in seconds, so here is conversion
-const checkInterval = config.jobs.checkInterval * 1000;
+const checkInterval = config.tasks.checkInterval * 1000;
 
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
@@ -176,75 +174,144 @@ async function afterDelay(msg, task, job) {
     await processRunMsg(msg, task, job);
 }
 
+
 /**
- * Prepare parameter specification for a job, like transformations from cid to field names in es.
+ * Prepare entities specifications for a job, like index name in es.
  * @param jobParams Stored job parameters
  * @param taskParams Set task parameters
  * @returns {Promise<void>}
  */
-async function getSpecParams(jobParams, taskParams) {
-    const specParams = {};
-    specParams.map = Object.assign({}, jobParams);
-    specParams.namespaces = {};
-    for (let param of taskParams) {
+async function getEntitiesFromParams(jobParams, taskParams) {
+    const entities = {
+        signalSets: {},
+        signals: {}
+    };
 
-        /* TODO check whether param can be undefined, if not throw error here for unspecified one
-        let paramValue = jobParams[param.id];
-        if (paramValue === undefined){
-                    throw new Error(`Job doesn't specify parameter ${param.id}.`);
+    function getJobParamByRef(prefix = '/', ref) {
+
+        const abs = ref ? resolveAbs(prefix, ref) : prefix;
+
+        let walker = jobParams;
+        const path = abs.split('/');
+        // Path always starts with slash
+        for (let i = 1; i < path.length; i++) {
+
+            if (path[i] === '') {
+                continue;
+            }
+
+            if (path[i].charAt(0) === '[') {
+                walker = walker[path[i].slice(1, -1)];
+            } else {
+                walker = walker[path[i]];
+            }
+
+            if (!walker) {
+                throw new Error(`Reference ${ref} not valid`);
+            }
         }
-        */
 
-        switch (param.type) {
-            // TODO add support for fieldsets
-            case 'signalSet': {
-                const cid = jobParams[param.id];
-                specParams.map[param.id] = null;
+        return walker;
+    }
 
-                if (!cid) {
-                    throw new Error(`Job doesn't specify parameter ${param.id}.`);
+    // Walks all subtrees of params and gets info for signals and signalSets found
+    async function loadFromParams(prefix, jobParamSpec, params) {
+
+        for (let param of params) {
+
+            /* TODO check whether param can be undefined, if not throw error here for unspecified one
+            let paramValue = jobParams[param.id];
+            if (paramValue === undefined){
+                        throw new Error(`Job doesn't specify parameter ${param.id}.`);
+            }
+            */
+
+            switch (param.type) {
+                case 'signalSet': {
+
+                    const cid = jobParamSpec[param.id];
+
+                    if (!cid) {
+                        throw new Error(`Job doesn't specify parameter ${param.id}.`);
+                    }
+
+                    if (entities.signalSets[cid]) {
+                        // info already stored
+                        continue;
+                    }
+
+                    const sigSet = await knex('signal_sets').where({cid: cid}).first();
+                    if (!sigSet) {
+                        throw new Error(`Set with cid ${cid} not found.`);
+                    }
+
+                    entities.signalSets[cid] = {
+                        index: getIndexName(sigSet),
+                        namespace: sigSet.namespace
+                    };
+                    break;
                 }
 
-                const set = await knex('signal_sets').where({cid: cid}).first();
-                if (!set) {
-                    throw new Error(`Set with cid ${cid} not found.`);
+                case 'signal': {
+
+                    const signalSetCid = param.signalSetRef ? getJobParamByRef(prefix, param.signalSetRef) : param.signalSet;
+                    if (!signalSetCid) {
+                        throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
+                    }
+
+                    const sigCid = jobParamSpec[param.id];
+                    if (!sigCid) {
+                        throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
+                    }
+
+                    if (entities.signals[signalSetCid]) {
+                        if (entities.signals[signalSetCid][sigCid]) {
+                            // info already stored
+                            continue;
+                        }
+                    } else {
+                        entities.signals[signalSetCid] = {};
+                    }
+
+                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${param.cid} not found.`);
+                    }
+
+
+                    const sig = await knex('signals').where({cid: sigCid, set: sigSet.id}).first();
+                    if (!sig) {
+                        throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
+                    }
+
+                    entities.signals[signalSetCid][sigCid] = {
+                        field: getFieldName(sig.id),
+                        namespace: sig.namespace
+                    };
+                    break;
                 }
 
-                specParams.namespaces[param.id] = set.namespace;
-                specParams.map[param.id] = getIndexName(set);
-                break;
+                case 'fieldset': {
+                    if (param.children) {
+                        let idx = 0;
+                        for (const child of jobParamSpec[param.id]) {
+                            await loadFromParams(getFieldsetPrefix(prefix, param, idx), child, param.children);
+                            idx++;
+                        }
+                    }
+                    break;
+                }
+
+                default:
+                    break;
             }
 
-            case 'signal': {
-                specParams.map[param.id] = null;
-                const signalSetCid = param.signalSetRef ? jobParams[param.signalSetRef] : param.signalSet;
-                if (!signalSetCid) {
-                    throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
-                }
 
-                const signalCid = jobParams[param.id];
-                if (!signalCid) {
-                    throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
-                }
-
-                const set = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                if (!set) {
-                    throw new Error(`Signal set with cid ${param.cid} not found.`);
-                }
-                const signal = await knex('signals').select('id').where({cid: signalCid, set: set.id}).first();
-                if (!signal) {
-                    throw new Error(`Signal with cid ${signalCid} in set ${set.id} not found.`);
-                }
-                specParams.map[param.id] = getFieldName(signal.id);
-                break;
-            }
-
-            default:
-                break;
         }
     }
 
-    return specParams;
+    await loadFromParams('/', jobParams, taskParams);
+    return entities;
 }
 
 /**
@@ -274,7 +341,8 @@ async function checkAndSetMsgRunStatus(runId, status, output) {
 async function processRunMsg(msg, task, job) {
     const spec = msg.spec;
     try {
-        spec.params = await getSpecParams(JSON.parse(job.params), JSON.parse(task.settings).params);
+        spec.params = JSON.parse(job.params);
+        spec.entities = await getEntitiesFromParams(spec.params, JSON.parse(task.settings).params);
     } catch (error) {
         return void await onRunFail(job.id, spec.runId, null, error.message);
     }
@@ -555,7 +623,7 @@ async function handleBuild(workEntry) {
     const id = spec.taskId;
     const handler = await getHandler(id);
     if (!handler) {
-        await onBuildFail(id, undefined, [String(new HandlerNotFoundError('Handler for type not found', spec.type))]);
+        await onBuildFail(id, null, [`Handler for type not found: ${spec.type}`]);
     } else {
         try {
             await setState(id, BuildState.PROCESSING);
@@ -599,7 +667,7 @@ async function handleInit(workEntry) {
     const id = spec.taskId;
     const handler = await getHandler(id);
     if (!handler) {
-        await onInitFail(id, undefined, [String(new HandlerNotFoundError('Handler for type not found', spec.type))]);
+        await onInitFail(id, null, [`Handler for type not found: ${spec.type}`]);
     } else {
         try {
             await setState(id, BuildState.INITIALIZING);
@@ -637,7 +705,7 @@ async function onRunSuccess(jobId, runId, runData, output, config) {
     try {
         await updateRun(runId, runData);
         if (config) {
-            await storeRunConfig(config);
+            await storeRunState(config);
         }
     } catch (err) {
         log.error(LOG_ID, err);
@@ -711,9 +779,9 @@ async function onRunRequest(jobId, request) {
                         return await processSetReq(jobId, req.sigSet);
                     }
                     break;
-                case  JobMsgType.STORE_CONFIG:
-                    if (req.config) {
-                        await storeRunConfig(jobId, req.config);
+                case  JobMsgType.STORE_STATE:
+                    if (req[STATE_FIELD]) {
+                        await storeRunState(jobId, req[STATE_FIELD]);
                     }
                     break;
                 default:
@@ -729,6 +797,8 @@ async function onRunRequest(jobId, request) {
  * @property {string} index - Created index name.
  * @property {Object[]} fields - map of signal cid to his field name in created index
  */
+
+// TODO - we would need something similar for signals
 
 /**
  * Process request for signal set and signals creation
@@ -748,9 +818,6 @@ async function processSetReq(jobId, sigSet) {
 
     try {
         await knex.transaction(async (tx) => {
-                // This fixes the problem of cid not being unique when task has multiple jobs
-                sigSet.cid = sigSet.cid + '_' + jobId;
-
                 sigSet.id = await createSigSet(getAdminContext(), sigSet);
                 indexInfo.index = getIndexName(sigSet);
                 indexInfo.type = '_doc';
@@ -779,30 +846,34 @@ async function processSetReq(jobId, sigSet) {
  * @param id
  * @returns {Promise<void>} config field retrieved from ES
  */
-async function loadJobConfig(id) {
-    let job_config = null;
+async function loadJobState(id) {
+    let jobState = null;
     try {
-        job_config = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
-        job_config = job_config['_source'][CONFIG_FIELD];
+        const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
+        jobState['_source'][STATE_FIELD];
+
+        return jobState['_source'][STATE_FIELD];
+
     } catch (err) {
         if (err.status === 404 && err.displayName === 'NotFound') {
-            log.info(LOG_ID, `Config for job ${id} not found`);
+            log.info(LOG_ID, `State for job ${id} not found`);
         } else {
             log.error(LOG_ID, err);
         }
+
+        return null;
     }
-    return job_config;
 }
 
 /**
  * Store config from job, overwrites old config
  * @param id ID of the job config belongs to
- * @param config Config to store, JSON format
+ * @param state Config to store, JSON format
  * @returns {Promise<void>}
  */
-async function storeRunConfig(id, config) {
+async function storeRunState(id, state) {
     const jobBody = {};
-    jobBody[CONFIG_FIELD] = config;
+    jobBody[STATE_FIELD] = state;
     try {
         await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
     } catch (error) {
@@ -833,7 +904,8 @@ async function handleRun(workEntry) {
             jobId,
             runId,
             spec.params,
-            await loadJobConfig(jobId),
+            spec.entities,
+            await loadJobState(jobId),
             spec.taskDir,
             async (request) => {
                 return await onRunRequest(jobId, request);
@@ -978,6 +1050,5 @@ function logErr(err) {
 
 // This line starts the time trigger functionality
 setInterval(runTimeTriggers, checkInterval);
-
 log.info(LOG_ID, 'Job handler process started');
 
