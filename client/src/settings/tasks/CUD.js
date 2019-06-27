@@ -7,7 +7,7 @@ import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/
 import {
     Button,
     ButtonRow,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -102,11 +102,22 @@ export default class CUD extends Component {
                 };
             }
 
-            delete data.wizard;
         } else {
             data.settings = this.props.entity.settings;
         }
-        return data;
+        return filterData(data, [
+            'build_output',
+            'build_state',
+            'created',
+            'description',
+            'id',
+            'name',
+            'namespace',
+            'originalHash',
+            'permissions',
+            'settings',
+            'type'
+        ]);
     }
 
     @withFormErrorHandlers

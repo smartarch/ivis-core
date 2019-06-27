@@ -13,7 +13,7 @@ import {
     Button,
     ButtonRow,
     Dropdown,
-    Fieldset,
+    Fieldset, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -219,8 +219,11 @@ export default class CUD extends Component {
         }
     }
 
+    getDefaultBuiltinTemplate() {
+        return anyBuiltinTemplate() ? Object.keys(getBuiltinTemplates())[0] : null;
+    }
+
     componentDidMount() {
-        const getDefaultBuiltinTemplate = () => anyBuiltinTemplate() ? Object.keys(getBuiltinTemplates())[0] : null;
 
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
@@ -230,7 +233,7 @@ export default class CUD extends Component {
                 name: '',
                 description: '',
                 template: null,
-                builtin_template: getDefaultBuiltinTemplate(),
+                builtin_template: this.getDefaultBuiltinTemplate(),
                 workspace: this.props.workspace.id,
                 namespace: ivisConfig.user.namespace,
                 orderBefore: 'end',
@@ -244,7 +247,7 @@ export default class CUD extends Component {
         data.orderBefore = data.orderBefore.toString();
         data.templateType = data.template ? 'user' : 'builtin';
         if (!data.builtin_template) {
-            data.builtin_template = getDefaultBuiltinTemplate();
+            data.builtin_template = this.getDefaultBuiltinTemplate();
         }
     }
 
@@ -289,14 +292,6 @@ export default class CUD extends Component {
     submitFormValuesMutator(data) {
         const params = this.paramTypes.getParams(data.templateParams, data);
 
-        const paramPrefix = this.paramTypes.getParamPrefix();
-        for (const paramId in data) {
-            if (paramId.startsWith(paramPrefix)) {
-                delete data[paramId];
-            }
-        }
-
-        delete data.templateParams;
         data.params = params;
 
         if (data.templateType === 'user') {
@@ -304,10 +299,23 @@ export default class CUD extends Component {
         } else {
             data.template = null;
         }
-        delete data.templateType;
 
         data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
-        return data;
+        return filterData(data, [
+            'builtin_template',
+            'description',
+            'id',
+            'name',
+            'namespace',
+            'order',
+            'orderBefore',
+            'originalHash',
+            'params',
+            'permissions',
+            'template',
+            'templateElevatedAccess',
+            'workspace'
+        ]);
     }
 
     @withFormErrorHandlers

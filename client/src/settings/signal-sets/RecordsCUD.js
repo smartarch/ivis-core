@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
-import {Button, ButtonRow, Form, FormSendMethod, InputField, StaticField, withForm} from "../../lib/form";
+import {Button, ButtonRow, filterData, Form, FormSendMethod, InputField, StaticField, withForm} from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
@@ -109,19 +109,13 @@ export default class RecordsCUD extends Component {
         }
 
         const signals = this.fieldTypes.getSignals(data);
-
-        const fieldPrefix = this.fieldTypes.getPrefix();
-        for (const fieldId in data) {
-            if (fieldId.startsWith(fieldPrefix)) {
-                delete data[fieldId];
-            }
-        }
-
         data.signals = signals;
 
-        delete data.existingId;
-
-        return data;
+        return filterData(data, [
+            'id',
+            'originalHash',
+            'signals'
+        ]);
     }
 
     async submitHandler() {

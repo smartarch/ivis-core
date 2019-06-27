@@ -4,7 +4,7 @@ import React, {Component} from 'react';
 import {Trans, translate} from 'react-i18next';
 import {requiresAuthenticatedUser, withPageHelpers} from '../lib/page';
 import {Panel} from '../lib/panel';
-import {Button, ButtonRow, Fieldset, Form, FormSendMethod, InputField, withForm} from '../lib/form';
+import {Button, ButtonRow, Fieldset, filterData, Form, FormSendMethod, InputField, withForm} from '../lib/form';
 import {withAsyncErrorHandler, withErrorHandling} from '../lib/error-handling';
 import passwordValidator from '../../../shared/password-validator';
 import interoperableErrors from '../../../shared/interoperable-errors';
@@ -112,8 +112,19 @@ export default class Account extends Component {
     }
 
     submitFormValuesMutator(data) {
-        delete data.password2;
-        return data;
+        return filterData(data, [
+            'address',
+            'currentPassword',
+            'email',
+            'id',
+            'name',
+            'namespace',
+            'originalHash',
+            'password',
+            'phone_cell',
+            'role',
+            'username'
+        ]);
     }
 
     async submitHandler() {

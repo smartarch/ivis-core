@@ -12,7 +12,7 @@ import {
     Button,
     ButtonRow,
     CheckBox,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -112,12 +112,24 @@ export default class CUD extends Component {
                 };
             }
 
-            delete data.wizard;
         } else {
             data.settings = this.props.entity.settings;
         }
 
-        return data;
+        return filterData(data, [
+            'created',
+            'description',
+            'elevated_access',
+            'id',
+            'name',
+            'namespace',
+            'originalHash',
+            'output',
+            'permissions',
+            'settings',
+            'state',
+            'type'
+        ]);
     }
 
     @withFormErrorHandlers
@@ -197,8 +209,9 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        {isEdit && <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
-                                           onClickAsync={async () => await this.submitHandler(true)}/>}
+                        {isEdit &&
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>}
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/templates/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

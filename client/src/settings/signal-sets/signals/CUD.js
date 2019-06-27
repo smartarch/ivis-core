@@ -12,7 +12,7 @@ import {
     Button,
     ButtonRow,
     CheckBox,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -179,9 +179,23 @@ export default class CUD extends Component {
             data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
             data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
         }
-        delete data.shownInList;
-        delete data.shownInEdit;
-        return data;
+        return filterData(data, [
+            'cid',
+            'created',
+            'description',
+            'id',
+            'indexed',
+            'name',
+            'namespace',
+            'originalHash',
+            'painlessScript',
+            'permissions',
+            'set',
+            'settings',
+            'type',
+            'weight_edit',
+            'weight_list'
+        ]);
     }
 
     @withFormErrorHandlers

@@ -8,7 +8,7 @@ import {
     Button,
     ButtonRow,
     Dropdown,
-    Fieldset,
+    Fieldset, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -226,19 +226,27 @@ export default class CUD extends Component {
 
         data.params = {};
         if (data.taskParams) {
-            const params = this.paramTypes.getParams(data.taskParams, data);
-
-            const paramPrefix = this.paramTypes.getParamPrefix();
-            for (const paramId in data) {
-                if (paramId.startsWith(paramPrefix)) {
-                    delete data[paramId];
-                }
-            }
-
-            delete data.taskParams;
-            data.params = params;
+            data.params = this.paramTypes.getParams(data.taskParams, data);
         }
-        return data;
+
+        return filterData(data, [
+            'created',
+            'delay',
+            'description',
+            'id',
+            'min_gap',
+            'name',
+            'namespace',
+            'originalHash',
+            'params',
+            'permissions',
+            'sets',
+            'settings',
+            'signal_sets_triggers',
+            'state',
+            'task',
+            'trigger'
+        ]);
     }
 
     @withFormErrorHandlers

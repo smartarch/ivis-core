@@ -11,7 +11,7 @@ import {
 import {Panel} from "../../lib/panel";
 import {
     Button,
-    ButtonRow,
+    ButtonRow, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -150,8 +150,18 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        delete data.password2;
-        return data;
+        return filterData(data,
+            [
+                'id',
+                'originalHash',
+                'address',
+                'email',
+                'name',
+                'namespace',
+                'password',
+                'phone_cell',
+                'username',
+            'role']);
     }
 
     @withFormErrorHandlers
