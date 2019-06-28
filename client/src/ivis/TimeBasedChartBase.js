@@ -104,13 +104,18 @@ export const ConfigDifference = {
 function compareConfigs(conf1, conf2, customComparator) {
     let diffResult = ConfigDifference.NONE;
 
+    function compareColor(a, b) {
+        return a.r === b.r && a.g === b.g && a.b === b.b && a.opacity === b.opacity;
+    }
+
     function compareSignal(sig1, sig2) {
         if (sig1.cid !== sig2.cid || sig1.mutate !== sig2.mutate || sig1.generate !== sig2.generate) {
             diffResult = ConfigDifference.DATA;
-        } else if (sig1.color !== sig2.color || sig1.label !== sig2.label || sig1.enabled !== sig2.enabled) {
+        } else if (!compareColor(sig1.color, sig2.color) || sig1.label !== sig2.label || sig1.enabled !== sig2.enabled) {
             diffResult = ConfigDifference.RENDER;
         }
     }
+
 
     function compareSigSet(sigSet1, sigSet2) {
         if (sigSet1.cid !== sigSet2.cid) {
