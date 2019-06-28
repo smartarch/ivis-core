@@ -10,7 +10,7 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow,
+    ButtonRow, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -131,7 +131,13 @@ export default class CUD extends Component {
         if (data.record_id_template.trim() === '') {
             data.record_id_template = null;
         }
-        return data;
+        return filterData(data, [
+            'cid',
+            'name',
+            'description',
+            'record_id_template',
+            'namespace'
+        ]);
     }
 
     @withFormErrorHandlers

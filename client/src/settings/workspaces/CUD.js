@@ -11,7 +11,7 @@ import {
 import {
     Button,
     ButtonRow,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -91,7 +91,13 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
         data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
-        return data;
+        return filterData(data, [
+            'name',
+            'description',
+            'default_panel',
+            'namespace',
+            'orderBefore'
+        ]);
     }
 
     @withFormErrorHandlers

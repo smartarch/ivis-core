@@ -6,7 +6,7 @@ import {Panel} from '../lib/panel';
 import {Link} from 'react-router-dom'
 import {
     Button,
-    ButtonRow,
+    ButtonRow, filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -92,7 +92,7 @@ export default class Account extends Component {
         }
 
         if (passwordMsgs.length > 1) {
-           passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
+            passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
         }
 
         state.setIn(['password', 'error'], passwordMsgs.length > 0 ? passwordMsgs : null);
@@ -100,8 +100,11 @@ export default class Account extends Component {
     }
 
     submitFormValuesMutator(data) {
-        delete data.password2;
-        return data;
+        return filterData(data, [
+            'username',
+            'resetToken',
+            'password',
+        ]);
     }
 
     async submitHandler() {
@@ -124,7 +127,8 @@ export default class Account extends Component {
                 this.setFormStatusMessage('danger',
                     <span>
                         <strong>{t('Your password cannot be reset.')}</strong>{' '}
-                        {t('The password reset token has expired.')}{' '}<Link to={`/login/forgot/${this.getFormValue('username')}`}>{t('Click here to request a new password reset link.')}</Link>
+                        {t('The password reset token has expired.')}{' '}<Link
+                        to={`/login/forgot/${this.getFormValue('username')}`}>{t('Click here to request a new password reset link.')}</Link>
                     </span>
                 );
                 return;
@@ -147,7 +151,9 @@ export default class Account extends Component {
         } else if (this.state.resetTokenValidationState === ResetTokenValidationState.INVALID) {
             return (
                 <Panel title={t('The password cannot be reset')}>
-                    <p>{t('The password reset token has expired.')}{' '}<Link to={`/login/forgot/${this.getFormValue('username')}`}>{t('Click here to request a new password reset link.')}</Link></p>
+                    <p>{t('The password reset token has expired.')}{' '}<Link
+                        to={`/login/forgot/${this.getFormValue('username')}`}>{t('Click here to request a new password reset link.')}</Link>
+                    </p>
                 </Panel>
             );
 
