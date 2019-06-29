@@ -429,7 +429,12 @@ export class PermanentLinkDialog extends Component {
 
         const panelId = owner.props.panel.id;
         const workspaceId = owner.props.panel.workspace;
-        const link = createPermanentLink(getTrustedUrl(`workspaces/${workspaceId}/${panelId}`), owner.getPanelConfig());
+
+        const panelState = owner.getPanelState();
+        const panelConfig = owner.getPanelConfig();
+        delete panelState.permanentLinkDialog;
+
+        const link = createPermanentLink(getTrustedUrl(`workspaces/${workspaceId}/${panelId}`), panelConfig, panelState);
 
         if (opened) {
             return (
