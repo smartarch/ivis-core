@@ -464,8 +464,8 @@ async function getLastId(context, sigSet) {
             limit: <max no. of records>,
             sort: [
                 {
-                    sigCid: 'ts',
-                    order: 'asc'
+                    sigCid: <sigCid> <OR> field: <allowed field>,
+                    order: 'asc'/'desc'
                 }
             ]
         }
@@ -554,12 +554,15 @@ async function query(context, queries) {
             const checkSort = sort => {
                 if (sort) {
                     for (const srt of sort) {
-                        const sig = signalMap[srt.sigCid];
-                        if (!sig) {
-                            shares.throwPermissionDenied();
-                        }
+                        // Ignores other types of sorts
+                        if(sort.sigCid) {
+                            const sig = signalMap[srt.sigCid];
+                            if (!sig) {
+                                shares.throwPermissionDenied();
+                            }
 
-                        signalsToCheck.add(sig.id);
+                            signalsToCheck.add(sig.id);
+                        }
                     }
                 }
             };

@@ -134,6 +134,7 @@ async function onInsertRecords(sigSetWithSigMap, records) {
         });
 
         const esDoc = {};
+        esDoc['id'] = record.id;
         for (const fieldCid in record.signals) {
             const fieldId = signalByCidMap[fieldCid].id;
             enforce(fieldId, `Unknown signal "${fieldCid}"`);

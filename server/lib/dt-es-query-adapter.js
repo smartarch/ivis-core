@@ -16,6 +16,7 @@ function toQuery(sigSet, signals, params) {
 
     const query = {
         sigSetCid: sigSet.cid,
+        params: {}
     };
 
     if (params.search.value !== '') {
@@ -59,22 +60,24 @@ function toQuery(sigSet, signals, params) {
     const sort = [];
 
     for (const order of params.order) {
-
         if (order.column === 0) {
-            continue;
+            sort.push({
+                field: 'id',
+                order: order.dir
+            });
+        } else {
+            sort.push({
+                sigCid: columns[order.column - 1],
+                order: order.dir
+            });
         }
-
-        sort.push({
-            sigCid: columns[order.column - 1],
-            order: order.dir
-        })
     }
 
     docs.sort = sort;
 
     query.docs = docs;
 
-    query.params = {withId: true};
+    query.params.withId = true;
     return query;
 }
 

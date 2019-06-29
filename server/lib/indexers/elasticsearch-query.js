@@ -193,20 +193,35 @@ class QueryProcessor {
     }
 
     createElsSort(sort) {
+        const allowedSortFields = ['_doc','id'];
+
         const signalMap = this.signalMap;
         const elsSort = [];
         for (const srt of sort) {
-            const field = signalMap[srt.sigCid];
+            if (srt.sigCid) {
+                const field = signalMap[srt.sigCid];
 
-            if (!field) {
-                throw new Error('Unknown field ' + srt.sigCid);
-            }
-
-            elsSort.push({
-                [getFieldName(field.id)]: {
-                    order: srt.order
+                if (!field) {
+                    throw new Error('Unknown field ' + srt.sigCid);
                 }
-            })
+
+                elsSort.push({
+                    [getFieldName(field.id)]: {
+                        order: srt.order
+                    }
+                });
+            } else {
+                // check for other allowed fields
+                if (allowedSortFields.includes(srt.field)) {
+                    elsSort.push({
+                        [srt.field]: {
+                            order: srt.order
+                        }
+                    });
+                } else {
+                    throw new Error('Unknown field ' + srt.field);
+                }
+            }
         }
 
         return elsSort;
@@ -693,7 +708,8 @@ class QueryProcessor {
             const doc = {};
 
             if (withId) {
-                doc.id = hit.id;
+                // TODO possible overwrite
+                doc.id = hit._id;
             }
 
             for (const sig of query.docs.signals) {

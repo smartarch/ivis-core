@@ -32,6 +32,10 @@ async function createIndex(sigSet, signalByCidMap) {
         }
     }
 
+    // TODO
+    properties['id'] = {
+    };
+
     await elasticsearch.indices.create({
         index: indexName,
         body: {
