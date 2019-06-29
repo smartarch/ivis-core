@@ -20,8 +20,8 @@ import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} fro
 import ParamTypes from "../settings/workspaces/panels/ParamTypes"
 import {checkPermissions} from "../lib/permissions";
 import styles from "./PanelConfig.scss";
-import {panelMenuMixin, withPanelMenu} from "./PanelMenu";
-import {getSandboxUrl, getTrustedUrl, getUrl} from "../lib/urls";
+import {panelMenuMixin} from "./PanelMenu";
+import {getTrustedUrl, getUrl} from "../lib/urls";
 import axios from "../lib/axios";
 import moment from "moment/moment";
 import {NamespaceSelect, validateNamespace} from "../lib/namespace";
@@ -29,10 +29,7 @@ import {ActionLink} from "../lib/bootstrap-components";
 import {withPageHelpers} from "../lib/page-common";
 import {createComponentMixin, withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {} from "../lib/permanent-link";
-import {createPermanentLink} from "../lib/permanent-link";
-import {createPermanentLinkConfig} from "../lib/permanent-link";
-import {LinkButton} from "../lib/page";
+import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
@@ -493,8 +490,13 @@ export class PdfExportDialog extends Component {
         const currentEpoch = this.epoch;
 
         if (!requestParams) {
+            const frozenPanelState = owner.getFrozenPanelState();
+            const frozenPanelConfig = owner.getFrozenPanelConfig();
+
+            delete frozenPanelState.pdfExportDialog;
+
             requestParams = {
-                permanentLinkConfig: createPermanentLinkConfig(owner.getFrozenPanelConfig()),
+                permanentLink: createPermanentLinkData(frozenPanelConfig, frozenPanelState),
                     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
             };
         }
@@ -585,7 +587,7 @@ export class PdfExportDialog extends Component {
 
                         <ButtonRow>
                             {exportButton}
-                            <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close} />
+                            <Button className="btn-danger" icon="ban" label={t('Close')} onClickAsync={::this.close} />
                         </ButtonRow>
                     </Form>
                 </div>
@@ -608,12 +610,13 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
 
         self.state._panelConfig = Immutable.Map({
             params: Immutable.fromJS(props.params),
-            state: Immutable.fromJS({}),
+            state: Immutable.fromJS(props.state || {}),
             savePermitted: false
         });
 
         self._panelConfig = {
-            freezeHandlers: new Set()
+            configFreezeHandlers: new Set(),
+            stateFreezeHandlers: new Set()
         }
     }
 
@@ -716,11 +719,19 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
     };
 
     inst.registerPanelConfigFreezeHandler = function(handler) {
-        this._panelConfig.freezeHandlers.add(handler);
+        this._panelConfig.configFreezeHandlers.add(handler);
     };
 
     inst.unregisterPanelConfigFreezeHandler = function(handler) {
-        this._panelConfig.freezeHandlers.delete(handler);
+        this._panelConfig.configFreezeHandlers.delete(handler);
+    };
+
+    inst.registerPanelStateFreezeHandler = function(handler) {
+        this._panelConfig.stateFreezeHandlers.add(handler);
+    };
+
+    inst.unregisterPanelStateFreezeHandler = function(handler) {
+        this._panelConfig.stateFreezeHandlers.delete(handler);
     };
 
     inst.getPanelConfig = function(path = []) {
@@ -734,7 +745,7 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
 
     inst.getFrozenPanelConfig = function() {
         let value = this.state._panelConfig.get('params').toJS();
-        for (const handler of this._panelConfig.freezeHandlers.keys()) {
+        for (const handler of this._panelConfig.configFreezeHandlers.keys()) {
             value = handler(value);
         }
 
@@ -754,6 +765,15 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
         } else {
             return value;
         }
+    };
+
+    inst.getFrozenPanelState = function() {
+        let value = this.state._panelConfig.get('state').toJS();
+        for (const handler of this._panelConfig.stateFreezeHandlers.keys()) {
+            value = handler(value);
+        }
+
+        return value;
     };
 
     inst.updatePanelState = function(path, newValue) {
