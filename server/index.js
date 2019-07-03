@@ -11,7 +11,9 @@ const http = require('http');
 const fs = require('fs');
 const shares = require('./models/shares');
 const templates = require('./models/templates');
+const tasks = require('./models/tasks');
 const builder = require('./lib/builder');
+const taskHandler = require('./lib/task-handler');
 const indexer = require('./lib/indexers/' + config.indexer);
 const appBuilder = require('./app-builder');
 const { AppType } = require('../shared/app');
@@ -61,12 +63,14 @@ async function initAndStart() {
     await shares.regenerateRoleNamesTable();
     await shares.rebuildPermissions();
 
-    await em.invokeAsync('services.start');
-
     await savePdf.init();
     await builder.init();
     await indexer.init();
+    await taskHandler.init();
     await templates.compileAll();
+    await tasks.compileAll();
+
+    await em.invokeAsync('services.start');
 
     await createServerAsync(AppType.TRUSTED, 'trusted', config.www.host, config.www.trustedPort, config.www.trustedPortIsHttps, config.certs.www);
     await createServerAsync(AppType.SANDBOXED, 'sandbox', config.www.host, config.www.sandboxPort, config.www.sandboxPortIsHttps, config.certs.www);

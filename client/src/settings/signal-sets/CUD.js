@@ -30,6 +30,7 @@ import em
     from "../../lib/extension-manager";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {SignalSetType} from "../../../../shared/signal-sets"
 
 @withComponentMixins([
     withTranslation,
@@ -81,8 +82,14 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity);
-
+            this.getFormValuesFromEntity(this.props.entity, data => {
+                if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
+                    data.record_id_template = '';
+                }
+            });
+            if (this.props.entity.type === SignalSetType.COMPUTED) {
+                this.disableForm();
+            }
         } else {
             this.populateFormValues({
                 cid: '',
@@ -134,7 +141,11 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
+            if (data.record_id_template.trim() === '') {
+                data.record_id_template = null;
+            }
+        });
 
         if (submitSuccessful) {
             this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Signal set saved'));
@@ -148,7 +159,8 @@ export default class CUD extends Component {
         const t = this.props.t;
         const labels = this.labels;
         const isEdit = !!this.props.entity;
-        const canDelete =  isEdit && this.props.entity.permissions.includes('delete');
+        const canDelete = isEdit && this.props.entity.permissions.includes('delete');
+
 
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
@@ -174,7 +186,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/signal-sets/${this.props.entity.id}/delete`}/>}
+                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                                  to={`/settings/signal-sets/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

@@ -1,32 +1,19 @@
 'use strict';
 
 import React, {Component} from "react";
-import * as d3Axis
-    from "d3-axis";
-import * as d3Scale
-    from "d3-scale";
-import {
-    event as d3Event,
-    select
-} from "d3-selection";
-import * as d3Brush
-    from "d3-brush";
+import * as d3Axis from "d3-axis";
+import * as d3Scale from "d3-scale";
+import {event as d3Event, select} from "d3-selection";
+import * as d3Brush from "d3-brush";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
-import {
-    withAsyncErrorHandler,
-    withErrorHandling
-} from "../lib/error-handling";
-import interoperableErrors
-    from "../../../shared/interoperable-errors";
-import PropTypes
-    from "prop-types";
+import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
+import interoperableErrors from "../../../shared/interoperable-errors";
+import PropTypes from "prop-types";
 import {IntervalSpec} from "./TimeInterval";
 import {Tooltip} from "./Tooltip";
-import tooltipStyles
-    from "./Tooltip.scss";
-import * as dateMath
-    from "../lib/datemath";
+import tooltipStyles from "./Tooltip.scss";
+import * as dateMath from "../lib/datemath";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
@@ -107,22 +94,28 @@ export const RenderStatus = {
 
 
 
-const ConfigDifference = {
+export const ConfigDifference = {
+    // We assume here order from the most benign to the worst
     NONE: 0,
     RENDER: 1,
     DATA: 2
 };
 
-function compareConfigs(conf1, conf2) {
+function compareConfigs(conf1, conf2, customComparator) {
     let diffResult = ConfigDifference.NONE;
+
+    function compareColor(a, b) {
+        return a.r === b.r && a.g === b.g && a.b === b.b && a.opacity === b.opacity;
+    }
 
     function compareSignal(sig1, sig2) {
         if (sig1.cid !== sig2.cid || sig1.mutate !== sig2.mutate || sig1.generate !== sig2.generate) {
             diffResult = ConfigDifference.DATA;
-        } else if (sig1.color !== sig2.color || sig1.label !== sig2.label || sig1.enabled !== sig2.enabled) {
+        } else if (!compareColor(sig1.color, sig2.color) || sig1.label !== sig2.label || sig1.enabled !== sig2.enabled) {
             diffResult = ConfigDifference.RENDER;
         }
     }
+
 
     function compareSigSet(sigSet1, sigSet2) {
         if (sigSet1.cid !== sigSet2.cid) {
@@ -153,6 +146,13 @@ function compareConfigs(conf1, conf2) {
             compareSigSet(conf1.signalSets[idx], conf2.signalSets[idx]);
             if (diffResult === ConfigDifference.DATA) {
                 return;
+            }
+        }
+
+        if (customComparator) {
+            const res = customComparator(conf1, conf2);
+            if (res > diffResult) {
+                diffResult = res;
             }
         }
     }
@@ -206,6 +206,7 @@ export class TimeBasedChartBase extends Component {
         prepareData: PropTypes.func.isRequired,
         createChart: PropTypes.func.isRequired,
         getGraphContent: PropTypes.func.isRequired,
+        compareConfigs: PropTypes.func,
 
         tooltipExtraProps: PropTypes.object,
 
@@ -250,7 +251,7 @@ export class TimeBasedChartBase extends Component {
 
         const t = this.props.t;
 
-        const configDiff = compareConfigs(this.props.config, prevProps.config);
+        const configDiff = compareConfigs(prevProps.config, this.props.config, this.props.compareConfigs);
 
         const prevAbs = this.getIntervalAbsolute(prevProps);
         const prevSpec = this.getIntervalSpec(prevProps);
@@ -321,7 +322,7 @@ export class TimeBasedChartBase extends Component {
                         }
 
                         if (sigSetData.next) {
-                            processSignals(sigSetData.prev.data);
+                            processSignals(sigSetData.next.data);
                         }
                     }
                 }

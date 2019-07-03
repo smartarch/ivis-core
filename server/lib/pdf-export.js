@@ -37,7 +37,7 @@ async function pruneOldPdfs() {
     setTimeout(pruneOldPdfs, pruneOldPdfInterval);
 }
 
-async function panel(context, panelId, permanentLinkConfig, timeZone) {
+async function panel(context, panelId, permanentLink, timeZone) {
     pruneOldPdfs();
 
     const userId = context.user.id;
@@ -48,7 +48,7 @@ async function panel(context, panelId, permanentLinkConfig, timeZone) {
         filesMap.set(userId, userFilesMap);
     }
 
-    const pdfKey = 'panel-' + panelId + (permanentLinkConfig ? '-' + permanentLinkConfig : '');
+    const pdfKey = 'panel-' + panelId + (permanentLink ? '-' + JSON.stringify(permanentLink) : '');
     const fileEntry = userFilesMap.get(pdfKey);
 
     if (fileEntry) {
@@ -79,8 +79,14 @@ async function panel(context, panelId, permanentLinkConfig, timeZone) {
         const restrictedAccessToken = await users.getRestrictedAccessToken(context, 'panel', {panelId});
 
         const searchParams = {};
-        if (permanentLinkConfig) {
-            searchParams.config = permanentLinkConfig;
+        if (permanentLink) {
+            if (permanentLink.config) {
+                searchParams.config = permanentLink.config;
+            }
+
+            if (permanentLink.state) {
+                searchParams.state = permanentLink.state;
+            }
         }
 
         const panelUrl = getSandboxUrl(

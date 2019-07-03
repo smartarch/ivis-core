@@ -5,19 +5,22 @@ const signalStorage = require('./signal-storage');
 const indexer = require('../lib/indexers/' + config.indexer);
 const knex = require('../lib/knex');
 const hasher = require('node-object-hash')();
-const { enforce, filterObject } = require('../lib/helpers');
+const {enforce, filterObject} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
+const {IndexingStatus, IndexMethod} = require('../../shared/signals');
 const signals = require('./signals');
-const { IndexingStatus, IndexMethod } = require('../../shared/signals');
+const {SignalSetType} = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/templates');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
 const {SignalType} = require('../../shared/signals');
 
-const allowedKeysCreate = new Set(['cid', 'name', 'description', 'namespace', 'record_id_template']);
+const contextHelpers = require('../lib/context-helpers');
+
+const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
 
 const handlebars = require('handlebars');
@@ -26,10 +29,10 @@ const recordIdTemplateHandlebars = handlebars.create();
 const moment = require('moment');
 
 recordIdTemplateHandlebars.registerHelper({
-    toISOString: function(val) {
+    toISOString: function (val) {
         return moment(val).toISOString();
     },
-    padStart: function(val, len) {
+    padStart: function (val, len) {
         return val.toString().padStart(len, 0);
     }
 });
@@ -71,13 +74,13 @@ async function getByCid(context, id, withPermissions = true, withSignalByCidMap 
 async function listDTAjax(context, params) {
     return await dtHelpers.ajaxListWithPermissions(
         context,
-        [{ entityTypeId: 'signalSet', requiredOperations: ['view'] }],
+        [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
         params,
         builder => builder.from('signal_sets').innerJoin('namespaces', 'namespaces.id', 'signal_sets.namespace'),
-        [ 'signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.indexing', 'signal_sets.created', 'namespaces.name' ],
+        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.indexing', 'signal_sets.created', 'namespaces.name'],
         {
             mapFun: data => {
-                data[4] = JSON.parse(data[4]);
+                data[5] = JSON.parse(data[5]);
             }
         }
     );
@@ -89,7 +92,12 @@ async function listRecordsDTAjax(context, sigSetId, params) {
         const sigs = await signals.listVisibleForListTx(tx, context, sigSetId);
 
         const sigSet = await tx('signal_sets').where('id', sigSetId).first();
-        return await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+
+        if (sigSet.type !== SignalSetType.COMPUTED) {
+            return await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+        } else {
+            throw new Error('Not implemented for computed sets yet');
+        }
     });
 }
 
@@ -142,16 +150,21 @@ async function _createTx(tx, context, entity) {
     const filteredEntity = filterObject(entity, allowedKeysCreate);
 
     filteredEntity.indexing = JSON.stringify({
-       status: IndexingStatus.READY
+        status: IndexingStatus.READY
     });
 
     const ids = await tx('signal_sets').insert(filteredEntity);
     const id = ids[0];
 
     entity.id = id;
-    await signalStorage.createStorage(entity);
+    if (!entity.type || entity.type !== SignalSetType.COMPUTED) {
+        await signalStorage.createStorage(entity);
+    } else {
+        await indexer.onCreateStorage(entity);
+    }
 
-    await shares.rebuildPermissionsTx(tx, { entityTypeId: 'signalSet', entityId: id });
+
+    await shares.rebuildPermissionsTx(tx, {entityTypeId: 'signalSet', entityId: id});
 
     return id;
 }
@@ -183,7 +196,7 @@ async function updateWithConsistencyCheck(context, entity) {
         const filteredEntity = filterObject(entity, allowedKeysUpdate);
         await tx('signal_sets').where('id', entity.id).update(filteredEntity);
 
-        await shares.rebuildPermissionsTx(tx, { entityTypeId: 'signalSet', entityId: entity.id });
+        await shares.rebuildPermissionsTx(tx, {entityTypeId: 'signalSet', entityId: entity.id});
     });
 }
 
@@ -196,7 +209,11 @@ async function remove(context, id) {
         await tx('signals').where('set', id).del();
         await tx('signal_sets').where('id', id).del();
 
-        await signalStorage.removeStorage(existing);
+        if (existing.type !== SignalSetType.COMPUTED) {
+            await signalStorage.removeStorage(existing);
+        } else {
+            return await indexer.onRemoveStorage(existing);
+        }
     });
 }
 
@@ -301,7 +318,7 @@ async function getSignalByCidMapTx(tx, sigSet) {
 function getRecordIdTemplate(sigSet) {
     const recordIdTemplateSource = sigSet.record_id_template;
     if (recordIdTemplateSource) {
-        return recordIdTemplateHandlebars.compile(recordIdTemplateSource, {noEscape:true});
+        return recordIdTemplateHandlebars.compile(recordIdTemplateSource, {noEscape: true});
     } else {
         return null;
     }
@@ -362,7 +379,6 @@ async function serverValidateRecord(context, sigSetId, data) {
 }
 
 
-
 async function getLastId(context, sigSet) {
     await shares.enforceEntityPermission(context, 'signalSet', sigSet.id, 'query');
 
@@ -376,15 +392,21 @@ async function getLastId(context, sigSet) {
 
         signals: [<sigCid>, ...],
 
-        ranges: [
-            {
-                sigCid: <sigCid>,
-                lte / lt: <value or date>,
-                gte / gt: <value or date>
-            }
-        ],
-
-        mustExist: [<sigCid>, ...],
+        filter: {
+            type: "and",
+            children: [
+                {
+                    type: "range",
+                    sigCid: <sigCid>,
+                    lte / lt: <value or date>,
+                    gte / gt: <value or date>
+                },
+                {
+                    type: "mustExist",
+                    sigCid: <sigCid>
+                }
+            ]
+        },
 
         aggs: [
             {
@@ -450,22 +472,26 @@ async function query(context, queries) {
 
             const signalsToCheck = new Set();
 
-            for (const rng of sigSetQry.ranges || []) {
-                const sig = signalMap[rng.sigCid];
-                if (!sig) {
-                    shares.throwPermissionDenied();
+            const checkFilter = flt => {
+                if (flt.type === 'and' || flt.type === 'or') {
+                    for (const fltChild of flt.children) {
+                        checkFilter(fltChild);
+                    }
+
+                } else if (flt.type === 'range' || flt.type === 'mustExist') {
+                    const sig = signalMap[flt.sigCid];
+                    if (!sig) {
+                        shares.throwPermissionDenied();
+                    }
+                    signalsToCheck.add(sig.id);
+
+                } else {
+                    throw new Error(`Unknown filter type "${flt.type}"`);
                 }
+            };
 
-                signalsToCheck.add(sig.id);
-            }
-
-            for (const sigCid of sigSetQry.mustExist || []) {
-                const sig = signalMap[sigCid];
-                if (!sig) {
-                    shares.throwPermissionDenied();
-                }
-
-                signalsToCheck.add(sig.id);
+            if (sigSetQry.filter) {
+                checkFilter(sigSetQry.filter)
             }
 
             const checkSignals = signals => {
@@ -536,7 +562,7 @@ async function query(context, queries) {
     });
 }
 
-async function index(context, signalSetId, method = IndexMethod.FULL) {
+async function index(context, signalSetId, method = IndexMethod.FULL, from) {
     let existing;
 
     await knex.transaction(async tx => {
@@ -548,7 +574,7 @@ async function index(context, signalSetId, method = IndexMethod.FULL) {
         await tx('signal_sets').where('id', signalSetId).update('indexing', JSON.stringify(indexing));
     });
 
-    return await indexer.index(existing, method);
+    return await indexer.index(existing, method, from);
 }
 
 async function getAllowedSignals(templateParams, params) {
@@ -571,7 +597,7 @@ async function getAllowedSignals(templateParams, params) {
                         let entryIdx = 0;
                         for (const childParams of params[spec.id]) {
                             computeSetsPathMap(spec.children, childParams, getFieldsetPrefix(prefix, spec, entryIdx));
-                            entryIdx +=1;
+                            entryIdx += 1;
                         }
                     }
                 }
@@ -605,7 +631,7 @@ async function getAllowedSignals(templateParams, params) {
                         let entryIdx = 0;
                         for (const childParams of params[spec.id]) {
                             computeAllowedSignals(spec.children, childParams, getFieldsetPrefix(prefix, spec, entryIdx));
-                            entryIdx +=1;
+                            entryIdx += 1;
                         }
                     }
                 }
@@ -620,7 +646,7 @@ async function getAllowedSignals(templateParams, params) {
         const query = knex('signal_sets').innerJoin('signals', 'signal_sets.id', 'signals.set').select(['signal_sets.cid AS setCid', 'signal_sets.id as setId', 'signals.cid AS signalCid', 'signals.id AS signalId']);
 
         for (const [key, sigs] of allowedSigSets.entries()) {
-            const whereFun = function() {
+            const whereFun = function () {
                 this.where('signal_sets.cid', key).whereIn('signals.cid', [...sigs.values()]);
             };
 

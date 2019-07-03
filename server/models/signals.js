@@ -1,9 +1,11 @@
 'use strict';
 
 const em = require('../lib/extension-manager');
+const config = require('../lib/config');
 const knex = require('../lib/knex');
 const hasher = require('node-object-hash')();
 const signalStorage = require('./signal-storage');
+const indexer = require('../lib/indexers/' + config.indexer);
 const {RawSignalTypes, AllSignalTypes, DerivedSignalTypes} = require('../../shared/signals');
 const {enforce, filterObject} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
@@ -14,7 +16,7 @@ const {IndexingStatus} = require('../../shared/signals');
 const entitySettings = require('../lib/entity-settings');
 
 const allowedKeysCreate = new Set(['cid', 'name', 'description', 'type', 'indexed', 'settings', 'set', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
-const allowedKeysUpdate = new Set(['cid', 'name', 'description', 'indexed', 'settings', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
+const allowedKeysUpdate = new Set(['cid', 'name', 'description', 'type', 'indexed', 'settings', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, allowedKeysUpdate));
@@ -157,7 +159,7 @@ async function serverValidate(context, signalSetId, data) {
     return result;
 }
 
-async function _validateAndPreprocess(tx, entity, isCreate) {
+async function _validateAndPreprocess(context, tx, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
 
     enforce(AllSignalTypes.has(entity.type), 'Unknown signal type');
@@ -181,13 +183,13 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
 }
 
 
-async function create(context, signalSetId, entity) {
+async function create(context, signalSetId, entity, withStorage = true) {
     return await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createSignal');
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', signalSetId, 'createSignal');
 
         entity.set = signalSetId;
-        await _validateAndPreprocess(tx, entity, true);
+        await _validateAndPreprocess(context, tx, entity, true);
 
         const signalSet = await tx('signal_sets').where('id', signalSetId).first();
 
@@ -205,8 +207,12 @@ async function create(context, signalSetId, entity) {
                 [id]: entity.type
             };
 
+        if (withStorage) {
             await signalStorage.extendSchema(signalSet, fieldAdditions);
+        } else {
+            await indexer.onExtendSchema(signalSet, fieldAdditions);
         }
+    }
 
         return id;
     });
@@ -237,7 +243,7 @@ async function updateWithConsistencyCheck(context, entity) {
             throw new interoperableErrors.ChangedError();
         }
 
-        await _validateAndPreprocess(tx, entity, false);
+        await _validateAndPreprocess(context, tx, entity, false);
 
         await namespaceHelpers.validateMove(context, entity, existing, 'signal', 'createSignal', 'delete');
 

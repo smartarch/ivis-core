@@ -4,7 +4,7 @@ const elasticsearch = require('../lib/elasticsearch');
 const knex = require('../lib/knex');
 const {getIndexName, getFieldName, createIndex} = require('../lib/indexers/elasticsearch-common');
 const {getTableName, getColumnName} = require('../models/signal-storage');
-const {IndexingStatus, deserializeFromDb, IndexMethod, RawSignalTypes} = require('../../shared/signals');
+const {IndexingStatus, deserializeFromDb, SignalType, IndexMethod, RawSignalTypes} = require('../../shared/signals');
 const log = require('../lib/log');
 const signalSets = require('../models/signal-sets');
 
@@ -25,7 +25,7 @@ let state = State.IDLE;
 // Number of elements fetched from the database in one query.
 const batchSize = 1000;
 
-async function index(cid, method) {
+async function index(cid, method, from) {
     let sigSet;
     let signalByCidMap;
 
@@ -55,21 +55,34 @@ async function index(cid, method) {
             });
 
             if (exists) {
-                const response = await elasticsearch.search({
-                    index: indexName,
-                    body: {
-                        _source: ['_id'],
-                        sort: {
-                            _id: {
-                                order: 'desc'
-                            }
-                        },
-                        size: 1
-                    }
-                });
+                if (from === undefined) {
+                    const response = await elasticsearch.search({
+                        index: indexName,
+                        body: {
+                            _source: ['_id'],
+                            sort: {
+                                _id: {
+                                    order: 'desc'
+                                }
+                            },
+                            size: 1
+                        }
+                    });
 
-                if (response.hits.hits.length > 0) {
-                    last = response.hits.hits[0]._id;
+                    if (response.hits.hits.length > 0) {
+                        last = response.hits.hits[0]._id;
+                    }
+                } else {
+                    await elasticsearch.deleteByQuery({
+                        index: indexName,
+                        body: {
+                            "range" : {
+                                "_id" : {
+                                    "gte" : from
+                                }
+                            }
+                        }
+                    });
                 }
             } else {
                 method = IndexMethod.FULL;
@@ -95,6 +108,10 @@ async function index(cid, method) {
 
             if (last !== null) {
                 query = query.where('id', '>', last);
+            }
+
+            if (from !== undefined) {
+                query = query.where('id', '>=', from);
             }
 
             const rows = await query.select();
@@ -153,7 +170,11 @@ async function perform() {
         state = State.INDEXING;
         currentWork = workQueue.pop();
         try {
-            await index(currentWork.cid, currentWork.method);
+            await index(currentWork.cid, currentWork.method, currentWork.from);
+            process.send({
+                type: 'index',
+                cid: currentWork.cid
+            });
         }
         catch (err) {
             log.error('Indexer', err);
@@ -170,6 +191,7 @@ process.on('message', msg => {
         if (type === 'index') {
             const cid = msg.cid;
             const method = msg.method;
+            const from = msg.from;
 
             let existsInQueue = false;
             for (const wqEntry of workQueue) {
@@ -178,6 +200,10 @@ process.on('message', msg => {
 
                     if (wqEntry.method === IndexMethod.INCREMENTAL && method === IndexMethod.FULL) {
                         wqEntry.method = IndexMethod.FULL;
+                    }
+
+                    if (from === undefined || (wqEntry.from !== undefined && from < wqEntry.from)) {
+                        wqEntry.from = from;
                     }
 
                     existsInQueue = true;
@@ -204,12 +230,18 @@ process.on('message', msg => {
         else if (type === 'cancel-index') {
             const cid = msg.cid;
 
-            for (let indexInQueue = 0; indexInQueue < workQueue.length; indexInQueue++) {
-                if (workQueue[indexInQueue].cid === cid) {
+            let j = 0;
+            workQueue.forEach((v,i) => {
+                if (v.cid === cid){
                     log.info('Indexer', 'Unscheduled indexing of ' + cid);
-                    workQueue.splice(indexInQueue, 1);
+                } else {
+                    if (i!==j){
+                        workQueue[j] = v;
+                    }
+                    j++;
                 }
-            }
+            });
+            workQueue.length = j;
 
             if (currentWork === cid) {
                 state = State.INTERRUPT;

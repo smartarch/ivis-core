@@ -11,7 +11,7 @@ import {Section} from './lib/page-sandbox';
 import WorkspacePanelSandbox from './workspaces/panels/WorkspacePanelSandbox';
 import {parentRPC, UntrustedContentRoot} from "./lib/untrusted";
 import {setRestrictedAccessTokenFromPath} from "./lib/urls";
-import {extractPermanentLinkConfig} from "./lib/permanent-link";
+import {extractPermanentLink} from "./lib/permanent-link";
 
 setRestrictedAccessTokenFromPath(window.location.pathname);
 
@@ -22,8 +22,9 @@ const getStructure = t => {
     return {
         children: {
             panel: {
-                panelRender: props =>
-                    <UntrustedContentRoot render={props => <WorkspacePanelSandbox {...props} />} />,
+                panelRender: props =>{
+                    return <UntrustedContentRoot render={props => <WorkspacePanelSandbox {...props} />} />;
+                },
                 insideIframe: true,
 
                 children: {
@@ -33,16 +34,28 @@ const getStructure = t => {
                         },
 
                         panelRender: props => {
-                            const permanentLinkConfig = extractPermanentLinkConfig(props.location);
+                            const {config, state} = extractPermanentLink(props.location);
 
-                            const params = {
-                                ...props.resolved.panel.params,
-                                ...permanentLinkConfig
+                            const panelParams = {
+                                ...props.resolved.panel.params
                             };
+
+                            if (config) {
+                                Object.assign(panelParams, config);
+                            }
+
+                            const panelState = {
+                                ...props.resolved.panel.state
+                            };
+
+                            if (state) {
+                                Object.assign(panelState, state);
+                            }
 
                             const panel = {
                                 ...props.resolved.panel,
-                                params
+                                params: panelParams,
+                                state: panelState
                             };
 
                             return <WorkspacePanelSandbox panel={panel} />;

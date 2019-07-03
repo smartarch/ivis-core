@@ -9,8 +9,9 @@ import styles from "../../lib/styles.scss";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withRouter} from "react-router-dom";
 import {
-    extractPermanentLinkConfigAndRedirect,
+    extractPermanentLinkAndRedirect,
     getPermanentLinkConfigFromLocationState,
+    getPermanentLinkStateFromLocationState,
     needsToExtractPermanentLinkAndRedirect
 } from "../../lib/permanent-link";
 
@@ -34,15 +35,19 @@ export default class WorkspacePanel extends Component {
     }
 
     panel = memoize(
-        (panel, permanentLinkConfig) => {
+        (panel, permanentLinkConfig, permanentLinkState) => {
             const params = {
-                ...panel.params,
-                ...permanentLinkConfig
+                ...panel.params
             };
+
+            if (permanentLinkConfig) {
+                Object.assign(params, permanentLinkConfig);
+            }
 
             return {
                 ...panel,
-                params
+                params,
+                state: permanentLinkState
             };
         }
     );
@@ -54,11 +59,11 @@ export default class WorkspacePanel extends Component {
     }
 
     componentDidMount() {
-        extractPermanentLinkConfigAndRedirect(this.props.location, this.props.history);
+        extractPermanentLinkAndRedirect(this.props.location, this.props.history);
     }
 
     componentDidUpdate() {
-        extractPermanentLinkConfigAndRedirect(this.props.location, this.props.history);
+        extractPermanentLinkAndRedirect(this.props.location, this.props.history);
     }
 
     render() {
@@ -67,13 +72,14 @@ export default class WorkspacePanel extends Component {
 
         } else {
             const permanentLinkConfig = getPermanentLinkConfigFromLocationState(this.props.location);
+            const permanentLinkState = getPermanentLinkStateFromLocationState(this.props.location);
 
             return (
                 <Panel title={this.props.panel.name} panelMenu={this.state.panelMenu} onPanelMenuAction={async action => await this.contentNode.onPanelMenuAction(action)}>
                     <div className={styles.panelUntrustedContentWrapper}>
                         <WorkspacePanelContent
                             ref={node => this.contentNode = node}
-                            panel={this.panel(this.props.panel, permanentLinkConfig)}
+                            panel={this.panel(this.props.panel, permanentLinkConfig, permanentLinkState)}
                             setPanelMenu={::this.setPanelMenu}
                         />
                     </div>

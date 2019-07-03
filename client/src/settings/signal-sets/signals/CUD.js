@@ -38,6 +38,11 @@ import {
 } from "../../../../../shared/signals"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
+import {SignalSetType} from "../../../../../shared/signal-sets"
+
+function isPainless(type) {
+    return type === SignalType.PAINLESS || type === SignalType.PAINLESS_DATE_TIME;
+}
 
 @withComponentMixins([
     withTranslation,
@@ -85,7 +90,7 @@ export default class CUD extends Component {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity, data => {
                 data.painlessScript = data.settings && data.settings.painlessScript;
-                
+
                 if (data.weight_list === null) {
                     data.shownInList = false;
                     data.weight_list = '0';
@@ -93,7 +98,7 @@ export default class CUD extends Component {
                     data.shownInList = true;
                     data.weight_list = data.weight_list.toString();
                 }
-                
+
                 if (data.weight_edit === null) {
                     data.shownInEdit = false;
                     data.weight_edit = '0';
@@ -102,7 +107,9 @@ export default class CUD extends Component {
                     data.weight_edit = data.weight_edit.toString();
                 }
             });
-
+            if (this.props.signalSet.type === SignalSetType.COMPUTED) {
+                this.disableForm();
+            }
         } else {
             this.populateFormValues({
                 cid: '',
@@ -175,7 +182,7 @@ export default class CUD extends Component {
         this.setFormStatusMessage('info', t('Saving ...'));
 
         const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (data.type === SignalType.PAINLESS) {
+            if (isPainless(data.type)) {
                 data.settings = {painlessScript: data.painlessScript};
                 data.weight_list = null;
                 data.weight_edit = null;
@@ -200,7 +207,7 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
-        const canDelete =  isEdit && this.props.entity.permissions.includes('delete');
+        const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         return (
             <Panel title={isEdit ? t('Edit Signal') : t('Create Signal')}>
@@ -222,11 +229,11 @@ export default class CUD extends Component {
                     <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
 
 
-                    {this.getFormValue('type') === SignalType.PAINLESS &&
+                    {isPainless(this.getFormValue('type')) &&
                         <TextArea id="painlessScript" label={t('Painless script')}/>
                     }
 
-                    {this.getFormValue('type') !== SignalType.PAINLESS &&
+                    {!isPainless(this.getFormValue('type')) &&
                     <>
                         <CheckBox id="indexed" text={t('Indexed')}/>
 

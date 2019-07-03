@@ -135,7 +135,7 @@ router.putAsync('/signal-set-records/:signalSetId/:recordIdBase64', passport.log
 
 router.deleteAsync('/signal-set-records/:signalSetId/:recordIdBase64', passport.loggedIn, async (req, res) => {
     const sigSet = await signalSets.getById(req.context, castToInteger(req.params.signalSetId), false);
-    await signalSets.removeRecord(req.context, sigSet, base64Decode(req.params.recordIdBase64))
+    await signalSets.removeRecord(req.context, sigSet, base64Decode(req.params.recordIdBase64));
     return res.json();
 });
 
@@ -156,13 +156,12 @@ router.getAsync('/test-query', async (req, res) => {
                 }
             },
             "sigSetCid": "tupras",
-            "ranges": [
-                {
-                    "sigCid":"ts",
-                    "lt":"2019-01-29T14:35:32.343Z",
-                    "gte":"2019-01-25T12:35:32.343Z"
-                }
-            ],
+            "filter": {
+                "type": "range",
+                "sigCid":"ts",
+                "lt":"2019-01-29T14:35:32.343Z",
+                "gte":"2019-01-25T12:35:32.343Z"
+            },
             "aggs": [
                 {
                     "sigCid":"AOP_H2O2_input",
