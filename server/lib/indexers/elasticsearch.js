@@ -5,7 +5,7 @@ const {enforce} = require('../helpers');
 const interoperableErrors = require('../../../shared/interoperable-errors');
 const {IndexMethod} = require('../../../shared/signals');
 const {SignalSetType} = require('../../../shared/signal-sets');
-const {getIndexName, getFieldName, createIndex, extendMapping} = require('./elasticsearch-common');
+const {getIndexName, getFieldName, createIndex, extendMapping, COPY_ID_PIPELINE} = require('./elasticsearch-common');
 const contextHelpers = require('../context-helpers');
 
 const signalSets = require('../../models/signal-sets');
@@ -29,7 +29,9 @@ let indexerProcess;
 async function init() {
     log.info('Indexer', 'Spawning indexer process');
 
-    const options ={
+    await initPipelines();
+
+    const options = {
         cwd: path.join(__dirname, '..', '..'),
         env: {NODE_ENV: process.env.NODE_ENV}
     };
@@ -76,6 +78,31 @@ async function init() {
     }
 }
 
+
+async function initPipelines() {
+
+    // When documents are added to generated signal set (in tasks), index is accessed directly
+    // this pipeline assures that the _id field, if used, is copied to id field, which is used for sorting
+    // as recommended by ES docs
+    await elasticsearch.ingest.putPipeline(
+        {
+            id: COPY_ID_PIPELINE,
+            body:
+                {
+                    "description": "Copy _id field to id field for sorting purposes",
+                    "processors": [
+                        {
+                            "set": {
+                                "if": "ctx._id != null",
+                                "field": "id",
+                                "value": "{{_id}}"
+                            }
+                        }
+                    ]
+                }
+        }
+    );
+}
 
 async function getDocsCount(sigSet) {
     const count = await elasticsearch.cat.count({index: getIndexName(sigSet), h: 'count'});
