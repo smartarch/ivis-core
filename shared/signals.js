@@ -16,7 +16,7 @@ const SignalType = {
     PAINLESS_DATE_TIME: 'derived_painless_date'
 };
 
-const RawSignalTypes = new Set([SignalType.INTEGER, SignalType.LONG, SignalType.FLOAT, SignalType.DOUBLE, SignalType.BOOLEAN, SignalType.KEYWORD, SignalType.STRING, SignalType.TEXT, SignalType.DATE_TIME]);
+const RawSignalTypes = new Set([SignalType.INTEGER, SignalType.LONG, SignalType.FLOAT, SignalType.DOUBLE, SignalType.BOOLEAN, SignalType.KEYWORD, SignalType.TEXT, SignalType.DATE_TIME]);
 const DerivedSignalTypes = new Set([SignalType.PAINLESS, SignalType.PAINLESS_DATE_TIME]);
 const AllSignalTypes = new Set([...RawSignalTypes, ...DerivedSignalTypes]);
 
