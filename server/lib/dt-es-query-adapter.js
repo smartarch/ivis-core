@@ -30,7 +30,7 @@ function toQuery(sigSet, signals, params) {
 
         filter.children = [];
 
-        // First is ID column which doesn't have sigCid
+        // zero is ID column which doesn't have sigCid
         for (let i = 1; i < params.columns.length; i++) {
 
             if (params.columns[i].searchable !== true) {
@@ -75,6 +75,7 @@ function toQuery(sigSet, signals, params) {
             };
         } else {
             sort.push({
+                // coluumns are without id therefore shifted by 1
                 sigCid: columns[order.column - 1],
                 order: order.dir
             });
