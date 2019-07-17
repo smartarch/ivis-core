@@ -1,7 +1,7 @@
 'use strict';
 
 const elasticsearch = require('../elasticsearch');
-const {SignalType, RawSignalTypes} = require('../../../shared/signals');
+const {SignalSource, getTypesBySource, SignalType} = require('../../../shared/signals');
 
 // Gets the name of an index for a signal set
 function getIndexName(sigSet) {
@@ -27,16 +27,17 @@ async function createIndex(sigSet, signalByCidMap) {
     const properties = {};
     for (const fieldCid in signalByCidMap) {
         const field = signalByCidMap[fieldCid];
-        if (RawSignalTypes.has(field.type)) {
-            properties[getFieldName(field.id)] = { type: fieldTypes[field.type] };
+        // TODO similar to bellow in extendMapping, does it need to be raw?
+        if (field.source === SignalSource.RAW) {
+            properties[getFieldName(field.id)] = {type: fieldTypes[field.type]};
         }
     }
 
     await elasticsearch.indices.create({
         index: indexName,
         body: {
-            mappings : {
-                _doc : {
+            mappings: {
+                _doc: {
                     properties
                 }
             }
@@ -50,8 +51,9 @@ async function extendMapping(sigSet, fields) {
     const properties = {};
     for (const fieldId in fields) {
         const fieldType = fields[fieldId];
-        if (RawSignalTypes.has(fieldType)) {
-            properties[getFieldName(fieldId)] = { type: fieldTypes[fieldType] };
+        // TODO check if this is good way, just need ot have mapping for given type?
+        if (fieldTypes[fieldType] != null) {
+            properties[getFieldName(fieldId)] = {type: fieldTypes[fieldType]};
         }
     }
 

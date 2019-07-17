@@ -5,6 +5,7 @@ const knex = require('../lib/knex');
 const {JobState, RunStatus, HandlerMsgType, JobMsgType} = require('../../shared/jobs');
 const {TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
 const {SignalSetType} = require('../../shared/signal-sets');
+const {SignalSource} = require('../../shared/signals');
 const log = require('../lib/log');
 const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-common');
 const moment = require('moment');
@@ -824,9 +825,11 @@ async function processSetReq(jobId, sigSet) {
 
                 indexInfo.fields = {};
                 for (const signal of signals) {
+                    // Here are possible overwrites of input form job
                     signal.weight_list = 0;
                     signal.weight_edit = null;
-                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal, false);
+                    signal.source = SignalSource.JOB;
+                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal);
                     indexInfo.fields[signal.cid] = getFieldName(sigId);
                 }
 

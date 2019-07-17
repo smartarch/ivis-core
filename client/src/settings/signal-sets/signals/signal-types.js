@@ -12,6 +12,13 @@ export function getSignalTypes(t) {
         [SignalType.TEXT]: t('Text'),
         [SignalType.DATE_TIME]: t('Date/Time'),
         [SignalType.PAINLESS]: t('Painless Script'),
-        [SignalType.PAINLESS_DATE_TIME]: t('Painless Script returning Date/Time')
+    }
+}
+
+export function getSignalSources(t) {
+    return {
+        [SignalSource.RAW]: t('Raw'),
+        [SignalSource.JOB]: t('Job'),
+        [SignalSource.DERIVED]: t('Derived'),
     }
 }

@@ -31,17 +31,18 @@ import {DeleteModalDialog} from "../../../lib/modals";
 import {Panel} from "../../../lib/panel";
 import ivisConfig
     from "ivisConfig";
-import {getSignalTypes} from "./signal-types";
+import {getSignalSources, getSignalTypes} from "./signal-types";
 import {
-    DerivedSignalTypes,
-    SignalType
+    SignalSource,
+    SignalType,
+    getTypesBySource
 } from "../../../../../shared/signals"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"
 
-function isPainless(type) {
-    return type === SignalType.PAINLESS || type === SignalType.PAINLESS_DATE_TIME;
+function isPainless(source) {
+    return source === SignalSource.DERIVED;
 }
 
 @withComponentMixins([
@@ -65,21 +66,33 @@ export default class CUD extends Component {
             }
         });
 
+        this.signalSources = getSignalSources(props.t);
+        this.sourceOptions = [];
+        for (const source in this.signalSources) {
+
+            if (source === SignalSource.JOB) {
+                continue;
+            }
+
+            if (source === SignalSource.DERIVED && !props.signalSet.permissions.includes('manageScripts')){
+                continue;
+            }
+
+            this.sourceOptions.push({
+                key: source,
+                label: this.signalSources[source]
+            });
+        }
+
         this.signalTypes = getSignalTypes(props.t);
 
-        this.typeOptions = [];
-        for (const type in this.signalTypes) {
-            if (!DerivedSignalTypes.has(type) || props.signalSet.permissions.includes('manageScripts')) {
-                this.typeOptions.push({key: type, label: this.signalTypes[type]});
-            }
-        }
     }
 
     static propTypes = {
         action: PropTypes.string.isRequired,
         signalSet: PropTypes.object,
         entity: PropTypes.object
-    }
+    };
 
     @withAsyncErrorHandler
     async loadFormValues() {
@@ -98,6 +111,7 @@ export default class CUD extends Component {
                 name: '',
                 description: '',
                 type: SignalType.DOUBLE,
+                source: SignalSource.RAW,
                 indexed: false,
                 settings: {},
                 shownInList: false,
@@ -169,7 +183,7 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        if (isPainless(data.type)) {
+        if (isPainless(data.source)) {
             data.settings = {painlessScript: data.painlessScript};
             data.weight_list = null;
             data.weight_edit = null;
@@ -179,6 +193,7 @@ export default class CUD extends Component {
             data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
             data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
         }
+
         return filterData(data, [
             'cid',
             'created',
@@ -243,6 +258,15 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
+        this.typeOptions = [];
+        const source = this.getFormValue('source');
+        if (source) {
+            for (const type in getTypesBySource(source)) {
+                // TODO check whether is here another derived check for types necessary
+                    this.typeOptions.push({key: type, label: this.signalTypes[type]});
+            }
+        }
+
         return (
             <Panel title={isEdit ? t('Edit Signal') : t('Create Signal')}>
                 {canDelete &&
@@ -259,14 +283,19 @@ export default class CUD extends Component {
                     <InputField id="cid" label={t('Id')}/>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                    <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
 
+                    <Dropdown id="source" label={t('Source')} options={this.sourceOptions}/>
 
-                    {isPainless(this.getFormValue('type')) &&
+                    {source ?
+                        <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
+                        :
+                        <div className="alert alert-info" role="alert">{t('Choose source first...')}</div>}
+
+                    {isPainless(this.getFormValue('source')) &&
                     <TextArea id="painlessScript" label={t('Painless script')}/>
                     }
 
-                    {!isPainless(this.getFormValue('type')) &&
+                    {!isPainless(this.getFormValue('source')) &&
                     <>
                         <CheckBox id="indexed" text={t('Indexed')}/>
 
