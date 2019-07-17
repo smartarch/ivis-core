@@ -19,13 +19,15 @@ if (Object.freeze) {
     Object.freeze(SignalType);
 }
 
-const AllSignalTypes = new Set([...SignalType]);
+const AllSignalTypes = new Set(Object.values(SignalType));
 
 const SignalSource = {
     RAW: 'raw',
     DERIVED: 'derived',
     JOB: 'job'
 };
+
+const AllSignalSources = new Set(Object.values(SignalSource));
 
 if (Object.freeze) {
     Object.freeze(SignalSource);
@@ -91,6 +93,7 @@ const IndexMethod = {
 module.exports = {
     SignalType,
     AllSignalTypes,
+    AllSignalSources,
     getTypesBySource,
     SignalSource,
     IndexingStatus,

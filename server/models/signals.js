@@ -6,7 +6,7 @@ const knex = require('../lib/knex');
 const hasher = require('node-object-hash')();
 const signalStorage = require('./signal-storage');
 const indexer = require('../lib/indexers/' + config.indexer);
-const {getTypesBySource, SignalSource} = require('../../shared/signals');
+const {getTypesBySource, SignalSource, AllSignalSources} = require('../../shared/signals');
 const {enforce, filterObject} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -127,7 +127,7 @@ async function listDTAjax(context, signalSetId, params) {
             .where('set', signalSetId)
             .innerJoin('namespaces', 'namespaces.id', 'signals.namespace'),
         [
-            'signals.id', 'signals.cid', 'signals.name', 'signals.description', 'signals.type', 'signals.indexed', 'signals.created', 'namespaces.name',
+            'signals.id', 'signals.cid', 'signals.name', 'signals.description', 'signals.type', 'signals.source', 'signals.indexed', 'signals.created', 'namespaces.name',
             // This also requires changes in the client because it has to look up permissions in another key
             // ...em.get('models.signals.extraKeys', []).map(key => 'signals.' + key)
         ]
@@ -162,11 +162,8 @@ async function serverValidate(context, signalSetId, data) {
 async function _validateAndPreprocess(context, tx, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
 
-    if (!entity.source){
-        throw new Error('Unknown source type');
-    }
-
-    enforce(getTypesBySource(entity.source).has(entity.type), 'Unknown signal type');
+    enforce(entity.source != null && AllSignalSources.has(entity.source), 'Unknown source type');
+    enforce(getTypesBySource(entity.source).includes(entity.type), 'Unknown signal type');
 
     if (entity.source === SignalSource.DERIVED) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.set, 'manageScripts');
@@ -278,7 +275,7 @@ async function remove(context, id) {
 
         const signalSet = await tx('signal_sets').where('id', existing.set).first();
 
-        if (getTypesBySource(SignalSource.RAW).has(existing.type)) {
+        if (getTypesBySource(SignalSource.RAW).includes(existing.type)) {
             await updateSignalSetStatus(tx, signalSet, await signalStorage.removeField(signalSet, existing.id));
         }
 

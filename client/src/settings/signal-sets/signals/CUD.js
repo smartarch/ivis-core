@@ -40,6 +40,7 @@ import {
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"
+import {getBuiltinTemplate} from "../../../lib/builtin-templates";
 
 function isPainless(source) {
     return source === SignalSource.DERIVED;
@@ -63,6 +64,9 @@ export default class CUD extends Component {
                 url: `rest/signals-validate/${props.signalSet.id}`,
                 changed: ['cid'],
                 extra: ['id']
+            },
+            onChange: {
+                source: ::this.onSourceChange,
             }
         });
 
@@ -93,6 +97,13 @@ export default class CUD extends Component {
         signalSet: PropTypes.object,
         entity: PropTypes.object
     };
+
+    onSourceChange(state, key, oldVal, newVal){
+        if (oldVal !== newVal) {
+            const type = getTypesBySource(newVal)[0];
+            state.formState = state.formState.setIn(['data', 'type', 'value'], type);
+        }
+    }
 
     @withAsyncErrorHandler
     async loadFormValues() {
@@ -207,6 +218,7 @@ export default class CUD extends Component {
             'set',
             'settings',
             'type',
+            'source',
             'weight_edit',
             'weight_list'
         ]);
@@ -261,7 +273,7 @@ export default class CUD extends Component {
         this.typeOptions = [];
         const source = this.getFormValue('source');
         if (source) {
-            for (const type in getTypesBySource(source)) {
+            for (const type of getTypesBySource(source)) {
                 // TODO check whether is here another derived check for types necessary
                     this.typeOptions.push({key: type, label: this.signalTypes[type]});
             }

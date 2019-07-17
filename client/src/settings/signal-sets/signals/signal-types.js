@@ -1,5 +1,5 @@
 'use strict';
-import {SignalType} from "../../../../../shared/signals";
+import {SignalType, SignalSource} from "../../../../../shared/signals";
 
 export function getSignalTypes(t) {
     return {

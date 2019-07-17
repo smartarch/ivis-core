@@ -17,7 +17,7 @@ import {
     tableRestActionDialogRender
 } from "../../../lib/modals";
 import {checkPermissions} from "../../../lib/permissions";
-import {IndexingStatus, DerivedSignalTypes} from "../../../../../shared/signals";
+import {IndexingStatus, SignalSource} from "../../../../../shared/signals";
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"

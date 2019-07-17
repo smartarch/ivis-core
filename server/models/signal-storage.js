@@ -91,7 +91,7 @@ function rowToRecord(signalByCidMap, row) {
     for (const fieldCid in signalByCidMap) {
         const field = signalByCidMap[fieldCid];
         const fieldId = field.id;
-        if (getTypesBySource(SignalSource.RAW).has(field.type)) {
+        if (getTypesBySource(SignalSource.RAW).includes(field.type)) {
             record.signals[fieldCid] = deserializeFromDb[field.type](row[getColumnName(fieldId)]);
         }
     }
@@ -107,7 +107,7 @@ function recordToRow(signalByCidMap, record) {
     for (const fieldCid in record.signals) {
         const field = signalByCidMap[fieldCid];
         const fieldId = field.id;
-        if (getTypesBySource(SignalSource.RAW).has(field.type)) {
+        if (getTypesBySource(SignalSource.RAW).includes(field.type)) {
             row[getColumnName(fieldId)] = serializeToDb[field.type](record.signals[fieldCid]);
         }
     }

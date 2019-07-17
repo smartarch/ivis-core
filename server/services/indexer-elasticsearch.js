@@ -135,7 +135,7 @@ async function index(cid, method, from) {
                 const esDoc = {};
                 for (const fieldCid in signalByCidMap) {
                     const field = signalByCidMap[fieldCid];
-                    if (getTypesBySource(SignalSource.RAW).has(field.type)) {
+                    if (getTypesBySource(SignalSource.RAW).includes(field.type)) {
                         esDoc[getFieldName(field.id)] = deserializeFromDb[field.type](row[getColumnName(field.id)]);
                     }
                 }
