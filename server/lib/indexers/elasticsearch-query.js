@@ -2,7 +2,7 @@
 
 const moment = require('moment');
 const elasticsearch = require('../elasticsearch');
-const { SignalType } = require('../../../shared/signals');
+const { SignalType,SignalSource } = require('../../../shared/signals');
 const { getIndexName, getFieldName } = require('./elasticsearch-common');
 
 const handlebars = require('handlebars');
@@ -163,7 +163,7 @@ class QueryProcessor {
     }
 
     getField(field) {
-        if (field.type === SignalType.PAINLESS || field.type === SignalType.PAINLESS_DATE_TIME) {
+        if (field.source === SignalSource.DERIVED) {
             return {script: this.createElsScript(field)};
         } else {
             return {field: getFieldName(field.id)};
@@ -283,7 +283,7 @@ class QueryProcessor {
         };
 
         const _computeStepAndOffset = (fieldType, maxBucketCount, minStep, minValue, maxValue) => {
-            if (fieldType === SignalType.DATE_TIME || fieldType === SignalType.PAINLESS_DATE_TIME) {
+            if (fieldType === SignalType.DATE_TIME ) {
                 throw new Error('Not implemented');
             } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE || fieldType === SignalType.PAINLESS) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
@@ -360,7 +360,7 @@ class QueryProcessor {
 
             const elsAgg = {};
 
-            if (field.type === SignalType.DATE_TIME || field.type === SignalType.PAINLESS_DATE_TIME) {
+            if (field.type === SignalType.DATE_TIME ) {
                 // TODO: add processing of range buckets
 
                 elsAgg.date_histogram = {
@@ -446,7 +446,7 @@ class QueryProcessor {
             const buckets = [];
 
             const field = signalMap[agg.sigCid];
-            if (field.type === SignalType.DATE_TIME || field.type === SignalType.PAINLESS_DATE_TIME) {
+            if (field.type === SignalType.DATE_TIME ) {
                 // TODO: add processing of range buckets
 
                 for (const elsBucket of elsAggResp.buckets) {
@@ -553,7 +553,8 @@ class QueryProcessor {
             } else if (elsFld.script) {
                 let rngCond = '';
                 for (const rngAttr of rngKeys) {
-                    if (field.type === SignalType.PAINLESS_DATE_TIME) {
+                    // TODO probably don't need to check for DERIVED as it is alread in script
+                    if (field.source === SignalSource.DERIVED && field.type === SignalType.DATE_TIME) {
                         let attrCond;
                         if (rngAttr === 'gte') {
                             attrCond = '!result.isBefore(ZonedDateTime.parse(params.gte))';
@@ -682,7 +683,7 @@ class QueryProcessor {
             for (const sig of query.docs.signals) {
                 const sigFld = signalMap[sig];
 
-                if (sigFld.type === SignalType.PAINLESS || sigFld.type === SignalType.PAINLESS_DATE_TIME) {
+                if (sigFld.source === SignalSource.DERIVED) {
                     if (hit.fields) {
                     const valSet = hit.fields[getFieldName(sigFld.id)];
                         if (valSet) {
