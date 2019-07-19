@@ -1,10 +1,12 @@
 'use strict';
-const em = require('./extension-manager');
 const {SignalType} = require('../../shared/signals');
-
+const config = require('./config');
+const indexer = require('./indexers/' + config.indexer);
+// TODO check if there is also some default limiting in es
+const MAX_RESULTS_WINDOW = config.elasticsearch.maxResultsWindow;
 
 /**
- * Create ES query from DT params.
+ * Create input for signal ES query from DT params.
  * Query is acceptable by
  * @param sigSet
  * @param signals
@@ -87,23 +89,21 @@ function toQuery(sigSet, signals, params) {
     }
 
     docs.sort = sort;
-
     query.docs = docs;
-
     query.params.withId = true;
     return query;
 }
 
 /**
  *
- * @param result
+ * @param queryResult
  * @param signals
  * @return Object {total: <Total number of documents>, data: <Batch of data from query>}
  */
-function fromQueryResult(result, signals) {
-    const res = {};
+function fromQueryResultToDTFormat(queryResult, signals) {
+    const result = {};
     const data = [];
-    for (let doc of result[0].docs) {
+    for (let doc of queryResult.docs) {
         const record = [];
         record.push(doc['id']);
         for (let signal of signals) {
@@ -111,10 +111,29 @@ function fromQueryResult(result, signals) {
         }
         data.push(record);
     }
-    res.data = data;
-    res.total = result[0].total;
-    return res;
+    result.data = data;
+    result.total = queryResult.total;
+
+    return result;
+}
+
+async function fromQueryResultToDTInput(queryResult, sigSet, signals, params) {
+        const result = {
+            draw: params.draw,
+        };
+
+        const res = fromQueryResultToDTFormat(queryResult[0], signals);
+
+        result.recordsTotal = await indexer.getDocsCount(sigSet);
+        // Prevents deep pagination in GUI
+        result.recordsFiltered = res.total < MAX_RESULTS_WINDOW ? res.total : MAX_RESULTS_WINDOW;
+
+        result.data = res.data;
+
+        return result;
 }
 
 module.exports.toQuery = toQuery;
-module.exports.fromQueryResult = fromQueryResult;
+module.exports.fromQueryResultToDTInput = fromQueryResultToDTInput;
+module.exports.fromQueryResultToDTFormat = fromQueryResultToDTFormat;
+module.exports.MAX_RESULTS_WINDOW = MAX_RESULTS_WINDOW;
