@@ -193,20 +193,35 @@ class QueryProcessor {
     }
 
     createElsSort(sort) {
+        const allowedSortFields = ['_doc','id'];
+
         const signalMap = this.signalMap;
         const elsSort = [];
         for (const srt of sort) {
-            const field = signalMap[srt.sigCid];
+            if (srt.sigCid) {
+                const field = signalMap[srt.sigCid];
 
-            if (!field) {
-                throw new Error('Unknown field ' + srt.sigCid);
-            }
-
-            elsSort.push({
-                [getFieldName(field.id)]: {
-                    order: srt.order
+                if (!field) {
+                    throw new Error('Unknown field ' + srt.sigCid);
                 }
-            })
+
+                elsSort.push({
+                    [getFieldName(field.id)]: {
+                        order: srt.order
+                    }
+                });
+            } else {
+                // check for other allowed fields
+                if (allowedSortFields.includes(srt.field)) {
+                    elsSort.push({
+                        [srt.field]: {
+                            order: srt.order
+                        }
+                    });
+                } else {
+                    throw new Error('Unknown field ' + srt.field);
+                }
+            }
         }
 
         return elsSort;
@@ -256,11 +271,11 @@ class QueryProcessor {
                 if (agg.bucketGroup) {
                     const minMax = await _fetchMinAndMaxForAgg(agg);
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
-                    
+
                     if (!bucketGroup) {
                         throw new Error(`Unknown bucket group ${agg.bucketGroup}`);
                     }
-                    
+
                     if (bucketGroup.min === undefined || bucketGroup.min > minMax.min) {
                         bucketGroup.min = minMax.min;
                     }
@@ -317,7 +332,7 @@ class QueryProcessor {
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
                     step = bucketGroup.step;
                     offset = bucketGroup.offset;
-                    
+
                 } else {
                     throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or buckteGroup have to be specified.');
                 }
@@ -517,7 +532,7 @@ class QueryProcessor {
                 return {
                     bool: {
                         should: filter,
-                        minimum_should_match : 1
+                        minimum_should_match: 1
                     }
                 };
             }
@@ -568,7 +583,7 @@ class QueryProcessor {
                         rngCond += ' && ' + attrCond;
 
                     } else if (field.type === SignalType.PAINLESS) {
-                        const rngOp = { gte: '>=', gt: '>', lte: '<=', lt: '<' };
+                        const rngOp = {gte: '>=', gt: '>', lte: '<=', lt: '<'};
                         rngCond += ' && result' + rngOp[rngAttr] + 'params.' + rngAttr;
 
                     } else {
@@ -610,7 +625,15 @@ class QueryProcessor {
                 };
             }
 
-        } else {
+        } else if (flt.type === 'wildcard') {
+            const field = signalMap[flt.sigCid];
+            const elsFld = this.getField(field);
+            return {
+                wildcard: {
+                    [elsFld.field]: flt.value
+                }
+            }
+        }  else {
             throw new Error(`Unknown filter type "${flt.type}"`);
         }
     }
@@ -645,6 +668,10 @@ class QueryProcessor {
             script_fields: {}
         };
 
+        if ('from' in query.docs) {
+            elsQry.from = query.docs.from;
+        }
+
         if ('limit' in query.docs) {
             elsQry.size = query.docs.limit;
         }
@@ -677,15 +704,21 @@ class QueryProcessor {
             total: elsResp.hits.total
         };
 
+        const withId = query.params.withId && query.params.withId === true;
         for (const hit of elsResp.hits.hits) {
             const doc = {};
+
+            if (withId) {
+                // TODO possible overwrite
+                doc.id = hit._id;
+            }
 
             for (const sig of query.docs.signals) {
                 const sigFld = signalMap[sig];
 
                 if (sigFld.source === SignalSource.DERIVED) {
                     if (hit.fields) {
-                    const valSet = hit.fields[getFieldName(sigFld.id)];
+                        const valSet = hit.fields[getFieldName(sigFld.id)];
                         if (valSet) {
                             doc[sig] = valSet[0];
                         }

@@ -3,6 +3,8 @@
 const elasticsearch = require('../elasticsearch');
 const {SignalSource, getTypesBySource, SignalType} = require('../../../shared/signals');
 
+const  COPY_ID_PIPELINE = 'copy-id';
+
 // Gets the name of an index for a signal set
 function getIndexName(sigSet) {
     return 'signal_set_' + sigSet.id;
@@ -33,6 +35,10 @@ async function createIndex(sigSet, signalByCidMap) {
         }
     }
 
+    properties['id'] = {
+        type: fieldTypes[SignalType.KEYWORD]
+    };
+
     await elasticsearch.indices.create({
         index: indexName,
         body: {
@@ -40,6 +46,9 @@ async function createIndex(sigSet, signalByCidMap) {
                 _doc: {
                     properties
                 }
+            },
+            settings: {
+                    default_pipeline: COPY_ID_PIPELINE
             }
         }
     });
@@ -70,5 +79,6 @@ module.exports = {
     getIndexName,
     getFieldName,
     createIndex,
-    extendMapping
+    extendMapping,
+    COPY_ID_PIPELINE
 };

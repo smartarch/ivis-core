@@ -17,17 +17,20 @@ const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
 const {SignalType} = require('../../shared/signals');
-
-const contextHelpers = require('../lib/context-helpers');
+const moment = require('moment');
+const {toQuery, fromQueryResult} = require('../lib/dt-es-query-adapter');
 
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
 
 const handlebars = require('handlebars');
+
+// 10000 is max-result-window default
+// TODO take from config
+const MAX_RESULT_WINDOW = 10000;
+
+
 const recordIdTemplateHandlebars = handlebars.create();
-
-const moment = require('moment');
-
 recordIdTemplateHandlebars.registerHelper({
     toISOString: function (val) {
         return moment(val).toISOString();
@@ -91,6 +94,8 @@ async function listRecordsDTAjax(context, sigSetId, params) {
         // shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSetId, 'query') is already called inside signals.listVisibleForListTx
         const sigs = await signals.listVisibleForListTx(tx, context, sigSetId);
 
+        //TODO check for case when list of visibles changes between calls
+
         const sigSet = await tx('signal_sets').where('id', sigSetId).first();
 
         if (sigSet.type !== SignalSetType.COMPUTED) {
@@ -101,9 +106,29 @@ async function listRecordsDTAjax(context, sigSetId, params) {
                 params
             );
         } else {
-            throw new Error('Not implemented for computed sets yet');
+            return await listRecordsESAjax(context, sigSet, params, sigs);
         }
     });
+}
+
+async function listRecordsESAjax(context, sigSet, params, signals) {
+    // TODO check for deep pagination problem possibly solvable by setting totalrecordsfiltered
+    if (params.length + params.start < MAX_RESULT_WINDOW) {
+        const result = {
+            draw: params.draw,
+        };
+
+        const queryResult = await fromQueryResult(await query(context, [toQuery(sigSet, signals, params)]), signals);
+
+        result.recordsTotal = await indexer.getDocsCount(sigSet);
+        result.recordsFiltered = queryResult.total < MAX_RESULT_WINDOW ? queryResult.total : MAX_RESULT_WINDOW;
+
+        result.data = queryResult.data;
+
+        return result;
+    } else {
+        throw new Error(`Pagination over ${MAX_RESULT_WINDOW} not supported.`);
+    }
 }
 
 
@@ -393,6 +418,9 @@ async function getLastId(context, sigSet) {
 
 /* queries = [
     {
+        params: {
+            withId: <true returns also _id field>
+        },
         sigSetCid: <sigSetCid>,
 
         signals: [<sigCid>, ...],
@@ -441,8 +469,8 @@ async function getLastId(context, sigSet) {
             limit: <max no. of records>,
             sort: [
                 {
-                    sigCid: 'ts',
-                    order: 'asc'
+                    sigCid: <sigCid> <OR> field: <allowed field>,
+                    order: 'asc'/'desc'
                 }
             ]
         }
@@ -483,7 +511,7 @@ async function query(context, queries) {
                         checkFilter(fltChild);
                     }
 
-                } else if (flt.type === 'range' || flt.type === 'mustExist') {
+                } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
                     const sig = signalMap[flt.sigCid];
                     if (!sig) {
                         shares.throwPermissionDenied();
@@ -531,12 +559,15 @@ async function query(context, queries) {
             const checkSort = sort => {
                 if (sort) {
                     for (const srt of sort) {
-                        const sig = signalMap[srt.sigCid];
-                        if (!sig) {
-                            shares.throwPermissionDenied();
-                        }
+                        // Ignores other types of sorts
+                        if(sort.sigCid) {
+                            const sig = signalMap[srt.sigCid];
+                            if (!sig) {
+                                shares.throwPermissionDenied();
+                            }
 
-                        signalsToCheck.add(sig.id);
+                            signalsToCheck.add(sig.id);
+                        }
                     }
                 }
             };
