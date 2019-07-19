@@ -48,6 +48,7 @@ async function listVisibleForXXXTx(tx, context, sigSetId, weightCol, onlyWithQue
             'signals.name',
             'signals.description',
             'signals.type',
+            'signals.source',
             'signals.indexed',
             'signals.namespace',
             knex.raw(`GROUP_CONCAT(${entityType.permissionsTable + '.operation'} SEPARATOR \';\') as permissions`)

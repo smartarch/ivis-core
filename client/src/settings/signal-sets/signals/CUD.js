@@ -40,7 +40,6 @@ import {
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"
-import {getBuiltinTemplate} from "../../../lib/builtin-templates";
 
 function isPainless(source) {
     return source === SignalSource.DERIVED;

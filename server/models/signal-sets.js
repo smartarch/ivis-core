@@ -94,7 +94,12 @@ async function listRecordsDTAjax(context, sigSetId, params) {
         const sigSet = await tx('signal_sets').where('id', sigSetId).first();
 
         if (sigSet.type !== SignalSetType.COMPUTED) {
-            return await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+            return await signalStorage.listRecordsDTAjaxTx(
+                tx,
+                sigSet,
+                sigs.filter(sig => sig.source === SignalSource.RAW).map(sig => sig.id),
+                params
+            );
         } else {
             throw new Error('Not implemented for computed sets yet');
         }
