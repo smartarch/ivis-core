@@ -31,6 +31,7 @@ export default class RecordsCUD extends Component {
         };
 
         this.fieldTypes = new FieldTypes(props.t, props.signalsVisibleForEdit);
+        this.visibleDerivedSignals = props.signalsVisibleForEdit.filter(sig => sig.source === SignalSource.DERIVED);
 
         if (this.state.autoId) {
             this.initForm({
@@ -61,7 +62,6 @@ export default class RecordsCUD extends Component {
     componentDidMount() {
         if (this.props.record) {
             this.getFormValuesFromEntity(this.props.record);
-
         } else {
             const data = {
                 id: ''

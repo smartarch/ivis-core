@@ -77,7 +77,7 @@ function toQuery(sigSet, signals, params) {
             };
         } else {
             sort.push({
-                // coluumns are without id therefore shifted by 1
+                // columns are without id therefore shifted by 1
                 sigCid: columns[order.column - 1],
                 order: order.dir
             });
