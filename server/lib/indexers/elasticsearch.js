@@ -215,9 +215,7 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
         index: indexName,
         type: '_doc',
         id: record.id,
-        body: {
-            doc: esDoc
-        }
+        body: esDoc
     });
 
     emitter.emit('update', sigSetWithSigMap.cid);
