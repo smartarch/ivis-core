@@ -171,13 +171,13 @@ export default class RecordsCUD extends Component {
 
         const derivedTypes = [];
 
+        // TODO use form InputField
         for (let signal of this.visibleDerivedSignals) {
-            // FIXME
             const value = this.state.derivedValues ? this.state.derivedValues[0][signal.cid] : 'Loading';
-            derivedTypes.push(<>
-                <p>{signal.name}:</p>
-                <input key={signal.cid} id={signal.cid} value={value} disabled/>
-                </>
+            derivedTypes.push(
+                <StaticField key={signal.cid} id={signal.cid} className={styles.formDisabled} label={signal.name}>
+                    {value}
+                </StaticField>
             );
         }
 
