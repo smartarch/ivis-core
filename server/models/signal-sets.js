@@ -16,7 +16,7 @@ const {SignalSetType} = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/templates');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
-const {SignalType} = require('../../shared/signals');
+const {SignalType, SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
 
@@ -476,7 +476,7 @@ async function getLastId(context, sigSet) {
 
 async function query(context, queries) {
     return await knex.transaction(async tx => {
-        await queryTx(tx, context, queries);
+        return await queryTx(tx, context, queries);
     });
 }
 
@@ -513,7 +513,10 @@ async function queryTx(tx, context, queries) {
                 }
                 signalsToCheck.add(sig.id);
 
-            } else {
+            } if (flt.type === 'ids'){
+               // empty
+            }
+            else {
                 throw new Error(`Unknown filter type "${flt.type}"`);
             }
         };

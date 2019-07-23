@@ -2,8 +2,8 @@
 
 const moment = require('moment');
 const elasticsearch = require('../elasticsearch');
-const { SignalType,SignalSource } = require('../../../shared/signals');
-const { getIndexName, getFieldName } = require('./elasticsearch-common');
+const {SignalType, SignalSource} = require('../../../shared/signals');
+const {getIndexName, getFieldName} = require('./elasticsearch-common');
 
 const handlebars = require('handlebars');
 const log = require('../log');
@@ -193,7 +193,7 @@ class QueryProcessor {
     }
 
     createElsSort(sort) {
-        const allowedSortFields = ['_doc','id'];
+        const allowedSortFields = ['_doc', 'id'];
 
         const signalMap = this.signalMap;
         const elsSort = [];
@@ -298,7 +298,7 @@ class QueryProcessor {
         };
 
         const _computeStepAndOffset = (fieldType, maxBucketCount, minStep, minValue, maxValue) => {
-            if (fieldType === SignalType.DATE_TIME ) {
+            if (fieldType === SignalType.DATE_TIME) {
                 throw new Error('Not implemented');
             } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE || fieldType === SignalType.PAINLESS) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
@@ -375,7 +375,7 @@ class QueryProcessor {
 
             const elsAgg = {};
 
-            if (field.type === SignalType.DATE_TIME ) {
+            if (field.type === SignalType.DATE_TIME) {
                 // TODO: add processing of range buckets
 
                 elsAgg.date_histogram = {
@@ -461,7 +461,7 @@ class QueryProcessor {
             const buckets = [];
 
             const field = signalMap[agg.sigCid];
-            if (field.type === SignalType.DATE_TIME ) {
+            if (field.type === SignalType.DATE_TIME) {
                 // TODO: add processing of range buckets
 
                 for (const elsBucket of elsAggResp.buckets) {
@@ -633,7 +633,13 @@ class QueryProcessor {
                     [elsFld.field]: flt.value
                 }
             }
-        }  else {
+        } else if (flt.type === 'ids') {
+            return {
+                ids: {
+                    'values': flt.values
+                }
+            }
+        } else {
             throw new Error(`Unknown filter type "${flt.type}"`);
         }
     }
@@ -704,7 +710,7 @@ class QueryProcessor {
             total: elsResp.hits.total
         };
 
-        const withId = query.params.withId && query.params.withId === true;
+        const withId = query.params && query.params.withId && query.params.withId === true;
         for (const hit of elsResp.hits.hits) {
             const doc = {};
 

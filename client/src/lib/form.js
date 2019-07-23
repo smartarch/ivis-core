@@ -311,7 +311,8 @@ class InputField extends Component {
         placeholder: PropTypes.string,
         type: PropTypes.string,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-        format: PropTypes.string
+        format: PropTypes.string,
+        disabled: PropTypes.bool
     }
 
     static defaultProps = {
@@ -334,7 +335,7 @@ class InputField extends Component {
         const className = owner.addFormValidationClass('form-control', id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId} className={className} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, evt.target.value)}/>
+            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId} className={className} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}/>
         );
     }
 }
