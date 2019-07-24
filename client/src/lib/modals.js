@@ -111,7 +111,8 @@ const entityTypeLabels = {
     'job': t => t('Job'),
     'task': t => t('Task'),
     'panel': t => t('Panel'),
-    'workspace': t => t('Workspace')
+    'workspace': t => t('Workspace'),
+    'user': t => t('User')
 };
 
 function _getDependencyErrorMessage(err, t, name) {
