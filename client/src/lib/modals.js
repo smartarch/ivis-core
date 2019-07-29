@@ -3,20 +3,16 @@
 import React, {Component} from 'react';
 import axios, {HTTPMethod} from './axios';
 import {withTranslation} from './i18n';
-import PropTypes
-    from 'prop-types';
-import {
-    Icon,
-    ModalDialog
-} from "./bootstrap-components";
+import PropTypes from 'prop-types';
+import {Icon, ModalDialog} from "./bootstrap-components";
 import {getUrl} from "./urls";
 import {withPageHelpers} from "./page";
-import styles
-    from './styles.scss';
-import interoperableErrors
-    from '../../../shared/interoperable-errors';
+import styles from './styles.scss';
+import interoperableErrors from '../../../shared/interoperable-errors';
 import {Link} from "react-router-dom";
 import {withComponentMixins} from "./decorator-helpers";
+import {withAsyncErrorHandler} from "./error-handling";
+import ACEEditorRaw from 'react-ace';
 
 @withComponentMixins([
     withTranslation,
@@ -118,16 +114,23 @@ const entityTypeLabels = {
 function _getDependencyErrorMessage(err, t, name) {
     return (
         <div>
-            <p>{t('cannoteDeleteNameDueToTheFollowing', {name})}</p>
-            <ul className={styles.errorsList}>
-                {err.data.dependencies.map(dep =>
-                    dep.link ?
-                        <li key={dep.link}><Link to={dep.link}>{entityTypeLabels[dep.entityTypeId](t)}: {dep.name}</Link></li>
-                        : // if no dep.link is present, it means the user has no permission to view the entity, thus only id without the link is shown
-                        <li key={dep.id}>{entityTypeLabels[dep.entityTypeId](t)}: [{dep.id}]</li>
-                )}
-                {err.data.andMore && <li>{t('andMore')}</li>}
-            </ul>
+            {err.data.dependencies.length > 0 ?
+                <>
+                    <p>{t('cannoteDeleteNameDueToTheFollowing', {name})}</p>
+                    <ul className={styles.errorsList}>
+                        {err.data.dependencies.map(dep =>
+                            dep.link ?
+                                <li key={dep.link}><Link
+                                    to={dep.link}>{entityTypeLabels[dep.entityTypeId](t)}: {dep.name}</Link></li>
+                                : // if no dep.link is present, it means the user has no permission to view the entity, thus only id without the link is shown
+                                <li key={dep.id}>{entityTypeLabels[dep.entityTypeId](t)}: [{dep.id}]</li>
+                        )}
+                        {err.data.andMore && <li>{t('andMore')}</li>}
+                    </ul>
+                </>
+            :
+                <p>{t('Cannot delete {{name}} due to hidden dependencies', {name})}</p>
+            }
         </div>
     );
 }
@@ -202,10 +205,22 @@ export function tableRestActionDialogInit(owner) {
 
 
 function _hide(owner, dontRefresh = false) {
-    owner.tableRestActionDialogData = {};
+    const refreshTables = owner.tableRestActionDialogData.refreshTables;
+
     owner.setState({ tableRestActionDialogShown: false });
+
     if (!dontRefresh) {
-        owner.table.refresh();
+        owner.tableRestActionDialogData = {};
+
+        if (refreshTables) {
+            refreshTables();
+        } else {
+            owner.table.refresh();
+        }
+    } else {
+        // _hide is called twice: (1) at performing action, and at (2) success. Here we keep the refreshTables
+        // reference till it is really needed in step #2.
+        owner.tableRestActionDialogData = { refreshTables };
     }
 }
 
@@ -273,14 +288,19 @@ export function tableAddRestActionButton(actions, owner, action, button, title, 
                     actionData: action.data,
                     actionInProgressMsg: actionInProgressMsg,
                     actionDoneMsg: actionDoneMsg,
-                    onErrorAsync: onErrorAsync
+                    onErrorAsync: onErrorAsync,
+                    refreshTables: action.refreshTables
                 };
 
                 owner.setState({
                     tableRestActionDialogShown: true
                 });
 
-                owner.table.refresh();
+                if (action.refreshTables) {
+                    action.refreshTables();
+                } else {
+                    owner.table.refresh();
+                }
             }
         });
     }
@@ -304,4 +324,75 @@ export function tableRestActionDialogRender(owner) {
         onErrorAsync={data.onErrorAsync}
     />
 
+}
+
+
+@withComponentMixins([
+    withTranslation
+])
+export class ContentModalDialog extends Component {
+    constructor(props) {
+        super(props);
+        const t = props.t;
+
+        this.state = {
+            content: null
+        };
+    }
+
+    static propTypes = {
+        visible: PropTypes.bool.isRequired,
+        title: PropTypes.string.isRequired,
+        getContentAsync: PropTypes.func.isRequired,
+        onHide: PropTypes.func.isRequired
+    }
+
+    @withAsyncErrorHandler
+    async fetchContent() {
+        const content = await this.props.getContentAsync();
+        this.setState({
+            content
+        });
+    }
+
+    componentDidMount() {
+        if (this.props.visible) {
+            // noinspection JSIgnoredPromiseFromCall
+            this.fetchContent();
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.visible && !prevProps.visible) {
+            // noinspection JSIgnoredPromiseFromCall
+            this.fetchContent();
+        } else if (!this.props.visible && this.state.content !== null) {
+            this.setState({
+                content: null
+            });
+        }
+    }
+
+    render() {
+        const t = this.props.t;
+
+        return (
+            <ModalDialog hidden={!this.props.visible} title={this.props.title} onCloseAsync={() => this.props.onHide()}>
+                {this.props.visible && this.state.content &&
+                    <ACEEditorRaw
+                        mode='xml'
+                        theme="github"
+                        fontSize={12}
+                        width="100%"
+                        height="600px"
+                        showPrintMargin={false}
+                        value={this.state.content}
+                        tabSize={2}
+                        setOptions={{useWorker: false}} // This disables syntax check because it does not always work well (e.g. in case of JS code in report templates)
+                        readOnly={true}
+                    />
+                }
+            </ModalDialog>
+        );
+    }
 }
