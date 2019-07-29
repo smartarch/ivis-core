@@ -34,6 +34,8 @@ export default class RecordsCUD extends Component {
 
         this.fieldTypes = new FieldTypes(props.t, props.signalsVisibleForEdit);
         this.visibleDerivedSignals = props.signalsVisibleForEdit.filter(sig => sig.source === SignalSource.DERIVED);
+        this.visibleDerivedSignals.sort((a, b) => a.weight_edit - b.weight_edit);
+
         this.dataAccessSession = new DataAccessSession();
 
         if (this.state.autoId) {
@@ -85,7 +87,7 @@ export default class RecordsCUD extends Component {
                 values: [this.props.record.id]
             };
             const results = await this.dataAccessSession.getLatestDocs(this.props.signalSet.cid, this.visibleDerivedSignals.map(sig => sig.cid), filter, null, 1);
-            this.setState({derivedValues: results});
+            this.setState({derivedValues: results[0]});
         }
     }
 
@@ -173,7 +175,7 @@ export default class RecordsCUD extends Component {
 
         // TODO use form InputField
         for (let signal of this.visibleDerivedSignals) {
-            const value = this.state.derivedValues ? this.state.derivedValues[0][signal.cid] : 'Loading';
+            const value = this.state.derivedValues ? this.state.derivedValues[signal.cid] : 'Loading';
             derivedTypes.push(
                 <StaticField key={signal.cid} id={signal.cid} className={styles.formDisabled} label={signal.name}>
                     {value}
