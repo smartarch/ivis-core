@@ -21,6 +21,7 @@ const runningProc = new Map();
  * @param id Job id
  * @param params Parameters for the task
  * @param runId Run ID, will be used by stop command
+ * @param entities
  * @param state
  * @param taskDir Directory with the task
  * @param onRequest Callback for handling request msgs from job.

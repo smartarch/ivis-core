@@ -131,10 +131,8 @@ export default class IntegrationTabs extends Component {
                     break;
                 case (BuildState.FAILED): {
                     if (task.build_output) {
-                        const
-                            errors = [];
-                        const
-                            warnings = [];
+                        const errors = [];
+                        const warnings = [];
 
                         let
                             idx = 0;
@@ -181,10 +179,8 @@ export default class IntegrationTabs extends Component {
                     break;
                 }
                 case (BuildState.FINISHED): {
-                    const
-                        warnings = [];
-                    let
-                        idx = 0;
+                    const warnings = [];
+                    let idx = 0;
                     if (task.build_output && task.build_output.warnings && task.build_output.warnings.length > 0) {
                         for (const
                             warning
