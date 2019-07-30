@@ -173,7 +173,6 @@ export default class RecordsCUD extends Component {
 
         const derivedTypes = [];
 
-        // TODO use form InputField
         for (let signal of this.visibleDerivedSignals) {
             const value = this.state.derivedValues ? this.state.derivedValues[signal.cid] : 'Loading';
             derivedTypes.push(

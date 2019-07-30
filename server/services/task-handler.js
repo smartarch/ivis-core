@@ -379,7 +379,7 @@ async function processRunMsg(msg, task, job) {
 }
 
 /**
- * When task is being build, this function is run after the build is finished.
+ * When task is being build when run command arrives, this function is run after the build is finished.
  * @param buildState State of the finished build
  * @param jobId Id of the job waiting
  * @param msg Run msg that should be handled after successful build

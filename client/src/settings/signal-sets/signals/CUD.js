@@ -273,7 +273,6 @@ export default class CUD extends Component {
         const source = this.getFormValue('source');
         if (source) {
             for (const type of getTypesBySource(source)) {
-                // TODO check whether is here another derived check for types necessary
                     this.typeOptions.push({key: type, label: this.signalTypes[type]});
             }
         }
