@@ -54,7 +54,6 @@ export function defaultGetMinAggregationInterval(minPointDistance = 0) {
     }
 }
 
-
 export class IntervalSpec {
     constructor(from, to, aggregationInterval, refreshInterval) {
         this.from = from;
@@ -131,13 +130,17 @@ export class IntervalHistory {
     }
 }
 
+let cnt = 0;
 export class TimeInterval {
     constructor(onChange, data) {
+        cnt += 1;
+        this.cnt = cnt;
         this.started = false;
 
         this.refreshTimeout = null;
 
         this.onChange = onChange;
+        this.successor = null;
 
 
         if (data && data.conf) {
@@ -180,6 +183,8 @@ export class TimeInterval {
     }
 
     exportData() {
+        if (this.successor) return this.successor.exportData();
+        
         return {
             conf: {
                 chartWidth: this.conf.chartWidth
@@ -198,24 +203,31 @@ export class TimeInterval {
     }
 
     freeze() {
-        const intv = this.clone();
+        if (this.successor) return this.successor.freeze();
+
+        const intv = this._clone();
         intv.spec = intv.spec.freeze();
 
         return intv;
     }
 
     start() {
-        this.started = true;
-        this._scheduleRefreshTimeout();
+        if (this.successor) return this.successor.start();
+
+        this._start();
     }
 
     stop() {
+        if (this.successor) return this.successor.stop();
+
         this.started = false;
         clearTimeout(this.refreshTimeout);
     }
 
     setSpec(spec, replaceHistory = false) {
-        const intv = this.clone();
+        if (this.successor) return this.successor.setSpec(spec, replaceHistory);
+
+        const intv = this._clone();
 
         intv.spec = new IntervalSpec(
             spec.from !== undefined ? spec.from : this.spec.from,
@@ -236,7 +248,7 @@ export class TimeInterval {
 
         clearTimeout(this.refreshTimeout);
         if (this.started) {
-            intv.start();
+            intv._start();
         }
 
         intv._computeAbsolute();
@@ -246,12 +258,14 @@ export class TimeInterval {
     }
 
     setConf(conf) {
-        const intv = this.clone();
+        if (this.successor) return this.successor.setConf(conf);
+
+        const intv = this._clone();
         Object.assign(intv.conf, conf);
 
         clearTimeout(this.refreshTimeout);
         if (this.started) {
-            intv.start();
+            intv._start();
         }
 
         intv._computeAbsolute();
@@ -261,11 +275,13 @@ export class TimeInterval {
     }
 
     refresh() {
-        const intv = this.clone();
+        if (this.successor) return this.successor.refresh();
+
+        const intv = this._clone();
 
         clearTimeout(this.refreshTimeout);
         if (this.started) {
-            intv.start();
+            intv._start();
         }
 
         intv._computeAbsolute();
@@ -275,8 +291,10 @@ export class TimeInterval {
     }
 
     goBack() {
+        if (this.successor) return this.successor.goBack();
+
         if (this.history.idx > 0) {
-            const intv = this.clone();
+            const intv = this._clone();
 
             intv.history = new IntervalHistory(intv.history.specs, intv.history.idx - 1);
 
@@ -284,7 +302,7 @@ export class TimeInterval {
 
             clearTimeout(this.refreshTimeout);
             if (this.started) {
-                intv.start();
+                intv._start();
             }
 
             intv._computeAbsolute();
@@ -297,8 +315,10 @@ export class TimeInterval {
     }
 
     goForward() {
+        if (this.successor) return this.successor.goForward();
+
         if (this.history.idx < this.history.specs.length - 1) {
-            const intv = this.clone();
+            const intv = this._clone();
 
             intv.history = new IntervalHistory(intv.history.specs, intv.history.idx + 1);
 
@@ -306,7 +326,7 @@ export class TimeInterval {
 
             clearTimeout(this.refreshTimeout);
             if (this.started) {
-                intv.start();
+                intv._start();
             }
 
             intv._computeAbsolute();
@@ -314,10 +334,6 @@ export class TimeInterval {
         }
         
         return this;
-    }
-
-    clone() {
-        return new TimeInterval(this.onChange, this);
     }
 
 
@@ -338,6 +354,15 @@ export class TimeInterval {
     }
 
 
+    _clone() {
+        return new TimeInterval(this.onChange, this);
+    }
+
+    _start() {
+        this.started = true;
+        this._scheduleRefreshTimeout();
+    }
+
     _computeAbsolute() {
         const {from, to} = this.spec.getAbsoluteFromTo();
 
@@ -357,7 +382,9 @@ export class TimeInterval {
     _scheduleRefreshTimeout() {
         if (this.started && this.spec.refreshInterval) {
             this.refreshTimeout = setTimeout(() => {
-                const intv = this.clone();
+                const intv = this._clone();
+                this.successor = intv;
+
                 intv.started = this.started;
                 intv._computeAbsolute();
                 intv._notifyChange('absolute');

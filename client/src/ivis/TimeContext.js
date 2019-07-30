@@ -105,8 +105,8 @@ export class TimeContext extends Component {
     }
 
     componentDidMount() {
-        for (const interval of Object.values(this.state.intervals)) {
-            interval.start();
+        for (const intv of Object.values(this.state.intervals)) {
+            intv.start();
         }
 
         const owner = this.props.panelConfigOwner;
@@ -116,8 +116,8 @@ export class TimeContext extends Component {
     }
 
     componentWillUnmount() {
-        for (const interval of Object.values(this.state.intervals)) {
-            interval.stop();
+        for (const intv of Object.values(this.state.intervals)) {
+            intv.stop();
         }
 
         const owner = this.props.panelConfigOwner;

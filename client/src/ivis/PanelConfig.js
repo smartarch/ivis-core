@@ -6,7 +6,8 @@ import {
     AlignedRow,
     Button,
     ButtonRow,
-    Dropdown, filterData,
+    Dropdown,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -20,8 +21,8 @@ import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} fro
 import ParamTypes from "../settings/workspaces/panels/ParamTypes"
 import {checkPermissions} from "../lib/permissions";
 import styles from "./PanelConfig.scss";
-import {panelMenuMixin, withPanelMenu} from "./PanelMenu";
-import {getSandboxUrl, getTrustedUrl, getUrl} from "../lib/urls";
+import {panelMenuMixin} from "./PanelMenu";
+import {getTrustedUrl, getUrl} from "../lib/urls";
 import axios from "../lib/axios";
 import moment from "moment/moment";
 import {NamespaceSelect, validateNamespace} from "../lib/namespace";
@@ -29,10 +30,7 @@ import {ActionLink} from "../lib/bootstrap-components";
 import {withPageHelpers} from "../lib/page-common";
 import {createComponentMixin, withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {} from "../lib/permanent-link";
-import {createPermanentLink} from "../lib/permanent-link";
-import {createPermanentLinkConfig} from "../lib/permanent-link";
-import {LinkButton} from "../lib/page";
+import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
@@ -453,7 +451,12 @@ export class PermanentLinkDialog extends Component {
 
         const panelId = owner.props.panel.id;
         const workspaceId = owner.props.panel.workspace;
-        const link = createPermanentLink(getTrustedUrl(`workspaces/${workspaceId}/${panelId}`), owner.getPanelConfig());
+
+        const panelState = owner.getPanelState();
+        const panelConfig = owner.getPanelConfig();
+        delete panelState.permanentLinkDialog;
+
+        const link = createPermanentLink(getTrustedUrl(`workspaces/${workspaceId}/${panelId}`), panelConfig, panelState);
 
         if (opened) {
             return (
@@ -515,9 +518,14 @@ export class PdfExportDialog extends Component {
         const currentEpoch = this.epoch;
 
         if (!requestParams) {
+            const frozenPanelState = owner.getFrozenPanelState();
+            const frozenPanelConfig = owner.getFrozenPanelConfig();
+
+            delete frozenPanelState.pdfExportDialog;
+
             requestParams = {
-                permanentLinkConfig: createPermanentLinkConfig(owner.getFrozenPanelConfig()),
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                permanentLink: createPermanentLinkData(frozenPanelConfig, frozenPanelState),
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
             };
         }
 
@@ -608,7 +616,7 @@ export class PdfExportDialog extends Component {
 
                         <ButtonRow>
                             {exportButton}
-                            <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close}/>
+                            <Button className="btn-danger" icon="ban" label={t('Close')} onClickAsync={::this.close} />
                         </ButtonRow>
                     </Form>
                 </div>
@@ -630,12 +638,13 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
 
         self.state._panelConfig = Immutable.Map({
             params: Immutable.fromJS(props.params),
-            state: Immutable.fromJS({}),
+            state: Immutable.fromJS(props.state || {}),
             savePermitted: false
         });
 
         self._panelConfig = {
-            freezeHandlers: new Set()
+            configFreezeHandlers: new Set(),
+            stateFreezeHandlers: new Set()
         }
     }
 
@@ -654,7 +663,7 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
     };
 
     const previousComponentDidMount = inst.componentDidMount;
-    inst.componentDidMount = function () {
+    inst.componentDidMount = function() {
         const t = this.props.t;
 
         const fetchPermissions = wrapWithAsyncErrorHandler(this, async () => {
@@ -718,7 +727,7 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
     };
 
     const previousRender = inst.render;
-    inst.render = function () {
+    inst.render = function() {
         return (
             <PanelConfigOwnerContext.Provider value={this}>
                 {<PdfExportDialog/>}
@@ -729,23 +738,31 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
         );
     };
 
-    inst.isPanelConfigSavePermitted = function () {
+    inst.isPanelConfigSavePermitted = function() {
         return this.state._panelConfig.get('savePermitted');
     };
 
-    inst.isPanelConfigSaveAsPermitted = function () {
+    inst.isPanelConfigSaveAsPermitted = function() {
         return this.state._panelConfig.get('saveAsPermitted');
     };
 
-    inst.registerPanelConfigFreezeHandler = function (handler) {
-        this._panelConfig.freezeHandlers.add(handler);
+    inst.registerPanelConfigFreezeHandler = function(handler) {
+        this._panelConfig.configFreezeHandlers.add(handler);
     };
 
-    inst.unregisterPanelConfigFreezeHandler = function (handler) {
-        this._panelConfig.freezeHandlers.delete(handler);
+    inst.unregisterPanelConfigFreezeHandler = function(handler) {
+        this._panelConfig.configFreezeHandlers.delete(handler);
     };
 
-    inst.getPanelConfig = function (path = []) {
+    inst.registerPanelStateFreezeHandler = function(handler) {
+        this._panelConfig.stateFreezeHandlers.add(handler);
+    };
+
+    inst.unregisterPanelStateFreezeHandler = function(handler) {
+        this._panelConfig.stateFreezeHandlers.delete(handler);
+    };
+
+    inst.getPanelConfig = function(path = []) {
         const value = this.state._panelConfig.getIn(['params', ...path]);
         if (Immutable.isImmutable(value)) {
             return value.toJS();
@@ -754,22 +771,22 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
         }
     };
 
-    inst.getFrozenPanelConfig = function () {
+    inst.getFrozenPanelConfig = function() {
         let value = this.state._panelConfig.get('params').toJS();
-        for (const handler of this._panelConfig.freezeHandlers.keys()) {
+        for (const handler of this._panelConfig.configFreezeHandlers.keys()) {
             value = handler(value);
         }
 
         return value;
     };
 
-    inst.updatePanelConfig = function (path, newValue) {
+    inst.updatePanelConfig = function(path, newValue) {
         this.setState(state => ({
             _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
         }));
     };
 
-    inst.getPanelState = function (path = []) {
+    inst.getPanelState = function(path = []) {
         const value = this.state._panelConfig.getIn(['state', ...path]);
         if (Immutable.isImmutable(value)) {
             return value.toJS();
@@ -778,7 +795,16 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
         }
     };
 
-    inst.updatePanelState = function (path, newValue) {
+    inst.getFrozenPanelState = function() {
+        let value = this.state._panelConfig.get('state').toJS();
+        for (const handler of this._panelConfig.stateFreezeHandlers.keys()) {
+            value = handler(value);
+        }
+
+        return value;
+    };
+
+    inst.updatePanelState = function(path, newValue) {
         this.setState(state => ({
             _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
         }));
@@ -791,7 +817,7 @@ export const panelConfigMixin = createComponentMixin([], [withErrorHandling, pan
 
 
 export const withPanelConfig = withComponentMixins([
-    panelConfigMixin
+   panelConfigMixin
 ]);
 
 

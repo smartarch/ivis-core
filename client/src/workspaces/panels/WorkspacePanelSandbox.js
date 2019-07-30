@@ -63,7 +63,7 @@ export default class WorkspacePanelSandbox extends PureComponent {
             const panel = this.props.panel;
 
             return (
-                <PanelModule ref={node => this.contentNode = node} setPanelMenu={::this.setPanelMenu} panel={panel} params={this.panelParams(panel.templateParams, panel.params)} />
+                <PanelModule ref={node => this.contentNode = node} setPanelMenu={::this.setPanelMenu} panel={panel} params={this.panelParams(panel.templateParams, panel.params)} state={panel.state}/>
             )
 
         } else {
