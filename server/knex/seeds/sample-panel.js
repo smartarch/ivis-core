@@ -42,7 +42,7 @@ exports.seed = (knex, Promise) => (async() => {
                         "id": "cid",
                         "label": "Sensor",
                         "type": "signal",
-                        "signalSetRef": "sigSet"
+                        "signalSetRef": "../../sigSet"
                     }
                 ]
             }

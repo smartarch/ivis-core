@@ -202,13 +202,17 @@ export default class Develop extends Component {
         return spec;
     }
 
+    getFormValuesMutator(data){
+        this.inputMutator(data);
+    }
+
     inputMutator(data) {
         this.getTypeSpec(data.type).dataIn(data);
     }
 
     @withAsyncErrorHandler
     async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`, ::this.inputMutator);
+        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
     }
 
     resizeTabPaneContent() {
@@ -231,7 +235,7 @@ export default class Develop extends Component {
     }
 
     componentDidMount() {
-        this.getFormValuesFromEntity(this.props.entity, ::this.inputMutator);
+        this.getFormValuesFromEntity(this.props.entity);
         this.resizeTabPaneContent();
     }
 
@@ -254,6 +258,11 @@ export default class Develop extends Component {
         await this.run();
     }
 
+    submitFormValuesMutator(data) {
+        this.getTypeSpec(data.type).dataOut(data);
+        return data;
+    }
+
     async save() {
         const t = this.props.t;
 
@@ -265,9 +274,7 @@ export default class Develop extends Component {
 
         this.disableForm();
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/tasks/${this.props.entity.id}`, data => {
-            this.getTypeSpec(data.type).dataOut(data);
-        });
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/tasks/${this.props.entity.id}`);
 
         if (submitSuccessful) {
             await this.loadFormValues();
@@ -357,8 +364,8 @@ export default class Develop extends Component {
                         onClickAsync={() => this.run()}/>
         } else if (this.state.saveState === SaveState.CHANGED) {
             saveAndRunBtn = <Button className="btn-primary"
-                    label={this.saveRunLabels[this.state.saveState]}
-                    onClickAsync={() => this.saveAndRun()}/>
+                                    label={this.saveRunLabels[this.state.saveState]}
+                                    onClickAsync={() => this.saveAndRun()}/>
         }
 
         return (

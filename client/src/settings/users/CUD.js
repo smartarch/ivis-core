@@ -11,13 +11,14 @@ import {
 import {Panel} from "../../lib/panel";
 import {
     Button,
-    ButtonRow,
+    ButtonRow, filterData,
     Form,
     FormSendMethod,
     InputField,
     TableSelect,
     TextArea,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import interoperableErrors
@@ -62,10 +63,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.password = '';
-                data.password2 = '';
-            });
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 username: '',
@@ -78,6 +76,11 @@ export default class CUD extends Component {
                 namespace: ivisConfig.user.namespace
             });
         }
+    }
+
+    getFormValuesMutator(data) {
+        data.password = '';
+        data.password2 = '';
     }
 
     localValidateFormValues(state) {
@@ -139,14 +142,29 @@ export default class CUD extends Component {
         }
 
         if (passwordMsgs.length > 1) {
-           passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
+            passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
         }
 
         state.setIn(['password', 'error'], passwordMsgs.length > 0 ? passwordMsgs : null);
         state.setIn(['password2', 'error'], password !== password2 ? t('Passwords must match') : null);
     }
 
-    async submitHandler() {
+    submitFormValuesMutator(data) {
+        return filterData(data,
+            [
+                'id',
+                'address',
+                'email',
+                'name',
+                'namespace',
+                'password',
+                'phone_cell',
+                'username',
+            'role']);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -162,12 +180,24 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving user ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-                delete data.password2;
-            });
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-            if (submitSuccessful) {
-                this.navigateToWithFlashMessage('/settings/users', 'success', t('User saved'));
+            if (submitResult) {
+                if (this.props.entity) {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/users', 'success', t('User udpated'));
+                    } else {
+                        await this.getFormValuesFromURL(`rest/users/${this.props.entity.id}`);
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('User udpated'));
+                    }
+                } else {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/users', 'success', t('User saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/users/${submitResult}/edit`, 'success', t('User saved'));
+                    }
+                }
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -206,21 +236,21 @@ export default class CUD extends Component {
         const canDelete = userId !== 1 && ivisConfig.user.id !== userId;
 
         const rolesColumns = [
-            { data: 1, title: t('Name') },
-            { data: 2, title: t('Description') },
+            {data: 1, title: t('Name')},
+            {data: 2, title: t('Description')},
         ];
 
         return (
             <Panel title={isEdit ? t('Edit User') : t('Create User')}>
                 {isEdit && canDelete &&
-                    <DeleteModalDialog
-                        stateOwner={this}
-                        visible={this.props.action === 'delete'}
-                        deleteUrl={`rest/users/${this.props.entity.id}`}
-                        backUrl={`/settings/users/${this.props.entity.id}/edit`}
-                        successUrl="/settings/users"
-                        deletingMsg={t('Deleting user ...')}
-                        deletedMsg={t('User deleted')}/>
+                <DeleteModalDialog
+                    stateOwner={this}
+                    visible={this.props.action === 'delete'}
+                    deleteUrl={`rest/users/${this.props.entity.id}`}
+                    backUrl={`/settings/users/${this.props.entity.id}/edit`}
+                    successUrl="/settings/users"
+                    deletingMsg={t('Deleting user ...')}
+                    deletedMsg={t('User deleted')}/>
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
@@ -230,15 +260,21 @@ export default class CUD extends Component {
                     <InputField id="phone_cell" label={t('Cell')}/>
                     <TextArea id="address" label={t('Address')}/>
 
-                    <InputField id="password" label={t('Password')} type="password" />
-                    <InputField id="password2" label={t('Repeat Password')} type="password" />
+                    <InputField id="password" label={t('Password')} type="password"/>
+                    <InputField id="password2" label={t('Repeat Password')} type="password"/>
 
-                    <TableSelect id="role" label={t('Role')} withHeader dropdown dataUrl={'rest/shares-roles-table/global'} columns={rolesColumns} selectionLabelIndex={1}/>
+                    <TableSelect id="role" label={t('Role')} withHeader dropdown
+                                 dataUrl={'rest/shares-roles-table/global'} columns={rolesColumns}
+                                 selectionLabelIndex={1}/>
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        {isEdit && canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete User')} to={`/settings/users/${this.props.entity.id}/delete`}/>}
+                        <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {isEdit && canDelete &&
+                        <LinkButton className="btn-danger" icon="remove" label={t('Delete User')}
+                                    to={`/settings/users/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

@@ -10,12 +10,12 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow,
+    ButtonRow, filterData,
     Form,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {
@@ -82,11 +82,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
-                    data.record_id_template = '';
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
             if (this.props.entity.type === SignalSetType.COMPUTED) {
                 this.disableForm();
             }
@@ -98,6 +94,12 @@ export default class CUD extends Component {
                 record_id_template: '',
                 namespace: ivisConfig.user.namespace
             });
+        }
+    }
+
+    getFormValuesMutator(data) {
+        if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
+            data.record_id_template = '';
         }
     }
 
@@ -125,7 +127,21 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    async submitHandler() {
+    submitFormValuesMutator(data) {
+        if (data.record_id_template.trim() === '') {
+            data.record_id_template = null;
+        }
+        return filterData(data, [
+            'cid',
+            'name',
+            'description',
+            'record_id_template',
+            'namespace'
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
         const labels = this.labels;
 
@@ -141,14 +157,25 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (data.record_id_template.trim() === '') {
-                data.record_id_template = null;
-            }
-        });
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-        if (submitSuccessful) {
-            this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Signal set saved'));
+        if (submitResult) {
+
+            if (this.props.entity) {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Signal set updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/signal-sets/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Signal set updated'));
+                }
+            } else {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Signal set saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${submitResult}/edit`, 'success', t('Signal set saved'));
+                }
+            }
         } else {
             this.enableForm();
             this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -180,12 +207,15 @@ export default class CUD extends Component {
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
 
-                    <InputField id="record_id_template" label={t('Record ID template')} help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
+                    <InputField id="record_id_template" label={t('Record ID template')}
+                                help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/signal-sets/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

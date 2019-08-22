@@ -95,8 +95,8 @@ export default class Develop extends Component {
         const templateTypes = {};
 
         const columns = [
-            { data: 1, title: "Name" },
-            { data: 2, title: "Size" },
+            {data: 1, title: "Name"},
+            {data: 2, title: "Size"},
             {
                 actions: data => {
 
@@ -123,22 +123,26 @@ export default class Develop extends Component {
                     id: 'jsx',
                     default: true,
                     label: t('JSX'),
-                    getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="jsx" mode="jsx" format="wide"/>
+                    getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="jsx" mode="jsx"
+                                                 format="wide"/>
                 },
                 {
                     id: 'scss',
                     label: t('SCSS'),
-                    getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="scss" mode="scss" format="wide"/>
+                    getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="scss" mode="scss"
+                                                 format="wide"/>
                 },
                 {
                     id: 'files',
                     label: t('Files'),
-                    getContent: () => <Files entity={this.props.entity} entityTypeId="template" entitySubTypeId="file" managePermission="manageFiles" />
+                    getContent: () => <Files entity={this.props.entity} entityTypeId="template" entitySubTypeId="file"
+                                             managePermission="manageFiles"/>
                 },
                 {
                     id: 'params',
                     label: t('Parameters'),
-                    getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="params" mode="json" format="wide"/>
+                    getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="params" mode="json"
+                                                 format="wide"/>
                 }
             ],
             dataIn: data => {
@@ -173,6 +177,10 @@ export default class Develop extends Component {
         return templateTypes;
     }
 
+    getFormValuesMutator(data) {
+       this.inputMutator(data);
+    }
+
     inputMutator(data) {
         const settings = data.settings || {};
         this.templateTypes[data.type].dataIn(data);
@@ -180,7 +188,7 @@ export default class Develop extends Component {
 
     @withAsyncErrorHandler
     async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`, ::this.inputMutator);
+        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
     }
 
     resizeTabPaneContent() {
@@ -203,7 +211,7 @@ export default class Develop extends Component {
     }
 
     componentDidMount() {
-        this.getFormValuesFromEntity(this.props.entity, ::this.inputMutator);
+        this.getFormValuesFromEntity(this.props.entity);
         this.resizeTabPaneContent();
     }
 
@@ -214,6 +222,11 @@ export default class Develop extends Component {
     localValidateFormValues(state) {
         const templateType = state.getIn(['type', 'value']);
         this.templateTypes[templateType].validate(state);
+    }
+
+    submitFormValuesMutator(data) {
+        this.templateTypes[data.type].dataOut(data);
+        return data;
     }
 
     async save() {
@@ -227,9 +240,7 @@ export default class Develop extends Component {
 
         this.disableForm();
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/templates/${this.props.entity.id}`, data => {
-            this.templateTypes[data.type].dataOut(data);
-        });
+        const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/templates/${this.props.entity.id}`);
 
         if (submitSuccessful) {
             await this.loadFormValues();
@@ -271,9 +282,9 @@ export default class Develop extends Component {
                 const isActive = (!this.state.activeTab && tabSpec.default) || this.state.activeTab === tabSpec.id;
 
                 tabs.push(
-                    <li key={tabSpec.id} className={ isActive ? 'active' : ''}>
+                    <li key={tabSpec.id} className={isActive ? 'active' : ''}>
                         <ActionLink className={'nav-link' + (isActive ? ' active' : '')}
-                            onClickAsync={async () => this.selectTab(tabSpec.id)}>{tabSpec.label}</ActionLink>
+                                    onClickAsync={async () => this.selectTab(tabSpec.id)}>{tabSpec.label}</ActionLink>
                     </li>
                 );
 
@@ -293,19 +304,24 @@ export default class Develop extends Component {
 
         return (
             <Panel title={t('Edit Template Code')}>
-                <div className={developStyles.develop + ' ' + (this.state.isMaximized ? developStyles.fullscreenOverlay : '') + ' ' + (this.state.withPreview ? developStyles.withPreview : '')}>
+                <div
+                    className={developStyles.develop + ' ' + (this.state.isMaximized ? developStyles.fullscreenOverlay : '') + ' ' + (this.state.withPreview ? developStyles.withPreview : '')}>
                     <div className={developStyles.codePane}>
                         <Form stateOwner={this} onSubmitAsync={::this.save} format="wide" noStatus>
                             <div className={developStyles.tabPane}>
                                 <div className={developStyles.tabPaneHeader}>
                                     <div className={developStyles.buttons}>
-                                        <Button type="submit" className="btn-primary" label={this.saveLabels[this.state.saveState]}/>
-                                        <Button className="btn-primary" icon="window-maximize" onClickAsync={async () => {
-                                            const newIsMaximized = !this.state.isMaximized;
-                                            this.props.setPanelInFullScreen(newIsMaximized);
-                                            this.setState({isMaximized: newIsMaximized });
-                                        }}/>
-                                        <Button className="btn-primary" icon={this.state.withPreview ? 'arrow-right' : 'arrow-left'} onClickAsync={async () => this.setState({withPreview: !this.state.withPreview})}/>
+                                        <Button type="submit" className="btn-primary"
+                                                label={this.saveLabels[this.state.saveState]}/>
+                                        <Button className="btn-primary" icon="window-maximize"
+                                                onClickAsync={async () => {
+                                                    const newIsMaximized = !this.state.isMaximized;
+                                                    this.props.setPanelInFullScreen(newIsMaximized);
+                                                    this.setState({isMaximized: newIsMaximized});
+                                                }}/>
+                                        <Button className="btn-primary"
+                                                icon={this.state.withPreview ? 'arrow-right' : 'arrow-left'}
+                                                onClickAsync={async () => this.setState({withPreview: !this.state.withPreview})}/>
                                     </div>
                                     <ul className="nav nav-pills">
                                         {tabs}
@@ -327,7 +343,8 @@ export default class Develop extends Component {
                                     }
                                 </div>
 
-                                <div ref={node => this.tabPaneContentNode = node} className={developStyles.tabPaneContent}>
+                                <div ref={node => this.tabPaneContentNode = node}
+                                     className={developStyles.tabPaneContent}>
                                     {activeTabContent}
                                 </div>
                             </div>
