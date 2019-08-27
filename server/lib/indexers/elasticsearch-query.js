@@ -715,7 +715,7 @@ class QueryProcessor {
             const doc = {};
 
             if (withId) {
-                // TODO possible overwrite
+                // FIXME possible overwrite for signal named 'id'
                 doc.id = hit._id;
             }
 

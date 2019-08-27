@@ -48,6 +48,10 @@ const typesMap = {
         SignalType.TEXT,
         SignalType.DATE_TIME
     ],
+    // TODO check job types
+    [SignalSource.JOB]: [
+        ...AllSignalTypes
+    ],
 };
 
 function getTypesBySource(source) {

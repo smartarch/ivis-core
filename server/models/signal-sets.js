@@ -513,7 +513,7 @@ async function queryTx(tx, context, queries) {
                 }
                 signalsToCheck.add(sig.id);
 
-            } if (flt.type === 'ids'){
+            } else  if (flt.type === 'ids'){
                // empty
             }
             else {
