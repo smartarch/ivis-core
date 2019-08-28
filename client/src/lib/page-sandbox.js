@@ -44,12 +44,13 @@ class PanelRoute extends Component {
             jQuery(document.body).removeClass('inside-iframe');
         }
 
-        const render = resolved => {
-            if (resolved) {
+        const render = (resolved, permissions) => {
+            if (resolved && permissions) {
                 const compProps = {
                     match: this.props.match,
                     location: this.props.location,
-                    resolved
+                    resolved,
+                    permissions
                 };
 
                 let panel;

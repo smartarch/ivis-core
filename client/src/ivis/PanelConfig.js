@@ -34,11 +34,14 @@ import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-lin
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
-export const panelConfigAccessMixin = createComponentMixin([{
-    context: PanelConfigOwnerContext,
-    propName: 'panelConfigOwner'
-}], [], (TargetClass, InnerClass) => {
-    return {};
+export const panelConfigAccessMixin = createComponentMixin({
+    contexts: [{
+        context: PanelConfigOwnerContext,
+        propName: 'panelConfigOwner'
+    }],
+    decoratorFn: (TargetClass, InnerClass) => {
+        return {};
+    }
 });
 
 @withComponentMixins([
@@ -628,191 +631,194 @@ export class PdfExportDialog extends Component {
 }
 
 
-export const panelConfigMixin = createComponentMixin([], [withErrorHandling, panelMenuMixin, withTranslation], (TargetClass, InnerClass) => {
-    const inst = InnerClass.prototype;
+export const panelConfigMixin = createComponentMixin({
+    deps: [withErrorHandling, panelMenuMixin, withTranslation],
+    decoratorFn: (TargetClass, InnerClass) => {
+        const inst = InnerClass.prototype;
 
-    function ctor(self, props) {
-        if (!self.state) {
-            self.state = {};
-        }
+        function ctor(self, props) {
+            if (!self.state) {
+                self.state = {};
+            }
 
-        self.state._panelConfig = Immutable.Map({
-            params: Immutable.fromJS(props.params),
-            state: Immutable.fromJS(props.state || {}),
-            savePermitted: false
-        });
-
-        self._panelConfig = {
-            configFreezeHandlers: new Set(),
-            stateFreezeHandlers: new Set()
-        }
-    }
-
-    const previousComponentDidUpdate = inst.componentDidUpdate;
-    inst.componentDidUpdate = function (prevProps, prevState, snapshot) {
-        if (this.props.params !== prevProps.params) {
-            this.setState(state => ({
-                _panelConfig: state._panelConfig
-                    .set('params', Immutable.fromJS(this.props.params))
-            }));
-        }
-
-        if (previousComponentDidUpdate) {
-            previousComponentDidUpdate.apply(this, prevProps, prevState, snapshot);
-        }
-    };
-
-    const previousComponentDidMount = inst.componentDidMount;
-    inst.componentDidMount = function() {
-        const t = this.props.t;
-
-        const fetchPermissions = wrapWithAsyncErrorHandler(this, async () => {
-            const result = await checkPermissions({
-                editPanel: {
-                    entityTypeId: 'panel',
-                    entityId: this.props.panel.id,
-                    requiredOperations: ['edit']
-                },
-                createPanel: {
-                    entityTypeId: 'namespace',
-                    requiredOperations: ['createPanel']
-                }
+            self.state._panelConfig = Immutable.Map({
+                params: Immutable.fromJS(props.params),
+                state: Immutable.fromJS(props.state || {}),
+                savePermitted: false
             });
 
-            const savePermitted = result.data.editPanel;
-            const saveAsPermitted = result.data.createPanel;
+            self._panelConfig = {
+                configFreezeHandlers: new Set(),
+                stateFreezeHandlers: new Set()
+            }
+        }
+
+        const previousComponentDidUpdate = inst.componentDidUpdate;
+        inst.componentDidUpdate = function (prevProps, prevState, snapshot) {
+            if (this.props.params !== prevProps.params) {
+                this.setState(state => ({
+                    _panelConfig: state._panelConfig
+                        .set('params', Immutable.fromJS(this.props.params))
+                }));
+            }
+
+            if (previousComponentDidUpdate) {
+                previousComponentDidUpdate.apply(this, prevProps, prevState, snapshot);
+            }
+        };
+
+        const previousComponentDidMount = inst.componentDidMount;
+        inst.componentDidMount = function () {
+            const t = this.props.t;
+
+            const fetchPermissions = wrapWithAsyncErrorHandler(this, async () => {
+                const result = await checkPermissions({
+                    editPanel: {
+                        entityTypeId: 'panel',
+                        entityId: this.props.panel.id,
+                        requiredOperations: ['edit']
+                    },
+                    createPanel: {
+                        entityTypeId: 'namespace',
+                        requiredOperations: ['createPanel']
+                    }
+                });
+
+                const savePermitted = result.data.editPanel;
+                const saveAsPermitted = result.data.createPanel;
+                this.setState(state => ({
+                    _panelConfig: state._panelConfig
+                        .set('savePermitted', savePermitted)
+                        .set('saveAsPermitted', saveAsPermitted)
+                }));
+
+                const menuUpdates = {};
+                if (savePermitted) {
+                    menuUpdates['save'] = {
+                        label: t('Save'),
+                        action: () => openSaveDialog(this, SaveDialogType.SAVE),
+                        weight: 10
+                    };
+                }
+
+                if (saveAsPermitted) {
+                    menuUpdates['saveCopy'] = {
+                        label: t('Save Copy'),
+                        action: () => openSaveDialog(this, SaveDialogType.SAVE_COPY),
+                        weight: 11
+                    };
+                }
+
+                menuUpdates['pdfExport'] = {
+                    label: t('Export PDF'),
+                    action: () => openPdfExportDialog(this, true),
+                    weight: 12
+                };
+
+                menuUpdates['permanentLink'] = {
+                    label: t('Permanent Link'),
+                    action: () => openPermanentLinkDialog(this, true),
+                    weight: 13
+                };
+
+                this.updatePanelMenu(menuUpdates);
+            });
+
+            fetchPermissions();
+
+            if (previousComponentDidMount) {
+                previousComponentDidMount.apply(this);
+            }
+        };
+
+        const previousRender = inst.render;
+        inst.render = function () {
+            return (
+                <PanelConfigOwnerContext.Provider value={this}>
+                    {<PdfExportDialog/>}
+                    {<PermanentLinkDialog/>}
+                    {(this.isPanelConfigSavePermitted() || this.isPanelConfigSaveAsPermitted()) && <SaveDialog/>}
+                    {previousRender.apply(this)}
+                </PanelConfigOwnerContext.Provider>
+            );
+        };
+
+        inst.isPanelConfigSavePermitted = function () {
+            return this.state._panelConfig.get('savePermitted');
+        };
+
+        inst.isPanelConfigSaveAsPermitted = function () {
+            return this.state._panelConfig.get('saveAsPermitted');
+        };
+
+        inst.registerPanelConfigFreezeHandler = function (handler) {
+            this._panelConfig.configFreezeHandlers.add(handler);
+        };
+
+        inst.unregisterPanelConfigFreezeHandler = function (handler) {
+            this._panelConfig.configFreezeHandlers.delete(handler);
+        };
+
+        inst.registerPanelStateFreezeHandler = function (handler) {
+            this._panelConfig.stateFreezeHandlers.add(handler);
+        };
+
+        inst.unregisterPanelStateFreezeHandler = function (handler) {
+            this._panelConfig.stateFreezeHandlers.delete(handler);
+        };
+
+        inst.getPanelConfig = function (path = []) {
+            const value = this.state._panelConfig.getIn(['params', ...path]);
+            if (Immutable.isImmutable(value)) {
+                return value.toJS();
+            } else {
+                return value;
+            }
+        };
+
+        inst.getFrozenPanelConfig = function () {
+            let value = this.state._panelConfig.get('params').toJS();
+            for (const handler of this._panelConfig.configFreezeHandlers.keys()) {
+                value = handler(value);
+            }
+
+            return value;
+        };
+
+        inst.updatePanelConfig = function (path, newValue) {
             this.setState(state => ({
-                _panelConfig: state._panelConfig
-                    .set('savePermitted', savePermitted)
-                    .set('saveAsPermitted', saveAsPermitted)
+                _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
             }));
+        };
 
-            const menuUpdates = {};
-            if (savePermitted) {
-                menuUpdates['save'] = {
-                    label: t('Save'),
-                    action: () => openSaveDialog(this, SaveDialogType.SAVE),
-                    weight: 10
-                };
+        inst.getPanelState = function (path = []) {
+            const value = this.state._panelConfig.getIn(['state', ...path]);
+            if (Immutable.isImmutable(value)) {
+                return value.toJS();
+            } else {
+                return value;
+            }
+        };
+
+        inst.getFrozenPanelState = function () {
+            let value = this.state._panelConfig.get('state').toJS();
+            for (const handler of this._panelConfig.stateFreezeHandlers.keys()) {
+                value = handler(value);
             }
 
-            if (saveAsPermitted) {
-                menuUpdates['saveCopy'] = {
-                    label: t('Save Copy'),
-                    action: () => openSaveDialog(this, SaveDialogType.SAVE_COPY),
-                    weight: 11
-                };
-            }
-
-            menuUpdates['pdfExport'] = {
-                label: t('Export PDF'),
-                action: () => openPdfExportDialog(this, true),
-                weight: 12
-            };
-
-            menuUpdates['permanentLink'] = {
-                label: t('Permanent Link'),
-                action: () => openPermanentLinkDialog(this, true),
-                weight: 13
-            };
-
-            this.updatePanelMenu(menuUpdates);
-        });
-
-        fetchPermissions();
-
-        if (previousComponentDidMount) {
-            previousComponentDidMount.apply(this);
-        }
-    };
-
-    const previousRender = inst.render;
-    inst.render = function() {
-        return (
-            <PanelConfigOwnerContext.Provider value={this}>
-                {<PdfExportDialog/>}
-                {<PermanentLinkDialog/>}
-                {(this.isPanelConfigSavePermitted() || this.isPanelConfigSaveAsPermitted()) && <SaveDialog/>}
-                {previousRender.apply(this)}
-            </PanelConfigOwnerContext.Provider>
-        );
-    };
-
-    inst.isPanelConfigSavePermitted = function() {
-        return this.state._panelConfig.get('savePermitted');
-    };
-
-    inst.isPanelConfigSaveAsPermitted = function() {
-        return this.state._panelConfig.get('saveAsPermitted');
-    };
-
-    inst.registerPanelConfigFreezeHandler = function(handler) {
-        this._panelConfig.configFreezeHandlers.add(handler);
-    };
-
-    inst.unregisterPanelConfigFreezeHandler = function(handler) {
-        this._panelConfig.configFreezeHandlers.delete(handler);
-    };
-
-    inst.registerPanelStateFreezeHandler = function(handler) {
-        this._panelConfig.stateFreezeHandlers.add(handler);
-    };
-
-    inst.unregisterPanelStateFreezeHandler = function(handler) {
-        this._panelConfig.stateFreezeHandlers.delete(handler);
-    };
-
-    inst.getPanelConfig = function(path = []) {
-        const value = this.state._panelConfig.getIn(['params', ...path]);
-        if (Immutable.isImmutable(value)) {
-            return value.toJS();
-        } else {
             return value;
-        }
-    };
+        };
 
-    inst.getFrozenPanelConfig = function() {
-        let value = this.state._panelConfig.get('params').toJS();
-        for (const handler of this._panelConfig.configFreezeHandlers.keys()) {
-            value = handler(value);
-        }
+        inst.updatePanelState = function (path, newValue) {
+            this.setState(state => ({
+                _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
+            }));
+        };
 
-        return value;
-    };
-
-    inst.updatePanelConfig = function(path, newValue) {
-        this.setState(state => ({
-            _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
-        }));
-    };
-
-    inst.getPanelState = function(path = []) {
-        const value = this.state._panelConfig.getIn(['state', ...path]);
-        if (Immutable.isImmutable(value)) {
-            return value.toJS();
-        } else {
-            return value;
-        }
-    };
-
-    inst.getFrozenPanelState = function() {
-        let value = this.state._panelConfig.get('state').toJS();
-        for (const handler of this._panelConfig.stateFreezeHandlers.keys()) {
-            value = handler(value);
-        }
-
-        return value;
-    };
-
-    inst.updatePanelState = function(path, newValue) {
-        this.setState(state => ({
-            _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
-        }));
-    };
-
-    return {
-        ctor
-    };
+        return {
+            ctor
+        };
+    }
 });
 
 
