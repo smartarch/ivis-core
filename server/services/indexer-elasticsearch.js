@@ -55,6 +55,8 @@ async function index(cid, method, from) {
             });
 
             if (exists) {
+                // This counts on id field existing, which is true for values stored in DB, in case of future changes
+                // this needs to be updated accordingly
                 if (from == null) {
                     const response = await elasticsearch.search({
                         index: indexName,

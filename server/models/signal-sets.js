@@ -107,18 +107,16 @@ async function listRecordsDTAjax(context, sigSetId, params) {
     });
 }
 
-async function listRecordsESAjax(tx, context, sigSet, signals, params) {
-    if (params.length + params.start < MAX_RESULTS_WINDOW) {
-        return await fromQueryResultToDTInput(
-            await queryTx(tx, context, [
-                toQuery(sigSet, signals, params)
-            ]),
-            signals,
-            params
-        );
-    } else {
-        throw new Error(`Pagination over ${MAX_RESULTS_WINDOW} not supported.`);
-    }
+async function listRecordsESAjax(tx, context, sigSet, params, signals) {
+    enforce(params.length + params.start < MAX_RESULTS_WINDOW, `Pagination over ${MAX_RESULTS_WINDOW} not supported.`);
+    return await fromQueryResultToDTInput(
+        await queryTx(tx, context, [
+            toQuery(sigSet, signals, params)
+        ]),
+        sigSet,
+        signals,
+        params
+    );
 }
 
 
