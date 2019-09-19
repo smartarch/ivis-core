@@ -300,7 +300,7 @@ class QueryProcessor {
         const _computeStepAndOffset = (fieldType, maxBucketCount, minStep, minValue, maxValue) => {
             if (fieldType === SignalType.DATE_TIME) {
                 throw new Error('Not implemented');
-            } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE || fieldType === SignalType.PAINLESS) {
+            } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
             } else {
                 throw new Error(`Field type ${fieldType} is not supported in aggregations`);
@@ -385,7 +385,7 @@ class QueryProcessor {
                     min_doc_count: agg.minDocCount
                 };
 
-            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE || field.type === SignalType.PAINLESS) {
+            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE ) {
                 elsAgg.histogram = {
                     ...this.getField(field),
                     interval: agg.computedStep || 1e-16 /* FIXME - this is  a hack, find better way to handle situations when there is no interval */,
@@ -471,7 +471,7 @@ class QueryProcessor {
                     });
                 }
 
-            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE || field.type === SignalType.PAINLESS) {
+            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE ) {
                 for (const elsBucket of elsAggResp.buckets) {
                     buckets.push({
                         key: elsBucket.key,
@@ -581,12 +581,13 @@ class QueryProcessor {
                             attrCond = 'result.isBefore(ZonedDateTime.parse(params.lt))';
                         }
                         rngCond += ' && ' + attrCond;
-
-                    } else if (field.type === SignalType.PAINLESS) {
+                    // TODO check if this condition is allowed for all types, previously was for type painless
+                    } else if (field.source === SignalSource.DERIVED) {
                         const rngOp = {gte: '>=', gt: '>', lte: '<=', lt: '<'};
                         rngCond += ' && result' + rngOp[rngAttr] + 'params.' + rngAttr;
 
                     } else {
+                        // TODO also change this message accordingly, see previous todo in this section
                         throw new Error(`Field type ${field.type} is not supported in filter`);
                     }
                 }

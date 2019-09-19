@@ -12,7 +12,6 @@ const SignalType = {
     KEYWORD: 'keyword',
     TEXT: 'text',
     DATE_TIME: 'date',
-    PAINLESS: 'painless',
 };
 
 if (Object.freeze) {
@@ -33,22 +32,15 @@ if (Object.freeze) {
     Object.freeze(SignalSource);
 }
 
+// Maps sources to their allowed types
 const typesMap = {
     [SignalSource.DERIVED]: [
-        SignalType.PAINLESS,
-        SignalType.DATE_TIME
+        ...AllSignalTypes
     ],
     [SignalSource.RAW]: [
-        SignalType.INTEGER,
-        SignalType.LONG,
-        SignalType.FLOAT,
-        SignalType.DOUBLE,
-        SignalType.BOOLEAN,
-        SignalType.KEYWORD,
-        SignalType.TEXT,
-        SignalType.DATE_TIME
+        ...AllSignalTypes
     ],
-    // TODO check job types
+    // TODO check job types requirements
     [SignalSource.JOB]: [
         ...AllSignalTypes
     ],

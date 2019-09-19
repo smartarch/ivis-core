@@ -11,7 +11,6 @@ export function getSignalTypes(t) {
         [SignalType.KEYWORD]: t('Keyword'),
         [SignalType.TEXT]: t('Text'),
         [SignalType.DATE_TIME]: t('Date/Time'),
-        [SignalType.PAINLESS]: t('Painless Script'),
     }
 }
 
