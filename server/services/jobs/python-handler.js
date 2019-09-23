@@ -125,7 +125,7 @@ function getPackages(type) {
     if (pckgs) {
         packages.push(...pckgs);
     } else {
-        packages.push('elasticsearch');
+        packages.push('elasticsearch', 'requests');
     }
     return packages;
 }
