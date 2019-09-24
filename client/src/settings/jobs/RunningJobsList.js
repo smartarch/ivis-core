@@ -18,6 +18,7 @@ import moment from "moment";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {getRunStatuses} from './states';
 
 
 @withComponentMixins([
@@ -46,7 +47,7 @@ export default class List extends Component {
             {data: 0, title: t('Run ID')},
             {data: 2, title: t('Job name')},
             {data: 3, title: t('Running for'), render: data => moment(data).fromNow(true)},
-            {data: 4, title: t('Status'), render: data => data},
+            {data: 4, title: t('Status'), render: data => getRunStatuses(t)[data]},
             {
                 actions: data => {
 

@@ -179,7 +179,7 @@ async function _validateAndPreprocess(context, tx, entity, isCreate) {
     }
 
     const existingWithCid = await existingWithCidQuery.first();
-    enforce(!existingWithCid, "Signal's machine name (cid) is already used for another signal.");
+    enforce(!existingWithCid, `Signal's machine name (cid) '${entity.cid}' is already used for another signal.`);
 
     entity.settings = JSON.stringify(entity.settings);
 }
