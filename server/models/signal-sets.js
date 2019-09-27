@@ -619,7 +619,14 @@ async function getAllowedSignals(templateParams, params) {
                             allowedSigSets.set(sigSetCid, sigSet);
                         }
 
-                        sigSet.add(sigCid);
+                        const card = parseCardinality(spec.cardinality);
+                        if (card.max === 1) {
+                            sigSet.add(sigCid);
+                        } else {
+                            for (const entry of sigCid) {
+                                sigSet.add(entry);
+                            }
+                        }
                     }
                 }
             } else if (spec.type === 'fieldset') {
