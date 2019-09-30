@@ -179,21 +179,18 @@ export default class CUD extends Component {
             data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
             data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
         }
+
+        // FIXME doesn't take in account EM ?
         return filterData(data, [
             'cid',
-            'created',
-            'description',
-            'id',
-            'indexed',
             'name',
-            'namespace',
-            'painlessScript',
-            'permissions',
-            'set',
-            'settings',
+            'description',
             'type',
-            'weight_edit',
-            'weight_list'
+            'indexed',
+            'settings',
+            'namespace',
+            'weight_list',
+            'weight_edit'
         ]);
     }
 

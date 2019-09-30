@@ -106,16 +106,11 @@ export default class CUD extends Component {
             data.settings = this.props.entity.settings;
         }
         return filterData(data, [
-            'build_output',
-            'build_state',
-            'created',
-            'description',
-            'id',
             'name',
-            'namespace',
-            'permissions',
+            'description',
+            'type',
             'settings',
-            'type'
+            'namespace'
         ]);
     }
 

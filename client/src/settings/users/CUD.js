@@ -152,7 +152,6 @@ export default class CUD extends Component {
     submitFormValuesMutator(data) {
         return filterData(data,
             [
-                'id',
                 'address',
                 'email',
                 'name',
@@ -160,7 +159,8 @@ export default class CUD extends Component {
                 'password',
                 'phone_cell',
                 'username',
-            'role']);
+                'role'
+            ]);
     }
 
     @withFormErrorHandlers

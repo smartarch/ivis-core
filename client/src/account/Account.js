@@ -113,16 +113,15 @@ export default class Account extends Component {
 
     submitFormValuesMutator(data) {
         return filterData(data, [
-            'address',
-            'currentPassword',
-            'email',
-            'id',
+            'username',
             'name',
-            'namespace',
+            'email',
             'password',
             'phone_cell',
+            'address',
+            'namespace',
             'role',
-            'username'
+            'currentPassword',
         ]);
     }
 

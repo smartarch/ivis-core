@@ -13,7 +13,8 @@ import {
     Button,
     ButtonRow,
     Dropdown,
-    Fieldset, filterData,
+    Fieldset,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -305,18 +306,14 @@ export default class CUD extends Component {
 
         data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
         return filterData(data, [
-            'builtin_template',
-            'description',
-            'id',
             'name',
-            'namespace',
-            'order',
-            'orderBefore',
-            'params',
-            'permissions',
+            'description',
+            'workspace',
             'template',
-            'templateElevatedAccess',
-            'workspace'
+            'builtin_template',
+            'params',
+            'namespace',
+            'orderBefore'
         ]);
     }
 
