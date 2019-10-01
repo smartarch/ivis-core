@@ -140,7 +140,7 @@ export default class CUD extends Component {
             'namespace'
         ];
 
-        if (this.props.entity){
+        if (!this.props.entity){
             allowedKeys.push('cid', 'type');
         }
 

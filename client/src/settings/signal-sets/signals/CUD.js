@@ -180,7 +180,6 @@ export default class CUD extends Component {
             data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
         }
 
-        // FIXME doesn't take in account EM ?
         return filterData(data, [
             'cid',
             'name',
