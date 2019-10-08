@@ -347,7 +347,7 @@ export default class CUD extends Component {
                     if (submitAndLeave) {
                         this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel updated'));
                     } else {
-                        await this.loadFormValues();
+                        await this.getFormValuesFromURL(`rest/panels/${this.props.entity.id}`);
                         this.enableForm();
                         this.setFormStatusMessage('success', t('Panel updated'));
                     }

@@ -116,11 +116,6 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
-    }
-
     static isPositiveInteger(s) {
         return /^[1-9][\d]*$/.test(s);
     }
@@ -274,7 +269,7 @@ export default class CUD extends Component {
                     if (submitAndLeave) {
                         this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job updated'));
                     } else {
-                        await this.loadFormValues();
+                        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
                         this.enableForm();
                         this.setFormStatusMessage('success', t('Job updated'));
                     }

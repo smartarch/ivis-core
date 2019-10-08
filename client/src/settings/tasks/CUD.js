@@ -62,11 +62,6 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
-    }
-
     localValidateFormValues(state) {
         const t = this.props.t;
 
@@ -138,7 +133,7 @@ export default class CUD extends Component {
                 if (submitAndLeave) {
                     this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task updated'));
                 } else {
-                    await this.loadFormValues();
+                    await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
                     this.enableForm();
                     this.setFormStatusMessage('success', t('Task updated'));
                 }
