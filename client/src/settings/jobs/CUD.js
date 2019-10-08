@@ -8,7 +8,8 @@ import {
     Button,
     ButtonRow,
     Dropdown,
-    Fieldset, filterData,
+    Fieldset,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -230,21 +231,16 @@ export default class CUD extends Component {
         }
 
         return filterData(data, [
-            'created',
-            'delay',
-            'description',
-            'id',
-            'min_gap',
             'name',
-            'namespace',
-            'params',
-            'permissions',
-            'sets',
-            'settings',
-            'signal_sets_triggers',
-            'state',
+            'description',
             'task',
-            'trigger'
+            'params',
+            'state',
+            'trigger',
+            'min_gap',
+            'delay',
+            'namespace',
+            'signal_sets_triggers',
         ]);
     }
 

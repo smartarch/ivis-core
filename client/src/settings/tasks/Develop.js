@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
-import {ACEEditor, Button, Form, FormSendMethod, withForm} from "../../lib/form";
+import {ACEEditor, Button, filterData, Form, FormSendMethod, withForm} from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/python";
 import "brace/mode/text";
@@ -260,7 +260,13 @@ export default class Develop extends Component {
 
     submitFormValuesMutator(data) {
         this.getTypeSpec(data.type).dataOut(data);
-        return data;
+        return filterData(data, [
+            'name',
+            'description',
+            'type',
+            'settings',
+            'namespace'
+        ]);
     }
 
     async save() {

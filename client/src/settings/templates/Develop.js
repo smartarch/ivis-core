@@ -9,7 +9,8 @@ import {
 } from "../../lib/page";
 import {
     ACEEditor,
-    Button, filterData,
+    Button,
+    filterData,
     Form,
     FormSendMethod,
     withForm
@@ -226,7 +227,12 @@ export default class Develop extends Component {
     submitFormValuesMutator(data) {
         this.templateTypes[data.type].dataOut(data);
         return filterData(data, [
-            'name', 'description', 'type', 'settings', 'elevated_access', 'namespace'
+            'name',
+            'description',
+            'type',
+            'settings',
+            'elevated_access',
+            'namespace'
         ]);
     }
 

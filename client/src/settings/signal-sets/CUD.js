@@ -10,7 +10,8 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow, filterData,
+    ButtonRow,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -131,13 +132,19 @@ export default class CUD extends Component {
         if (data.record_id_template.trim() === '') {
             data.record_id_template = null;
         }
-        return filterData(data, [
-            'cid',
+
+        const allowedKeys = [
             'name',
             'description',
             'record_id_template',
             'namespace'
-        ]);
+        ];
+
+        if (!this.props.entity){
+            allowedKeys.push('cid', 'type');
+        }
+
+        return filterData(data, allowedKeys);
     }
 
     @withFormErrorHandlers

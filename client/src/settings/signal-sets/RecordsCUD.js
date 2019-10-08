@@ -111,6 +111,7 @@ export default class RecordsCUD extends Component {
         const signals = this.fieldTypes.getSignals(data);
         data.signals = signals;
 
+        // TODO check if it is ok for POST of array
         return filterData(data, [
             'id',
             'signals'
