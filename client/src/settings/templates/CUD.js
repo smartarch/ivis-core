@@ -117,17 +117,7 @@ export default class CUD extends Component {
         }
 
         return filterData(data, [
-            'created',
-            'description',
-            'elevated_access',
-            'id',
-            'name',
-            'namespace',
-            'output',
-            'permissions',
-            'settings',
-            'state',
-            'type'
+            'name', 'description', 'type', 'settings', 'elevated_access', 'namespace'
         ]);
     }
 

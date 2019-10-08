@@ -9,7 +9,7 @@ import {
 } from "../../lib/page";
 import {
     ACEEditor,
-    Button,
+    Button, filterData,
     Form,
     FormSendMethod,
     withForm
@@ -182,7 +182,6 @@ export default class Develop extends Component {
     }
 
     inputMutator(data) {
-        const settings = data.settings || {};
         this.templateTypes[data.type].dataIn(data);
     }
 
@@ -226,7 +225,9 @@ export default class Develop extends Component {
 
     submitFormValuesMutator(data) {
         this.templateTypes[data.type].dataOut(data);
-        return data;
+        return filterData(data, [
+            'name', 'description', 'type', 'settings', 'elevated_access', 'namespace'
+        ]);
     }
 
     async save() {
