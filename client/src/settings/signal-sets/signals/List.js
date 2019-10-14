@@ -1,24 +1,14 @@
 'use strict';
 
 import React, {Component} from "react";
-import PropTypes
-    from "prop-types";
+import PropTypes from "prop-types";
 import {Table} from "../../../lib/table";
 import {Panel} from "../../../lib/panel";
-import {
-    LinkButton,
-    requiresAuthenticatedUser,
-    Toolbar,
-    withPageHelpers
-} from "../../../lib/page";
+import {LinkButton, requiresAuthenticatedUser, Toolbar, withPageHelpers} from "../../../lib/page";
 import {Icon} from "../../../lib/bootstrap-components";
 import {HTTPMethod} from "../../../lib/axios";
-import {
-    withAsyncErrorHandler,
-    withErrorHandling
-} from "../../../lib/error-handling";
-import moment
-    from "moment";
+import {withAsyncErrorHandler, withErrorHandling} from "../../../lib/error-handling";
+import moment from "moment";
 import {getSignalTypes} from "./signal-types";
 import {
     RestActionModalDialog,
@@ -27,9 +17,10 @@ import {
     tableRestActionDialogRender
 } from "../../../lib/modals";
 import {checkPermissions} from "../../../lib/permissions";
-import {IndexingStatus} from "../../../../../shared/signals";
+import {IndexingStatus, DerivedSignalTypes} from "../../../../../shared/signals";
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
+import {SignalSetType} from "../../../../../shared/signal-sets"
 
 @withComponentMixins([
     withTranslation,
@@ -91,8 +82,9 @@ export default class List extends Component {
                 actions: data => {
                     const actions = [];
                     const perms = data[8];
+                    const signalType = data[4];
 
-                    if (perms.includes('edit')) {
+                    if (perms.includes('edit') && (!DerivedSignalTypes.has(signalType) || this.props.signalSet.permissions.includes('manageScripts'))) {
                         actions.push({
                             label: <Icon icon="edit" title={t('Edit')}/>,
                             link: `/settings/signal-sets/${this.props.signalSet.id}/signals/${data[0]}/edit`
@@ -106,8 +98,9 @@ export default class List extends Component {
                         });
                     }
 
-                    tableAddDeleteButton(actions, this, perms, `rest/signals/${data[0]}`, data[2], t('Deleting signal ...'), t('Signal deleted'));
-
+                    if (this.props.signalSet.type !== SignalSetType.COMPUTED) {
+                        tableAddDeleteButton(actions, this, perms, `rest/signals/${data[0]}`, data[2], t('Deleting signal ...'), t('Signal deleted'));
+                    }
                     return actions;
                 }
             }
@@ -134,8 +127,8 @@ export default class List extends Component {
 
                 {(this.state.createPermitted || this.state.reindexPermitted) &&
                     <Toolbar>
-                        {this.state.createPermitted && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/signals/create`} className="btn-primary" icon="plus" label={t('Create Signal')}/> }
-                        {this.state.reindexPermitted && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/reindex`} className="btn-danger" icon="retweet" label={t('Reindex')}/> }
+                        {this.props.signalSet.type !== SignalSetType.COMPUTED && this.state.createPermitted && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/signals/create`} className="btn-primary" icon="plus" label={t('Create Signal')}/> }
+                        {this.props.signalSet.type !== SignalSetType.COMPUTED && this.state.reindexPermitted && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/reindex`} className="btn-danger" icon="retweet" label={t('Reindex')}/> }
                     </Toolbar>
                 }
                 <Table ref={node => this.table = node} withHeader dataUrl={`rest/signals-table/${this.props.signalSet.id}`} columns={columns} />

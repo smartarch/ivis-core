@@ -53,7 +53,7 @@ router.postAsync('/panels-by-template-table/:templateId', passport.loggedIn, asy
 });
 
 router.postAsync('/panel-pdf/:panelId', passport.loggedIn, async (req, res) => {
-    return res.json(await pdfExport.panel(req.context, req.params.panelId, req.body.permanentLinkConfig, req.body.timeZone));
+    return res.json(await pdfExport.panel(req.context, req.params.panelId, req.body.permanentLink, req.body.timeZone));
 });
 
 module.exports = router;

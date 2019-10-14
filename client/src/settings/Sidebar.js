@@ -22,7 +22,7 @@ export default class Sidebar extends Component {
         const settings = [];
         const t = this.props.t;
         
-        em.invoke('client.settings.installSettings', settings);
+        em.invoke('client.settings.installSettings', settings, t);
 
         if (ivisConfig.globalPermissions.showGlobalSettings)
             settings.push(<NavLink key='global' to="/settings/global" icon="cog">{t('Global settings')}</NavLink>);
@@ -38,6 +38,12 @@ export default class Sidebar extends Component {
         
         if (ivisConfig.globalPermissions.showAdminTemplates)
             settings.push(<NavLink key='templates' to="/settings/templates" icon="file-invoice">{t('Templates')}</NavLink>);
+
+        if (ivisConfig.globalPermissions.showAdminJobs)
+            settings.push(<NavLink key='jobs' to="/settings/jobs" icon="wrench" iconFamily="fas">{t('Jobs')}</NavLink>);
+
+        if (ivisConfig.globalPermissions.showAdminTasks)
+            settings.push(<NavLink key='tasks' to="/settings/tasks" icon="suitcase" iconFamily="fas">{t('Tasks')}</NavLink>);
 
         if (ivisConfig.globalPermissions.showAdminSignalSets)
             settings.push(<NavLink key='signalSets' to="/settings/signal-sets" icon="chart-line">{!em.get('settings.signalSetsAsSensors', false) ? t('Signal Sets') : t('Sensors')}</NavLink>);

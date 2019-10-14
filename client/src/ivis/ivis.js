@@ -14,7 +14,9 @@ export * from './Tooltip';
 export * from './template-file';
 export * from './OnOffAreaChart';
 export * from './PieChart';
+export * from './HistogramChart';
 export * from './Legend';
 export * from './SVG';
 export * from './Records';
+export * from './Selector';
 

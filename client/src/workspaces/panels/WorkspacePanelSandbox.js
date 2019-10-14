@@ -1,18 +1,14 @@
 'use strict';
 
-import React, {PureComponent}
-    from "react";
-import PropTypes
-    from "prop-types";
+import React, {PureComponent} from "react";
+import PropTypes from "prop-types";
 import "../../../generated/ivis-exports";
 import {getSandboxUrl} from "../../lib/urls";
-import ParamTypes
-    from "../../settings/workspaces/panels/ParamTypes";
+import ParamTypes from "../../settings/workspaces/panels/ParamTypes";
 import {parentRPC} from "../../lib/untrusted";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import memoize
-    from "memoize-one";
+import memoize from "memoize-one";
 
 @withComponentMixins([
     withTranslation
@@ -67,7 +63,7 @@ export default class WorkspacePanelSandbox extends PureComponent {
             const panel = this.props.panel;
 
             return (
-                <PanelModule ref={node => this.contentNode = node} setPanelMenu={::this.setPanelMenu} panel={panel} params={this.panelParams(panel.templateParams, panel.params)} />
+                <PanelModule ref={node => this.contentNode = node} setPanelMenu={::this.setPanelMenu} panel={panel} params={this.panelParams(panel.templateParams, panel.params)} state={panel.state}/>
             )
 
         } else {

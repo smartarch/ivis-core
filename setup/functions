@@ -139,8 +139,11 @@ function installPrerequisities {
 
         ubuntu1804)
             curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-            apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libxss libatk-bridge2.0 libgtk-3
-            dpkg -i https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.deb
+            apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libatk-bridge2.0 libgtk-3-0
+			TEMP_DEB="$(mktemp)"
+			wget -O "$TEMP_DEB" 'https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.deb'
+			dpkg -i "$TEMP_DEB"
+			rm -f "$TEMP_DEB"
             ;;
     esac
 
@@ -200,9 +203,6 @@ certs:
     mysql -u root -e "GRANT ALL PRIVILEGES ON \`$productId\`.* TO '$productId'@'localhost';"
     mysql -u $productId --password="$mysqlPassword" -e "CREATE DATABASE \`$productId\`;"
     
-    # Add new user for the $productId daemon to run as
-    useradd $productId || true
-    
     # Setup installation configuration
     cat > server/config/production.yaml <<EOT
 $emailCnf
@@ -235,7 +235,7 @@ $apiCerts
 EOT
     
 
-    reinstallModules
+    reinstallAllModules
 
     (cd client && npm run build)
 
@@ -243,15 +243,24 @@ EOT
 }
 
 
-function reinstallModules {
+function doForAllModules {
     # Install required node packages
     for idx in client shared server test-embedd ivis-core/client ivis-core/server ivis-core/shared ivis-core/embedding; do
         if [ -d $idx ]; then
-            echo Reinstalling modules in $idx
-            (cd $idx && rm -rf node_modules && npm install)
+            ($1 $idx)
         fi
     done
     echo Reinstalling done
+}
+
+function reinstallModules {
+    local idx=$1
+    echo Reinstalling modules in $idx
+    cd $idx && rm -rf node_modules && npm install
+}
+
+function reinstallAllModules {
+    doForAllModules reinstallModules
 }
 
 
@@ -448,6 +457,9 @@ ExecStart=/usr/bin/node index.js
 Type=simple
 Restart=always
 RestartSec=10
+User=$userId
+Group=$groupId
+
 
 [Install]
 WantedBy=multi-user.target

@@ -1,24 +1,13 @@
 'use strict';
 
 import React, {Component} from "react";
-import {
-    createBase,
-    isSignalVisible,
-    RenderStatus
-} from "./TimeBasedChartBase";
-import {
-    getAxisIdx,
-    LineChartBase,
-    pointsOnNoAggregation
-} from "./LineChartBase";
+import {createBase, isSignalVisible, RenderStatus} from "./TimeBasedChartBase";
+import {getAxisIdx, LineChartBase, pointsOnNoAggregation} from "./LineChartBase";
 import {select} from "d3-selection";
-import * as d3Shape
-    from "d3-shape";
+import * as d3Shape from "d3-shape";
 import {rgb} from "d3-color";
-import PropTypes
-    from "prop-types";
-import tooltipStyles
-    from "./Tooltip.scss";
+import PropTypes from "prop-types";
+import tooltipStyles from "./Tooltip.scss";
 import {Icon} from "../lib/bootstrap-components";
 import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
@@ -76,6 +65,7 @@ export class LineChart extends Component {
 
         this.boundCreateChart = ::this.createChart;
         this.boundPrepareData = ::this.prepareData;
+        this.boundGetGraphContent = ::this.getGraphContent;
     }
 
     static propTypes = {
@@ -95,6 +85,7 @@ export class LineChart extends Component {
         prepareExtraData: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
+        compareConfigs: PropTypes.func,
         lineVisibility: PropTypes.func,
         lineCurve: PropTypes.func,
 
@@ -164,6 +155,14 @@ export class LineChart extends Component {
         return stateUpdate;
     }
 
+    getGraphContent(base, paths) {
+        if (this.props.getGraphContent) {
+            return this.props.getGraphContent(createBase(base, this), paths);
+        } else {
+            return paths;
+        }
+    }
+
     render() {
         const props = this.props;
 
@@ -181,8 +180,9 @@ export class LineChart extends Component {
                 getSignalValuesForDefaultTooltip={getSignalValuesForDefaultTooltip}
                 prepareData={this.boundPrepareData}
                 getExtraQueries={this.props.getExtraQueries}
-                getGraphContent={this.props.getGraphContent}
+                getGraphContent={this.boundGetGraphContent}
                 createChart={this.boundCreateChart}
+                compareConfigs={props.compareConfigs}
                 getSignalGraphContent={(base, sigSetCid, sigCid) => <path ref={node => this.areaPathSelection[sigSetCid][sigCid] = select(node)}/>}
                 withTooltip={props.withTooltip}
                 withBrush={props.withBrush}

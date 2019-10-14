@@ -56,7 +56,14 @@ class DataAccess {
             timeSeriesSummary: {
                 getQueries: ::this.getTimeSeriesSummaryQueries,
                 processResults: ::this.processTimeSeriesSummaryResults
-
+            },
+            docs: {
+                getQueries: ::this.getDocsQueries,
+                processResults: ::this.processDocsResults
+            },
+            histogram: {
+                getQueries: ::this.getHistogramQueries,
+                processResults: ::this.processHistogramResults
             }
         };
     }
@@ -107,7 +114,8 @@ class DataAccess {
       sigSets = {
         [sigSetCid]: {
           tsSigCid: 'ts',
-          signals: [sigCid]
+          signals: [sigCid],
+          mustExist: [sigCid]
         }
       }
     */
@@ -120,13 +128,43 @@ class DataAccess {
 
             const qry = {
                 sigSetCid,
-                ranges: [
-                    {
-                        sigCid: tsSig,
-                        [timeSeriesPointType]: ts.toISOString()
-                    }
-                ]
+                filter: {
+                    type: 'and',
+                    children: [
+                        {
+                            type: 'range',
+                            sigCid: tsSig,
+                            [timeSeriesPointType]: ts.toISOString()
+                        }
+                    ]
+                }
             };
+
+            if (sigSet.mustExist) {
+                for (const sigCid of sigSet.mustExist) {
+                    qry.filter.children.push({
+                        type: 'mustExist',
+                        sigCid
+                    });
+                }
+            }
+
+            if (sigSet.horizon) {
+                const horizon = moment(ts);
+                let op;
+
+                if (timeSeriesPointType == TimeSeriesPointType.GT || timeSeriesPointType == TimeSeriesPointType.GTE) {
+                    horizon.add(sigSet.horizon);
+                    op = TimeSeriesPointType.LTE;
+                } else if (timeSeriesPointType == TimeSeriesPointType.LT || timeSeriesPointType == TimeSeriesPointType.LTE) {
+                    horizon.subtract(sigSet.horizon);
+                    op = TimeSeriesPointType.GTE;
+                } else {
+                    throw new Error('Unsupported time series point type: ' + timeSeriesPointType);
+                }
+
+                tsRange[op] = horizon.toISOString();
+            }
 
 
             const signals = [tsSig, ...sigSet.signals];
@@ -148,7 +186,7 @@ class DataAccess {
         return reqData;
     }
 
-    processTimeSeriesPointResults(responseData, sigSets, timeSeriesPointType) {
+    processTimeSeriesPointResults(responseData, sigSets) {
         const result = {};
 
         let idx = 0;
@@ -197,33 +235,30 @@ class DataAccess {
 
             const prevQry = {
                 sigSetCid,
-                ranges: [
-                    {
-                        sigCid: tsSig,
-                        lt: intervalAbsolute.from.toISOString()
-                    }
-                ]
+                filter: {
+                    type: 'range',
+                    sigCid: tsSig,
+                    lt: intervalAbsolute.from.toISOString()
+                }
             };
 
             const mainQry = {
                 sigSetCid,
-                ranges: [
-                    {
-                        sigCid: tsSig,
-                        gte: intervalAbsolute.from.toISOString(),
-                        lt: intervalAbsolute.to.toISOString()
-                    }
-                ]
+                filter: {
+                    type: 'range',
+                    sigCid: tsSig,
+                    gte: intervalAbsolute.from.toISOString(),
+                    lt: intervalAbsolute.to.toISOString()
+                }
             };
 
             const nextQry = {
                 sigSetCid,
-                ranges: [
-                    {
-                        sigCid: tsSig,
-                        gte: intervalAbsolute.to.toISOString()
-                    }
-                ]
+                filter: {
+                    type: 'range',
+                    sigCid: tsSig,
+                    gte: intervalAbsolute.to.toISOString()
+                }
             };
 
 
@@ -266,8 +301,8 @@ class DataAccess {
             } else {
                 const sigs = {};
 
-                prevQry.ranges[0].gte = moment(intervalAbsolute.from).subtract(intervalAbsolute.aggregationInterval * prevNextSize).toISOString();
-                nextQry.ranges[0].lt = moment(intervalAbsolute.to).add(intervalAbsolute.aggregationInterval * prevNextSize).toISOString();
+                prevQry.filter.gte = moment(intervalAbsolute.from).subtract(intervalAbsolute.aggregationInterval * prevNextSize).toISOString();
+                nextQry.filter.lt = moment(intervalAbsolute.to).add(intervalAbsolute.aggregationInterval * prevNextSize).toISOString();
 
                 for (const sigCid in sigSet.signals) {
                     const sig = sigSet.signals[sigCid];
@@ -400,23 +435,23 @@ class DataAccess {
                 }
 
             } else {
-                if (sigSetResPrev.aggs[0].length > 0) {
-                    const agg = sigSetResPrev.aggs[0][0];
+                if (sigSetResPrev.aggs[0].buckets.length > 0) {
+                    const agg = sigSetResPrev.aggs[0].buckets[0];
                     sigSetRes.prev = {
                         ts: moment(agg.key),
                         data: agg.values
                     }
                 }
 
-                for (const agg of sigSetResMain.aggs[0]) {
+                for (const agg of sigSetResMain.aggs[0].buckets) {
                     sigSetRes.main.push({
                         ts: moment(agg.key),
                         data: agg.values
                     });
                 }
 
-                if (sigSetResNext.aggs[0].length > 0) {
-                    const agg = sigSetResNext.aggs[0][0];
+                if (sigSetResNext.aggs[0].buckets.length > 0) {
+                    const agg = sigSetResNext.aggs[0].buckets[0];
                     sigSetRes.next = {
                         ts: moment(agg.key),
                         data: agg.values
@@ -484,13 +519,12 @@ class DataAccess {
 
             const qry = {
                 sigSetCid,
-                ranges: [
-                    {
-                        sigCid: tsSig,
-                        gte: intervalAbsolute.from.toISOString(),
-                        lt: intervalAbsolute.to.toISOString()
-                    }
-                ]
+                filter: {
+                    type: 'range',
+                    sigCid: tsSig,
+                    gte: intervalAbsolute.from.toISOString(),
+                    lt: intervalAbsolute.to.toISOString()
+                }
             };
 
             qry.summary = {
@@ -503,7 +537,7 @@ class DataAccess {
         return reqData;
     }
 
-    processTimeSeriesSummaryResults(responseData, sigSets, intervalAbsolute) {
+    processTimeSeriesSummaryResults(responseData, sigSets) {
         const result = {};
         let idx = 0;
         for (const sigSetCid in sigSets) {
@@ -516,6 +550,71 @@ class DataAccess {
     }
 
 
+
+    /*
+      signals = [ sigCid1, sigCid2 ]
+    */
+    getHistogramQueries(sigSetCid, signals, maxBucketCount, minStep, filter) {
+        const qry = {
+            sigSetCid,
+            filter,
+            bucketGroups: {
+                bucket: {
+                    maxBucketCount,
+                    minStep
+                }
+            },
+            aggs: []
+        };
+
+        for (const sigCid of signals) {
+            qry.aggs.push(
+                {
+                    sigCid,
+                    bucketGroup: 'bucket',
+                    minDocCount: 0
+                }
+            );
+        }
+
+        return [qry];
+    }
+
+    processHistogramResults(responseData, sigSetCid, signals) {
+        if (signals.length > 0) {
+            return {
+                step: responseData[0].aggs[0].step,
+                offset: responseData[0].aggs[0].offset,
+                buckets: responseData[0].aggs.map(x => x.buckets)
+            };
+        } else {
+            return {
+                buckets: []
+            };
+        }
+    }
+
+
+    /*
+        signals = [ sigCid1, sigCid2 ]
+    */
+    getDocsQueries(sigSetCid, signals, filter, sort, limit) {
+        const qry = {
+            sigSetCid,
+            filter,
+            docs: {
+                signals,
+                sort,
+                limit
+            }
+        };
+
+        return [qry];
+    }
+
+    processDocsResults(responseData, sigSetCid, signals) {
+        return responseData[0].docs;
+    }
 
 
     /* Private methods */
@@ -596,6 +695,14 @@ export class DataAccessSession {
         return await this._getLatestOne('timeSeriesSummary', sigSets, intervalAbsolute);
     }
 
+    async getLatestHistogram(sigSetCid, signals, maxBucketCount, minStep, filter) {
+        return await this._getLatestOne('histogram', sigSetCid, signals, maxBucketCount, minStep, filter);
+    }
+
+    async getLatestDocs(sigSetCid, signals, filter, sort, limit) {
+        return await this._getLatestOne('docs', sigSetCid, signals, filter, sort, limit);
+    }
+
     async getLatestMixed(queries) {
         return await this._getLatestMultiple('mixed', queries);
     }
@@ -619,7 +726,7 @@ class TimeSeriesDataProvider extends Component {
     static propTypes = {
         fetchDataFun: PropTypes.func.isRequired,
         renderFun: PropTypes.func.isRequired,
-        noDataRenderFun: PropTypes.func
+        loadingRenderFun: PropTypes.func
     }
 
     componentDidUpdate(prevProps) {
@@ -652,8 +759,8 @@ class TimeSeriesDataProvider extends Component {
         if (this.state.signalSetsData) {
             return this.props.renderFun(this.state.signalSetsData)
         } else {
-            if (this.props.noDataRenderFun) {
-                return this.props.noDataRenderFun();
+            if (this.props.loadingRenderFun) {
+                return this.props.loadingRenderFun();
             } else {
                 return null;
             }
@@ -667,7 +774,7 @@ export class TimeSeriesProvider extends Component {
         intervalFun: PropTypes.func,
         signalSets: PropTypes.object.isRequired,
         renderFun: PropTypes.func.isRequired,
-        noDataRenderFun: PropTypes.func
+        loadingRenderFun: PropTypes.func
     }
 
     static defaultProps = {
@@ -679,7 +786,7 @@ export class TimeSeriesProvider extends Component {
             <TimeSeriesDataProvider
                 fetchDataFun={async (dataAccessSession, intervalAbsolute) => await dataAccessSession.getLatestTimeSeries(this.props.signalSets, this.props.intervalFun(intervalAbsolute))}
                 renderFun={this.props.renderFun}
-                noDataRenderFun={this.props.noDataRenderFun}
+                loadingRenderFun={this.props.loadingRenderFun}
             />
         );
     }
@@ -690,7 +797,7 @@ export class TimeSeriesSummaryProvider extends Component {
         intervalFun: PropTypes.func,
         signalSets: PropTypes.object.isRequired,
         renderFun: PropTypes.func.isRequired,
-        noDataRenderFun: PropTypes.func
+        loadingRenderFun: PropTypes.func
     }
 
     static defaultProps = {
@@ -702,7 +809,7 @@ export class TimeSeriesSummaryProvider extends Component {
             <TimeSeriesDataProvider
                 fetchDataFun={async (dataAccessSession, intervalAbsolute) => await dataAccessSession.getLatestTimeSeriesSummary(this.props.signalSets, this.props.intervalFun(intervalAbsolute))}
                 renderFun={this.props.renderFun}
-                noDataRenderFun={this.props.noDataRenderFun}
+                loadingRenderFun={this.props.loadingRenderFun}
             />
         );
     }
@@ -720,7 +827,7 @@ export class TimeSeriesPointProvider extends Component {
         tsSpec: PropTypes.object,
         signalSets: PropTypes.object.isRequired,
         renderFun: PropTypes.func.isRequired,
-        noDataRenderFun: PropTypes.func
+        loadingRenderFun: PropTypes.func
     }
 
     static defaultProps = {
@@ -732,7 +839,7 @@ export class TimeSeriesPointProvider extends Component {
             <TimeSeriesDataProvider
                 fetchDataFun={async (dataAccessSession, intervalAbsolute) => await dataAccessSession.getLatestTimeSeriesPoint(this.props.signalSets, this.props.tsSpec.getTs(intervalAbsolute), this.props.tsSpec.pointType)}
                 renderFun={this.props.renderFun}
-                noDataRenderFun={this.props.noDataRenderFun}
+                loadingRenderFun={this.props.loadingRenderFun}
             />
         );
     }

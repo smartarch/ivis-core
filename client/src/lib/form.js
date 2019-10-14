@@ -3,39 +3,21 @@
 import React, {Component} from 'react';
 import {withTranslation} from './i18n';
 import axios, {HTTPMethod} from './axios';
-import Immutable
-    from 'immutable';
-import PropTypes
-    from 'prop-types';
-import interoperableErrors
-    from '../../../shared/interoperable-errors';
+import Immutable from 'immutable';
+import PropTypes from 'prop-types';
+import interoperableErrors from '../../../shared/interoperable-errors';
 import {withPageHelpers} from './page'
-import {
-    ParentErrorHandlerContext,
-    withAsyncErrorHandler,
-    withErrorHandling
-} from './error-handling';
-import {
-    TreeSelectMode,
-    TreeTable
-} from './tree';
-import {
-    Table,
-    TableSelectMode
-} from './table';
-import {
-    Button,
-    Icon
-} from "./bootstrap-components";
-import { SketchPicker } from 'react-color';
+import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
+import {TreeSelectMode, TreeTable} from './tree';
+import {Table, TableSelectMode} from './table';
+import {Button} from "./bootstrap-components";
+import {SketchPicker} from 'react-color';
 
-import ACEEditorRaw
-    from 'react-ace';
+import ACEEditorRaw from 'react-ace';
 import 'brace/theme/github';
 import 'brace/ext/searchbox';
 
-import DayPicker
-    from 'react-day-picker';
+import DayPicker from 'react-day-picker';
 import 'react-day-picker/lib/style.css';
 import {
     birthdayYear,
@@ -48,15 +30,10 @@ import {
     parseDate
 } from '../../../shared/date';
 
-import styles
-    from "./styles.scss";
-import moment
-    from "moment";
+import styles from "./styles.scss";
+import moment from "moment";
 import {getUrl} from "./urls";
-import {
-    createComponentMixin,
-    withComponentMixins
-} from "./decorator-helpers";
+import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
 
 
 const FormState = {
@@ -344,7 +321,8 @@ class CheckBox extends Component {
         text: PropTypes.string,
         label: PropTypes.string,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-        format: PropTypes.string
+        format: PropTypes.string,
+        className: PropTypes.string
     }
 
     render() {
@@ -353,12 +331,12 @@ class CheckBox extends Component {
         const id = this.props.id;
         const htmlId = 'form_' + id;
 
-        const className = owner.addFormValidationClass('form-check-input', id);
+        const inputClassName = owner.addFormValidationClass('form-check-input', id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <div className="form-group form-check my-2">
-                <input className={className} type="checkbox" checked={owner.getFormValue(id)} id={htmlId} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
-                <label className="form-check-label" htmlFor={htmlId}>{props.text}</label>
+            <div className={`form-group form-check my-2 ${this.props.className}`}>
+                <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)} id={htmlId} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
+                <label className={styles.checkboxText} htmlFor={htmlId}>{props.text}</label>
             </div>
         );
     }
@@ -700,7 +678,8 @@ class Dropdown extends Component {
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         options: PropTypes.array,
         className: PropTypes.string,
-        format: PropTypes.string
+        format: PropTypes.string,
+        disabled: PropTypes.bool
     }
 
     render() {
@@ -728,7 +707,7 @@ class Dropdown extends Component {
         const className = owner.addFormValidationClass('form-control ' + (props.className || '') , id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)} onChange={evt => owner.updateFormValue(id, evt.target.value)}>
+            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)} onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}>
                 {options}
             </select>
         );

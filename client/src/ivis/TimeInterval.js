@@ -54,21 +54,20 @@ export function defaultGetMinAggregationInterval(minPointDistance = 0) {
     }
 }
 
-
 export class IntervalSpec {
     constructor(from, to, aggregationInterval, refreshInterval) {
         this.from = from;
         this.to = to;
-        this.refreshInterval = refreshInterval;
         this.aggregationInterval = aggregationInterval; /* null means auto, moment.duration(0, 's') means no aggregation */
+        this.refreshInterval = refreshInterval;
     }
 
     exportData() {
         return {
             from: this.from,
             to: this.to,
-            refreshInterval: this.refreshInterval && this.refreshInterval.toISOString(),
-            aggregationInterval: this.aggregationInterval && this.aggregationInterval.toISOString()
+            aggregationInterval: this.aggregationInterval && this.aggregationInterval.toISOString(),
+            refreshInterval: this.refreshInterval && this.refreshInterval.toISOString()
         }
     }
 
@@ -79,6 +78,24 @@ export class IntervalSpec {
             exportedData.aggregationInterval && moment.duration(exportedData.aggregationInterval),
             exportedData.refreshInterval && moment.duration(exportedData.refreshInterval)
         );
+    }
+
+    freeze() {
+        const {from, to} = this.getAbsoluteFromTo();
+
+        return new IntervalSpec(
+            from.toISOString(),
+            to.toISOString(),
+            this.aggregationInterval,
+            this.refreshInterval
+        );
+    }
+
+    getAbsoluteFromTo() {
+        const from = dateMath.parse(this.from, false);
+        const to = dateMath.parse(this.to, true);
+
+        return {from, to};
     }
 }
 
@@ -113,13 +130,17 @@ export class IntervalHistory {
     }
 }
 
+let cnt = 0;
 export class TimeInterval {
     constructor(onChange, data) {
+        cnt += 1;
+        this.cnt = cnt;
         this.started = false;
 
         this.refreshTimeout = null;
 
         this.onChange = onChange;
+        this.successor = null;
 
 
         if (data && data.conf) {
@@ -162,35 +183,51 @@ export class TimeInterval {
     }
 
     exportData() {
+        if (this.successor) return this.successor.exportData();
+        
         return {
-            conf: this.conf,
-            spec: this.spec.exportData(),
-            absolute: this.absolute.exportData()
+            conf: {
+                chartWidth: this.conf.chartWidth
+            },
+            spec: this.spec.exportData()
         };
     }
 
     static fromExportedData(onChange, exportedData) {
         const data = {
             conf: exportedData.conf,
-            spec: IntervalSpec.fromExportedData(exportedData.spec),
-            absolute: IntervalAbsolute.fromExportedData(exportedData.absolute)
+            spec: IntervalSpec.fromExportedData(exportedData.spec)
         };
 
         return new TimeInterval(onChange, data);
     }
 
+    freeze() {
+        if (this.successor) return this.successor.freeze();
+
+        const intv = this._clone();
+        intv.spec = intv.spec.freeze();
+
+        return intv;
+    }
+
     start() {
-        this.started = true;
-        this._scheduleRefreshTimeout();
+        if (this.successor) return this.successor.start();
+
+        this._start();
     }
 
     stop() {
+        if (this.successor) return this.successor.stop();
+
         this.started = false;
         clearTimeout(this.refreshTimeout);
     }
 
     setSpec(spec, replaceHistory = false) {
-        const intv = this.clone();
+        if (this.successor) return this.successor.setSpec(spec, replaceHistory);
+
+        const intv = this._clone();
 
         intv.spec = new IntervalSpec(
             spec.from !== undefined ? spec.from : this.spec.from,
@@ -211,7 +248,7 @@ export class TimeInterval {
 
         clearTimeout(this.refreshTimeout);
         if (this.started) {
-            intv.start();
+            intv._start();
         }
 
         intv._computeAbsolute();
@@ -221,12 +258,14 @@ export class TimeInterval {
     }
 
     setConf(conf) {
-        const intv = this.clone();
+        if (this.successor) return this.successor.setConf(conf);
+
+        const intv = this._clone();
         Object.assign(intv.conf, conf);
 
         clearTimeout(this.refreshTimeout);
         if (this.started) {
-            intv.start();
+            intv._start();
         }
 
         intv._computeAbsolute();
@@ -236,11 +275,13 @@ export class TimeInterval {
     }
 
     refresh() {
-        const intv = this.clone();
+        if (this.successor) return this.successor.refresh();
+
+        const intv = this._clone();
 
         clearTimeout(this.refreshTimeout);
         if (this.started) {
-            intv.start();
+            intv._start();
         }
 
         intv._computeAbsolute();
@@ -250,8 +291,10 @@ export class TimeInterval {
     }
 
     goBack() {
+        if (this.successor) return this.successor.goBack();
+
         if (this.history.idx > 0) {
-            const intv = this.clone();
+            const intv = this._clone();
 
             intv.history = new IntervalHistory(intv.history.specs, intv.history.idx - 1);
 
@@ -259,7 +302,7 @@ export class TimeInterval {
 
             clearTimeout(this.refreshTimeout);
             if (this.started) {
-                intv.start();
+                intv._start();
             }
 
             intv._computeAbsolute();
@@ -272,8 +315,10 @@ export class TimeInterval {
     }
 
     goForward() {
+        if (this.successor) return this.successor.goForward();
+
         if (this.history.idx < this.history.specs.length - 1) {
-            const intv = this.clone();
+            const intv = this._clone();
 
             intv.history = new IntervalHistory(intv.history.specs, intv.history.idx + 1);
 
@@ -281,7 +326,7 @@ export class TimeInterval {
 
             clearTimeout(this.refreshTimeout);
             if (this.started) {
-                intv.start();
+                intv._start();
             }
 
             intv._computeAbsolute();
@@ -289,10 +334,6 @@ export class TimeInterval {
         }
         
         return this;
-    }
-
-    clone() {
-        return new TimeInterval(this.onChange, this);
     }
 
 
@@ -313,9 +354,17 @@ export class TimeInterval {
     }
 
 
+    _clone() {
+        return new TimeInterval(this.onChange, this);
+    }
+
+    _start() {
+        this.started = true;
+        this._scheduleRefreshTimeout();
+    }
+
     _computeAbsolute() {
-        const from = dateMath.parse(this.spec.from, false);
-        const to = dateMath.parse(this.spec.to, true);
+        const {from, to} = this.spec.getAbsoluteFromTo();
 
         const minAggregationInterval = this.getMinAggregationInterval(from, to);
 
@@ -333,7 +382,10 @@ export class TimeInterval {
     _scheduleRefreshTimeout() {
         if (this.started && this.spec.refreshInterval) {
             this.refreshTimeout = setTimeout(() => {
-                const intv = this.clone();
+                const intv = this._clone();
+                this.successor = intv;
+
+                intv.started = this.started;
                 intv._computeAbsolute();
                 intv._notifyChange('absolute');
                 intv._scheduleRefreshTimeout();

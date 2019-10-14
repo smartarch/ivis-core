@@ -3,8 +3,9 @@
 const elasticsearch = require('../elasticsearch');
 const {enforce} = require('../helpers');
 const interoperableErrors = require('../../../shared/interoperable-errors');
-const { IndexMethod } = require('../../../shared/signals');
-const { getIndexName, getFieldName, createIndex, extendMapping } = require('./elasticsearch-common');
+const { IndexMethod} = require('../../../shared/signals');
+const {SignalSetType} = require('../../../shared/signal-sets');
+const {getIndexName, getFieldName, createIndex, extendMapping} = require('./elasticsearch-common');
 const contextHelpers = require('../context-helpers');
 
 const signalSets = require('../../models/signal-sets');
@@ -20,15 +21,25 @@ const insertBatchSize = 1000;
 
 const indexerExec = em.get('indexer.elasticsearch.exec', path.join(__dirname, '..', '..', 'services', 'indexer-elasticsearch.js'));
 
+const events = require('events');
+const emitter = new events.EventEmitter();
+
 let indexerProcess;
 
 async function init() {
     log.info('Indexer', 'Spawning indexer process');
 
-    indexerProcess = fork(indexerExec, [], {
+    const options ={
         cwd: path.join(__dirname, '..', '..'),
         env: {NODE_ENV: process.env.NODE_ENV}
-    });
+    };
+
+    if (process.env.NODE_ENV && process.env.NODE_ENV === 'development') {
+        options.silent = false;
+        options.execArgv = ['--inspect=0'];
+    }
+
+    indexerProcess = fork(indexerExec, [], options);
 
     let startedCallback;
     const startedPromise = new Promise((resolve, reject) => {
@@ -37,10 +48,17 @@ async function init() {
 
     indexerProcess.on('message', msg => {
         if (msg) {
-            if (msg.type === 'started') {
-                log.info('Indexer', 'Indexer process started');
-                return startedCallback();
+            switch (msg.type) {
+                case 'started':
+                    log.info('Indexer', 'Indexer process started');
+                    return startedCallback();
+                case 'index':
+                    if (msg.cid) {
+                        emitter.emit('index', msg.cid);
+                    }
+                    break;
             }
+
         }
     });
 
@@ -52,9 +70,12 @@ async function init() {
 
     const sigSets = await signalSets.list();
     for (const sigSet of sigSets) {
-        await signalSets.index(contextHelpers.getAdminContext(), sigSet.id, IndexMethod.INCREMENTAL);
+        if (sigSet.type !== SignalSetType.COMPUTED) {
+            await signalSets.index(contextHelpers.getAdminContext(), sigSet.id, IndexMethod.INCREMENTAL);
+        }
     }
 }
+
 
 
 async function onCreateStorage(sigSet) {
@@ -119,15 +140,16 @@ async function onInsertRecords(sigSetWithSigMap, records) {
         bulk.push(esDoc);
 
         if (bulk.length >= insertBatchSize) {
-            await elasticsearch.bulk({body:bulk});
+            await elasticsearch.bulk({body: bulk});
             bulk = [];
         }
     }
 
     if (bulk.length > 0) {
-        await elasticsearch.bulk({body:bulk});
+        await elasticsearch.bulk({body: bulk});
     }
 
+    emitter.emit('insert', sigSetWithSigMap.cid);
     return {};
 }
 
@@ -166,6 +188,7 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
         }
     });
 
+    emitter.emit('update', sigSetWithSigMap.cid);
     return {};
 }
 
@@ -185,6 +208,7 @@ async function onRemoveRecord(sigSet, recordId) {
         }
     }
 
+    emitter.emit('remove', sigSet.cid);
     return {};
 }
 
@@ -197,10 +221,11 @@ function cancelIndex(sigSet) {
     });
 }
 
-function index(sigSet, method) {
+function index(sigSet, method, from) {
     indexerProcess.send({
         type: 'index',
         method,
+        from,
         cid: sigSet.cid,
     });
 }
@@ -215,3 +240,4 @@ module.exports.onUpdateRecord = onUpdateRecord;
 module.exports.onRemoveRecord = onRemoveRecord;
 module.exports.index = index;
 module.exports.init = init;
+module.exports.emitter = emitter;
