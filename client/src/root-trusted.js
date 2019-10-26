@@ -8,9 +8,6 @@ import emCommonDefaults from '../../shared/em-common-defaults';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import {I18nextProvider} from 'react-i18next';
-import i18n from './lib/i18n';
-
 import { Section } from './lib/page';
 import Account from './account/Account';
 import Login from './login/Login';
@@ -75,7 +72,7 @@ import GlobalSettings from './settings/global/Update';
 
 import ivisConfig from "ivisConfig";
 
-import { getBuiltinTemplate } from './lib/builtin-templates';
+import {TranslationRoot} from "./lib/i18n";
 
 emCommonDefaults.setDefaults(em);
 
@@ -115,8 +112,11 @@ const getStructure = t => {
                 navs: {
                     edit: {
                         title: t('Account'),
+                        resolve: {
+                            user: params => `rest/account`
+                        },
                         link: '/account/edit',
-                        panelComponent: Account
+                        panelRender: props => (<Account entity={props.resolved.user} />)
                     },
                     api: {
                         title: t('API'),
@@ -588,7 +588,7 @@ const getStructure = t => {
 };
 
 ReactDOM.render(
-    <I18nextProvider i18n={i18n}><Section root='/' structure={getStructure} /></I18nextProvider>,
+    <TranslationRoot><Section root='/' structure={getStructure} /></TranslationRoot>,
     document.getElementById('root')
 );
 

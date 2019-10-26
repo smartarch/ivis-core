@@ -87,7 +87,9 @@ tasks:
   runLogRetentionTime: 1
   python:
     # On Centos7 with SCL use: scl enable rh-python36 -- python3 -m venv
-    venvCmd: "python3 -m venv"
+    # [Ubuntu 18.04] If there is error message with Unable to symlink '' to '...',
+    # specifying full python3 path might fix that
+    venvCmd: "/usr/bin/python3 -m venv"
 
 roles:
   global:

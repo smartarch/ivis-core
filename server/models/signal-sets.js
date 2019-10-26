@@ -153,6 +153,10 @@ async function _createTx(tx, context, entity) {
         status: IndexingStatus.READY
     });
 
+    if (entity.type){
+        enforce(entity.type in Object.values(SignalSetType), `${entity.type} is not valid signal set type.`)
+    }
+
     const ids = await tx('signal_sets').insert(filteredEntity);
     const id = ids[0];
 
@@ -619,7 +623,14 @@ async function getAllowedSignals(templateParams, params) {
                             allowedSigSets.set(sigSetCid, sigSet);
                         }
 
-                        sigSet.add(sigCid);
+                        const card = parseCardinality(spec.cardinality);
+                        if (card.max === 1) {
+                            sigSet.add(sigCid);
+                        } else {
+                            for (const entry of sigCid) {
+                                sigSet.add(entry);
+                            }
+                        }
                     }
                 }
             } else if (spec.type === 'fieldset') {

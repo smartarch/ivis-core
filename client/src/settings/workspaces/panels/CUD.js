@@ -14,12 +14,13 @@ import {
     ButtonRow,
     Dropdown,
     Fieldset,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
     TableSelect,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../../lib/form";
 import "brace/mode/html";
 import "brace/mode/json";
@@ -124,9 +125,10 @@ export class ImportExportModalDialog extends Component {
         const t = this.props.t;
 
         return (
-            <ModalDialog hidden={!this.props.visible} title={t('Import panel settings')} onCloseAsync={async () => this.doClose()} buttons={[
-                { label: t('Close'), className: 'btn-primary', onClickAsync: async () => this.doClose() },
-                { label: t('Import'), className: 'btn-danger', onClickAsync: async () => this.doImport() }
+            <ModalDialog hidden={!this.props.visible} title={t('Import panel settings')}
+                         onCloseAsync={async () => this.doClose()} buttons={[
+                {label: t('Close'), className: 'btn-primary', onClickAsync: async () => this.doClose()},
+                {label: t('Import'), className: 'btn-danger', onClickAsync: async () => this.doImport()}
             ]}>
                 <Form stateOwner={this}>
                     <ACEEditor id="code" mode="json" format="wide"/>
@@ -218,30 +220,35 @@ export default class CUD extends Component {
         }
     }
 
+    getDefaultBuiltinTemplate() {
+        return anyBuiltinTemplate() ? Object.keys(getBuiltinTemplates())[0] : null;
+    }
+
     componentDidMount() {
-        const getDefaultBuiltinTemplate = () => anyBuiltinTemplate() ? Object.keys(getBuiltinTemplates())[0] : null;
 
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                this.paramTypes.setFields(data.templateParams, data.params, data);
-                data.orderBefore = data.orderBefore.toString();
-                data.templateType = data.template ? 'user' : 'builtin';
-                if (!data.builtin_template) {
-                    data.builtin_template = getDefaultBuiltinTemplate();
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
 
         } else {
             this.populateFormValues({
                 name: '',
                 description: '',
                 template: null,
-                builtin_template: getDefaultBuiltinTemplate(),
+                builtin_template: this.getDefaultBuiltinTemplate(),
                 workspace: this.props.workspace.id,
                 namespace: ivisConfig.user.namespace,
                 orderBefore: 'end',
                 templateType: 'user'
             });
+        }
+    }
+
+    getFormValuesMutator(data) {
+        this.paramTypes.setFields(data.templateParams, data.params, data);
+        data.orderBefore = data.orderBefore.toString();
+        data.templateType = data.template ? 'user' : 'builtin';
+        if (!data.builtin_template) {
+            data.builtin_template = this.getDefaultBuiltinTemplate();
         }
     }
 
@@ -283,7 +290,35 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    async submitHandler() {
+    submitFormValuesMutator(data) {
+        let params = null;
+        if (data.templateParams) {
+            params = this.paramTypes.getParams(data.templateParams, data);
+        }
+
+        data.params = params;
+
+        if (data.templateType === 'user') {
+            data.builtin_template = null;
+        } else {
+            data.template = null;
+        }
+
+        data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
+        return filterData(data, [
+            'name',
+            'description',
+            'workspace',
+            'template',
+            'builtin_template',
+            'params',
+            'namespace',
+            'orderBefore'
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         if (this.getFormValue('template') && !this.getFormValue('templateParams')) {
@@ -304,31 +339,25 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-                const params = this.paramTypes.getParams(data.templateParams, data);
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-                const paramPrefix = this.paramTypes.getParamPrefix();
-                for (const paramId in data) {
-                    if (paramId.startsWith(paramPrefix)) {
-                        delete data[paramId];
+            if (submitResult) {
+
+                if (this.props.entity) {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel updated'));
+                    } else {
+                        await this.getFormValuesFromURL(`rest/panels/${this.props.entity.id}`);
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('Panel updated'));
+                    }
+                } else {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels/${submitResult}/edit`, 'success', t('Panel saved'));
                     }
                 }
-
-                delete data.templateParams;
-                data.params = params;
-
-                if (data.templateType === 'user') {
-                    data.builtin_template = null;
-                } else {
-                    data.template = null;
-                }
-                delete data.templateType;
-
-                data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
-            });
-
-            if (submitSuccessful) {
-                this.navigateToWithFlashMessage(`/settings/workspaces/${this.props.workspace.id}/panels`, 'success', t('Panel saved'));
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -341,22 +370,22 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
-        const canDelete =  isEdit && this.props.entity.permissions.includes('delete');
+        const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const templateColumns = [
-            { data: 1, title: t('Name') },
-            { data: 2, title: t('Description') },
-            { data: 5, title: t('Created'), render: data => moment(data).fromNow() }
+            {data: 1, title: t('Name')},
+            {data: 2, title: t('Description')},
+            {data: 5, title: t('Created'), render: data => moment(data).fromNow()}
         ];
 
         const workspaceColumns = [
-            { data: 1, title: t('#') },
-            { data: 2, title: t('Name') },
-            { data: 3, title: t('Description') },
-            { data: 4, title: t('Created'), render: data => moment(data).fromNow() }
+            {data: 1, title: t('#')},
+            {data: 2, title: t('Name')},
+            {data: 3, title: t('Description')},
+            {data: 4, title: t('Created'), render: data => moment(data).fromNow()}
         ];
 
-        const templateTypeOptions =[
+        const templateTypeOptions = [
             {key: 'user', label: t('User-defined template')},
             {key: 'builtin', label: t('Built-in template')},
         ];
@@ -367,9 +396,12 @@ export default class CUD extends Component {
         }
 
         // FIXME - panelsVisible should be fetched dynamically based on the selected workspace
-        const orderOptions =[
+        const orderOptions = [
             {key: 'none', label: t('Not visible')},
-            ...this.props.panelsVisible.filter(x => !this.props.entity || x.id !== this.props.entity.id).map(x => ({ key: x.id.toString(), label: x.name})),
+            ...this.props.panelsVisible.filter(x => !this.props.entity || x.id !== this.props.entity.id).map(x => ({
+                key: x.id.toString(),
+                label: x.name
+            })),
             {key: 'end', label: t('End of list')}
         ];
 
@@ -411,20 +443,23 @@ export default class CUD extends Component {
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
 
                     {anyBuiltinTemplate() &&
-                        <Dropdown id="templateType" label={t('Template type')} options={templateTypeOptions}/>
+                    <Dropdown id="templateType" label={t('Template type')} options={templateTypeOptions}/>
                     }
 
                     {this.getFormValue('templateType') === 'user' ?
-                        <TableSelect id="template" label={t('Template')} withHeader dropdown dataUrl="rest/templates-table" columns={templateColumns} selectionLabelIndex={1}/>
+                        <TableSelect id="template" label={t('Template')} withHeader dropdown
+                                     dataUrl="rest/templates-table" columns={templateColumns} selectionLabelIndex={1}/>
                         :
                         <Dropdown id="builtin_template" label={t('Template')} options={builtinTemplateOptions}/>
                     }
 
                     {isEdit &&
-                        <TableSelect id="workspace" label={t('Workspace')} withHeader dropdown dataUrl="rest/workspaces-table" columns={workspaceColumns} selectionLabelIndex={2}/>
+                    <TableSelect id="workspace" label={t('Workspace')} withHeader dropdown
+                                 dataUrl="rest/workspaces-table" columns={workspaceColumns} selectionLabelIndex={2}/>
                     }
                     <NamespaceSelect/>
-                    <Dropdown id="orderBefore" label={t('Order (before)')} options={orderOptions} help={t('Select the panel before which this panel should appear in the menu. To exclude the panel from listings, select "Not visible".')}/>
+                    <Dropdown id="orderBefore" label={t('Order (before)')} options={orderOptions}
+                              help={t('Select the panel before which this panel should appear in the menu. To exclude the panel from listings, select "Not visible".')}/>
 
                     {configSpec ?
                         params &&
@@ -433,7 +468,8 @@ export default class CUD extends Component {
                                 label={
                                     <div>
                                         <Toolbar className={styles.fieldsetToolbar}>
-                                            <Button className="btn-primary" label={t('Import / Export')} onClickAsync={ async () => this.setState({importExportModalShown: true}) }/>
+                                            <Button className="btn-primary" label={t('Import / Export')}
+                                                    onClickAsync={async () => this.setState({importExportModalShown: true})}/>
                                         </Toolbar>
                                         <span>{t('Panel parameters')}</span>
                                     </div>
@@ -449,7 +485,10 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/workspaces/${this.props.workspace.id}/panels/${this.props.entity.id}/delete`}/>}
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                               to={`/settings/workspaces/${this.props.workspace.id}/panels/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

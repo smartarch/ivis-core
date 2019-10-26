@@ -9,12 +9,14 @@ import {
     ButtonRow,
     Dropdown,
     Fieldset,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
     TableSelect,
     TextArea,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -74,25 +76,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                this.paramTypes.setFields(data.taskParams, data.params, data);
-
-                if (data['state'] === JobState.INVALID_PARAMS) {
-                    data['state'] = JobState.DISABLED;
-                }
-
-                const sets = [];
-                for (const trigger of data.signal_sets_triggers) {
-                    const setUid = this.getNextSetEntryId();
-
-                    const prefix = SETS_PREFIX + setUid + '_';
-
-                    data[prefix + 'trigger'] = trigger;
-
-                    sets.push(setUid);
-                }
-                data["sets"] = sets;
-            });
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 name: '',
@@ -114,7 +98,7 @@ export default class CUD extends Component {
             state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
 
             if (newVal) {
-               this.fetchTaskParams(newVal);
+                this.fetchTaskParams(newVal);
             }
         }
     }
@@ -130,11 +114,6 @@ export default class CUD extends Component {
                 this.paramTypes.onChange(configSpec, mutStateData, key, oldVal, newVal)
             }
         }
-    }
-
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
     }
 
     static isPositiveInteger(s) {
@@ -205,8 +184,63 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
+    getFormValuesMutator(data) {
+        this.paramTypes.setFields(data.taskParams, data.params, data);
 
-    async submitHandler() {
+        if (data['state'] === JobState.INVALID_PARAMS) {
+            data['state'] = JobState.DISABLED;
+        }
+
+        const sets = [];
+        for (const trigger of data.signal_sets_triggers) {
+            const setUid = this.getNextSetEntryId();
+
+            const prefix = SETS_PREFIX + setUid + '_';
+
+            data[prefix + 'trigger'] = trigger;
+
+            sets.push(setUid);
+        }
+        data["sets"] = sets;
+
+    }
+
+    submitFormValuesMutator(data) {
+        if (this.props.entity) {
+            data.settings = this.props.entity.settings;
+        }
+
+        const triggers = [];
+        for (const setUid of data.sets) {
+            const prefix = SETS_PREFIX + setUid + '_';
+            let trigger = data[prefix + 'trigger'];
+            if (trigger) {
+                triggers.push(trigger)
+            }
+        }
+        data.signal_sets_triggers = triggers;
+
+        data.params = {};
+        if (data.taskParams) {
+            data.params = this.paramTypes.getParams(data.taskParams, data);
+        }
+
+        return filterData(data, [
+            'name',
+            'description',
+            'task',
+            'params',
+            'state',
+            'trigger',
+            'min_gap',
+            'delay',
+            'namespace',
+            'signal_sets_triggers',
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         if (this.getFormValue('task') && !this.getFormValue('taskParams')) {
@@ -227,44 +261,24 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
+
+
+            if (submitResult) {
                 if (this.props.entity) {
-                    data.settings = this.props.entity.settings;
-                }
-
-                const triggers = [];
-                for (const setUid of data.sets) {
-                    const prefix = SETS_PREFIX + setUid + '_';
-                    let trigger = data[prefix + 'trigger'];
-                    if (trigger) {
-                        triggers.push(trigger)
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job updated'));
+                    } else {
+                        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('Job updated'));
                     }
-                }
-                data.signal_sets_triggers = triggers;
-
-                const params = this.paramTypes.getParams(data.taskParams, data);
-
-                const paramPrefix = this.paramTypes.getParamPrefix();
-                for (const paramId in data) {
-                    if (paramId.startsWith(paramPrefix)) {
-                        delete data[paramId];
-                    }
-                }
-
-                delete data.taskParams;
-                data.params = params;
-            });
-
-
-            if (submitSuccessful) {
-                if (this.props.entity) {
-                    await this.loadFormValues();
-                    this.enableForm();
-                    this.clearFormStatusMessage();
-                    this.hideFormValidation();
-                    this.setFlashMessage('success', t('Job saved'));
                 } else {
-                    this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job saved'));
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/jobs/${submitResult}/edit`, 'success', t('Job saved'));
+                    }
                 }
             } else {
                 this.enableForm();
@@ -422,8 +436,10 @@ export default class CUD extends Component {
                     }
 
                     <ButtonRow>
-                        <Button type="submit" className="btn-primary" icon="ok" label={t('Save')}/>
-                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {canDelete && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                   to={`/settings/jobs/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>

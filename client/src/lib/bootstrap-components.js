@@ -2,12 +2,8 @@
 
 import React, {Component} from 'react';
 import {withTranslation} from './i18n';
-import PropTypes
-    from 'prop-types';
-import {
-    withAsyncErrorHandler,
-    withErrorHandling
-} from './error-handling';
+import PropTypes from 'prop-types';
+import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import {withComponentMixins} from "./decorator-helpers";
 
 @withComponentMixins([
@@ -224,10 +220,6 @@ export class ModalDialog extends Component {
         super(props);
 
         const t = props.t;
-
-        this.state = {
-            buttons: this.props.buttons || [ { label: t('close'), className: 'btn-secondary', onClickAsync: null } ]
-        };
     }
 
     static propTypes = {
@@ -289,7 +281,7 @@ export class ModalDialog extends Component {
     }
 
     async onButtonClick(idx) {
-        const buttonSpec = this.state.buttons[idx];
+        const buttonSpec = this.props.buttons[idx];
         if (buttonSpec.onClickAsync) {
             await buttonSpec.onClickAsync(idx);
         }
@@ -299,11 +291,15 @@ export class ModalDialog extends Component {
         const props = this.props;
         const t = props.t;
 
-        const buttons = [];
-        for (let idx = 0; idx < this.state.buttons.length; idx++) {
-            const buttonSpec = this.state.buttons[idx];
-            const button = <Button key={idx} label={buttonSpec.label} className={buttonSpec.className} onClickAsync={async () => this.onButtonClick(idx)} />
-            buttons.push(button);
+        let buttons;
+
+        if (this.props.buttons) {
+            buttons = [];
+            for (let idx = 0; idx < this.props.buttons.length; idx++) {
+                const buttonSpec = this.props.buttons[idx];
+                const button = <Button key={idx} label={buttonSpec.label} className={buttonSpec.className} onClickAsync={async () => await this.onButtonClick(idx)} />
+                buttons.push(button);
+            }
         }
 
         return (
@@ -319,9 +315,11 @@ export class ModalDialog extends Component {
                             <button type="button" className="close" aria-label={t('close')} onClick={::this.onClose}><span aria-hidden="true">&times;</span></button>
                         </div>
                         <div className="modal-body">{this.props.children}</div>
-                        <div className="modal-footer">
-                            {buttons}
-                        </div>
+                        {buttons &&
+                            <div className="modal-footer">
+                                {buttons}
+                            </div>
+                        }
                     </div>
                 </div>
             </div>

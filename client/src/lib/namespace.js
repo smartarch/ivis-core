@@ -4,12 +4,13 @@ import React, {Component} from 'react';
 import {withTranslation} from './i18n';
 import {TreeTableSelect} from './form';
 import {withComponentMixins} from "./decorator-helpers";
+import ivisConfig from 'ivisConfig';
 
 
 @withComponentMixins([
     withTranslation
 ])
-class NamespaceSelect extends Component {
+export class NamespaceSelect extends Component {
     render() {
         const t = this.props.t;
 
@@ -19,7 +20,7 @@ class NamespaceSelect extends Component {
     }
 }
 
-function validateNamespace(t, state) {
+export function validateNamespace(t, state) {
     if (!state.getIn(['namespace', 'value'])) {
         state.setIn(['namespace', 'error'], t('namespacemustBeSelected'));
     } else {
@@ -27,7 +28,25 @@ function validateNamespace(t, state) {
     }
 }
 
-export {
-    NamespaceSelect,
-    validateNamespace
-};
+export function getDefaultNamespace(permissions) {
+    return permissions.viewUsersNamespace && permissions.createEntityInUsersNamespace ? ivisConfig.user.namespace : null;
+}
+
+export function namespaceCheckPermissions(createOperation) {
+    if (ivisConfig.user) {
+        return {
+            createEntityInUsersNamespace: {
+                entityTypeId: 'namespace',
+                entityId: ivisConfig.user.namespace,
+                requiredOperations: [createOperation]
+            },
+            viewUsersNamespace: {
+                entityTypeId: 'namespace',
+                entityId: ivisConfig.user.namespace,
+                requiredOperations: ['view']
+            }
+        };
+    } else {
+        return {};
+    }
+}

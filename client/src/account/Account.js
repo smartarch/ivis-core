@@ -1,11 +1,11 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {Trans, translate} from 'react-i18next';
+import PropTypes from 'prop-types';
 import {requiresAuthenticatedUser, withPageHelpers} from '../lib/page';
 import {Panel} from '../lib/panel';
-import {Button, ButtonRow, Fieldset, Form, FormSendMethod, InputField, withForm} from '../lib/form';
-import {withAsyncErrorHandler, withErrorHandling} from '../lib/error-handling';
+import {Button, ButtonRow, Fieldset, filterData, Form, FormSendMethod, InputField, withForm} from '../lib/form';
+import {withErrorHandling} from '../lib/error-handling';
 import passwordValidator from '../../../shared/password-validator';
 import interoperableErrors from '../../../shared/interoperable-errors';
 import {withComponentMixins} from "../lib/decorator-helpers";
@@ -34,18 +34,18 @@ export default class Account extends Component {
         });
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL('rest/account', data => {
-            data.password = '';
-            data.password2 = '';
-            data.currentPassword = '';
-        });
+    static propTypes = {
+        entity: PropTypes.object
+    }
+
+    getFormValuesMutator(data) {
+        data.password = '';
+        data.password2 = '';
+        data.currentPassword = '';
     }
 
     componentDidMount() {
-        // noinspection JSIgnoredPromiseFromCall
-        this.loadFormValues();
+        this.getFormValuesFromEntity(this.props.entity);
     }
 
     localValidateFormValues(state) {
@@ -102,11 +102,22 @@ export default class Account extends Component {
         }
 
         if (passwordMsgs.length > 1) {
-           passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
+            passwordMsgs = passwordMsgs.map((msg, idx) => <div key={idx}>{msg}</div>)
         }
 
         state.setIn(['password', 'error'], passwordMsgs.length > 0 ? passwordMsgs : null);
         state.setIn(['password2', 'error'], password !== password2 ? t('Passwords must match') : null);
+    }
+
+    submitFormValuesMutator(data) {
+        return filterData(data, [
+            'name',
+            'email',
+            'password',
+            'phone_cell',
+            'address',
+            'currentPassword',
+        ]);
     }
 
     async submitHandler() {
@@ -116,9 +127,7 @@ export default class Account extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Updating user profile ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, 'rest/account', data => {
-                delete data.password2;
-            });
+            const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, 'rest/account');
 
             if (submitSuccessful) {
                 this.setFlashMessage('success', t('User profile updated'));
@@ -175,16 +184,17 @@ export default class Account extends Component {
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <Fieldset label={t('General Settings')}>
                         <InputField id="name" label={t('Full Name')}/>
-                        <InputField id="email" label={t('Email')} help={t('This address is used for account recovery in case you loose your password')}/>
+                        <InputField id="email" label={t('Email')}
+                                    help={t('This address is used for account recovery in case you loose your password')}/>
                         <InputField id="phone_cell" label={t('Phone')}/>
                         <InputField id="address" label={t('Address')}/>
                     </Fieldset>
 
                     <Fieldset label={t('Password Change')}>
                         <p>{t('You only need to fill out this form if you want to change your current password')}</p>
-                        <InputField id="currentPassword" label={t('Current Password')} type="password" />
-                        <InputField id="password" label={t('New Password')} type="password" />
-                        <InputField id="password2" label={t('Confirm Password')} type="password" />
+                        <InputField id="currentPassword" label={t('Current Password')} type="password"/>
+                        <InputField id="password" label={t('New Password')} type="password"/>
+                        <InputField id="password2" label={t('Confirm Password')} type="password"/>
                     </Fieldset>
 
                     <ButtonRow>

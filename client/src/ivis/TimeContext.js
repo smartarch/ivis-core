@@ -152,82 +152,85 @@ const defaultMappings = {
 
 
 export function intervalAccessMixin(mappings = defaultMappings) {
-    return createComponentMixin([{context: TimeIntervalsContext, propName: 'timeContext'}], [], (TargetClass, InnerClass) => {
-        const inst = InnerClass.prototype;
+    return createComponentMixin({
+        contexts: [{context: TimeIntervalsContext, propName: 'timeContext'}],
+        decoratorFn: (TargetClass, InnerClass) => {
+            const inst = InnerClass.prototype;
 
-        const defaultProps = InnerClass.defaultProps || {};
-        const propTypes = InnerClass.propTypes || {};
+            const defaultProps = InnerClass.defaultProps || {};
+            const propTypes = InnerClass.propTypes || {};
 
-        for (const [intervalName, mapping] of Object.entries(mappings)) {
-            defaultProps[mapping.intervalNameProp] = intervalName;
-            propTypes[mapping.intervalNameProp] = PropTypes.string;
-            propTypes[mapping.intervalAbsoluteProp] = PropTypes.object;
-            propTypes[mapping.intervalSpecProp] = PropTypes.object;
-            propTypes[mapping.intervalHistoryProp] = PropTypes.object;
-            propTypes[mapping.intervalProp] = PropTypes.object;
-        }
-
-        InnerClass.defaultProps = defaultProps;
-        InnerClass.propTypes = propTypes;
-
-
-        const getProp = (self, propName, attrName, intervalName, props) => {
-            const mapping = mappings[intervalName || defaultIntervalName];
-
-            props = props || self.props;
-            const context = props.timeContext;
-
-            const propValue = props[mapping[propName]];
-            if (propValue) {
-                return propValue;
-            } else {
-                const interval = context.timeIntervals[intervalName];
-                return attrName ? interval[attrName] : interval;
+            for (const [intervalName, mapping] of Object.entries(mappings)) {
+                defaultProps[mapping.intervalNameProp] = intervalName;
+                propTypes[mapping.intervalNameProp] = PropTypes.string;
+                propTypes[mapping.intervalAbsoluteProp] = PropTypes.object;
+                propTypes[mapping.intervalSpecProp] = PropTypes.object;
+                propTypes[mapping.intervalHistoryProp] = PropTypes.object;
+                propTypes[mapping.intervalProp] = PropTypes.object;
             }
-        };
+
+            InnerClass.defaultProps = defaultProps;
+            InnerClass.propTypes = propTypes;
 
 
-        const mappingsKeys = Object.keys(mappings);
-        if (mappingsKeys.length === 1) {
-            const intervalName = mappingsKeys[0];
+            const getProp = (self, propName, attrName, intervalName, props) => {
+                const mapping = mappings[intervalName || defaultIntervalName];
 
-            inst.getInterval = function(props) {
-                return getProp(this, 'intervalProp', null, intervalName, props);
+                props = props || self.props;
+                const context = props.timeContext;
+
+                const propValue = props[mapping[propName]];
+                if (propValue) {
+                    return propValue;
+                } else {
+                    const interval = context.timeIntervals[intervalName];
+                    return attrName ? interval[attrName] : interval;
+                }
             };
 
-            inst.getIntervalAbsolute = function(props) {
-                return getProp(this, 'intervalAbsoluteProp', 'absolute', intervalName, props);
-            };
 
-            inst.getIntervalSpec = function(props) {
-                return getProp(this, 'intervalSpecProp', 'spec', intervalName, props);
-            };
+            const mappingsKeys = Object.keys(mappings);
+            if (mappingsKeys.length === 1) {
+                const intervalName = mappingsKeys[0];
 
-            inst.getIntervalHistory = function(props) {
-                return getProp(this, 'intervalHistoryProp', 'history', intervalName, props);
-            };
+                inst.getInterval = function (props) {
+                    return getProp(this, 'intervalProp', null, intervalName, props);
+                };
 
-        } else if (mappingsKeys.length > 1) {
-            inst.getInterval = function(intervalName, props) {
-                return getProp(this, 'intervalProp', null, intervalName, props);
-            };
+                inst.getIntervalAbsolute = function (props) {
+                    return getProp(this, 'intervalAbsoluteProp', 'absolute', intervalName, props);
+                };
 
-            inst.getIntervalAbsolute = function(intervalName, props) {
-                return getProp(this, 'intervalAbsoluteProp', 'absolute', intervalName, props);
-            };
+                inst.getIntervalSpec = function (props) {
+                    return getProp(this, 'intervalSpecProp', 'spec', intervalName, props);
+                };
 
-            inst.getIntervalSpec = function(intervalName, props) {
-                return getProp(this, 'intervalSpecProp', 'spec', intervalName, props);
-            };
+                inst.getIntervalHistory = function (props) {
+                    return getProp(this, 'intervalHistoryProp', 'history', intervalName, props);
+                };
 
-            inst.getIntervalHistory = function(intervalName, props) {
-                return getProp(this, 'intervalHistoryProp', 'history', intervalName, props);
-            };
+            } else if (mappingsKeys.length > 1) {
+                inst.getInterval = function (intervalName, props) {
+                    return getProp(this, 'intervalProp', null, intervalName, props);
+                };
 
-        } else {
-            throw new Error('Invalid mappings');
+                inst.getIntervalAbsolute = function (intervalName, props) {
+                    return getProp(this, 'intervalAbsoluteProp', 'absolute', intervalName, props);
+                };
+
+                inst.getIntervalSpec = function (intervalName, props) {
+                    return getProp(this, 'intervalSpecProp', 'spec', intervalName, props);
+                };
+
+                inst.getIntervalHistory = function (intervalName, props) {
+                    return getProp(this, 'intervalHistoryProp', 'history', intervalName, props);
+                };
+
+            } else {
+                throw new Error('Invalid mappings');
+            }
+
+            return {};
         }
-
-        return {};
     });
 }

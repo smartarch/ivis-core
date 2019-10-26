@@ -7,12 +7,12 @@ import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/
 import {
     Button,
     ButtonRow,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -50,7 +50,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, null);
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 name: '',
@@ -60,11 +60,6 @@ export default class CUD extends Component {
                 wizard: WizardType.BLANK
             });
         }
-    }
-
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
     }
 
     localValidateFormValues(state) {
@@ -90,7 +85,32 @@ export default class CUD extends Component {
         return wizards.get(wizardType);
     }
 
-    async submitHandler() {
+    submitFormValuesMutator(data) {
+        if (!this.props.entity) {
+            const wizard = CUD.getWizard(data.wizard);
+            if (wizard) {
+                wizard(data);
+            } else {
+                data.settings = {
+                    params: [],
+                    code: ''
+                };
+            }
+
+        } else {
+            data.settings = this.props.entity.settings;
+        }
+        return filterData(data, [
+            'name',
+            'description',
+            'type',
+            'settings',
+            'namespace'
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -105,34 +125,24 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (!this.props.entity) {
-                const wizard = CUD.getWizard(data.wizard);
-                if (wizard) {
-                    wizard(data);
-                } else {
-                    data.settings = {
-                        params: [],
-                        code: ''
-                    };
-                }
-
-                delete data.wizard;
-            } else {
-                data.settings = this.props.entity.settings;
-            }
-        });
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
 
-        if (submitSuccessful) {
+        if (submitResult) {
             if (this.props.entity) {
-                await this.loadFormValues();
-                this.enableForm();
-                this.clearFormStatusMessage();
-                this.hideFormValidation();
-                this.setFlashMessage('success', t('Task saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Task updated'));
+                }
             } else {
-                this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/tasks/${submitResult}/edit`, 'success', t('Task saved'));
+                }
             }
         } else {
             this.enableForm();
@@ -178,6 +188,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="ok" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/tasks/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

@@ -12,12 +12,12 @@ import {
     Button,
     ButtonRow,
     CheckBox,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../../lib/form";
 import {
     withAsyncErrorHandler,
@@ -81,32 +81,9 @@ export default class CUD extends Component {
         entity: PropTypes.object
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
-    }
-
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.painlessScript = data.settings && data.settings.painlessScript;
-
-                if (data.weight_list === null) {
-                    data.shownInList = false;
-                    data.weight_list = '0';
-                } else {
-                    data.shownInList = true;
-                    data.weight_list = data.weight_list.toString();
-                }
-
-                if (data.weight_edit === null) {
-                    data.shownInEdit = false;
-                    data.weight_edit = '0';
-                } else {
-                    data.shownInEdit = true;
-                    data.weight_edit = data.weight_edit.toString();
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
             if (this.props.signalSet.type === SignalSetType.COMPUTED) {
                 this.disableForm();
             }
@@ -166,7 +143,53 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    async submitHandler() {
+    getFormValuesMutator(data) {
+        data.painlessScript = data.settings && data.settings.painlessScript;
+
+        if (data.weight_list === null) {
+            data.shownInList = false;
+            data.weight_list = '0';
+        } else {
+            data.shownInList = true;
+            data.weight_list = data.weight_list.toString();
+        }
+
+        if (data.weight_edit === null) {
+            data.shownInEdit = false;
+            data.weight_edit = '0';
+        } else {
+            data.shownInEdit = true;
+            data.weight_edit = data.weight_edit.toString();
+        }
+    }
+
+    submitFormValuesMutator(data) {
+        if (isPainless(data.type)) {
+            data.settings = {painlessScript: data.painlessScript};
+            data.weight_list = null;
+            data.weight_edit = null;
+            data.indexed = false;
+        } else {
+            data.settings = {};
+            data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
+            data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
+        }
+
+        return filterData(data, [
+            'cid',
+            'name',
+            'description',
+            'type',
+            'indexed',
+            'settings',
+            'namespace',
+            'weight_list',
+            'weight_edit'
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -181,23 +204,25 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (isPainless(data.type)) {
-                data.settings = {painlessScript: data.painlessScript};
-                data.weight_list = null;
-                data.weight_edit = null;
-                data.indexed = false;
-            } else {
-                data.settings = {};
-                data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
-                data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
-            }
-            delete data.shownInList;
-            delete data.shownInEdit;
-        });
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-        if (submitSuccessful) {
-            this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal saved'));
+        if (submitResult) {
+
+            if (this.props.entity) {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Signal updated'));
+                }
+            } else {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals/${submitResult}/edit`, 'success', t('Signal saved'));
+                }
+            }
         } else {
             this.enableForm();
             this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -221,7 +246,6 @@ export default class CUD extends Component {
                     deletingMsg={t('Deleting signal ...')}
                     deletedMsg={t('Signal deleted')}/>
                 }
-
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="cid" label={t('Id')}/>
                     <InputField id="name" label={t('Name')}/>
@@ -230,7 +254,7 @@ export default class CUD extends Component {
 
 
                     {isPainless(this.getFormValue('type')) &&
-                        <TextArea id="painlessScript" label={t('Painless script')}/>
+                    <TextArea id="painlessScript" label={t('Painless script')}/>
                     }
 
                     {!isPainless(this.getFormValue('type')) &&
@@ -239,12 +263,14 @@ export default class CUD extends Component {
 
                         <CheckBox id="shownInList" label={t('Records list')} text={t('Visible in record list')}/>
                         {this.getFormValue('shownInList') &&
-                            <InputField id="weight_list" label={t('List weight')} help={t('This number determines if in which order the signal is listed when viewing records in the data set. Signals are ordered by weight in ascending order.')}/>
+                        <InputField id="weight_list" label={t('List weight')}
+                                    help={t('This number determines if in which order the signal is listed when viewing records in the data set. Signals are ordered by weight in ascending order.')}/>
                         }
 
                         <CheckBox id="shownInEdit" label={t('Record edit')} text={t('Visible in record edit form')}/>
                         {this.getFormValue('shownInEdit') &&
-                            <InputField id="weight_edit" label={t('Edit weight')} help={t('This number determines if in which order the signal is listed when editing records in the data set. Signals are ordered by weight in ascending order.')}/>
+                        <InputField id="weight_edit" label={t('Edit weight')}
+                                    help={t('This number determines if in which order the signal is listed when editing records in the data set. Signals are ordered by weight in ascending order.')}/>
                         }
                     </>
                     }
@@ -253,7 +279,10 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/signal-sets/${this.props.signalSet.id}/signals/${this.props.entity.id}/delete`}/>}
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                                  to={`/settings/signal-sets/${this.props.signalSet.id}/signals/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>
