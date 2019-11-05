@@ -248,6 +248,7 @@ async function getEntitiesFromParams(jobParams, taskParams) {
 
                     entities.signalSets[cid] = {
                         index: getIndexName(sigSet),
+                        name: sigSet.name,
                         namespace: sigSet.namespace
                     };
                     break;
@@ -287,6 +288,7 @@ async function getEntitiesFromParams(jobParams, taskParams) {
 
                     entities.signals[signalSetCid][sigCid] = {
                         field: getFieldName(sig.id),
+                        name: sig.name,
                         namespace: sig.namespace
                     };
                     break;
@@ -853,7 +855,6 @@ async function loadJobState(id) {
     let jobState = null;
     try {
         const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
-        jobState['_source'][STATE_FIELD];
 
         return jobState['_source'][STATE_FIELD];
 

@@ -12,7 +12,7 @@ const JOB_FILE_NAME = 'job.py';
 const ENV_NAME = 'env';
 
 const packagesForType = new Map();
-packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy']);
+packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy', 'dtw']);
 
 const runningProc = new Map();
 
