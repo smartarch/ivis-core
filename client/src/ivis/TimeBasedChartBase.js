@@ -206,6 +206,7 @@ export class TimeBasedChartBase extends Component {
         prepareData: PropTypes.func.isRequired,
         createChart: PropTypes.func.isRequired,
         getGraphContent: PropTypes.func.isRequired,
+        getSvgDefs: PropTypes.func,
         compareConfigs: PropTypes.func,
 
         tooltipExtraProps: PropTypes.object,
@@ -217,7 +218,8 @@ export class TimeBasedChartBase extends Component {
 
     static defaultProps = {
         tooltipExtraProps: {},
-        minimumIntervalMs: 10000
+        minimumIntervalMs: 10000,
+        getSvgDefs: () => null
     }
 
     updateTimeIntervalChartWidth() {
@@ -476,6 +478,7 @@ export class TimeBasedChartBase extends Component {
 
             return (
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                    {this.props.getSvgDefs(this)}
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
                         {this.props.getGraphContent(this)}
                     </g>

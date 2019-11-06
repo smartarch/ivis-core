@@ -23,7 +23,7 @@ const fieldTypes = {
     [SignalType.FLOAT]: 'float',
     [SignalType.DOUBLE]: 'double',
     [SignalType.BOOLEAN]: 'tinyint',
-    [SignalType.KEYWORD]: 'varchar',
+    [SignalType.KEYWORD]: 'varchar(255)',
     [SignalType.TEXT]: 'longtext',
     [SignalType.DATE_TIME]: 'datetime(6)'
 };

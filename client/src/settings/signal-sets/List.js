@@ -122,6 +122,13 @@ export default class List extends Component {
                     });
 
 
+                    if (perms.includes('query')) {
+                        actions.push({
+                            label: <Icon icon="database" title={t('Records')}/>,
+                            link: `/settings/signal-sets/${data[0]}/records`
+                        });
+                    }
+
                     if (perms.includes('share')) {
                         actions.push({
                             label: <Icon icon="share" title={t('Share')}/>,
