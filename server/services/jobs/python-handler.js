@@ -12,7 +12,7 @@ const JOB_FILE_NAME = 'job.py';
 const ENV_NAME = 'env';
 
 const packagesForType = new Map();
-packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy']);
+packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy', 'dtw']);
 
 const runningProc = new Map();
 
@@ -21,6 +21,7 @@ const runningProc = new Map();
  * @param id Job id
  * @param params Parameters for the task
  * @param runId Run ID, will be used by stop command
+ * @param entities
  * @param state
  * @param taskDir Directory with the task
  * @param onRequest Callback for handling request msgs from job.
@@ -124,7 +125,7 @@ function getPackages(type) {
     if (pckgs) {
         packages.push(...pckgs);
     } else {
-        packages.push('elasticsearch');
+        packages.push('elasticsearch', 'requests');
     }
     return packages;
 }
