@@ -31,6 +31,7 @@ const defaultEditorHeight = 600;
 const typeToEditor = new Map();
 typeToEditor.set(TaskType.PYTHON, 'python');
 typeToEditor.set(TaskType.NUMPY, 'python');
+typeToEditor.set(TaskType.ENERGY_PLUS, 'python');
 
 @withComponentMixins([
     withTranslation,

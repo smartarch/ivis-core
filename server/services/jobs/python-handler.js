@@ -13,6 +13,7 @@ const ENV_NAME = 'env';
 
 const packagesForType = new Map();
 packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy', 'dtw']);
+packagesForType.set(TaskType.ENERGY_PLUS, ['elasticsearch', 'eppy','requests']);
 
 const runningProc = new Map();
 

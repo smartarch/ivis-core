@@ -40,13 +40,18 @@ const checkInterval = config.tasks.checkInterval * 1000;
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
 
-const numpyHandler = {};
-numpyHandler.run = pythonHandler.run;
-numpyHandler.remove = pythonHandler.remove;
-numpyHandler.stop = pythonHandler.stop;
-numpyHandler.build = pythonHandler.build;
-numpyHandler.init = (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail);
+const numpyHandler = {
+    ...pythonHandler,
+    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail)
+};
+
+const energyHandler= {
+    ...pythonHandler,
+    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.ENERGY_PLUS, id, code, destDir, onSuccess, onFail)
+};
+
 handlers.set(TaskType.NUMPY, numpyHandler);
+handlers.set(TaskType.ENERGY_PLUS, energyHandler);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
