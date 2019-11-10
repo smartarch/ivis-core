@@ -448,7 +448,7 @@ async function regenerateRoleNamesTable() {
 
 
 function throwPermissionDenied() {
-    //throw new interoperableErrors.PermissionDeniedError('Permission denied');
+    throw new interoperableErrors.PermissionDeniedError('Permission denied');
 }
 
 async function removeDefaultShares(tx, user) {
