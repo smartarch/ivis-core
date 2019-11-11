@@ -16,6 +16,8 @@ server:
 elasticsearch:
   host: localhost
   port: 9200
+  # This limits deep pagination
+  maxResultsWindow: 10000
 
 mysql:
   host: localhost

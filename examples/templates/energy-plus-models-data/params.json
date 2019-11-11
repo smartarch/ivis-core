@@ -1,0 +1,65 @@
+[
+  {
+    "id": "sensors",
+    "label": "Sensor data",
+    "type": "signalSet"
+  },
+  {
+    "id": "humidity",
+    "label": "humidity",
+    "type": "signal",
+    "signalSetRef": "sensors"
+  },
+  {
+    "id": "co2",
+    "label": "co2",
+    "type": "signal",
+    "signalSetRef": "sensors"
+  },
+  {
+    "id": "temperature",
+    "label": "temperature",
+    "type": "signal",
+    "signalSetRef": "sensors"
+  },
+  {
+    "id": "ts",
+    "label": "ts",
+    "type": "signal",
+    "signalSetRef": "sensors"
+  },
+  {
+    "id": "color",
+    "label": "Color",
+    "type": "color"
+  },
+  {
+    "id": "models",
+    "label": "Models",
+    "type": "fieldset",
+    "cardinality": "1..n",
+    "children": [
+      {
+        "id": "label",
+        "label": "Label",
+        "type": "string"
+      },
+      {
+        "id": "color",
+        "label": "Color",
+        "type": "color"
+      },
+      {
+        "id": "sigSet",
+        "label": "Signal Set",
+        "type": "signalSet"
+      },
+      {
+        "id": "enabled",
+        "label": "Enabled",
+        "type": "boolean",
+        "default": true
+      }
+    ]
+  }
+]

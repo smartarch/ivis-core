@@ -282,8 +282,10 @@ export class SaveDialog extends Component {
             'workspace',
             'orderBefore',
             'params',
+            'template',
             'builtin_template',
-            'template'
+            'template',
+            'namespace'
         ]);
     }
 
