@@ -172,7 +172,7 @@ async function _createTx(tx, context, entity) {
     });
 
     if (entity.type){
-        enforce(entity.type in Object.values(SignalSetType), `${entity.type} is not valid signal set type.`)
+        enforce(!(entity.type in Object.values(SignalSetType)), `${entity.type} is not valid signal set type.`)
     }
 
     const ids = await tx('signal_sets').insert(filteredEntity);

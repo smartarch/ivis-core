@@ -162,7 +162,8 @@ export default class CUD extends Component {
 
         const typeOptions = [
             {key: TaskType.NUMPY, label: t('Numpy task')},
-            {key: TaskType.PYTHON, label: t('Python task')}
+            {key: TaskType.PYTHON, label: t('Python task')},
+            {key: TaskType.ENERGY_PLUS, label: t('EnergyPlus task')}
         ];
 
         const wizardOptions = [
