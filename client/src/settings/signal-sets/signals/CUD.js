@@ -77,7 +77,7 @@ export default class CUD extends Component {
                 continue;
             }
 
-            if (source === SignalSource.DERIVED && !props.signalSet.permissions.includes('manageScripts')){
+            if (source === SignalSource.DERIVED && !props.signalSet.permissions.includes('manageScripts')) {
                 continue;
             }
 
@@ -91,9 +91,7 @@ export default class CUD extends Component {
 
         this.typeOptions = [];
         for (const type in this.signalTypes) {
-            if (!DerivedSignalTypes.has(type) || props.signalSet.permissions.includes('manageScripts')) {
-                this.typeOptions.push({key: type, label: this.signalTypes[type]});
-            }
+            this.typeOptions.push({key: type, label: this.signalTypes[type]});
         }
     }
 
@@ -103,7 +101,7 @@ export default class CUD extends Component {
         entity: PropTypes.object
     };
 
-    onSourceChange(state, key, oldVal, newVal){
+    onSourceChange(state, key, oldVal, newVal) {
         if (oldVal !== newVal) {
             const type = getTypesBySource(newVal)[0];
             state.formState = state.formState.setIn(['data', 'type', 'value'], type);
@@ -275,7 +273,7 @@ export default class CUD extends Component {
         const source = this.getFormValue('source');
         if (source) {
             for (const type of getTypesBySource(source)) {
-                    this.typeOptions.push({key: type, label: this.signalTypes[type]});
+                this.typeOptions.push({key: type, label: this.signalTypes[type]});
             }
         }
 
