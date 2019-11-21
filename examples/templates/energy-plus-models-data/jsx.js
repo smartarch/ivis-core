@@ -3,8 +3,8 @@
 
 import React, {Component} from "react";
 import styles from './styles.scss';
-import {withPanelConfig, TimeContext, TimeRangeSelector, LineChart, Legend} from "ivis";
-
+import {withPanelConfig, TimeContext, TimeRangeSelector, LineChart, Legend, StaticLegend} from "ivis";
+import {select} from "d3-selection";
 
 
 const modelsStructure = [
@@ -46,6 +46,12 @@ const modelsConfigSpec = {
 
 @withPanelConfig
 export default class Panel extends Component {
+
+    constructor(props) {
+        super(props);
+        this.referenceLines = {};
+    }
+
     render() {
         const config = this.getPanelConfig();
 
@@ -53,7 +59,7 @@ export default class Panel extends Component {
             {
                 label: "Temperature",
                 modelCid: "temperature",
-                sensorCid: config.temperature,
+                sensorCid: config.sensor.temperature,
                 yScaleMin: 0,
                 yScaleMax: 30,
                 unit: "°C"
@@ -61,13 +67,13 @@ export default class Panel extends Component {
             {
                 label: "CO2",
                 modelCid: "co2",
-                sensorCid: config.co2,
+                sensorCid: config.sensor.co2,
                 unit: "ppm"
             },
             {
                 label: "Humidity",
                 modelCid: "humidity",
-                sensorCid: config.humidity,
+                sensorCid: config.sensor.humidity,
                 unit: "%"
             }
         ];
@@ -95,12 +101,12 @@ export default class Panel extends Component {
             const signalSets = [];
 
             signalSets.push({
-                cid: config.sensors,
+                cid: config.sensor.signalSet,
                 tsSigCid: config.ts,
                 signals: [
                     {
                         label: "Sensor",
-                        color: config.color,
+                        color: config.sensor.color,
                         cid: graphSpec.sensorCid,
                         enabled: true,
                         unit: graphSpec.unit,
@@ -140,6 +146,38 @@ export default class Panel extends Component {
                         margin={{ left: 60, right: 60, top: 5, bottom: 20 }}
                         withTooltip
                         tooltipExtraProps={{ width: 500 }}
+
+                        createChart={(base, signalSetsData, baseState, abs, xScale, yScales, points) => {
+                            const yScale = yScales[0];
+                            const ySize = base.props.height - base.props.margin.top - base.props.margin.bottom;
+
+                            const updateLine = (id, value) => this.referenceLines[id]
+                                .attr('x1', xScale(abs.from))
+                                .attr('x2', xScale(abs.to))
+                                .attr('y1', yScale(value))
+                                .attr('y2', yScale(value));
+
+                            // TODO update to work on actual scale, also do just for co2
+                            for(let i = 0;i<2200;i+=100){
+                                updateLine(`${i}`, i);
+                            }
+                        }}
+                        getGraphContent={(base, paths) => {
+
+                            // TODO same as with update line above
+                            const lines = []
+                            for(let i = 500;i<2200;i+=100){
+                                lines.push(<line key={i} ref={node => this.referenceLines[`${i}`] = select(node)} stroke="#808080" strokeWidth="1" strokeDasharray="2 2"/>)
+                            }
+
+                            return [
+                                (<g key={`referenceLines`}>
+                                    {lines}
+                                </g>),
+                                ...paths
+                            ];
+                        }}
+
                     />
                 </div>
             );
@@ -152,7 +190,13 @@ export default class Panel extends Component {
             <TimeContext>
                 <TimeRangeSelector/>
                 <Legend label="Models" configPath={['models']} withSelector structure={modelsStructure} withConfigurator configSpec={modelsConfigSpec}/>
-                {config.sensors.toString()}
+                <StaticLegend
+                    rowClassName="col-6 col-sm-4 col-md-3"
+                    config={ [{ label: 'Sensor', color: config.sensor.color, enabled: config.sensor.enabled }] }
+                    structure= { [{ labelAttr: 'label', colorAttr: 'color', selectionAttr: 'enabled' }] }
+                    onChange={ (path, value) => this.updatePanelConfig(['sensor', 'enabled'], value[0].enabled) }
+                    withSelector
+                />
                 {graphs}
             </TimeContext>
         );
