@@ -149,7 +149,6 @@ export default class Panel extends Component {
 
                         createChart={(base, signalSetsData, baseState, abs, xScale, yScales, points) => {
                             const yScale = yScales[0];
-                            const ySize = base.props.height - base.props.margin.top - base.props.margin.bottom;
 
                             const updateLine = (id, value) => this.referenceLines[id]
                                 .attr('x1', xScale(abs.from))
@@ -165,7 +164,7 @@ export default class Panel extends Component {
                         getGraphContent={(base, paths) => {
 
                             // TODO same as with update line above
-                            const lines = []
+                            const lines = [];
                             for(let i = 500;i<2200;i+=100){
                                 lines.push(<line key={i} ref={node => this.referenceLines[`${i}`] = select(node)} stroke="#808080" strokeWidth="1" strokeDasharray="2 2"/>)
                             }

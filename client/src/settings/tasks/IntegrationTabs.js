@@ -129,7 +129,7 @@ export default class IntegrationTabs extends Component {
                         <div>{t('Building task...')}</div>
                     );
                     break;
-                case (BuildState.FAILED): {
+                case (BuildState.FAILED):
                     if (task.build_output) {
                         const errors = [];
                         const warnings = [];
@@ -168,17 +168,14 @@ export default class IntegrationTabs extends Component {
                                 }
                             </>
                         );
-
                     } else {
                         buildContent = (
                             <div className={outputStyles.label}>{t('Build failed')}</div>
                         );
-
                     }
-
                     break;
-                }
-                case (BuildState.FINISHED): {
+
+                case (BuildState.FINISHED):
                     const warnings = [];
                     let idx = 0;
                     if (task.build_output && task.build_output.warnings && task.build_output.warnings.length > 0) {
@@ -200,10 +197,9 @@ export default class IntegrationTabs extends Component {
                     } else {
                         buildContent = (
                             <div className={outputStyles.label}>{t('Build successful')}</div>
-                        )
+                        );
                     }
                     break;
-                }
                 default:
                     buildContent = (
                         <div className={outputStyles.label}>{t('Task is not build.')}</div>
