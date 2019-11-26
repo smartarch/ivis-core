@@ -5,7 +5,7 @@ import React, {Component} from "react";
 import styles from './styles.scss';
 import {withPanelConfig, TimeContext, TimeRangeSelector, LineChart, Legend, StaticLegend} from "ivis";
 import {select} from "d3-selection";
-
+import moment from 'moment';
 
 const modelsStructure = [
     {
@@ -140,37 +140,115 @@ export default class Panel extends Component {
 
             let createChartFn = null;
             let getGraphContentFn =null;
+            let getExtraQueriesFn =null;
+            let prepareExtraDataFn =null;
+
             const yMaxLimit = 3500;
+            const step = 100;
 
             if (graphSpec.modelCid==='co2' ){
+                getExtraQueriesFn = (base, abs) => {
+                    return [
+                        {
+                            type: 'docs',
+                            args: [
+                                config.mod.sigSet,
+                                ['mod','ts','model'],
+                                {
+                                    type: 'range',
+                                    sigCid: 'ts',
+                                    gte: abs.from.toISOString(),
+                                    lt: abs.to.toISOString()
+                                },
+                                null,
+                                1000
+                            ]
+                        }
+                    ];
+                };
+
+                prepareExtraDataFn = (base, signalSetsData, extraData) => {
+                    return {
+                        mod: extraData[0].map(x => ({mod: x.mod, model: x.model, ts: moment(x.ts)}))
+                    };
+                };
+
                 createChartFn =  (base, signalSetsData, baseState, abs, xScale, yScales, points) => {
                     const yScale = yScales[0];
                     const domain = yScale.domain();
                     const yMin = domain[0];
                     const yMax = domain[1] < yMaxLimit ? domain[1]: yMaxLimit;
+                    const ySize = base.props.height - base.props.margin.top - base.props.margin.bottom;
 
-                    const updateLine = (id, value) => this.referenceLines[id]
-                        .attr('x1', xScale(abs.from))
-                        .attr('x2', xScale(abs.to))
-                        .attr('y1', yScale(value))
-                        .attr('y2', yScale(value));
 
-                    const yRulerStart = Math.ceil(yMin / 100) * 100;
-                    for(let i = yRulerStart;i<yMax;i+=100){
-                        updateLine(`${i}`,i);
+                    const getLineAttrs = (value) => {return {
+                        'x1': xScale(abs.from),
+                        'x2': xScale(abs.to),
+                        'y1': yScale(value),
+                        'y2': yScale(value)
+                    }};
+
+                    const yRulerStart = Math.ceil(yMin / step) * step;
+                    const lines = []
+                    for(let i = yRulerStart;i<yMax;i+=step){
+                        lines.push(getLineAttrs(i));
                     }
+
+                    // Mod
+                    const modData = [];
+                    const modArr = baseState.mod;
+                    for (let i = 1; i< modArr.length; i++) {
+                        modData.push({
+                            'x1': xScale(modArr[i].ts),
+                            'x2': xScale(modArr[i].ts),
+                            'y1': 0,
+                            'y2': ySize,
+                            'mod': modArr[i].mod
+                        });
+                    }
+
+
+                    const ruler = base.rulerSelection
+                        .selectAll('line')
+                        .data(lines);
+
+                    ruler.enter()
+                        .append('line')
+                        .merge(ruler)
+                        .attr('x1', l => l.x1)
+                        .attr('x2', l => l.x2)
+                        .attr('y1', l => l.y1)
+                        .attr('y2', l => l.y2)
+                        .attr("stroke", "#808080")
+                        .attr("stroke-width", 1)
+                        .attr("stroke-dasharray", "2 2");
+
+                    ruler.exit()
+                        .remove();
+
+                    const bars = base.modSelection
+                        .selectAll('line')
+                        .data(modData);
+
+                    bars.enter()
+                        .append('line')
+                        .merge(bars)
+                        .attr('x1', l => l.x1)
+                        .attr('x2', l => l.x2)
+                        .attr('y1', l => l.y1)
+                        .attr('y2', l => l.y2)
+                        .attr("stroke", "blue")
+                        .attr("stroke-width", 1)
+                        .attr("stroke-opacity", 0.3);
+
+                    bars.exit()
+                        .remove();
                 }
 
                 getGraphContentFn = (base, paths) => {
-                    const lines = [];
-                    for(let i = 0;i<3500;i+=100){
-                        lines.push(<line key={i} ref={node => this.referenceLines[`${i}`] = select(node)} stroke="#808080" strokeWidth="1" strokeDasharray="2 2"/>)
-                    }
-
                     return [
-                        (<g key={`referenceLines`}>
-                            {lines }
-                        </g>),
+                        <g ref={node => base.rulerSelection = select(node)} key="ruler"/>,
+                        <g ref={node => base.modSelection = select(node)} key="mod"/>,
                         ...paths
                     ];
                 }
@@ -180,7 +258,7 @@ export default class Panel extends Component {
                 <div key={graphIdx} className={"my-3 page-block"}>
                     <h4>{graphSpec.label}</h4>
                     <LineChart
-                        config={chartConfigStaticLegend}
+                        config={chartConfig}
                         height={500}
                         margin={{ left: 60, right: 60, top: 5, bottom: 20 }}
                         withTooltip
@@ -188,6 +266,9 @@ export default class Panel extends Component {
 
                         createChart={createChartFn}
                         getGraphContent={getGraphContentFn}
+                        getExtraQueries={getExtraQueriesFn}
+                        prepareExtraData={prepareExtraDataFn}
+
                     />
                 </div>
             );
@@ -195,17 +276,14 @@ export default class Panel extends Component {
             graphIdx += 1;
         }
 
-
         return (
-
             <TimeContext>
                 <TimeRangeSelector/>
                 <Legend label="Models" configPath={['models']} withSelector structure={modelsStructure} withConfigurator configSpec={modelsConfigSpec}/>
                 <StaticLegend
                     rowClassName="col-6 col-sm-4 col-md-3"
-                    config={ [{ label: 'Sensor', color: config.sensor.color, enabled: config.sensor.enabled }] }
-                    structure= { [{ labelAttr: 'label', colorAttr: 'color', selectionAttr: 'enabled' }] }
-                    onChange={ (path, value) => this.updatePanelConfig(['sensor', 'enabled'], value[0].enabled) }
+                    config={ [{ label: 'Sensor', color: config.sensor.color}] }
+                    structure= { [{ labelAttr: 'label', colorAttr: 'color'}] }
                     withSelector
                 />
                 {graphs}

@@ -48,6 +48,26 @@
     ]
   },
   {
+    "id": "mod",
+    "label": "mod setting",
+    "type": "fieldset",
+    "cardinality": "0..1",
+    "children": [
+      {
+        "id": "sigSet",
+        "label": "Mod Signal Set",
+        "help": "Signal set for mod",
+        "type": "signalSet"
+      },
+      {
+        "id": "visible",
+        "label": "Visible",
+        "type": "boolean",
+        "default": true
+      }
+    ]
+  },
+  {
     "id": "models",
     "label": "Models",
     "type": "fieldset",
