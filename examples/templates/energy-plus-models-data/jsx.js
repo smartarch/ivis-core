@@ -137,52 +137,64 @@ export default class Panel extends Component {
                 signalSets
             };
 
+
+            let createChartFn = null;
+            let getGraphContentFn =null;
+            const yMaxLimit = 3500;
+
+            if (graphSpec.modelCid==='co2' ){
+                createChartFn =  (base, signalSetsData, baseState, abs, xScale, yScales, points) => {
+                    const yScale = yScales[0];
+                    const domain = yScale.domain();
+                    const yMin = domain[0];
+                    const yMax = domain[1] < yMaxLimit ? domain[1]: yMaxLimit;
+
+                    const updateLine = (id, value) => this.referenceLines[id]
+                        .attr('x1', xScale(abs.from))
+                        .attr('x2', xScale(abs.to))
+                        .attr('y1', yScale(value))
+                        .attr('y2', yScale(value));
+
+                    const yRulerStart = Math.ceil(yMin / 100) * 100;
+                    for(let i = yRulerStart;i<yMax;i+=100){
+                        updateLine(`${i}`,i);
+                    }
+                }
+
+                getGraphContentFn = (base, paths) => {
+                    const lines = [];
+                    for(let i = 0;i<3500;i+=100){
+                        lines.push(<line key={i} ref={node => this.referenceLines[`${i}`] = select(node)} stroke="#808080" strokeWidth="1" strokeDasharray="2 2"/>)
+                    }
+
+                    return [
+                        (<g key={`referenceLines`}>
+                            {lines }
+                        </g>),
+                        ...paths
+                    ];
+                }
+            }
+
             graphs.push(
                 <div key={graphIdx} className={"my-3 page-block"}>
                     <h4>{graphSpec.label}</h4>
                     <LineChart
-                        config={chartConfig}
+                        config={chartConfigStaticLegend}
                         height={500}
                         margin={{ left: 60, right: 60, top: 5, bottom: 20 }}
                         withTooltip
                         tooltipExtraProps={{ width: 500 }}
 
-                        createChart={(base, signalSetsData, baseState, abs, xScale, yScales, points) => {
-                            const yScale = yScales[0];
-
-                            const updateLine = (id, value) => this.referenceLines[id]
-                                .attr('x1', xScale(abs.from))
-                                .attr('x2', xScale(abs.to))
-                                .attr('y1', yScale(value))
-                                .attr('y2', yScale(value));
-
-                            // TODO update to work on actual scale, also do just for co2
-                            for(let i = 0;i<2200;i+=100){
-                                updateLine(`${i}`, i);
-                            }
-                        }}
-                        getGraphContent={(base, paths) => {
-
-                            // TODO same as with update line above
-                            const lines = [];
-                            for(let i = 500;i<2200;i+=100){
-                                lines.push(<line key={i} ref={node => this.referenceLines[`${i}`] = select(node)} stroke="#808080" strokeWidth="1" strokeDasharray="2 2"/>)
-                            }
-
-                            return [
-                                (<g key={`referenceLines`}>
-                                    {lines}
-                                </g>),
-                                ...paths
-                            ];
-                        }}
-
+                        createChart={createChartFn}
+                        getGraphContent={getGraphContentFn}
                     />
                 </div>
             );
 
             graphIdx += 1;
         }
+
 
         return (
 
