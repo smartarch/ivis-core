@@ -49,7 +49,6 @@ export default class Panel extends Component {
 
     constructor(props) {
         super(props);
-        this.referenceLines = {};
     }
 
     render() {
@@ -208,6 +207,7 @@ export default class Panel extends Component {
                     }
 
 
+                    // Ruler lines
                     const ruler = base.rulerSelection
                         .selectAll('line')
                         .data(lines);
@@ -219,30 +219,46 @@ export default class Panel extends Component {
                         .attr('x2', l => l.x2)
                         .attr('y1', l => l.y1)
                         .attr('y2', l => l.y2)
-                        .attr("stroke", "#808080")
-                        .attr("stroke-width", 1)
-                        .attr("stroke-dasharray", "2 2");
+                        .attr("class", styles.rulerLine);
 
                     ruler.exit()
                         .remove();
 
-                    const bars = base.modSelection
+                    // Mod lines
+                    const modLines = base.modSelection
                         .selectAll('line')
                         .data(modData);
 
-                    bars.enter()
+
+                    modLines.enter()
                         .append('line')
-                        .merge(bars)
+                        .merge(modLines)
                         .attr('x1', l => l.x1)
                         .attr('x2', l => l.x2)
                         .attr('y1', l => l.y1)
                         .attr('y2', l => l.y2)
-                        .attr("stroke", "blue")
-                        .attr("stroke-width", 1)
-                        .attr("stroke-opacity", 0.3);
+                        .attr("class", styles.modLine);
 
-                    bars.exit()
+                    modLines.exit()
                         .remove();
+
+                    // Mod lines labels
+                    const modLabels = base.modSelection
+                        .selectAll('text')
+                        .data(modData);
+
+
+                    modLabels.enter()
+                        .append("text")
+                        .merge(modLabels)
+                        .attr("y", l => l.y1 + 10)
+                        .attr("x", l => l.x2 + 10)
+                        .text(l => l.mod)
+                        .attr("class", styles.modLabel);
+
+                    modLabels.exit()
+                        .remove();
+
                 }
 
                 getGraphContentFn = (base, paths) => {
