@@ -33,6 +33,7 @@ import JobsList from './settings/jobs/List'
 import RunningJobsList from './settings/jobs/RunningJobsList'
 import JobsCUD from './settings/jobs/CUD';
 import RunLog from './settings/jobs/RunLog';
+import OwnedSetsList from './settings/jobs/OwnedSignalSets';
 import RunOutput from './settings/jobs/RunOutput';
 
 import TasksList from './settings/tasks/List'
@@ -388,6 +389,12 @@ const getStructure = t => {
                                         link: params => `/settings/jobs/${params.jobId}/edit`,
                                         visible: resolved => resolved.job.permissions.includes('edit'),
                                         panelRender: props => <JobsCUD action={props.match.params.action} entity={props.resolved.job} />
+                                    },
+                                    'signal-sets': {
+                                        title: t('Owned signal sets'),
+                                        link: params => `/settings/jobs/${params.jobId}/signal-sets`,
+                                        visible: resolved => resolved.job.permissions.includes('view'),
+                                        panelRender: props => <OwnedSetsList  entity={props.resolved.job} />
                                     },
                                     log: {
                                         title: t('Run logs'),

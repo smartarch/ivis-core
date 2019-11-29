@@ -3,9 +3,9 @@
 const elasticsearch = require('../elasticsearch');
 const {enforce} = require('../helpers');
 const interoperableErrors = require('../../../shared/interoperable-errors');
-const { IndexMethod} = require('../../../shared/signals');
+const {IndexMethod} = require('../../../shared/signals');
 const {SignalSetType} = require('../../../shared/signal-sets');
-const {getIndexName, getFieldName, createIndex, extendMapping} = require('./elasticsearch-common');
+const {getIndexName, getFieldName, createIndex, extendMapping, COPY_ID_PIPELINE} = require('./elasticsearch-common');
 const contextHelpers = require('../context-helpers');
 
 const signalSets = require('../../models/signal-sets');
@@ -29,7 +29,9 @@ let indexerProcess;
 async function init() {
     log.info('Indexer', 'Spawning indexer process');
 
-    const options ={
+    await initPipelines();
+
+    const options = {
         cwd: path.join(__dirname, '..', '..'),
         env: {NODE_ENV: process.env.NODE_ENV}
     };
@@ -77,6 +79,35 @@ async function init() {
 }
 
 
+async function initPipelines() {
+
+    // When documents are added to generated signal set (in tasks), index is accessed directly
+    // this pipeline assures that the _id field, if used, is copied to id field, which is used for sorting
+    // as recommended by ES docs
+    await elasticsearch.ingest.putPipeline(
+        {
+            id: COPY_ID_PIPELINE,
+            body:
+                {
+                    "description": "Copy _id field to id field for sorting purposes",
+                    "processors": [
+                        {
+                            "set": {
+                                "if": "ctx._id != null",
+                                "field": "id",
+                                "value": "{{_id}}"
+                            }
+                        }
+                    ]
+                }
+        }
+    );
+}
+
+async function getDocsCount(sigSet) {
+    const count = await elasticsearch.cat.count({index: getIndexName(sigSet), h: 'count'});
+    return count.trim();
+}
 
 async function onCreateStorage(sigSet) {
     await createIndex(sigSet, {});
@@ -130,6 +161,7 @@ async function onInsertRecords(sigSetWithSigMap, records) {
         });
 
         const esDoc = {};
+        esDoc['id'] = record.id;
         for (const fieldCid in record.signals) {
             const fieldId = signalByCidMap[fieldCid].id;
             enforce(fieldId, `Unknown signal "${fieldCid}"`);
@@ -183,9 +215,7 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
         index: indexName,
         type: '_doc',
         id: record.id,
-        body: {
-            doc: esDoc
-        }
+        body: esDoc
     });
 
     emitter.emit('update', sigSetWithSigMap.cid);
@@ -240,4 +270,5 @@ module.exports.onUpdateRecord = onUpdateRecord;
 module.exports.onRemoveRecord = onRemoveRecord;
 module.exports.index = index;
 module.exports.init = init;
+module.exports.getDocsCount = getDocsCount;
 module.exports.emitter = emitter;

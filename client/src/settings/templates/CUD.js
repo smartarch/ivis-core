@@ -97,7 +97,6 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        // TODO update processing to be based on template types
         if (!this.props.entity) {
             if (data.type === 'jsx') {
                 data.settings = {

@@ -16,18 +16,17 @@ const {SignalSetType} = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/templates');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
-const {SignalType} = require('../../shared/signals');
-
-const contextHelpers = require('../lib/context-helpers');
+const {SignalType, SignalSource} = require('../../shared/signals');
+const moment = require('moment');
+const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
 
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
 
 const handlebars = require('handlebars');
+
+
 const recordIdTemplateHandlebars = handlebars.create();
-
-const moment = require('moment');
-
 recordIdTemplateHandlebars.registerHelper({
     toISOString: function (val) {
         return moment(val).toISOString();
@@ -91,14 +90,33 @@ async function listRecordsDTAjax(context, sigSetId, params) {
         // shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSetId, 'query') is already called inside signals.listVisibleForListTx
         const sigs = await signals.listVisibleForListTx(tx, context, sigSetId);
 
+        //TODO check for case when list of visibles changes between calls
+
         const sigSet = await tx('signal_sets').where('id', sigSetId).first();
 
         if (sigSet.type !== SignalSetType.COMPUTED) {
-            return await signalStorage.listRecordsDTAjaxTx(tx, sigSet, sigs.map(sig => sig.id), params);
+            return await signalStorage.listRecordsDTAjaxTx(
+                tx,
+                sigSet,
+                sigs.filter(sig => sig.source === SignalSource.RAW).map(sig => sig.id),
+                params
+            );
         } else {
-            throw new Error('Not implemented for computed sets yet');
+            return await listRecordsESAjax(tx, context, sigSet, params, sigs);
         }
     });
+}
+
+async function listRecordsESAjax(tx, context, sigSet, params, signals) {
+    enforce(params.length + params.start < MAX_RESULTS_WINDOW, `Pagination over ${MAX_RESULTS_WINDOW} not supported.`);
+    return await fromQueryResultToDTInput(
+        await queryTx(tx, context, [
+            toQuery(sigSet, signals, params)
+        ]),
+        sigSet,
+        signals,
+        params
+    );
 }
 
 
@@ -137,7 +155,7 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
     }
 
     const existingWithCid = await existingWithCidQuery.first();
-    enforce(!existingWithCid, "Signal set's machine name (cid) is already used for another signal set.")
+    enforce(!existingWithCid, `Signal set's machine name (cid) '${entity.cid}' is already used for another signal set.`)
 }
 
 
@@ -154,7 +172,7 @@ async function _createTx(tx, context, entity) {
     });
 
     if (entity.type){
-        enforce(entity.type in Object.values(SignalSetType), `${entity.type} is not valid signal set type.`)
+        enforce(!(entity.type in Object.values(SignalSetType)), `${entity.type} is not valid signal set type.`)
     }
 
     const ids = await tx('signal_sets').insert(filteredEntity);
@@ -392,6 +410,9 @@ async function getLastId(context, sigSet) {
 
 /* queries = [
     {
+        params: {
+            withId: <true returns also _id field>
+        },
         sigSetCid: <sigSetCid>,
 
         signals: [<sigCid>, ...],
@@ -440,8 +461,8 @@ async function getLastId(context, sigSet) {
             limit: <max no. of records>,
             sort: [
                 {
-                    sigCid: 'ts',
-                    order: 'asc'
+                    sigCid: <sigCid> <OR> field: <allowed field>,
+                    order: 'asc'/'desc'
                 }
             ]
         }
@@ -457,79 +478,89 @@ async function getLastId(context, sigSet) {
 
 async function query(context, queries) {
     return await knex.transaction(async tx => {
-        for (const sigSetQry of queries) {
-            const sigSet = await tx('signal_sets').where('cid', sigSetQry.sigSetCid).first();
-            if (!sigSet) {
-                shares.throwPermissionDenied();
-            }
+        return await queryTx(tx, context, queries);
+    });
+}
 
-            await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
+async function queryTx(tx, context, queries) {
+    for (const sigSetQry of queries) {
+        const sigSet = await tx('signal_sets').where('cid', sigSetQry.sigSetCid).first();
+        if (!sigSet) {
+            shares.throwPermissionDenied();
+        }
 
-            // Map from signal cid to signal
-            const signalMap = {};
+        await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
 
-            const sigs = await tx('signals').where('set', sigSet.id);
-            for (const sig of sigs) {
-                sig.settings = JSON.parse(sig.settings);
-                signalMap[sig.cid] = sig;
-            }
+        // Map from signal cid to signal
+        const signalMap = {};
 
-            const signalsToCheck = new Set();
+        const sigs = await tx('signals').where('set', sigSet.id);
+        for (const sig of sigs) {
+            sig.settings = JSON.parse(sig.settings);
+            signalMap[sig.cid] = sig;
+        }
 
-            const checkFilter = flt => {
-                if (flt.type === 'and' || flt.type === 'or') {
-                    for (const fltChild of flt.children) {
-                        checkFilter(fltChild);
-                    }
+        const signalsToCheck = new Set();
 
-                } else if (flt.type === 'range' || flt.type === 'mustExist') {
-                    const sig = signalMap[flt.sigCid];
-                    if (!sig) {
-                        shares.throwPermissionDenied();
-                    }
-                    signalsToCheck.add(sig.id);
-
-                } else {
-                    throw new Error(`Unknown filter type "${flt.type}"`);
+        const checkFilter = flt => {
+            if (flt.type === 'and' || flt.type === 'or') {
+                for (const fltChild of flt.children) {
+                    checkFilter(fltChild);
                 }
-            };
 
-            if (sigSetQry.filter) {
-                checkFilter(sigSetQry.filter)
+            } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
+                const sig = signalMap[flt.sigCid];
+                if (!sig) {
+                    shares.throwPermissionDenied();
+                }
+                signalsToCheck.add(sig.id);
+
+            } else  if (flt.type === 'ids'){
+               // empty
             }
+            else {
+                throw new Error(`Unknown filter type "${flt.type}"`);
+            }
+        };
 
-            const checkSignals = signals => {
-                for (const sigCid of signals) {
-                    const sig = signalMap[sigCid];
-                    if (!sig) {
-                        log.verbose(`unknown signal ${sigSet.cid}.${sigCid}`);
-                        shares.throwPermissionDenied();
-                    }
+        if (sigSetQry.filter) {
+            checkFilter(sigSetQry.filter)
+        }
 
-                    signalsToCheck.add(sig.id);
+        const checkSignals = signals => {
+            for (const sigCid of signals) {
+                const sig = signalMap[sigCid];
+                if (!sig) {
+                    log.verbose(`unknown signal ${sigSet.cid}.${sigCid}`);
+                    shares.throwPermissionDenied();
                 }
-            };
 
-            const checkAggs = aggs => {
-                for (const agg of aggs) {
-                    const sig = signalMap[agg.sigCid];
-                    if (!sig) {
-                        shares.throwPermissionDenied();
-                    }
+                signalsToCheck.add(sig.id);
+            }
+        };
 
-                    signalsToCheck.add(sig.id);
-
-                    if (agg.signals) {
-                        checkSignals(Object.keys(agg.signals));
-                    } else if (agg.aggs) {
-                        checkAggs(agg.aggs);
-                    }
+        const checkAggs = aggs => {
+            for (const agg of aggs) {
+                const sig = signalMap[agg.sigCid];
+                if (!sig) {
+                    shares.throwPermissionDenied();
                 }
-            };
 
-            const checkSort = sort => {
-                if (sort) {
-                    for (const srt of sort) {
+                signalsToCheck.add(sig.id);
+
+                if (agg.signals) {
+                    checkSignals(Object.keys(agg.signals));
+                } else if (agg.aggs) {
+                    checkAggs(agg.aggs);
+                }
+            }
+        };
+
+        const checkSort = sort => {
+            if (sort) {
+                for (const srt of sort) {
+                    // Ignores other types of sorts
+                    if (sort.sigCid) {
                         const sig = signalMap[srt.sigCid];
                         if (!sig) {
                             shares.throwPermissionDenied();
@@ -538,32 +569,32 @@ async function query(context, queries) {
                         signalsToCheck.add(sig.id);
                     }
                 }
-            };
-
-            if (sigSetQry.aggs) {
-                checkAggs(sigSetQry.aggs);
-            } else if (sigSetQry.docs) {
-                checkSignals(sigSetQry.docs.signals);
-                checkSort(sigSetQry.docs.sort);
-            } else if (sigSetQry.sample) {
-                checkSignals(sigSetQry.sample.signals);
-                checkSort(sigSetQry.sample.sort);
-            } else if (sigSetQry.summary) {
-                checkSignals(Object.keys(sigSetQry.summary.signals));
-            } else {
-                throw new Error('None of "aggs", "docs", "sample", "summary" query part has been specified');
             }
+        };
 
-            for (const sigId of signalsToCheck) {
-                await shares.enforceEntityPermissionTx(tx, context, 'signal', sigId, 'query');
-            }
-
-            sigSetQry.sigSet = sigSet;
-            sigSetQry.signalMap = signalMap;
+        if (sigSetQry.aggs) {
+            checkAggs(sigSetQry.aggs);
+        } else if (sigSetQry.docs) {
+            checkSignals(sigSetQry.docs.signals);
+            checkSort(sigSetQry.docs.sort);
+        } else if (sigSetQry.sample) {
+            checkSignals(sigSetQry.sample.signals);
+            checkSort(sigSetQry.sample.sort);
+        } else if (sigSetQry.summary) {
+            checkSignals(Object.keys(sigSetQry.summary.signals));
+        } else {
+            throw new Error('None of "aggs", "docs", "sample", "summary" query part has been specified');
         }
 
-        return await indexer.query(queries);
-    });
+        for (const sigId of signalsToCheck) {
+            await shares.enforceEntityPermissionTx(tx, context, 'signal', sigId, 'query');
+        }
+
+        sigSetQry.sigSet = sigSet;
+        sigSetQry.signalMap = signalMap;
+    }
+
+    return await indexer.query(queries);
 }
 
 async function index(context, signalSetId, method = IndexMethod.FULL, from) {

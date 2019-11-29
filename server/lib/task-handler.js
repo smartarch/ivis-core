@@ -140,9 +140,9 @@ function onRemoveAllFiles(type, subtype, entityId) {
 }
 
 /**
- * Create job index if it doesn't exists and set correct mapping for job config
- * mapping disables parsing for config field as job can include any json and it would clash with es types implementation
- * should two stored configs differ
+ * Create job index if it doesn't exists and set correct mapping for job config.
+ * Mapping disables parsing for config field as job can include any json and it would clash with es types implementation
+ * should two stored states differ
  */
 async function initIndices() {
     let reachable = true;

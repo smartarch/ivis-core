@@ -5,6 +5,7 @@ const knex = require('../lib/knex');
 const {JobState, RunStatus, HandlerMsgType, JobMsgType} = require('../../shared/jobs');
 const {TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
 const {SignalSetType} = require('../../shared/signal-sets');
+const {SignalSource} = require('../../shared/signals');
 const log = require('../lib/log');
 const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-common');
 const moment = require('moment');
@@ -39,13 +40,18 @@ const checkInterval = config.tasks.checkInterval * 1000;
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
 
-const numpyHandler = {};
-numpyHandler.run = pythonHandler.run;
-numpyHandler.remove = pythonHandler.remove;
-numpyHandler.stop = pythonHandler.stop;
-numpyHandler.build = pythonHandler.build;
-numpyHandler.init = (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail);
+const numpyHandler = {
+    ...pythonHandler,
+    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail)
+};
+
+const energyHandler= {
+    ...pythonHandler,
+    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.ENERGY_PLUS, id, code, destDir, onSuccess, onFail)
+};
+
 handlers.set(TaskType.NUMPY, numpyHandler);
+handlers.set(TaskType.ENERGY_PLUS, energyHandler);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
@@ -247,6 +253,7 @@ async function getEntitiesFromParams(jobParams, taskParams) {
 
                     entities.signalSets[cid] = {
                         index: getIndexName(sigSet),
+                        name: sigSet.name,
                         namespace: sigSet.namespace
                     };
                     break;
@@ -286,6 +293,7 @@ async function getEntitiesFromParams(jobParams, taskParams) {
 
                     entities.signals[signalSetCid][sigCid] = {
                         field: getFieldName(sig.id),
+                        name: sig.name,
                         namespace: sig.namespace
                     };
                     break;
@@ -378,7 +386,7 @@ async function processRunMsg(msg, task, job) {
 }
 
 /**
- * When task is being build, this function is run after the build is finished.
+ * When task is being build when run command arrives, this function is run after the build is finished.
  * @param buildState State of the finished build
  * @param jobId Id of the job waiting
  * @param msg Run msg that should be handled after successful build
@@ -824,9 +832,11 @@ async function processSetReq(jobId, sigSet) {
 
                 indexInfo.fields = {};
                 for (const signal of signals) {
+                    // Here are possible overwrites of input form job
                     signal.weight_list = 0;
                     signal.weight_edit = null;
-                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal, false);
+                    signal.source = SignalSource.JOB;
+                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal);
                     indexInfo.fields[signal.cid] = getFieldName(sigId);
                 }
 
@@ -850,7 +860,6 @@ async function loadJobState(id) {
     let jobState = null;
     try {
         const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
-        jobState['_source'][STATE_FIELD];
 
         return jobState['_source'][STATE_FIELD];
 
