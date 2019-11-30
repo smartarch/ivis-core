@@ -24,7 +24,8 @@ class TestScatterPlot extends Component {
                     {x: 2, y: 5 },
                     {x: 6, y: 2 },
                     {x: 1, y: 4 },
-                    {x: 3, y: 5 }]
+                    {x: 3, y: 5 }],
+            color: rgb(219, 0, 0)
         };
 
         return (
