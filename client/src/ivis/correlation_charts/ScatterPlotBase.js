@@ -151,7 +151,8 @@ export class ScatterPlotBase extends Component {
             .domain(yExtent)
             .range([ySize, 0]);
         const yAxis = d3Axis.axisLeft(yScale);
-        this.yAxisSelection.call(yAxis);
+        this.yAxisSelection
+            .transition().call(yAxis);
 
         // x Scale
         let xExtent = d3Array.extent(data, function (d) {  return d.x });
@@ -160,20 +161,26 @@ export class ScatterPlotBase extends Component {
             .domain(xExtent)
             .range([0, xSize]);
         const xAxis = d3Axis.axisBottom(xScale);
-        this.xAxisSelection.call(xAxis);
+        this.xAxisSelection
+            .transition().call(xAxis);
 
         // create dots on chart
         const dots = this.dotsSelection
             .selectAll('circle')
-            .data(data);
+            .data(data, (d) => {
+                return d.x + " " + d.y;
+            });
 
         dots.enter()
             .append('circle')
-            .merge(dots)
             .attr('cx', d => xScale(d.x))
             .attr('cy', d => yScale(d.y))
             .attr('r', 5)
             .attr('fill', this.props.config.color);
+
+        dots.transition()
+            .attr('cx', d => xScale(d.x))
+            .attr('cy', d => yScale(d.y));
 
         dots.exit()
             .remove();
@@ -268,28 +275,27 @@ export class ScatterPlotBase extends Component {
         };
 
         const deselectPoints = function () {
-            self.cursorSelectionX.attr('visibility', 'hidden');
-            self.cursorSelectionY.attr('visibility', 'hidden');
-
-            if (selection) {
-                self.dotHighlightSelection
-                    .selectAll('circle')
-                    .remove();
-            }
-
-            selection = null;
-            mousePosition = null;
-
-            self.setState({
-                selection,
-                mousePosition
-            });
+            self.deselectPoints();
         };
 
         this.brushSelection
             .on('mouseenter', selectPoints)
             .on('mousemove', selectPoints)
             .on('mouseleave', deselectPoints);
+    }
+
+    deselectPoints() {
+        this.cursorSelectionX.attr('visibility', 'hidden');
+        this.cursorSelectionY.attr('visibility', 'hidden');
+
+        this.dotHighlightSelection
+            .selectAll('circle')
+            .remove();
+
+        this.setState({
+            selection: null,
+            mousePosition: null
+        });
     }
 
     createChartBrush(xScale, yScale) {
@@ -311,6 +317,7 @@ export class ScatterPlotBase extends Component {
                             self.props.setZoom(xMin, xMax, yMin, yMax);
 
                         self.brushSelection.call(brush.move, null);
+                        self.deselectPoints();
                     }
                 });
 
