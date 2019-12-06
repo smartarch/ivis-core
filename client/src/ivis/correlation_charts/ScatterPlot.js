@@ -70,12 +70,14 @@ export class ScatterPlot extends Component {
         margin: PropTypes.object.isRequired,
         withBrush: PropTypes.bool,
         withTooltip: PropTypes.bool,
+        withTransition: PropTypes.bool,
 
     };
 
     static defaultProps = {
         withBrush: true,
-        withTooltip: true
+        withTooltip: true,
+        withTransition: true
     };
 
     setDefaultZoom() {

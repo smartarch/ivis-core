@@ -77,6 +77,7 @@ export class ScatterPlotBase extends Component {
         margin: PropTypes.object.isRequired,
         withBrush: PropTypes.bool,
         withTooltip: PropTypes.bool,
+        withTransition: PropTypes.bool,
 
         xMin: PropTypes.number,
         xMax: PropTypes.number,
@@ -88,6 +89,7 @@ export class ScatterPlotBase extends Component {
     static defaultProps = {
         withBrush: true,
         withTooltip: true,
+        withTransition: true,
         xMin: null,
         xMax: null,
         yMin: null,
@@ -151,8 +153,10 @@ export class ScatterPlotBase extends Component {
             .domain(yExtent)
             .range([ySize, 0]);
         const yAxis = d3Axis.axisLeft(yScale);
-        this.yAxisSelection
-            .transition().call(yAxis);
+        (this.props.withTransition ?
+            this.yAxisSelection.transition() :
+            this.yAxisSelection)
+            .call(yAxis);
 
         // x Scale
         let xExtent = d3Array.extent(data, function (d) {  return d.x });
@@ -161,8 +165,10 @@ export class ScatterPlotBase extends Component {
             .domain(xExtent)
             .range([0, xSize]);
         const xAxis = d3Axis.axisBottom(xScale);
-        this.xAxisSelection
-            .transition().call(xAxis);
+        (this.props.withTransition ?
+            this.xAxisSelection.transition() :
+            this.xAxisSelection)
+            .call(xAxis);
 
         // create dots on chart
         const dots = this.dotsSelection
@@ -171,14 +177,22 @@ export class ScatterPlotBase extends Component {
                 return d.x + " " + d.y;
             });
 
-        dots.enter()
-            .append('circle')
-            .attr('cx', d => xScale(d.x))
-            .attr('cy', d => yScale(d.y))
-            .attr('r', 5)
-            .attr('fill', this.props.config.color);
+        let new_circles = function(self) {
+            dots.enter()
+                .append('circle')
+                .attr('cx', d => xScale(d.x))
+                .attr('cy', d => yScale(d.y))
+                .attr('r', 5)
+                .attr('fill', self.props.config.color);
+        };
 
-        dots.transition()
+        if (this.props.withTransition && dots.size() !== 0)
+            setTimeout(new_circles, 250, this);
+        else
+            new_circles(this);
+
+        (this.props.withTransition ?
+            dots.transition() : dots)
             .attr('cx', d => xScale(d.x))
             .attr('cy', d => yScale(d.y));
 
