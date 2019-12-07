@@ -10,6 +10,7 @@ import {
 import {
     ACEEditor,
     Button,
+    filterData,
     Form,
     FormSendMethod,
     withForm
@@ -182,13 +183,7 @@ export default class Develop extends Component {
     }
 
     inputMutator(data) {
-        const settings = data.settings || {};
         this.templateTypes[data.type].dataIn(data);
-    }
-
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
     }
 
     resizeTabPaneContent() {
@@ -226,7 +221,14 @@ export default class Develop extends Component {
 
     submitFormValuesMutator(data) {
         this.templateTypes[data.type].dataOut(data);
-        return data;
+        return filterData(data, [
+            'name',
+            'description',
+            'type',
+            'settings',
+            'elevated_access',
+            'namespace'
+        ]);
     }
 
     async save() {
@@ -243,7 +245,7 @@ export default class Develop extends Component {
         const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/templates/${this.props.entity.id}`);
 
         if (submitSuccessful) {
-            await this.loadFormValues();
+            await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
             this.enableForm();
             this.setState({
                 saveState: SaveState.SAVED,

@@ -56,6 +56,10 @@ router.postAsync('/job-runs-table/:jobId', passport.loggedIn, async (req, res) =
     return res.json(await jobs.listRunsDTAjax(req.context, castToInteger(req.params.jobId), req.body));
 });
 
+router.postAsync('/owned-signal-sets-table/:jobId', passport.loggedIn, async (req, res) => {
+    return res.json(await jobs.listOwnedSignalSetsDTAjax(req.context, castToInteger(req.params.jobId), req.body));
+});
+
 router.postAsync('/job-running-table', passport.loggedIn, async (req, res) => {
     return res.json(await jobs.listRunningDTAjax(req.context, req.body));
 });

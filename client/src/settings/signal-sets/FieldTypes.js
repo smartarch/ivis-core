@@ -4,11 +4,11 @@ import React from "react";
 import {CheckBox, DatePicker, InputField} from "../../lib/form";
 import moment from "moment";
 
-const { SignalType } = require('../../../../shared/signals');
+const { SignalType, SignalSource } = require('../../../../shared/signals');
 
 export default class FieldTypes {
     constructor(t, signalsVisibleForEdit) {
-        this.signalsVisibleForEdit = signalsVisibleForEdit;
+        this.signalsVisibleForEdit = signalsVisibleForEdit.filter(sig => sig.source === SignalSource.RAW);
 
         this.fieldTypes = {};
 

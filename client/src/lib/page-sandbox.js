@@ -110,6 +110,14 @@ export class SectionContent extends Component {
         parentRPC.ask('navigateToWithFlashMessage', {path, severity, text});
     }
 
+    registerBeforeUnloadHandlers(handlers) {
+        // This is not implemented because we don't have a case yet when it would be needed. This might become needed when a panel has a form that needs saving, or similar.
+    }
+
+    deregisterBeforeUnloadHandlers(handlers) {
+        // Dtto (as above)
+    }
+
     errorHandler(error) {
         if (error.response && error.response.data && error.response.data.message) {
             console.error(error);

@@ -31,17 +31,18 @@ import {DeleteModalDialog} from "../../../lib/modals";
 import {Panel} from "../../../lib/panel";
 import ivisConfig
     from "ivisConfig";
-import {getSignalTypes} from "./signal-types";
+import {getSignalSources, getSignalTypes} from "./signal-types";
 import {
-    DerivedSignalTypes,
-    SignalType
+    SignalSource,
+    SignalType,
+    getTypesBySource
 } from "../../../../../shared/signals"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"
 
-function isPainless(type) {
-    return type === SignalType.PAINLESS || type === SignalType.PAINLESS_DATE_TIME;
+function isPainless(source) {
+    return source === SignalSource.DERIVED;
 }
 
 @withComponentMixins([
@@ -62,16 +63,35 @@ export default class CUD extends Component {
                 url: `rest/signals-validate/${props.signalSet.id}`,
                 changed: ['cid'],
                 extra: ['id']
+            },
+            onChange: {
+                source: ::this.onSourceChange,
             }
         });
+
+        this.signalSources = getSignalSources(props.t);
+        this.sourceOptions = [];
+        for (const source in this.signalSources) {
+
+            if (source === SignalSource.JOB) {
+                continue;
+            }
+
+            if (source === SignalSource.DERIVED && !props.signalSet.permissions.includes('manageScripts')) {
+                continue;
+            }
+
+            this.sourceOptions.push({
+                key: source,
+                label: this.signalSources[source]
+            });
+        }
 
         this.signalTypes = getSignalTypes(props.t);
 
         this.typeOptions = [];
         for (const type in this.signalTypes) {
-            if (!DerivedSignalTypes.has(type) || props.signalSet.permissions.includes('manageScripts')) {
-                this.typeOptions.push({key: type, label: this.signalTypes[type]});
-            }
+            this.typeOptions.push({key: type, label: this.signalTypes[type]});
         }
     }
 
@@ -79,11 +99,13 @@ export default class CUD extends Component {
         action: PropTypes.string.isRequired,
         signalSet: PropTypes.object,
         entity: PropTypes.object
-    }
+    };
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
+    onSourceChange(state, key, oldVal, newVal) {
+        if (oldVal !== newVal) {
+            const type = getTypesBySource(newVal)[0];
+            state.formState = state.formState.setIn(['data', 'type', 'value'], type);
+        }
     }
 
     componentDidMount() {
@@ -98,6 +120,7 @@ export default class CUD extends Component {
                 name: '',
                 description: '',
                 type: SignalType.DOUBLE,
+                source: SignalSource.RAW,
                 indexed: false,
                 settings: {},
                 shownInList: false,
@@ -169,29 +192,27 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        if (isPainless(data.type)) {
+        if (isPainless(data.source)) {
             data.settings = {painlessScript: data.painlessScript};
             data.weight_list = null;
-            data.weight_edit = null;
             data.indexed = false;
         } else {
             data.settings = {};
             data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
-            data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
         }
+
+        data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
+
         return filterData(data, [
             'cid',
-            'created',
-            'description',
-            'id',
-            'indexed',
             'name',
-            'namespace',
-            'painlessScript',
-            'permissions',
-            'set',
-            'settings',
+            'description',
             'type',
+            'indexed',
+            'settings',
+            'namespace',
+            'type',
+            'source',
             'weight_edit',
             'weight_list'
         ]);
@@ -243,6 +264,15 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
+        this.typeOptions = [];
+        const source = this.getFormValue('source');
+        if (source) {
+            for (const type of getTypesBySource(source)) {
+                this.typeOptions.push({key: type, label: this.signalTypes[type]});
+            }
+        }
+
+
         return (
             <Panel title={isEdit ? t('Edit Signal') : t('Create Signal')}>
                 {canDelete &&
@@ -259,14 +289,19 @@ export default class CUD extends Component {
                     <InputField id="cid" label={t('Id')}/>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                    <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
 
+                    <Dropdown id="source" label={t('Source')} options={this.sourceOptions}/>
 
-                    {isPainless(this.getFormValue('type')) &&
+                    {source ?
+                        <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
+                        :
+                        <div className="alert alert-info" role="alert">{t('Choose source first...')}</div>}
+
+                    {isPainless(source) &&
                     <TextArea id="painlessScript" label={t('Painless script')}/>
                     }
 
-                    {!isPainless(this.getFormValue('type')) &&
+                    {!isPainless(source) &&
                     <>
                         <CheckBox id="indexed" text={t('Indexed')}/>
 
@@ -276,12 +311,14 @@ export default class CUD extends Component {
                                     help={t('This number determines if in which order the signal is listed when viewing records in the data set. Signals are ordered by weight in ascending order.')}/>
                         }
 
-                        <CheckBox id="shownInEdit" label={t('Record edit')} text={t('Visible in record edit form')}/>
-                        {this.getFormValue('shownInEdit') &&
-                        <InputField id="weight_edit" label={t('Edit weight')}
-                                    help={t('This number determines if in which order the signal is listed when editing records in the data set. Signals are ordered by weight in ascending order.')}/>
-                        }
+
                     </>
+                    }
+
+                    <CheckBox id="shownInEdit" label={t('Record edit')} text={t('Visible in record edit form')}/>
+                    {this.getFormValue('shownInEdit') &&
+                    <InputField id="weight_edit" label={t('Edit weight')}
+                                help={t('This number determines if in which order the signal is listed when editing records in the data set. Signals are ordered by weight in ascending order.')}/>
                     }
 
                     <NamespaceSelect/>

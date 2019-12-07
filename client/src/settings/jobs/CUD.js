@@ -8,7 +8,8 @@ import {
     Button,
     ButtonRow,
     Dropdown,
-    Fieldset, filterData,
+    Fieldset,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -113,11 +114,6 @@ export default class CUD extends Component {
                 this.paramTypes.onChange(configSpec, mutStateData, key, oldVal, newVal)
             }
         }
-    }
-
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
     }
 
     static isPositiveInteger(s) {
@@ -230,21 +226,16 @@ export default class CUD extends Component {
         }
 
         return filterData(data, [
-            'created',
-            'delay',
-            'description',
-            'id',
-            'min_gap',
             'name',
-            'namespace',
-            'params',
-            'permissions',
-            'sets',
-            'settings',
-            'signal_sets_triggers',
-            'state',
+            'description',
             'task',
-            'trigger'
+            'params',
+            'state',
+            'trigger',
+            'min_gap',
+            'delay',
+            'namespace',
+            'signal_sets_triggers',
         ]);
     }
 
@@ -278,7 +269,7 @@ export default class CUD extends Component {
                     if (submitAndLeave) {
                         this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job updated'));
                     } else {
-                        await this.loadFormValues();
+                        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
                         this.enableForm();
                         this.setFormStatusMessage('success', t('Job updated'));
                     }

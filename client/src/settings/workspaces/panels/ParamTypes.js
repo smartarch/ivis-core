@@ -618,7 +618,7 @@ export default class ParamTypes {
                     }
                 }
 
-                return <Fieldset key={spec.id} id={formId} label={spec.label} flat={spec.flat}>{fields}</Fieldset>;
+                return <Fieldset key={spec.id} id={formId} label={spec.label} help={spec.help} flat={spec.flat}>{fields}</Fieldset>;
             },
             upcast: (spec, value) => {
                 const upcastChild = (childConfig) => {

@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
-import {ACEEditor, Button, Form, FormSendMethod, withForm} from "../../lib/form";
+import {ACEEditor, Button, filterData, Form, FormSendMethod, withForm} from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/python";
 import "brace/mode/text";
@@ -31,6 +31,7 @@ const defaultEditorHeight = 600;
 const typeToEditor = new Map();
 typeToEditor.set(TaskType.PYTHON, 'python');
 typeToEditor.set(TaskType.NUMPY, 'python');
+typeToEditor.set(TaskType.ENERGY_PLUS, 'python');
 
 @withComponentMixins([
     withTranslation,
@@ -210,11 +211,6 @@ export default class Develop extends Component {
         this.getTypeSpec(data.type).dataIn(data);
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
-    }
-
     resizeTabPaneContent() {
         if (this.tabPaneContentNode) {
             let desiredHeight;
@@ -260,7 +256,13 @@ export default class Develop extends Component {
 
     submitFormValuesMutator(data) {
         this.getTypeSpec(data.type).dataOut(data);
-        return data;
+        return filterData(data, [
+            'name',
+            'description',
+            'type',
+            'settings',
+            'namespace'
+        ]);
     }
 
     async save() {
@@ -277,7 +279,7 @@ export default class Develop extends Component {
         const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/tasks/${this.props.entity.id}`);
 
         if (submitSuccessful) {
-            await this.loadFormValues();
+            await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
             this.enableForm();
             this.setState({
                 saveState: SaveState.SAVED,

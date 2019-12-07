@@ -22,14 +22,17 @@ from elasticsearch import Elasticsearch
 
 # Get parameters and set up elasticsearch
 data = json.loads(sys.stdin.readline())
-config = data.get('config')
-params = data.get('params')
-param_map = params.get('map')
-param_ns = params.get('namespaces')
 es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
 
-if config is None or config.get('index') is None:
-    ns = params_ns['sigSet']
+state = data.get('state')
+
+params= data['params']
+entities= data['entities']
+
+sig_set = entities['signalSets'][params['sigSet']]
+
+if state is None or state.get('index') is None:
+    ns = sig_set['namespace']
 
     msg = {}
     msg['type'] = 'sets'
@@ -54,24 +57,24 @@ if config is None or config.get('index') is None:
     })
     msg['sigSet']['signals'] = signals
 
-    ret = os.write(3,json.dumps(msg) + '\\n')
-    config = json.loads(sys.stdin.readline())
-    error = config.get('error')
+    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
+    state = json.loads(sys.stdin.readline())
+    error = state.get('error')
     if error:
       sys.stderr.write(error+"\\n")
       sys.exit(1)
 
 doc = {
-    config['fields']['test']: 55
+    state['fields']['test']: 55
 }
 
-res = es.index(index=config['index'], doc_type='_doc', body=doc)
+res = es.index(index=state['index'], doc_type='_doc', body=doc)
 
 # Request to store config
 msg={}
 msg['type'] = 'store'
-msg['config'] = config
-ret = os.write(3,json.dumps(msg))
+msg['state'] = state
+ret = os.write(3,(json.dumps(msg).encode()))
 os.close(3)`
     };
 });

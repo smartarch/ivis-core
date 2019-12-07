@@ -2,8 +2,8 @@
 
 const moment = require('moment');
 const elasticsearch = require('../elasticsearch');
-const { SignalType } = require('../../../shared/signals');
-const { getIndexName, getFieldName } = require('./elasticsearch-common');
+const {SignalType, SignalSource} = require('../../../shared/signals');
+const {getIndexName, getFieldName} = require('./elasticsearch-common');
 
 const handlebars = require('handlebars');
 const log = require('../log');
@@ -163,7 +163,7 @@ class QueryProcessor {
     }
 
     getField(field) {
-        if (field.type === SignalType.PAINLESS || field.type === SignalType.PAINLESS_DATE_TIME) {
+        if (field.source === SignalSource.DERIVED) {
             return {script: this.createElsScript(field)};
         } else {
             return {field: getFieldName(field.id)};
@@ -193,20 +193,35 @@ class QueryProcessor {
     }
 
     createElsSort(sort) {
+        const allowedSortFields = ['_doc', 'id'];
+
         const signalMap = this.signalMap;
         const elsSort = [];
         for (const srt of sort) {
-            const field = signalMap[srt.sigCid];
+            if (srt.sigCid) {
+                const field = signalMap[srt.sigCid];
 
-            if (!field) {
-                throw new Error('Unknown field ' + srt.sigCid);
-            }
-
-            elsSort.push({
-                [getFieldName(field.id)]: {
-                    order: srt.order
+                if (!field) {
+                    throw new Error('Unknown field ' + srt.sigCid);
                 }
-            })
+
+                elsSort.push({
+                    [getFieldName(field.id)]: {
+                        order: srt.order
+                    }
+                });
+            } else {
+                // check for other allowed fields
+                if (allowedSortFields.includes(srt.field)) {
+                    elsSort.push({
+                        [srt.field]: {
+                            order: srt.order
+                        }
+                    });
+                } else {
+                    throw new Error('Unknown field ' + srt.field);
+                }
+            }
         }
 
         return elsSort;
@@ -256,11 +271,11 @@ class QueryProcessor {
                 if (agg.bucketGroup) {
                     const minMax = await _fetchMinAndMaxForAgg(agg);
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
-                    
+
                     if (!bucketGroup) {
                         throw new Error(`Unknown bucket group ${agg.bucketGroup}`);
                     }
-                    
+
                     if (bucketGroup.min === undefined || bucketGroup.min > minMax.min) {
                         bucketGroup.min = minMax.min;
                     }
@@ -283,9 +298,9 @@ class QueryProcessor {
         };
 
         const _computeStepAndOffset = (fieldType, maxBucketCount, minStep, minValue, maxValue) => {
-            if (fieldType === SignalType.DATE_TIME || fieldType === SignalType.PAINLESS_DATE_TIME) {
+            if (fieldType === SignalType.DATE_TIME) {
                 throw new Error('Not implemented');
-            } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE || fieldType === SignalType.PAINLESS) {
+            } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
             } else {
                 throw new Error(`Field type ${fieldType} is not supported in aggregations`);
@@ -317,7 +332,7 @@ class QueryProcessor {
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
                     step = bucketGroup.step;
                     offset = bucketGroup.offset;
-                    
+
                 } else {
                     throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or buckteGroup have to be specified.');
                 }
@@ -360,7 +375,7 @@ class QueryProcessor {
 
             const elsAgg = {};
 
-            if (field.type === SignalType.DATE_TIME || field.type === SignalType.PAINLESS_DATE_TIME) {
+            if (field.type === SignalType.DATE_TIME) {
                 // TODO: add processing of range buckets
 
                 elsAgg.date_histogram = {
@@ -370,7 +385,7 @@ class QueryProcessor {
                     min_doc_count: agg.minDocCount
                 };
 
-            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE || field.type === SignalType.PAINLESS) {
+            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE ) {
                 elsAgg.histogram = {
                     ...this.getField(field),
                     interval: agg.computedStep || 1e-16 /* FIXME - this is  a hack, find better way to handle situations when there is no interval */,
@@ -446,7 +461,7 @@ class QueryProcessor {
             const buckets = [];
 
             const field = signalMap[agg.sigCid];
-            if (field.type === SignalType.DATE_TIME || field.type === SignalType.PAINLESS_DATE_TIME) {
+            if (field.type === SignalType.DATE_TIME) {
                 // TODO: add processing of range buckets
 
                 for (const elsBucket of elsAggResp.buckets) {
@@ -456,7 +471,7 @@ class QueryProcessor {
                     });
                 }
 
-            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE || field.type === SignalType.PAINLESS) {
+            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE ) {
                 for (const elsBucket of elsAggResp.buckets) {
                     buckets.push({
                         key: elsBucket.key,
@@ -517,7 +532,7 @@ class QueryProcessor {
                 return {
                     bool: {
                         should: filter,
-                        minimum_should_match : 1
+                        minimum_should_match: 1
                     }
                 };
             }
@@ -553,7 +568,8 @@ class QueryProcessor {
             } else if (elsFld.script) {
                 let rngCond = '';
                 for (const rngAttr of rngKeys) {
-                    if (field.type === SignalType.PAINLESS_DATE_TIME) {
+                    // TODO probably don't need to check for DERIVED as it is alread in script
+                    if (field.source === SignalSource.DERIVED && field.type === SignalType.DATE_TIME) {
                         let attrCond;
                         if (rngAttr === 'gte') {
                             attrCond = '!result.isBefore(ZonedDateTime.parse(params.gte))';
@@ -565,12 +581,13 @@ class QueryProcessor {
                             attrCond = 'result.isBefore(ZonedDateTime.parse(params.lt))';
                         }
                         rngCond += ' && ' + attrCond;
-
-                    } else if (field.type === SignalType.PAINLESS) {
-                        const rngOp = { gte: '>=', gt: '>', lte: '<=', lt: '<' };
+                    // TODO check if this condition is allowed for all types, previously was for type painless
+                    } else if (field.source === SignalSource.DERIVED) {
+                        const rngOp = {gte: '>=', gt: '>', lte: '<=', lt: '<'};
                         rngCond += ' && result' + rngOp[rngAttr] + 'params.' + rngAttr;
 
                     } else {
+                        // TODO also change this message accordingly, see previous todo in this section
                         throw new Error(`Field type ${field.type} is not supported in filter`);
                     }
                 }
@@ -609,6 +626,20 @@ class QueryProcessor {
                 };
             }
 
+        } else if (flt.type === 'wildcard') {
+            const field = signalMap[flt.sigCid];
+            const elsFld = this.getField(field);
+            return {
+                wildcard: {
+                    [elsFld.field]: flt.value
+                }
+            }
+        } else if (flt.type === 'ids') {
+            return {
+                ids: {
+                    'values': flt.values
+                }
+            }
         } else {
             throw new Error(`Unknown filter type "${flt.type}"`);
         }
@@ -644,6 +675,10 @@ class QueryProcessor {
             script_fields: {}
         };
 
+        if ('from' in query.docs) {
+            elsQry.from = query.docs.from;
+        }
+
         if ('limit' in query.docs) {
             elsQry.size = query.docs.limit;
         }
@@ -676,15 +711,21 @@ class QueryProcessor {
             total: elsResp.hits.total
         };
 
+        const withId = query.params && query.params.withId && query.params.withId === true;
         for (const hit of elsResp.hits.hits) {
             const doc = {};
+
+            if (withId) {
+                // FIXME possible overwrite for signal named 'id'
+                doc.id = hit._id;
+            }
 
             for (const sig of query.docs.signals) {
                 const sigFld = signalMap[sig];
 
-                if (sigFld.type === SignalType.PAINLESS || sigFld.type === SignalType.PAINLESS_DATE_TIME) {
+                if (sigFld.source === SignalSource.DERIVED) {
                     if (hit.fields) {
-                    const valSet = hit.fields[getFieldName(sigFld.id)];
+                        const valSet = hit.fields[getFieldName(sigFld.id)];
                         if (valSet) {
                             doc[sig] = valSet[0];
                         }

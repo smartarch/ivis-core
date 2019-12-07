@@ -47,7 +47,9 @@ export default class Preview extends Component {
         this.state = {};
         this.refreshTimeout = null;
 
-        this.initForm();
+        this.initForm({
+            leaveConfirmation: false
+        });
     }
 
     static propTypes = {

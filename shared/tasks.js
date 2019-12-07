@@ -3,7 +3,8 @@
 
 const TaskType = {
     NUMPY: 'numpy',
-    PYTHON: 'python'
+    PYTHON: 'python',
+    ENERGY_PLUS: 'energy_plus'
 };
 
 if (Object.freeze) {

@@ -6,7 +6,7 @@ const knex = require('../lib/knex');
 const hasher = require('node-object-hash')();
 const signalStorage = require('./signal-storage');
 const indexer = require('../lib/indexers/' + config.indexer);
-const {RawSignalTypes, AllSignalTypes, DerivedSignalTypes} = require('../../shared/signals');
+const {getTypesBySource, SignalSource, AllSignalSources} = require('../../shared/signals');
 const {enforce, filterObject} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -15,8 +15,8 @@ const shares = require('./shares');
 const {IndexingStatus} = require('../../shared/signals');
 const entitySettings = require('../lib/entity-settings');
 
-const allowedKeysCreate = new Set(['cid', 'name', 'description', 'type', 'indexed', 'settings', 'set', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
-const allowedKeysUpdate = new Set(['cid', 'name', 'description', 'type', 'indexed', 'settings', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
+const allowedKeysCreate = new Set(['cid', 'name', 'description', 'type', 'source', 'indexed', 'settings', 'set', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
+const allowedKeysUpdate = new Set(['cid', 'name', 'description', 'type', 'source', 'indexed', 'settings', 'namespace', 'weight_list', 'weight_edit', ...em.get('models.signals.extraKeys', [])]);
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, allowedKeysUpdate));
@@ -48,6 +48,7 @@ async function listVisibleForXXXTx(tx, context, sigSetId, weightCol, onlyWithQue
             'signals.name',
             'signals.description',
             'signals.type',
+            'signals.source',
             'signals.indexed',
             'signals.namespace',
             knex.raw(`GROUP_CONCAT(${entityType.permissionsTable + '.operation'} SEPARATOR \';\') as permissions`)
@@ -127,7 +128,7 @@ async function listDTAjax(context, signalSetId, params) {
             .where('set', signalSetId)
             .innerJoin('namespaces', 'namespaces.id', 'signals.namespace'),
         [
-            'signals.id', 'signals.cid', 'signals.name', 'signals.description', 'signals.type', 'signals.indexed', 'signals.created', 'namespaces.name',
+            'signals.id', 'signals.cid', 'signals.name', 'signals.description', 'signals.type', 'signals.source', 'signals.indexed', 'signals.created', 'namespaces.name',
             // This also requires changes in the client because it has to look up permissions in another key
             // ...em.get('models.signals.extraKeys', []).map(key => 'signals.' + key)
         ]
@@ -162,9 +163,10 @@ async function serverValidate(context, signalSetId, data) {
 async function _validateAndPreprocess(context, tx, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
 
-    enforce(AllSignalTypes.has(entity.type), 'Unknown signal type');
+    enforce(entity.source != null && AllSignalSources.has(entity.source), 'Unknown source type');
+    enforce(getTypesBySource(entity.source).includes(entity.type), 'Unknown signal type');
 
-    if (DerivedSignalTypes.has(entity.type)) {
+    if (entity.source === SignalSource.DERIVED) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.set, 'manageScripts');
     }
 
@@ -177,13 +179,13 @@ async function _validateAndPreprocess(context, tx, entity, isCreate) {
     }
 
     const existingWithCid = await existingWithCidQuery.first();
-    enforce(!existingWithCid, "Signal's machine name (cid) is already used for another signal.");
+    enforce(!existingWithCid, `Signal's machine name (cid) '${entity.cid}' is already used for another signal.`);
 
     entity.settings = JSON.stringify(entity.settings);
 }
 
 
-async function create(context, signalSetId, entity, withStorage = true) {
+async function create(context, signalSetId, entity) {
     return await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createSignal');
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', signalSetId, 'createSignal');
@@ -202,17 +204,19 @@ async function create(context, signalSetId, entity, withStorage = true) {
             entityId: id
         });
 
-        if (RawSignalTypes.has(entity.type)) {
-            const fieldAdditions = {
-                [id]: entity.type
-            };
+        const fieldAdditions = {
+            [id]: entity.type
+        };
 
-        if (withStorage) {
-            await signalStorage.extendSchema(signalSet, fieldAdditions);
-        } else {
-            await indexer.onExtendSchema(signalSet, fieldAdditions);
+        switch (entity.source) {
+            case SignalSource.RAW:
+                await signalStorage.extendSchema(signalSet, fieldAdditions);
+                break;
+
+            case SignalSource.JOB:
+                await indexer.onExtendSchema(signalSet, fieldAdditions);
+                break;
         }
-    }
 
         return id;
     });
@@ -272,7 +276,7 @@ async function remove(context, id) {
 
         const signalSet = await tx('signal_sets').where('id', existing.set).first();
 
-        if (RawSignalTypes.has(existing.type)) {
+        if (getTypesBySource(SignalSource.RAW).includes(existing.type)) {
             await updateSignalSetStatus(tx, signalSet, await signalStorage.removeField(signalSet, existing.id));
         }
 

@@ -140,6 +140,7 @@ export class LineChartBase extends Component {
         prepareData: PropTypes.func.isRequired,
         createChart: PropTypes.func.isRequired,
         getSignalGraphContent: PropTypes.func.isRequired,
+        getSvgDefs: PropTypes.func,
         compareConfigs: PropTypes.func,
         getLineColor: PropTypes.func,
         lineCurve: PropTypes.func,
@@ -305,7 +306,7 @@ export class LineChartBase extends Component {
                 }
 
                 if (yAxis.limitMax !== undefined && yAxis.limitMax !== null) {
-                    yMax[axisIdx] = yMax[axisIdx] < yAxis.limitMax ? yAxis.limitMax : yMax[axisIdx];
+                    yMax[axisIdx] = yMax[axisIdx] < yAxis.limitMax ? yMax[axisIdx] : yAxis.limitMax;
                 }
             }
         }
@@ -713,6 +714,7 @@ export class LineChartBase extends Component {
                 getQueries={this.boundGetQueries}
                 createChart={this.boundCreateChart}
                 getGraphContent={this.boundGetGraphContent}
+                getSvgDefs={props.getSvgDefs}
                 compareConfigs={props.compareConfigs}
                 withTooltip={props.withTooltip}
                 withBrush={props.withBrush}

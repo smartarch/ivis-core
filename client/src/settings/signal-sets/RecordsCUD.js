@@ -4,7 +4,7 @@ import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
 import {Button, ButtonRow, filterData, Form, FormSendMethod, InputField, StaticField, withForm} from "../../lib/form";
-import {withErrorHandling} from "../../lib/error-handling";
+import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import {withComponentMixins} from "../../lib/decorator-helpers";
@@ -13,6 +13,8 @@ import base64url from 'base64-url';
 import FieldTypes from "./FieldTypes";
 import styles from "../../lib/styles.scss";
 import {SignalSetType} from "../../../../shared/signal-sets"
+import {SignalSource} from "../../../../shared/signals"
+import {DataAccessSession} from "../../ivis/DataAccess";
 
 @withComponentMixins([
     withTranslation,
@@ -31,6 +33,10 @@ export default class RecordsCUD extends Component {
         };
 
         this.fieldTypes = new FieldTypes(props.t, props.signalsVisibleForEdit);
+        this.visibleDerivedSignals = props.signalsVisibleForEdit.filter(sig => sig.source === SignalSource.DERIVED);
+        this.visibleDerivedSignals.sort((a, b) => a.weight_edit - b.weight_edit);
+
+        this.dataAccessSession = new DataAccessSession();
 
         if (this.state.autoId) {
             this.initForm({
@@ -61,7 +67,7 @@ export default class RecordsCUD extends Component {
     componentDidMount() {
         if (this.props.record) {
             this.getFormValuesFromEntity(this.props.record);
-
+            this.getDerivedValues();
         } else {
             const data = {
                 id: ''
@@ -70,6 +76,18 @@ export default class RecordsCUD extends Component {
             this.fieldTypes.populateFields(data);
 
             this.populateFormValues(data);
+        }
+    }
+
+    @withAsyncErrorHandler
+    async getDerivedValues() {
+        if (this.visibleDerivedSignals.length > 0) {
+            const filter = {
+                type: 'ids',
+                values: [this.props.record.id]
+            };
+            const results = await this.dataAccessSession.getLatestDocs(this.props.signalSet.cid, this.visibleDerivedSignals.map(sig => sig.cid), filter, null, 1);
+            this.setState({derivedValues: results[0]});
         }
     }
 
@@ -111,6 +129,7 @@ export default class RecordsCUD extends Component {
         const signals = this.fieldTypes.getSignals(data);
         data.signals = signals;
 
+        // TODO check if it is ok for POST of array
         return filterData(data, [
             'id',
             'signals'
@@ -153,6 +172,17 @@ export default class RecordsCUD extends Component {
         const sigSetId = signalSet.id;
         const recordIdBase64 = this.props.record && base64url.encode(this.props.record.id);
 
+        const derivedTypes = [];
+
+        for (let signal of this.visibleDerivedSignals) {
+            const value = this.state.derivedValues ? this.state.derivedValues[signal.cid] : 'Loading';
+            derivedTypes.push(
+                <StaticField key={signal.cid} id={signal.cid} className={styles.formDisabled} label={signal.name}>
+                    {value}
+                </StaticField>
+            );
+        }
+
         let idField;
         if (isEdit) {
             if (this.state.autoId) {
@@ -194,6 +224,7 @@ export default class RecordsCUD extends Component {
                     {idField}
 
                     {this.fieldTypes.render(this)}
+                    {derivedTypes}
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>

@@ -1,17 +1,13 @@
 'use strict';
 
 import React, {Component} from "react";
-import PropTypes
-    from 'prop-types';
-import {
-    LinkButton,
-    requiresAuthenticatedUser,
-    withPageHelpers
-} from "../../lib/page";
+import PropTypes from 'prop-types';
+import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
 import {Panel} from "../../lib/panel";
 import {
     Button,
-    ButtonRow, filterData,
+    ButtonRow,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -21,12 +17,9 @@ import {
     withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
-import interoperableErrors
-    from "../../../../shared/interoperable-errors";
-import passwordValidator
-    from "../../../../shared/password-validator";
-import validators
-    from "../../../../shared/validators";
+import interoperableErrors from "../../../../shared/interoperable-errors";
+import passwordValidator from "../../../../shared/password-validator";
+import validators from "../../../../shared/validators";
 import {NamespaceSelect} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
@@ -152,7 +145,6 @@ export default class CUD extends Component {
     submitFormValuesMutator(data) {
         return filterData(data,
             [
-                'id',
                 'address',
                 'email',
                 'name',
@@ -160,7 +152,8 @@ export default class CUD extends Component {
                 'password',
                 'phone_cell',
                 'username',
-            'role']);
+                'role'
+            ]);
     }
 
     @withFormErrorHandlers

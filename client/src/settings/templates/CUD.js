@@ -74,11 +74,6 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
-    }
-
     getFormValuesMutator(data) {
         data.elevated_access = !!data.elevated_access;
     }
@@ -102,7 +97,6 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        // TODO update processing to be based on template types
         if (!this.props.entity) {
             if (data.type === 'jsx') {
                 data.settings = {
@@ -117,17 +111,7 @@ export default class CUD extends Component {
         }
 
         return filterData(data, [
-            'created',
-            'description',
-            'elevated_access',
-            'id',
-            'name',
-            'namespace',
-            'output',
-            'permissions',
-            'settings',
-            'state',
-            'type'
+            'name', 'description', 'type', 'settings', 'elevated_access', 'namespace'
         ]);
     }
 

@@ -1,11 +1,11 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {Trans, translate} from 'react-i18next';
+import PropTypes from 'prop-types';
 import {requiresAuthenticatedUser, withPageHelpers} from '../lib/page';
 import {Panel} from '../lib/panel';
 import {Button, ButtonRow, Fieldset, filterData, Form, FormSendMethod, InputField, withForm} from '../lib/form';
-import {withAsyncErrorHandler, withErrorHandling} from '../lib/error-handling';
+import {withErrorHandling} from '../lib/error-handling';
 import passwordValidator from '../../../shared/password-validator';
 import interoperableErrors from '../../../shared/interoperable-errors';
 import {withComponentMixins} from "../lib/decorator-helpers";
@@ -34,9 +34,8 @@ export default class Account extends Component {
         });
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL('rest/account');
+    static propTypes = {
+        entity: PropTypes.object
     }
 
     getFormValuesMutator(data) {
@@ -46,8 +45,7 @@ export default class Account extends Component {
     }
 
     componentDidMount() {
-        // noinspection JSIgnoredPromiseFromCall
-        this.loadFormValues();
+        this.getFormValuesFromEntity(this.props.entity);
     }
 
     localValidateFormValues(state) {
@@ -113,16 +111,12 @@ export default class Account extends Component {
 
     submitFormValuesMutator(data) {
         return filterData(data, [
-            'address',
-            'currentPassword',
-            'email',
-            'id',
             'name',
-            'namespace',
+            'email',
             'password',
             'phone_cell',
-            'role',
-            'username'
+            'address',
+            'currentPassword',
         ]);
     }
 

@@ -69,8 +69,8 @@ export const panelMenuMixin = createComponentMixin({
         };
 
         return {
-            ctor,
-            delegateFuns: ['onPanelMenuAction']
+            ctor
         };
-    }
+    },
+    delegateFuns: ['onPanelMenuAction']
 });
