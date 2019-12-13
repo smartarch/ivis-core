@@ -15,6 +15,27 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
 
+const ConfigDifference = {
+    NONE: 0,
+    RENDER: 1,
+    DATA: 2,
+    DATA_WITH_CLEAR: 3
+};
+
+function compareConfigs(conf1, conf2) {
+    let diffResult = ConfigDifference.NONE;
+
+    if (conf1.sigSetCid !== conf2.sigSetCid ||
+        conf1.X_sigCid !== conf2.X_sigCid ||
+        conf1.Y_sigCid !== conf2.Y_sigCid) {
+        diffResult = ConfigDifference.DATA_WITH_CLEAR;
+    } else if (conf1.color !== conf2.color) {
+        diffResult = ConfigDifference.RENDER;
+    }
+
+    return diffResult;
+}
+
 class TooltipContent extends Component {
     constructor(props) {
         super(props);
@@ -68,8 +89,10 @@ export class ScatterPlotBase extends Component {
     static propTypes = {
         /**
          * config: {
-         *     data: [{x: number, y: number}]
-         *     color: color
+         *      sigSetCid: <signalSetCid>,
+         *      X_sigCid: <signalCid>,
+         *      Y_sigCid: <signalCid>,
+         *      color: <color>
          * }
          */
         config: PropTypes.object.isRequired,
@@ -99,13 +122,42 @@ export class ScatterPlotBase extends Component {
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
         this.createChart(null, false);
+        // noinspection JSIgnoredPromiseFromCall
+        this.fetchData();
     }
 
     componentDidUpdate(prevProps, prevState) {
         let signalSetsData = this.state.signalSetsData;
 
         const t = this.props.t;
-        this.createChart(null, true);
+
+        let configDiff = compareConfigs(this.props.config, prevProps.config);
+
+        if (configDiff === configDiff.DATA_WITH_CLEAR)
+        // TODO should changing limits of axis fetch new data or just filter existing data? (filtering currently initiated in componentDidUpdate)
+        {
+            this.setState({
+                signalSetsData: null,
+                statusMsg: t('Loading...')
+            });
+
+            signalSetsData = null;
+
+            // noinspection JSIgnoredPromiseFromCall
+            this.fetchData();
+        }
+        else {
+            const forceRefresh = this.prevContainerNode !== this.containerNode
+                || prevState.signalSetsData !== this.state.signalSetsData
+                || configDiff !== ConfigDifference.NONE
+                || prevProps.xMin !== this.props.xMin
+                || prevProps.xMax !== this.props.xMax
+                || prevProps.yMin !== this.props.yMin
+                || prevProps.yMax !== this.props.yMax;
+
+            this.createChart(signalSetsData, forceRefresh);
+            this.prevContainerNode = this.containerNode;
+        }
     }
 
     componentWillUnmount() {
@@ -114,8 +166,41 @@ export class ScatterPlotBase extends Component {
 
     @withAsyncErrorHandler
     async fetchData() {
-        const t = this.props.t;
         const config = this.props.config;
+
+        try {
+            let filter = undefined;
+            if (this.props.xMin && this.props.xMax && this.props.yMin && this.props.yMax) {
+                filter = {
+                    type: 'and',
+                    children: [
+                        {
+                            type: "range",
+                            sigCid: config.X_sigCid,
+                            lte: this.props.xMax,
+                            gte: this.props.xMin
+                        },
+                        {
+                            type: "range",
+                            sigCid: config.Y_sigCid,
+                            lte: this.props.yMax,
+                            gte: this.props.yMin
+                        }
+                    ]
+                };
+            }
+
+            const results = await this.dataAccessSession.getLatestDocs(config.sigSetCid, [config.X_sigCid, config.Y_sigCid], filter);
+
+            if (results) { // Results is null if the results returned are not the latest ones
+                console.log("docs:", results);
+                this.setState({
+                    signalSetsData: results
+                });
+            }
+        } catch (err) {
+            throw err;
+        }
     }
 
     /**
@@ -141,10 +226,14 @@ export class ScatterPlotBase extends Component {
         }
         this.renderedWidth = width;
 
+        if (!signalSetsData) {
+            return;
+        }
+
         const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
         const xSize = width - this.props.margin.left - this.props.margin.right;
 
-        const data = this.filterData(this.props.config.data); // TODO
+        const data = this.filterData(this.processData(signalSetsData));
 
         // y Scale
         let yExtent = d3Array.extent(data, function (d) {  return d.y });
@@ -227,6 +316,19 @@ export class ScatterPlotBase extends Component {
         }
         else
             return data;
+    }
+
+    processData(signalSetsData) {
+        const config = this.props.config;
+
+        let ret = [];
+        for (const d of signalSetsData) {
+            ret.push({
+                x: d[config.X_sigCid],
+                y: d[config.Y_sigCid]
+            });
+        }
+        return ret;
     }
 
     createChartCursor(xScale, yScale, data) {
@@ -356,8 +458,6 @@ export class ScatterPlotBase extends Component {
     }
 
     render() {
-        const config = this.props.config;
-
         return (
             <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                 <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
@@ -377,7 +477,7 @@ export class ScatterPlotBase extends Component {
                 <Tooltip
                     name={"Tooltip"}
                     config={this.props.config}
-                    signalSetsData={this.state.signalSetsData}
+                    signalSetsData={{}}
                     containerHeight={this.props.height}
                     containerWidth={this.state.width}
                     mousePosition={this.state.mousePosition}

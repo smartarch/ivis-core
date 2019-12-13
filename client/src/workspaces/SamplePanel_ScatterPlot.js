@@ -19,12 +19,9 @@ class TestScatterPlot extends Component {
         const t = this.props.t;
 
         const cnf = {
-            data: [ {x: 1, y: 3 },
-                    {x: 4, y: 2 },
-                    {x: 2, y: 5 },
-                    {x: 6, y: 2 },
-                    {x: 1, y: 4 },
-                    {x: 3, y: 5 }],
+            sigSetCid: "top:random",
+            X_sigCid: "x_val",
+            Y_sigCid: "y_val",
             color: rgb(219, 0, 0)
         };
 
