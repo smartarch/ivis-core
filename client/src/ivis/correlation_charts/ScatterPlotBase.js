@@ -46,16 +46,29 @@ class TooltipContent extends Component {
         selection: PropTypes.object
     };
 
+    getLabel(cid) {
+        if (this.props.labels && this.props.labels[cid])
+            return this.props.labels[cid];
+        else
+            return cid;
+    }
+
     render() {
         if (this.props.selection) {
-            const dot = this.props.selection;
-
-            return (
-                <div>
-                    <div>x: {dot.x}</div>
-                    <div>y: {dot.y}</div>
-                </div>
-            );
+            let tooltipHTML = [];
+            for (let cid in this.props.selection) {
+                const dot = this.props.selection[cid];
+                if (dot) {
+                    tooltipHTML.push((
+                        <div key={cid}>
+                            <div><b>{this.getLabel(cid)}</b></div>
+                            <div>x: {dot.x}</div>
+                            <div>y: {dot.y}</div>
+                        </div>
+                    ));
+                }
+            }
+            return tooltipHTML;
 
         } else {
             return null;
@@ -78,21 +91,35 @@ export class ScatterPlotBase extends Component {
         this.state = {
             signalSetsData: null,
             statusMsg: t('Loading...'),
-            width: 0
+            width: 0,
+            selections: null
         };
 
         this.resizeListener = () => {
             this.createChart(this.state.signalSetsData);
         };
+
+        this.labels = {};
+        for (let i = 0; i < this.props.config.signalSets.length; i++) {
+            const signalSetConfig = this.props.config.signalSets[i];
+            if (signalSetConfig.label)
+                this.labels[signalSetConfig.cid] = signalSetConfig.label
+        }
     }
 
     static propTypes = {
         /**
          * config: {
-         *      sigSetCid: <signalSetCid>,
-         *      X_sigCid: <signalCid>,
-         *      Y_sigCid: <signalCid>,
-         *      color: <color>
+         *      signalSets: [
+         *      {
+         *          cid: <signalSetCid>,
+         *          X_sigCid: <signalCid>,
+         *          Y_sigCid: <signalCid>,
+         *          color: <color>,
+         *          label: <text>
+         *          TODO show and hide checkbox
+         *      }
+         * ]
          * }
          */
         config: PropTypes.object.isRequired,
@@ -164,11 +191,11 @@ export class ScatterPlotBase extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    @withAsyncErrorHandler
-    async fetchData() {
+    getQueries() {
         const config = this.props.config;
+        let queries = [];
 
-        try {
+        for (const signalSet of config.signalSets) {
             let filter = undefined;
             if (this.props.xMin && this.props.xMax && this.props.yMin && this.props.yMax) {
                 filter = {
@@ -190,7 +217,21 @@ export class ScatterPlotBase extends Component {
                 };
             }
 
-            const results = await this.dataAccessSession.getLatestDocs(config.sigSetCid, [config.X_sigCid, config.Y_sigCid], filter);
+            queries.push({
+                type: "docs",
+                args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid] ]
+            });
+        }
+
+        return queries;
+    }
+
+    @withAsyncErrorHandler
+    async fetchData() {
+        const config = this.props.config;
+
+        try {
+            const results = await this.dataAccessSession.getLatestMixed(this.getQueries());
 
             if (results) { // Results is null if the results returned are not the latest ones
                 console.log("docs:", results);
@@ -210,6 +251,16 @@ export class ScatterPlotBase extends Component {
         const diff = extent[1] - extent[0];
         const margin = diff * margin_percentage;
         return [extent[0] - margin, extent[1] + margin];
+    }
+
+    getExtent(setsData, valueof) {
+        const min = d3Array.min(setsData, function(data) {
+            return d3Array.min(data, valueof);
+        });
+        const max = d3Array.max(setsData, function(data) {
+            return d3Array.max(data, valueof);
+        });
+        return [min, max];
     }
 
     createChart(signalSetsData, forceRefresh) {
@@ -233,10 +284,10 @@ export class ScatterPlotBase extends Component {
         const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
         const xSize = width - this.props.margin.left - this.props.margin.right;
 
-        const data = this.filterData(this.processData(signalSetsData));
+        const processedSetsData = this.processData(signalSetsData);
 
         // y Scale
-        let yExtent = d3Array.extent(data, function (d) {  return d.y });
+        let yExtent = this.getExtent(processedSetsData, function (d) {  return d.y });
         yExtent = this.extentWithMargin(yExtent, 0.1);
         const yScale = d3Scale.scaleLinear()
             .domain(yExtent)
@@ -248,7 +299,7 @@ export class ScatterPlotBase extends Component {
             .call(yAxis);
 
         // x Scale
-        let xExtent = d3Array.extent(data, function (d) {  return d.x });
+        let xExtent = this.getExtent(processedSetsData, function (d) {  return d.x });
         xExtent = this.extentWithMargin(xExtent, 0.1);
         const xScale = d3Scale.scaleLinear()
             .domain(xExtent)
@@ -259,36 +310,14 @@ export class ScatterPlotBase extends Component {
             this.xAxisSelection)
             .call(xAxis);
 
-        // create dots on chart
-        const dots = this.dotsSelection
-            .selectAll('circle')
-            .data(data, (d) => {
-                return d.x + " " + d.y;
-            });
+        let i = 0;
+        const SignalSetsConfigs = this.props.config.signalSets;
+        for (const data of processedSetsData) {
+            this.drawDots(data, xScale, yScale, SignalSetsConfigs[i].cid, SignalSetsConfigs[i].color);
+            i++;
+        }
 
-        let new_circles = function(self) {
-            dots.enter()
-                .append('circle')
-                .attr('cx', d => xScale(d.x))
-                .attr('cy', d => yScale(d.y))
-                .attr('r', 5)
-                .attr('fill', self.props.config.color);
-        };
-
-        if (this.props.withTransition && dots.size() !== 0)
-            setTimeout(new_circles, 250, this);
-        else
-            new_circles(this);
-
-        (this.props.withTransition ?
-            dots.transition() : dots)
-            .attr('cx', d => xScale(d.x))
-            .attr('cy', d => yScale(d.y));
-
-        dots.exit()
-            .remove();
-
-        this.createChartCursor(xScale, yScale, data);
+        this.createChartCursor(xScale, yScale, processedSetsData);
         this.createChartBrush(xScale, yScale);
     }
 
@@ -301,6 +330,39 @@ export class ScatterPlotBase extends Component {
         return Math.hypot(point1.x - point2.x, point1.y - point2.y);
     }
 
+    /** data = [{x,y}] */
+    drawDots(data, xScale, yScale, cid, color) {
+        // create dots on chart
+        const dots = this.dotsSelection[cid]
+            .selectAll('circle')
+            .data(data, (d) => {
+                return d.x + " " + d.y;
+            });
+
+        let new_dots = function() {
+            dots.enter()
+                .append('circle')
+                .attr('cx', d => xScale(d.x))
+                .attr('cy', d => yScale(d.y))
+                .attr('r', 5)
+                .attr('fill', color);
+        };
+
+        if (this.props.withTransition && dots.size() !== 0)
+            setTimeout(new_dots, 250, this);
+        else
+            new_dots(this);
+
+        (this.props.withTransition ?
+            dots.transition() : dots)
+            .attr('cx', d => xScale(d.x))
+            .attr('cy', d => yScale(d.y));
+
+        dots.exit()
+            .remove();
+    }
+
+    /** data = [{x,y}] */
     filterData(data) {
         const props = this.props;
         if (props.xMin && props.xMax && props.yMin && props.yMax)
@@ -318,23 +380,30 @@ export class ScatterPlotBase extends Component {
             return data;
     }
 
+    /**
+     * renames data from all signalSets to be in format [{x,y}] and performs filterData() on the data
+     */
     processData(signalSetsData) {
         const config = this.props.config;
-
         let ret = [];
-        for (const d of signalSetsData) {
-            ret.push({
-                x: d[config.X_sigCid],
-                y: d[config.Y_sigCid]
-            });
+
+        for (let i = 0; i < config.signalSets.length; i++) {
+            let data = [];
+            for (const d of signalSetsData[i]) {
+                data.push({
+                    x: d[config.signalSets[i].X_sigCid],
+                    y: d[config.signalSets[i].Y_sigCid]
+                });
+            }
+            ret.push(this.filterData(data));
         }
         return ret;
     }
 
-    createChartCursor(xScale, yScale, data) {
+    createChartCursor(xScale, yScale, setsData) {
         const self = this;
 
-        let selection = this.state.selection;
+        let selections = this.state.selections;
         let mousePosition;
 
         const selectPoints = function () {
@@ -342,29 +411,38 @@ export class ScatterPlotBase extends Component {
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
 
-            let newSelection = null;
-            let minDist = Number.MAX_VALUE;
-            for (const point of data) {
-                const dist = self.distance({x, y}, {x: xScale(point.x), y: yScale(point.y) });
-                if (dist < minDist) {
-                    minDist = dist;
-                    newSelection = point;
-                }
-            }
+            let newSelections = {};
 
-            if (selection !== newSelection) {
-                self.dotHighlightSelection
-                    .selectAll('circle')
-                    .remove();
+            for (let i = 0; i < setsData.length; i++) {
+                const signalSetCid = self.props.config.signalSets[i].cid;
+
+                const data = setsData[i];
+                let newSelection = null;
+                let minDist = Number.MAX_VALUE;
+                for (const point of data) {
+                    const dist = self.distance({x, y}, {x: xScale(point.x), y: yScale(point.y)});
+                    if (dist < minDist) {
+                        minDist = dist;
+                        newSelection = point;
+                    }
+                }
+
+                if (selections && selections[signalSetCid] !== newSelection) {
+                    self.dotHighlightSelections[signalSetCid]
+                        .selectAll('circle')
+                        .remove();
+                }
 
                 if (newSelection) {
-                    self.dotHighlightSelection
+                    self.dotHighlightSelections[signalSetCid]
                         .append('circle')
                         .attr('cx', xScale(newSelection.x))
                         .attr('cy', yScale(newSelection.y))
                         .attr('r', 7)
-                        .attr('fill', self.props.config.color.darker());
+                        .attr('fill', self.props.config.signalSets[i].color.darker());
                 }
+
+                newSelections[signalSetCid] = newSelection;
             }
 
             self.cursorSelectionX
@@ -381,11 +459,11 @@ export class ScatterPlotBase extends Component {
                 .attr('x2', self.renderedWidth - self.props.margin.right)
                 .attr('visibility', 'visible');
 
-            selection = newSelection;
+            selections = newSelections;
             mousePosition = {x: containerPos[0], y: containerPos[1]};
 
             self.setState({
-                selection,
+                selections,
                 mousePosition
             });
         };
@@ -404,12 +482,14 @@ export class ScatterPlotBase extends Component {
         this.cursorSelectionX.attr('visibility', 'hidden');
         this.cursorSelectionY.attr('visibility', 'hidden');
 
-        this.dotHighlightSelection
-            .selectAll('circle')
-            .remove();
+        for (const cid in this.dotHighlightSelections) {
+            this.dotHighlightSelections[cid]
+                .selectAll('circle')
+                .remove();
+        }
 
         this.setState({
-            selection: null,
+            selections: null,
             mousePosition: null
         });
     }
@@ -458,11 +538,21 @@ export class ScatterPlotBase extends Component {
     }
 
     render() {
+        this.dotHighlightSelections = {};
+        const dotsHighlightSelectionGroups = this.props.config.signalSets.map((signalSet) =>
+            <g key={signalSet.cid} ref={node => this.dotHighlightSelections[signalSet.cid] = select(node)}/>
+        );
+
+        this.dotsSelection = {};
+        const dotsSelectionGroups = this.props.config.signalSets.map((signalSet) =>
+            <g key={signalSet.cid} ref={node => this.dotsSelection[signalSet.cid] = select(node)}/>
+        );
+
         return (
             <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                 <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
-                    <g ref={node => this.dotHighlightSelection = select(node)} />
-                    <g ref={node => this.dotsSelection = select(node)}/>
+                    {dotsSelectionGroups}
+                    {dotsHighlightSelectionGroups}
                 </g>
                 {/* axes */}
                 <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
@@ -481,9 +571,9 @@ export class ScatterPlotBase extends Component {
                     containerHeight={this.props.height}
                     containerWidth={this.state.width}
                     mousePosition={this.state.mousePosition}
-                    selection={this.state.selection}
-                    width={100}
-                    contentRender={props => <TooltipContent {...props}/>}
+                    selection={this.state.selections}
+                    width={250}
+                    contentRender={props => <TooltipContent {...props} labels={this.labels} />}
                 />
                 }
                 {/* brush */}

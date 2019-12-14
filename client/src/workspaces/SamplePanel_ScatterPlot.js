@@ -19,10 +19,22 @@ class TestScatterPlot extends Component {
         const t = this.props.t;
 
         const cnf = {
-            sigSetCid: "top:random",
-            X_sigCid: "x_val",
-            Y_sigCid: "y_val",
-            color: rgb(219, 0, 0)
+            signalSets: [
+                {
+                    cid: "top:random",
+                    X_sigCid: "x_val",
+                    Y_sigCid: "y_val",
+                    color: rgb(219, 0, 0),
+                    label: "Random"
+                },
+                {
+                    cid: "top:random_correlated",
+                    X_sigCid: "x_val",
+                    Y_sigCid: "y_val",
+                    color: rgb(0, 0, 219),
+                    label: "Correlated"
+                }
+            ]
         };
 
         return (
