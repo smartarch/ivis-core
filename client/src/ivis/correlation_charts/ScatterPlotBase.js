@@ -25,11 +25,27 @@ const ConfigDifference = {
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
 
-    if (conf1.sigSetCid !== conf2.sigSetCid ||
+    if (conf1.signalSets.length !== conf2.signalSets.length)
+        return ConfigDifference.DATA_WITH_CLEAR;
+
+    for (let i = 0; i < conf1.signalSets.length; i++) {
+        const signalSetConfigComparison = compareSignalSetConfigs(conf1.signalSets[i], conf2.signalSets[i]);
+        if (signalSetConfigComparison > diffResult)
+            diffResult = signalSetConfigComparison;
+    }
+
+    return diffResult;
+}
+
+function compareSignalSetConfigs(conf1, conf2) {
+    let diffResult = ConfigDifference.NONE;
+
+    if (conf1.cid !== conf2.cid ||
         conf1.X_sigCid !== conf2.X_sigCid ||
         conf1.Y_sigCid !== conf2.Y_sigCid) {
         diffResult = ConfigDifference.DATA_WITH_CLEAR;
-    } else if (conf1.color !== conf2.color) {
+    } else if (conf1.color !== conf2.color ||
+        conf1.enabled !== conf2.enabled) {
         diffResult = ConfigDifference.RENDER;
     }
 
@@ -76,6 +92,10 @@ class TooltipContent extends Component {
     }
 }
 
+function isSignalVisible(sigConf) {
+    return (!('enabled' in sigConf) || sigConf.enabled);
+}
+
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
@@ -103,7 +123,7 @@ export class ScatterPlotBase extends Component {
         for (let i = 0; i < this.props.config.signalSets.length; i++) {
             const signalSetConfig = this.props.config.signalSets[i];
             if (signalSetConfig.label)
-                this.labels[signalSetConfig.cid] = signalSetConfig.label
+                this.labels[signalSetConfig.cid + "-" + i] = signalSetConfig.label;
         }
     }
 
@@ -116,10 +136,10 @@ export class ScatterPlotBase extends Component {
          *          X_sigCid: <signalCid>,
          *          Y_sigCid: <signalCid>,
          *          color: <color>,
-         *          label: <text>
-         *          TODO show and hide checkbox
+         *          label: <text>,
+         *          enabled: <boolean>
          *      }
-         * ]
+         *      ]
          * }
          */
         config: PropTypes.object.isRequired,
@@ -160,7 +180,7 @@ export class ScatterPlotBase extends Component {
 
         let configDiff = compareConfigs(this.props.config, prevProps.config);
 
-        if (configDiff === configDiff.DATA_WITH_CLEAR)
+        if (configDiff === ConfigDifference.DATA_WITH_CLEAR)
         // TODO should changing limits of axis fetch new data or just filter existing data? (filtering currently initiated in componentDidUpdate)
         {
             this.setState({
@@ -313,7 +333,7 @@ export class ScatterPlotBase extends Component {
         let i = 0;
         const SignalSetsConfigs = this.props.config.signalSets;
         for (const data of processedSetsData) {
-            this.drawDots(data, xScale, yScale, SignalSetsConfigs[i].cid, SignalSetsConfigs[i].color);
+            this.drawDots(data, xScale, yScale, SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i].color);
             i++;
         }
 
@@ -331,9 +351,9 @@ export class ScatterPlotBase extends Component {
     }
 
     /** data = [{x,y}] */
-    drawDots(data, xScale, yScale, cid, color) {
+    drawDots(data, xScale, yScale, cidIndex, color) {
         // create dots on chart
-        const dots = this.dotsSelection[cid]
+        const dots = this.dotsSelection[cidIndex]
             .selectAll('circle')
             .data(data, (d) => {
                 return d.x + " " + d.y;
@@ -388,13 +408,15 @@ export class ScatterPlotBase extends Component {
         let ret = [];
 
         for (let i = 0; i < config.signalSets.length; i++) {
+            const signalSetConfig = config.signalSets[i];
             let data = [];
-            for (const d of signalSetsData[i]) {
-                data.push({
-                    x: d[config.signalSets[i].X_sigCid],
-                    y: d[config.signalSets[i].Y_sigCid]
-                });
-            }
+            if(isSignalVisible(signalSetConfig))
+                for (const d of signalSetsData[i]) {
+                    data.push({
+                        x: d[signalSetConfig.X_sigCid],
+                        y: d[signalSetConfig.Y_sigCid]
+                    });
+                }
             ret.push(this.filterData(data));
         }
         return ret;
@@ -414,7 +436,7 @@ export class ScatterPlotBase extends Component {
             let newSelections = {};
 
             for (let i = 0; i < setsData.length; i++) {
-                const signalSetCid = self.props.config.signalSets[i].cid;
+                const signalSetCidIndex = self.props.config.signalSets[i].cid + "-" + i;
 
                 const data = setsData[i];
                 let newSelection = null;
@@ -427,14 +449,14 @@ export class ScatterPlotBase extends Component {
                     }
                 }
 
-                if (selections && selections[signalSetCid] !== newSelection) {
-                    self.dotHighlightSelections[signalSetCid]
+                if (selections && selections[signalSetCidIndex] !== newSelection) {
+                    self.dotHighlightSelections[signalSetCidIndex]
                         .selectAll('circle')
                         .remove();
                 }
 
                 if (newSelection) {
-                    self.dotHighlightSelections[signalSetCid]
+                    self.dotHighlightSelections[signalSetCidIndex]
                         .append('circle')
                         .attr('cx', xScale(newSelection.x))
                         .attr('cy', yScale(newSelection.y))
@@ -442,7 +464,7 @@ export class ScatterPlotBase extends Component {
                         .attr('fill', self.props.config.signalSets[i].color.darker());
                 }
 
-                newSelections[signalSetCid] = newSelection;
+                newSelections[signalSetCidIndex] = newSelection;
             }
 
             self.cursorSelectionX
@@ -539,13 +561,13 @@ export class ScatterPlotBase extends Component {
 
     render() {
         this.dotHighlightSelections = {};
-        const dotsHighlightSelectionGroups = this.props.config.signalSets.map((signalSet) =>
-            <g key={signalSet.cid} ref={node => this.dotHighlightSelections[signalSet.cid] = select(node)}/>
+        const dotsHighlightSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
+            <g key={signalSet.cid + "-" + i} ref={node => this.dotHighlightSelections[signalSet.cid + "-" + i] = select(node)}/>
         );
 
         this.dotsSelection = {};
-        const dotsSelectionGroups = this.props.config.signalSets.map((signalSet) =>
-            <g key={signalSet.cid} ref={node => this.dotsSelection[signalSet.cid] = select(node)}/>
+        const dotsSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
+            <g key={signalSet.cid + "-" + i} ref={node => this.dotsSelection[signalSet.cid + "-" + i] = select(node)}/>
         );
 
         return (
