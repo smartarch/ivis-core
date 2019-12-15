@@ -21,7 +21,7 @@ class ScatterPlotToolbar extends Component {
 
     static propTypes = {
         zoomOutClick: PropTypes.func.isRequired,
-    }
+    };
 
     render() {
         const t = this.props.t;
@@ -59,21 +59,27 @@ export class ScatterPlot extends Component {
     }
 
     static propTypes = {
-        /**
-         * config: {
-         *      signalSets: [
-         *      {
-         *          cid: <signalSetCid>,
-         *          X_sigCid: <signalCid>,
-         *          Y_sigCid: <signalCid>,
-         *          color: <color>,
-         *          label: <text>,
-         *          enabled: <boolean>
-         *      }
-         *      ]
-         * }
-         */
-        config: PropTypes.object.isRequired,
+        config: PropTypes.shape({
+            signalSets: PropTypes.arrayOf(PropTypes.shape({
+                cid: PropTypes.string.isRequired,
+                X_sigCid: PropTypes.string.isRequired,
+                Y_sigCid: PropTypes.string.isRequired,
+                color: PropTypes.object.isRequired,
+                label: PropTypes.string,
+                enabled: PropTypes.bool,
+                dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
+                dotSize_sigCid: PropTypes.string, // used for BubblePlot
+                X_label: PropTypes.string,
+                Y_label: PropTypes.string,
+                Size_label: PropTypes.string // for BubblePlot
+            })).isRequired
+        }).isRequired,
+        dotRadius: PropTypes.number,
+        minDotRadius: PropTypes.number, // for BubblePlot
+        maxDotRadius: PropTypes.number, // for BubblePlot
+        minDotRadiusValue: PropTypes.number, // for BubblePlot
+        maxDotRadiusValue: PropTypes.number, // for BubblePlot
+        highlightDotRadius: PropTypes.number, // radius multiplier
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
         withBrush: PropTypes.bool,

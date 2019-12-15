@@ -9,7 +9,7 @@ import {
 } from "../ivis/ivis";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
-import {ScatterPlot} from "../ivis/correlation_charts/ScatterPlot";
+import {BubblePlot} from "../ivis/correlation_charts/BubblePlot";
 
 const sensorsStructure = [
     {
@@ -52,6 +52,12 @@ const sensorsConfigSpec = {
             "signalSetRef": "signalSet"
         },
         {
+            "id": "dotSize_sigCid",
+            "label": "Dot Size Signal",
+            "type": "signal",
+            "signalSetRef": "signalSet"
+        },
+        {
             "id": "enabled",
             "label": "Enabled",
             "type": "boolean",
@@ -66,12 +72,17 @@ const sensorsConfigSpec = {
             "id": "Y_label",
             "label": "Y Label",
             "type": "string"
+        },
+        {
+            "id": "Size_label",
+            "label": "Size Label",
+            "type": "string"
         }
     ]
 };
 
 @withPanelConfig
-class TestScatterPlot extends Component {
+class TestBubblePlot extends Component {
     constructor(props) {
         super(props);
     }
@@ -93,9 +104,11 @@ class TestScatterPlot extends Component {
         return (
             <div>
                 <Legend label="Sensors" configPath={['sensors']} withSelector structure={sensorsStructure} withConfigurator configSpec={sensorsConfigSpec}/>
-                <ScatterPlot config={cnf}
-                             height={400} width={400}
-                             margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
+                <BubblePlot config={cnf}
+                            height={400} width={400}
+                            margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
+                            minDotRadiusValue={0}
+                            maxDotRadiusValue={5000}
                              />
             </div>
         );
@@ -103,7 +116,7 @@ class TestScatterPlot extends Component {
 }
 
 
-export default class SamplePanel_Scatterplot extends Component {
+export default class SamplePanel_BubblePlot extends Component {
     constructor(props) {
         super(props);
     }
@@ -112,37 +125,26 @@ export default class SamplePanel_Scatterplot extends Component {
         const panelParams = {
             sensors: [
                 {
-                    signalSet: "top:random",
+                    signalSet: "top:random_area",
                     X_sigCid: "x_val",
                     Y_sigCid: "y_val",
                     color: rgb(219, 0, 0),
                     label: "Random",
                     enabled: true,
-                    X_label: "X value",
-                    Y_label: "Y value"
-                },
-                {
-                    signalSet: "top:random_correlated",
-                    X_sigCid: "x_val",
-                    Y_sigCid: "y_val",
-                    color: rgb(0, 0, 219),
-                    label: "Correlated",
-                    enabled: true,
-                    X_label: "X value",
-                    Y_label: "Y value"
+                    dotSize_sigCid: "a_val"
                 }
             ]
         };
 
         return (
             <TestWorkspacePanel
-                title="Sample Scatter Plot"
+                title="Sample Bubble Plot"
                 panel={{
                     id: 1,
                     template: 1
                 }}
                 params={panelParams}
-                content={TestScatterPlot}
+                content={TestBubblePlot}
             />
         );
     }

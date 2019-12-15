@@ -42,10 +42,15 @@ function compareSignalSetConfigs(conf1, conf2) {
 
     if (conf1.cid !== conf2.cid ||
         conf1.X_sigCid !== conf2.X_sigCid ||
-        conf1.Y_sigCid !== conf2.Y_sigCid) {
+        conf1.Y_sigCid !== conf2.Y_sigCid ||
+        conf1.dotSize_sigCid !== conf2.dotSize_sigCid) {
         diffResult = ConfigDifference.DATA_WITH_CLEAR;
     } else if (conf1.color !== conf2.color ||
-        conf1.enabled !== conf2.enabled) {
+               conf1.enabled !== conf2.enabled ||
+               conf1.label !== conf2.label ||
+               conf1.X_label !== conf2.X_label ||
+               conf1.Y_label !== conf2.Y_label ||
+               conf1.Size_label !== conf2.Size_label) {
         diffResult = ConfigDifference.RENDER;
     }
 
@@ -62,11 +67,11 @@ class TooltipContent extends Component {
         selection: PropTypes.object
     };
 
-    getLabel(cid) {
-        if (this.props.labels && this.props.labels[cid])
-            return this.props.labels[cid];
+    getLabel(cid, label, defaultLabel) {
+        if (this.props.labels && this.props.labels[cid] && this.props.labels[cid][label])
+            return this.props.labels[cid][label];
         else
-            return cid;
+            return defaultLabel;
     }
 
     render() {
@@ -77,9 +82,12 @@ class TooltipContent extends Component {
                 if (dot) {
                     tooltipHTML.push((
                         <div key={cid}>
-                            <div><b>{this.getLabel(cid)}</b></div>
-                            <div>x: {dot.x}</div>
-                            <div>y: {dot.y}</div>
+                            <div><b>{this.getLabel(cid, "label", cid)}</b></div>
+                            <div>{this.getLabel(cid, "X_label", "x")}: {dot.x}</div>
+                            <div>{this.getLabel(cid, "Y_label", "y")}: {dot.y}</div>
+                            {dot.s && (
+                                <div>{this.getLabel(cid, "Size_label", "size")}: {dot.s}</div>
+                            )}
                         </div>
                     ));
                 }
@@ -120,29 +128,30 @@ export class ScatterPlotBase extends Component {
         };
 
         this.labels = {};
-        for (let i = 0; i < this.props.config.signalSets.length; i++) {
-            const signalSetConfig = this.props.config.signalSets[i];
-            if (signalSetConfig.label)
-                this.labels[signalSetConfig.cid + "-" + i] = signalSetConfig.label;
-        }
     }
 
     static propTypes = {
-        /**
-         * config: {
-         *      signalSets: [
-         *      {
-         *          cid: <signalSetCid>,
-         *          X_sigCid: <signalCid>,
-         *          Y_sigCid: <signalCid>,
-         *          color: <color>,
-         *          label: <text>,
-         *          enabled: <boolean>
-         *      }
-         *      ]
-         * }
-         */
-        config: PropTypes.object.isRequired,
+        config: PropTypes.shape({
+            signalSets: PropTypes.arrayOf(PropTypes.shape({
+                cid: PropTypes.string.isRequired,
+                X_sigCid: PropTypes.string.isRequired,
+                Y_sigCid: PropTypes.string.isRequired,
+                color: PropTypes.object.isRequired,
+                label: PropTypes.string,
+                enabled: PropTypes.bool,
+                dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
+                dotSize_sigCid: PropTypes.string, // used for BubblePlot
+                X_label: PropTypes.string,
+                Y_label: PropTypes.string,
+                Size_label: PropTypes.string // for BubblePlot
+            })).isRequired
+        }).isRequired,
+        dotRadius: PropTypes.number,
+        minDotRadius: PropTypes.number, // for BubblePlot
+        maxDotRadius: PropTypes.number, // for BubblePlot
+        minDotRadiusValue: PropTypes.number, // for BubblePlot
+        maxDotRadiusValue: PropTypes.number, // for BubblePlot
+        highlightDotRadius: PropTypes.number, // radius multiplier
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
         withBrush: PropTypes.bool,
@@ -163,7 +172,11 @@ export class ScatterPlotBase extends Component {
         xMin: null,
         xMax: null,
         yMin: null,
-        yMax: null
+        yMax: null,
+        dotRadius: 5,
+        minDotRadius: 2,
+        maxDotRadius: 14,
+        highlightDotRadius: 1.2
     };
 
     componentDidMount() {
@@ -244,10 +257,14 @@ export class ScatterPlotBase extends Component {
                 }
             };*/
 
+            let signals = [signalSet.X_sigCid, signalSet.Y_sigCid];
+            if (signalSet.dotSize_sigCid)
+                signals.push(signalSet.dotSize_sigCid);
+
             queries.push({
                 type: "docs",
                 //args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid], filter, undefined, 5 ]
-                args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid]]
+                args: [ signalSet.cid, signals]
             });
         }
 
@@ -305,6 +322,21 @@ export class ScatterPlotBase extends Component {
             return;
         }
 
+        // used for Tooltip
+        this.labels = {};
+        for (let i = 0; i < this.props.config.signalSets.length; i++) {
+            const signalSetConfig = this.props.config.signalSets[i];
+            this.labels[signalSetConfig.cid + "-" + i] = {};
+            if (signalSetConfig.label)
+                this.labels[signalSetConfig.cid + "-" + i].label = signalSetConfig.label;
+            if (signalSetConfig.X_label)
+                this.labels[signalSetConfig.cid + "-" + i].X_label = signalSetConfig.X_label;
+            if (signalSetConfig.Y_label)
+                this.labels[signalSetConfig.cid + "-" + i].Y_label = signalSetConfig.Y_label;
+            if (signalSetConfig.Size_label)
+                this.labels[signalSetConfig.cid + "-" + i].Size_label = signalSetConfig.Size_label;
+        }
+
         const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
         const xSize = width - this.props.margin.left - this.props.margin.right;
 
@@ -334,14 +366,30 @@ export class ScatterPlotBase extends Component {
             this.xAxisSelection)
             .call(xAxis);
 
-        let i = 0;
         const SignalSetsConfigs = this.props.config.signalSets;
+
+        // s Scale (dot size)
+        let sScale = undefined;
+        if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
+            let sExtent = this.getExtent(processedSetsData, function (d) {  return d.s });
+            if (this.props.hasOwnProperty("minDotRadiusValue"))
+                sExtent[0] = this.props.minDotRadiusValue;
+            if (this.props.hasOwnProperty("maxDotRadiusValue"))
+                sExtent[1] = this.props.maxDotRadiusValue;
+
+            sScale = d3Scale.scalePow()
+                .exponent(1/3)
+                .domain(sExtent)
+                .range([this.props.minDotRadius, this.props.maxDotRadius]); // TODO max size
+        }
+
+        let i = 0;
         for (const data of processedSetsData) {
-            this.drawDots(data, xScale, yScale, SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i].color);
+            this.drawDots(data, xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
             i++;
         }
 
-        this.createChartCursor(xScale, yScale, processedSetsData);
+        this.createChartCursor(xScale, yScale, sScale, processedSetsData);
         this.createChartBrush(xScale, yScale);
     }
 
@@ -354,8 +402,12 @@ export class ScatterPlotBase extends Component {
         return Math.hypot(point1.x - point2.x, point1.y - point2.y);
     }
 
-    /** data = [{x,y}] */
-    drawDots(data, xScale, yScale, cidIndex, color) {
+    /** data = [{ x, y, s? }] */
+    drawDots(data, xScale, yScale, sScale, cidIndex, SignalSetConfig) {
+        const color = SignalSetConfig.color;
+        const radius = SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius;
+        const constantRadius = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
+
         // create dots on chart
         const dots = this.dotsSelection[cidIndex]
             .selectAll('circle')
@@ -368,7 +420,7 @@ export class ScatterPlotBase extends Component {
                 .append('circle')
                 .attr('cx', d => xScale(d.x))
                 .attr('cy', d => yScale(d.y))
-                .attr('r', 5)
+                .attr('r', d => constantRadius ? radius : sScale(d.s))
                 .attr('fill', color);
         };
 
@@ -380,7 +432,8 @@ export class ScatterPlotBase extends Component {
         (this.props.withTransition ?
             dots.transition() : dots)
             .attr('cx', d => xScale(d.x))
-            .attr('cy', d => yScale(d.y));
+            .attr('cy', d => yScale(d.y))
+            .attr('r', d => constantRadius ? radius : sScale(d.s));
 
         dots.exit()
             .remove();
@@ -416,17 +469,20 @@ export class ScatterPlotBase extends Component {
             let data = [];
             if(isSignalVisible(signalSetConfig))
                 for (const d of signalSetsData[i]) {
-                    data.push({
+                    let d1 = {
                         x: d[signalSetConfig.X_sigCid],
                         y: d[signalSetConfig.Y_sigCid]
-                    });
+                    };
+                    if (signalSetConfig.dotSize_sigCid)
+                        d1.s = d[signalSetConfig.dotSize_sigCid];
+                    data.push(d1);
                 }
             ret.push(this.filterData(data));
         }
         return ret;
     }
 
-    createChartCursor(xScale, yScale, setsData) {
+    createChartCursor(xScale, yScale, sScale, setsData) {
         const self = this;
 
         let selections = this.state.selections;
@@ -460,12 +516,19 @@ export class ScatterPlotBase extends Component {
                 }
 
                 if (newSelection) {
+                    const SignalSetConfig = self.props.config.signalSets[i];
+                    let radius = self.props.dotRadius;
+                    if (SignalSetConfig.dotRadius)
+                        radius = SignalSetConfig.dotRadius;
+                    if (SignalSetConfig.hasOwnProperty("dotSize_sigCid"))
+                        radius = sScale(newSelection.s);
+
                     self.dotHighlightSelections[signalSetCidIndex]
                         .append('circle')
                         .attr('cx', xScale(newSelection.x))
                         .attr('cy', yScale(newSelection.y))
-                        .attr('r', 7)
-                        .attr('fill', self.props.config.signalSets[i].color.darker());
+                        .attr('r', self.props.highlightDotRadius * radius)
+                        .attr('fill', SignalSetConfig.color.darker());
                 }
 
                 newSelections[signalSetCidIndex] = newSelection;
