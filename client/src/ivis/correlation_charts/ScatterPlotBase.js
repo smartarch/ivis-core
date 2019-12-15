@@ -216,20 +216,20 @@ export class ScatterPlotBase extends Component {
         let queries = [];
 
         for (const signalSet of config.signalSets) {
-            let filter = undefined;
+            let filter = undefined; // TODO currently not used (but using it may cause that zooming out doesn't work as expected because it wouldn't have data)
             if (this.props.xMin && this.props.xMax && this.props.yMin && this.props.yMax) {
                 filter = {
                     type: 'and',
                     children: [
                         {
                             type: "range",
-                            sigCid: config.X_sigCid,
+                            sigCid: signalSet.X_sigCid,
                             lte: this.props.xMax,
                             gte: this.props.xMin
                         },
                         {
                             type: "range",
-                            sigCid: config.Y_sigCid,
+                            sigCid: signalSet.Y_sigCid,
                             lte: this.props.yMax,
                             gte: this.props.yMin
                         }
@@ -237,9 +237,17 @@ export class ScatterPlotBase extends Component {
                 };
             }
 
+            /*filter = {
+                type: "function_score",
+                function: {
+                    "random_score": {}
+                }
+            };*/
+
             queries.push({
                 type: "docs",
-                args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid] ]
+                //args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid], filter, undefined, 5 ]
+                args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid]]
             });
         }
 
@@ -248,8 +256,6 @@ export class ScatterPlotBase extends Component {
 
     @withAsyncErrorHandler
     async fetchData() {
-        const config = this.props.config;
-
         try {
             const results = await this.dataAccessSession.getLatestMixed(this.getQueries());
 
@@ -284,8 +290,6 @@ export class ScatterPlotBase extends Component {
     }
 
     createChart(signalSetsData, forceRefresh) {
-        const t = this.props.t;
-
         const width = this.containerNode.getClientRects()[0].width;
         if (this.state.width !== width) {
             this.setState({
@@ -435,7 +439,7 @@ export class ScatterPlotBase extends Component {
 
             let newSelections = {};
 
-            for (let i = 0; i < setsData.length; i++) {
+            for (let i = 0; i < setsData.length && i <self.props.config.signalSets.length; i++) {
                 const signalSetCidIndex = self.props.config.signalSets[i].cid + "-" + i;
 
                 const data = setsData[i];
@@ -560,49 +564,64 @@ export class ScatterPlotBase extends Component {
     }
 
     render() {
-        this.dotHighlightSelections = {};
-        const dotsHighlightSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
-            <g key={signalSet.cid + "-" + i} ref={node => this.dotHighlightSelections[signalSet.cid + "-" + i] = select(node)}/>
-        );
+        if (!this.state.signalSetsData) {
+            return (
+                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                    <text textAnchor="middle" x="50%" y="50%"
+                          fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                        {this.state.statusMsg}
+                    </text>
+                </svg>
+            );
+        }
+        else {
+            this.dotHighlightSelections = {};
+            const dotsHighlightSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
+                <g key={signalSet.cid + "-" + i}
+                   ref={node => this.dotHighlightSelections[signalSet.cid + "-" + i] = select(node)}/>
+            );
 
-        this.dotsSelection = {};
-        const dotsSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
-            <g key={signalSet.cid + "-" + i} ref={node => this.dotsSelection[signalSet.cid + "-" + i] = select(node)}/>
-        );
+            this.dotsSelection = {};
+            const dotsSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
+                <g key={signalSet.cid + "-" + i}
+                   ref={node => this.dotsSelection[signalSet.cid + "-" + i] = select(node)}/>
+            );
 
-        return (
-            <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
-                <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
-                    {dotsSelectionGroups}
-                    {dotsHighlightSelectionGroups}
-                </g>
-                {/* axes */}
-                <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
-                <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                {/* cursor lines */}
-                <line ref={node => this.cursorSelectionX = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
-                      visibility="hidden"/>
-                <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
-                      visibility="hidden"/>
-                {/* tooltip */}
-                {this.props.withTooltip &&
-                <Tooltip
-                    name={"Tooltip"}
-                    config={this.props.config}
-                    signalSetsData={{}}
-                    containerHeight={this.props.height}
-                    containerWidth={this.state.width}
-                    mousePosition={this.state.mousePosition}
-                    selection={this.state.selections}
-                    width={250}
-                    contentRender={props => <TooltipContent {...props} labels={this.labels} />}
-                />
-                }
-                {/* brush */}
-                <g ref={node => this.brushSelection = select(node)}
-                   transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-            </svg>
-        );
-
+            return (
+                <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
+                        {dotsSelectionGroups}
+                        {dotsHighlightSelectionGroups}
+                    </g>
+                    {/* axes */}
+                    <g ref={node => this.xAxisSelection = select(node)}
+                       transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                    <g ref={node => this.yAxisSelection = select(node)}
+                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                    {/* cursor lines */}
+                    <line ref={node => this.cursorSelectionX = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
+                          visibility="hidden"/>
+                    <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
+                          visibility="hidden"/>
+                    {/* tooltip */}
+                    {this.props.withTooltip &&
+                    <Tooltip
+                        name={"Tooltip"}
+                        config={this.props.config}
+                        signalSetsData={{}}
+                        containerHeight={this.props.height}
+                        containerWidth={this.state.width}
+                        mousePosition={this.state.mousePosition}
+                        selection={this.state.selections}
+                        width={250}
+                        contentRender={props => <TooltipContent {...props} labels={this.labels}/>}
+                    />
+                    }
+                    {/* brush */}
+                    <g ref={node => this.brushSelection = select(node)}
+                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                </svg>
+            );
+        }
     }
 }

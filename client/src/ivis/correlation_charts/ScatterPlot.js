@@ -61,8 +61,16 @@ export class ScatterPlot extends Component {
     static propTypes = {
         /**
          * config: {
-         *     data: [{x: number, y: number}]
-         *     color: color
+         *      signalSets: [
+         *      {
+         *          cid: <signalSetCid>,
+         *          X_sigCid: <signalCid>,
+         *          Y_sigCid: <signalCid>,
+         *          color: <color>,
+         *          label: <text>,
+         *          enabled: <boolean>
+         *      }
+         *      ]
          * }
          */
         config: PropTypes.object.isRequired,
