@@ -74,6 +74,7 @@ export class ScatterPlot extends Component {
                 Size_label: PropTypes.string // for BubblePlot
             })).isRequired
         }).isRequired,
+        maxDotCount: PropTypes.number, // set to negative number for unlimited
         dotRadius: PropTypes.number,
         minDotRadius: PropTypes.number, // for BubblePlot
         maxDotRadius: PropTypes.number, // for BubblePlot

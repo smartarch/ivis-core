@@ -146,6 +146,7 @@ export class ScatterPlotBase extends Component {
                 Size_label: PropTypes.string // for BubblePlot
             })).isRequired
         }).isRequired,
+        maxDotCount: PropTypes.number, // set to negative number for unlimited
         dotRadius: PropTypes.number,
         minDotRadius: PropTypes.number, // for BubblePlot
         maxDotRadius: PropTypes.number, // for BubblePlot
@@ -176,7 +177,8 @@ export class ScatterPlotBase extends Component {
         dotRadius: 5,
         minDotRadius: 2,
         maxDotRadius: 14,
-        highlightDotRadius: 1.2
+        highlightDotRadius: 1.2,
+        maxDotCount: 100
     };
 
     componentDidMount() {
@@ -229,33 +231,38 @@ export class ScatterPlotBase extends Component {
         let queries = [];
 
         for (const signalSet of config.signalSets) {
-            let filter = undefined; // TODO currently not used (but using it may cause that zooming out doesn't work as expected because it wouldn't have data)
-            if (this.props.xMin && this.props.xMax && this.props.yMin && this.props.yMax) {
-                filter = {
-                    type: 'and',
-                    children: [
-                        {
-                            type: "range",
-                            sigCid: signalSet.X_sigCid,
-                            lte: this.props.xMax,
-                            gte: this.props.xMin
-                        },
-                        {
-                            type: "range",
-                            sigCid: signalSet.Y_sigCid,
-                            lte: this.props.yMax,
-                            gte: this.props.yMin
+            let filter = {
+                type: 'and',
+                children: [
+                    {
+                        type: "function_score",
+                        function: {
+                            "random_score": {}
                         }
-                    ]
-                };
+                    }
+                ]
+            };
+
+            // TODO using this filter may cause that zooming out doesn't work as expected because it wouldn't have data
+            if (this.props.xMin && this.props.xMax && this.props.yMin && this.props.yMax) {
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.X_sigCid,
+                    lte: this.props.xMax,
+                    gte: this.props.xMin
+                });
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.Y_sigCid,
+                    lte: this.props.yMax,
+                    gte: this.props.yMin
+                });
             }
 
-            /*filter = {
-                type: "function_score",
-                function: {
-                    "random_score": {}
-                }
-            };*/
+            let limit = undefined;
+            if (this.props.maxDotCount >= 0) {
+                limit = this.props.maxDotCount;
+            }
 
             let signals = [signalSet.X_sigCid, signalSet.Y_sigCid];
             if (signalSet.dotSize_sigCid)
@@ -263,8 +270,7 @@ export class ScatterPlotBase extends Component {
 
             queries.push({
                 type: "docs",
-                //args: [ signalSet.cid, [signalSet.X_sigCid, signalSet.Y_sigCid], filter, undefined, 5 ]
-                args: [ signalSet.cid, signals]
+                args: [ signalSet.cid, signals, filter, undefined, limit ]
             });
         }
 

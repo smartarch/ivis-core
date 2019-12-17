@@ -625,7 +625,6 @@ class QueryProcessor {
                     }
                 };
             }
-
         } else if (flt.type === 'wildcard') {
             const field = signalMap[flt.sigCid];
             const elsFld = this.getField(field);
@@ -640,6 +639,13 @@ class QueryProcessor {
                     'values': flt.values
                 }
             }
+        } else if (flt.type === 'function_score') {
+            if (!flt.function)
+                throw new Error('Function not specified for function_score query');
+
+            return {
+                function_score: flt.function
+            };
         } else {
             throw new Error(`Unknown filter type "${flt.type}"`);
         }

@@ -96,6 +96,7 @@ class TestScatterPlot extends Component {
                 <ScatterPlot config={cnf}
                              height={400} width={400}
                              margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
+                             maxDotCount={5}
                              />
             </div>
         );

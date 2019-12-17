@@ -34,6 +34,7 @@ export class BubblePlot extends Component {
                 Size_label: PropTypes.string
             })).isRequired
         }).isRequired,
+        maxDotCount: PropTypes.number, // set to negative number for unlimited
         minDotRadius: PropTypes.number,
         maxDotRadius: PropTypes.number,
         minDotRadiusValue: PropTypes.number,
