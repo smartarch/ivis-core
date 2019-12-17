@@ -120,7 +120,8 @@ export class ScatterPlotBase extends Component {
             signalSetsData: null,
             statusMsg: t('Loading...'),
             width: 0,
-            selections: null
+            selections: null,
+            lastQueryWasWithRangeFilter: false
         };
 
         this.resizeListener = () => {
@@ -170,10 +171,10 @@ export class ScatterPlotBase extends Component {
         withBrush: true,
         withTooltip: true,
         withTransition: true,
-        xMin: null,
-        xMax: null,
-        yMin: null,
-        yMax: null,
+        xMin: NaN,
+        xMax: NaN,
+        yMin: NaN,
+        yMax: NaN,
         dotRadius: 5,
         minDotRadius: 2,
         maxDotRadius: 14,
@@ -195,8 +196,13 @@ export class ScatterPlotBase extends Component {
 
         let configDiff = compareConfigs(this.props.config, prevProps.config);
 
-        if (configDiff === ConfigDifference.DATA_WITH_CLEAR)
-        // TODO should changing limits of axis fetch new data or just filter existing data? (filtering currently initiated in componentDidUpdate)
+        if (this.props.maxDotCount !== prevProps.maxDotCount)
+            configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
+        if (this.state.lastQueryWasWithRangeFilter && isNaN(this.props.xMin) && isNaN(this.props.xMax) && isNaN(this.props.yMin) && isNaN(this.props.yMax))
+            configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
+
+
+        if (configDiff === ConfigDifference.DATA_WITH_CLEAR || this.props.maxDotCount !== prevProps.maxDotCount)
         {
             this.setState({
                 signalSetsData: null,
@@ -243,21 +249,34 @@ export class ScatterPlotBase extends Component {
                 ]
             };
 
-            // TODO using this filter may cause that zooming out doesn't work as expected because it wouldn't have data
-            if (this.props.xMin && this.props.xMax && this.props.yMin && this.props.yMax) {
+            if (!isNaN(this.props.xMin))
                 filter.children.push({
                     type: "range",
                     sigCid: signalSet.X_sigCid,
-                    lte: this.props.xMax,
                     gte: this.props.xMin
                 });
+            if (!isNaN(this.props.xMax))
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.X_sigCid,
+                    lte: this.props.xMax
+                });
+            if (!isNaN(this.props.yMin))
                 filter.children.push({
                     type: "range",
                     sigCid: signalSet.Y_sigCid,
-                    lte: this.props.yMax,
                     gte: this.props.yMin
                 });
-            }
+            if (!isNaN(this.props.yMax))
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.Y_sigCid,
+                    lte: this.props.yMax
+                });
+            if (!isNaN(this.props.xMin) || !isNaN(this.props.xMax) || !isNaN(this.props.yMin) || !isNaN(this.props.yMax))
+                this.setState({lastQueryWasWithRangeFilter: true});
+            else
+                this.setState({lastQueryWasWithRangeFilter: false});
 
             let limit = undefined;
             if (this.props.maxDotCount >= 0) {
@@ -386,7 +405,7 @@ export class ScatterPlotBase extends Component {
             sScale = d3Scale.scalePow()
                 .exponent(1/3)
                 .domain(sExtent)
-                .range([this.props.minDotRadius, this.props.maxDotRadius]); // TODO max size
+                .range([this.props.minDotRadius, this.props.maxDotRadius]);
         }
 
         let i = 0;
@@ -448,12 +467,14 @@ export class ScatterPlotBase extends Component {
     /** data = [{x,y}] */
     filterData(data) {
         const props = this.props;
-        if (props.xMin && props.xMax && props.yMin && props.yMax)
+        if (props.xMin || props.xMax || props.yMin || props.yMax)
         {
             let ret = [];
             for (const d of data) {
-                if (d.x >= props.xMin && d.x <= props.xMax &&
-                    d.y >= props.yMin && d.y <= props.yMax) {
+                if ((isNaN(props.xMin) || d.x >= props.xMin) &&
+                    (isNaN(props.xMax) || d.x <= props.xMax) &&
+                    (isNaN(props.yMin) || d.y >= props.yMin) &&
+                    (isNaN(props.yMax) || d.y <= props.yMax)) {
                     ret.push(d);
                 }
             }
