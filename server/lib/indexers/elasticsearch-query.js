@@ -547,7 +547,7 @@ class QueryProcessor {
             const rng = {};
             const rngAttrs = ['gte', 'gt', 'lte', 'lt'];
             for (const rngAttr of rngAttrs) {
-                if (flt[rngAttr]) {
+                if (flt.hasOwnProperty(rngAttr)) {
                     rng[rngAttr] = flt[rngAttr];
                 }
             }
