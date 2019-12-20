@@ -33,6 +33,7 @@
     "d3-shape": "^1.3.7",
     "d3-transition": "^1.3.2",
     "d3-zoom": "^1.8.3",
+    "d3-regression": "^1.3.4",
     "datatables.net": "^1.10.20",
     "datatables.net-bs4": "^1.10.20",
     "fast-deep-equal": "^2.0.1",

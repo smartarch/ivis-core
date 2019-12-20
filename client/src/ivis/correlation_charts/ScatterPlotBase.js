@@ -6,6 +6,8 @@ import * as d3Scale from "d3-scale";
 import * as d3Array from "d3-array";
 import * as d3Selection from "d3-selection";
 import * as d3Brush from "d3-brush";
+import * as d3Regression from "d3-regression";
+import * as d3Shape from "d3-shape";
 import {event as d3Event, select} from "d3-selection";
 import {intervalAccessMixin} from "../TimeContext";
 import {DataAccessSession} from "../DataAccess";
@@ -50,7 +52,8 @@ function compareSignalSetConfigs(conf1, conf2) {
                conf1.label !== conf2.label ||
                conf1.X_label !== conf2.X_label ||
                conf1.Y_label !== conf2.Y_label ||
-               conf1.Size_label !== conf2.Size_label) {
+               conf1.Size_label !== conf2.Size_label ||
+               conf1.regressions !== conf2.regressions) {
         diffResult = ConfigDifference.RENDER;
     }
 
@@ -144,7 +147,13 @@ export class ScatterPlotBase extends Component {
                 dotSize_sigCid: PropTypes.string, // used for BubblePlot
                 X_label: PropTypes.string,
                 Y_label: PropTypes.string,
-                Size_label: PropTypes.string // for BubblePlot
+                Size_label: PropTypes.string, // for BubblePlot
+                regressions: PropTypes.arrayOf(PropTypes.shape({
+                    type: PropTypes.string.isRequired,
+                    color: PropTypes.object,
+                    bandwidth: PropTypes.number,    // for LOESS
+                    // order: PropTypes.number         // for polynomial
+                }))
             })).isRequired
         }).isRequired,
         maxDotCount: PropTypes.number, // set to negative number for unlimited
@@ -159,6 +168,7 @@ export class ScatterPlotBase extends Component {
         withBrush: PropTypes.bool,
         withTooltip: PropTypes.bool,
         withTransition: PropTypes.bool,
+        withRegressionCoefficients: PropTypes.bool,
 
         xMin: PropTypes.number,
         xMax: PropTypes.number,
@@ -171,6 +181,7 @@ export class ScatterPlotBase extends Component {
         withBrush: true,
         withTooltip: true,
         withTransition: true,
+        withRegressionCoefficients: true,
         xMin: NaN,
         xMax: NaN,
         yMin: NaN,
@@ -218,10 +229,10 @@ export class ScatterPlotBase extends Component {
             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || configDiff !== ConfigDifference.NONE
-                || prevProps.xMin !== this.props.xMin
-                || prevProps.xMax !== this.props.xMax
-                || prevProps.yMin !== this.props.yMin
-                || prevProps.yMax !== this.props.yMax;
+                || !Object.is(prevProps.xMin, this.props.xMin)
+                || !Object.is(prevProps.xMax, this.props.xMax)
+                || !Object.is(prevProps.yMin, this.props.yMin)
+                || !Object.is(prevProps.yMax, this.props.yMax);
 
             this.createChart(signalSetsData, forceRefresh);
             this.prevContainerNode = this.containerNode;
@@ -302,7 +313,6 @@ export class ScatterPlotBase extends Component {
             const results = await this.dataAccessSession.getLatestMixed(this.getQueries());
 
             if (results) { // Results is null if the results returned are not the latest ones
-                console.log("docs:", results);
                 this.setState({
                     signalSetsData: results
                 });
@@ -370,6 +380,10 @@ export class ScatterPlotBase extends Component {
         // y Scale
         let yExtent = this.getExtent(processedSetsData, function (d) {  return d.y });
         yExtent = this.extentWithMargin(yExtent, 0.1);
+        if (!isNaN(this.props.yMin))
+            yExtent[0] = this.props.yMin;
+        if (!isNaN(this.props.yMax))
+            yExtent[1] = this.props.yMax;
         const yScale = d3Scale.scaleLinear()
             .domain(yExtent)
             .range([ySize, 0]);
@@ -382,6 +396,10 @@ export class ScatterPlotBase extends Component {
         // x Scale
         let xExtent = this.getExtent(processedSetsData, function (d) {  return d.x });
         xExtent = this.extentWithMargin(xExtent, 0.1);
+        if (!isNaN(this.props.xMin))
+            xExtent[0] = this.props.xMin;
+        if (!isNaN(this.props.xMax))
+            xExtent[1] = this.props.xMax;
         const xScale = d3Scale.scaleLinear()
             .domain(xExtent)
             .range([0, xSize]);
@@ -408,11 +426,14 @@ export class ScatterPlotBase extends Component {
                 .range([this.props.minDotRadius, this.props.maxDotRadius]);
         }
 
+        this.regressions = [];
         let i = 0;
         for (const data of processedSetsData) {
             this.drawDots(data, xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
+            this.createRegressions(data, xScale, yScale, SignalSetsConfigs[i]);
             i++;
         }
+        this.drawRegressions(xScale, yScale);
 
         this.createChartCursor(xScale, yScale, sScale, processedSetsData);
         this.createChartBrush(xScale, yScale);
@@ -440,6 +461,7 @@ export class ScatterPlotBase extends Component {
                 return d.x + " " + d.y;
             });
 
+        // duplicate code (attribute assignments) needed so animation doesn't start with all dots with x=y=0
         let new_dots = function() {
             dots.enter()
                 .append('circle')
@@ -464,10 +486,124 @@ export class ScatterPlotBase extends Component {
             .remove();
     }
 
+    createRegressions(data, xScale, yScale, SignalSetConfig) {
+        if (SignalSetConfig.hasOwnProperty("regressions"))
+            for (const regConfig of SignalSetConfig.regressions) {
+                this.createRegression(data, xScale.domain(), regConfig, SignalSetConfig);
+            }
+    }
+
+    createRegression(data, domain, regressionConfig, SignalSetConfig) {
+        let regression;
+        switch (regressionConfig.type) {
+            case "linear":
+                regression = d3Regression.regressionLinear();
+                break;
+            /* other types of regressions are to slow to compute
+            case "exponential":
+                regression = d3Regression.regressionExp();
+                break;
+            case "logarithmic":
+                regression = d3Regression.regressionLog();
+                break;
+            case "quadratic":
+                regression = d3Regression.regressionQuad();
+                break;
+            case "polynomial":
+                regression = d3Regression.regressionPoly();
+                if (regressionConfig.order)
+                    regression.order(regressionConfig.order);
+                break;
+            case "power":
+                regression = d3Regression.regressionPow();
+                break;*/
+            case "loess":
+                regression = d3Regression.regressionLoess();
+                if (regressionConfig.bandwidth)
+                    regression.bandwidth(regressionConfig.bandwidth);
+                break;
+            default:
+                console.error("Regression type not supported: ", regressionConfig.type);
+                return;
+        }
+
+        regression.x(d => d.x)
+                  .y(d => d.y);
+        if (typeof regression.domain === "function")
+            regression.domain(domain);
+
+        this.regressions.push({
+            data: regression(data),
+            color: regressionConfig.color,
+            label: SignalSetConfig.label ? SignalSetConfig.label : SignalSetConfig.cid
+        });
+    }
+
+    drawRegressions(xScale, yScale) {
+        const regressions = this.regressionsSelection
+            .selectAll("path")
+            .data(this.regressions);
+        const lineGenerator = d3Shape.line()
+            .x(d => xScale(d[0]))
+            .y(d => yScale(d[1]))
+            .curve(d3Shape.curveBasis);
+
+        let new_lines = function() {
+            regressions.enter()
+                .append('path')
+                .attr('d', d => lineGenerator(d.data))
+                .attr('stroke', d => d.color)
+                .attr('stroke-width', "2px")
+                .attr('fill', 'none');
+        };
+
+        if (this.props.withTransition && regressions.size() !== 0)
+            setTimeout(new_lines, 250, this);
+        else
+            new_lines(this);
+
+        (this.props.withTransition ?
+            regressions.transition() : regressions)
+            .attr('d', d => lineGenerator(d.data));
+
+        regressions.exit()
+            .remove();
+
+        this.drawRegressionCoefficients();
+    }
+
+    drawRegressionCoefficients() {
+        if (!this.props.withRegressionCoefficients)
+            return;
+
+        this.regressionsCoefficients.selectAll("*").remove();
+
+        if (this.regressions.length <= 0)
+            return;
+
+        this.regressionsCoefficients.append("h4").text("Linear regression coefficients");
+
+        const coeffs = this.regressionsCoefficients
+            .selectAll("div")
+            .data(this.regressions);
+
+        coeffs.enter().append("div")
+            .merge(coeffs)
+            .html(d => {
+            if (d.data.a)
+                return `<b>${d.label}</b>: <i>slope:</i> ${this.roundTo(d.data.a, 3)}; <i>intercept:</i> ${this.roundTo(d.data.b, 3)}`;
+        });
+    }
+
+    roundTo(num, decimals = 2) {
+        const pow10 = Math.pow(10, decimals);
+        return Math.round(num * pow10) / pow10;
+    }
+
     /** data = [{x,y}] */
     filterData(data) {
         const props = this.props;
-        if (props.xMin || props.xMax || props.yMin || props.yMax)
+        if (!isNaN(props.xMin) || !isNaN(props.xMax) || !isNaN(props.yMin) || !isNaN(props.yMax))
         {
             let ret = [];
             for (const d of data) {
@@ -678,39 +814,44 @@ export class ScatterPlotBase extends Component {
             );
 
             return (
-                <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
-                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
-                        {dotsSelectionGroups}
-                        {dotsHighlightSelectionGroups}
-                    </g>
-                    {/* axes */}
-                    <g ref={node => this.xAxisSelection = select(node)}
-                       transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
-                    <g ref={node => this.yAxisSelection = select(node)}
-                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                    {/* cursor lines */}
-                    <line ref={node => this.cursorSelectionX = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
-                          visibility="hidden"/>
-                    <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
-                          visibility="hidden"/>
-                    {/* tooltip */}
-                    {this.props.withTooltip &&
-                    <Tooltip
-                        name={"Tooltip"}
-                        config={this.props.config}
-                        signalSetsData={{}}
-                        containerHeight={this.props.height}
-                        containerWidth={this.state.width}
-                        mousePosition={this.state.mousePosition}
-                        selection={this.state.selections}
-                        width={250}
-                        contentRender={props => <TooltipContent {...props} labels={this.labels}/>}
-                    />
-                    }
-                    {/* brush */}
-                    <g ref={node => this.brushSelection = select(node)}
-                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                </svg>
+                <div>
+                    <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
+                            <g name={"dots"}>{dotsSelectionGroups}</g>
+                            <g name={"highlightDots"}>{dotsHighlightSelectionGroups}</g>
+                            <g name={"regressions"} ref={node => this.regressionsSelection = select(node)} />
+                        </g>
+                        {/* axes */}
+                        <g ref={node => this.xAxisSelection = select(node)}
+                           transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                        <g ref={node => this.yAxisSelection = select(node)}
+                           transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                        {/* cursor lines */}
+                        <line ref={node => this.cursorSelectionX = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
+                              visibility="hidden"/>
+                        <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
+                              visibility="hidden"/>
+                        {/* tooltip */}
+                        {this.props.withTooltip &&
+                        <Tooltip
+                            name={"Tooltip"}
+                            config={this.props.config}
+                            signalSetsData={{}}
+                            containerHeight={this.props.height}
+                            containerWidth={this.state.width}
+                            mousePosition={this.state.mousePosition}
+                            selection={this.state.selections}
+                            width={250}
+                            contentRender={props => <TooltipContent {...props} labels={this.labels}/>}
+                        />
+                        }
+                        {/* brush */}
+                        <g ref={node => this.brushSelection = select(node)}
+                           transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                    </svg>
+                    {this.props.withRegressionCoefficients &&
+                    <div ref={node => this.regressionsCoefficients = select(node)} />}
+                </div>
             );
         }
     }

@@ -185,7 +185,12 @@ export class ScatterPlot extends Component {
                 dotSize_sigCid: PropTypes.string, // used for BubblePlot
                 X_label: PropTypes.string,
                 Y_label: PropTypes.string,
-                Size_label: PropTypes.string // for BubblePlot
+                Size_label: PropTypes.string, // for BubblePlot
+                regressions: PropTypes.arrayOf(PropTypes.shape({
+                    type: PropTypes.string.isRequired,
+                    color: PropTypes.object,
+                    bandwidth: PropTypes.number    // for LOESS
+                }))
             })).isRequired
         }).isRequired,
         maxDotCount: PropTypes.number, // set to negative number for unlimited
@@ -200,7 +205,8 @@ export class ScatterPlot extends Component {
         withBrush: PropTypes.bool,
         withTooltip: PropTypes.bool,
         withTransition: PropTypes.bool,
-        withSettings: PropTypes.bool
+        withSettings: PropTypes.bool,
+        withRegressionCoefficients: PropTypes.bool
     };
 
     static defaultProps = {

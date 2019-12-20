@@ -130,7 +130,11 @@ export default class SamplePanel_Scatterplot extends Component {
                     label: "Correlated",
                     enabled: true,
                     X_label: "X value",
-                    Y_label: "Y value"
+                    Y_label: "Y value",
+                    regressions: [{
+                        type: "linear",
+                        color: rgb(0, 0, 169)
+                    }]
                 }
             ]
         };
