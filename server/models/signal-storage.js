@@ -3,9 +3,9 @@
 const em = require('../lib/extension-manager');
 const config = require('../lib/config');
 const knex = require('../lib/knex');
-const { SignalType, serializeToDb, deserializeFromDb, RawSignalTypes } = require('../../shared/signals');
+const {SignalType, serializeToDb, deserializeFromDb, getTypesBySource, SignalSource} = require('../../shared/signals');
 const indexer = require('../lib/indexers/' + config.indexer);
-const { enforce } = require('../lib/helpers');
+const {enforce} = require('../lib/helpers');
 const signalSets = require('./signal-sets');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -23,7 +23,7 @@ const fieldTypes = {
     [SignalType.FLOAT]: 'float',
     [SignalType.DOUBLE]: 'double',
     [SignalType.BOOLEAN]: 'tinyint',
-    [SignalType.KEYWORD]: 'varchar',
+    [SignalType.KEYWORD]: 'varchar(255)',
     [SignalType.TEXT]: 'longtext',
     [SignalType.DATE_TIME]: 'datetime(6)'
 };
@@ -91,7 +91,7 @@ function rowToRecord(signalByCidMap, row) {
     for (const fieldCid in signalByCidMap) {
         const field = signalByCidMap[fieldCid];
         const fieldId = field.id;
-        if (RawSignalTypes.has(field.type)) {
+        if (getTypesBySource(SignalSource.RAW).includes(field.type)) {
             record.signals[fieldCid] = deserializeFromDb[field.type](row[getColumnName(fieldId)]);
         }
     }
@@ -107,7 +107,7 @@ function recordToRow(signalByCidMap, record) {
     for (const fieldCid in record.signals) {
         const field = signalByCidMap[fieldCid];
         const fieldId = field.id;
-        if (RawSignalTypes.has(field.type)) {
+        if (getTypesBySource(SignalSource.RAW).includes(field.type)) {
             row[getColumnName(fieldId)] = serializeToDb[field.type](record.signals[fieldCid]);
         }
     }
@@ -135,7 +135,9 @@ async function insertRecords(sigSetWithSigMap, records) {
     let isAppend = true;
     const lastId = await getLastId(sigSetWithSigMap);
 
-    const recordIdTemplate = signalSets.getRecordIdTemplate(sigSetWithSigMap) || (() => { throw new Exception("Missing record id"); });
+    const recordIdTemplate = signalSets.getRecordIdTemplate(sigSetWithSigMap) || (() => {
+        throw new Exception("Missing record id");
+    });
 
     let rows = [];
     for (const record of records) {
@@ -164,7 +166,9 @@ async function insertRecords(sigSetWithSigMap, records) {
 async function updateRecord(sigSetWithSigMap, existingRecordId, record) {
     const tblName = getTableName(sigSetWithSigMap);
 
-    const recordIdTemplate = signalSets.getRecordIdTemplate(sigSetWithSigMap) || (() => { throw new Exception("Missing record id"); });
+    const recordIdTemplate = signalSets.getRecordIdTemplate(sigSetWithSigMap) || (() => {
+        throw new Exception("Missing record id");
+    });
     updateRecordId(recordIdTemplate, record);
 
     const row = recordToRow(sigSetWithSigMap.signalByCidMap, record);

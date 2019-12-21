@@ -4,22 +4,52 @@ const moment = require('moment');
 
 
 const SignalType = {
-    INTEGER: 'raw_integer',
-    LONG: 'raw_long',
-    FLOAT: 'raw_float',
-    DOUBLE: 'raw_double',
-    BOOLEAN: 'raw_boolean',
-    KEYWORD: 'raw_keyword',
-    TEXT: 'raw_text',
-    DATE_TIME: 'raw_date',
-    PAINLESS: 'derived_painless',
-    PAINLESS_DATE_TIME: 'derived_painless_date'
+    INTEGER: 'integer',
+    LONG: 'long',
+    FLOAT: 'float',
+    DOUBLE: 'double',
+    BOOLEAN: 'boolean',
+    KEYWORD: 'keyword',
+    TEXT: 'text',
+    DATE_TIME: 'date',
 };
 
-const RawSignalTypes = new Set([SignalType.INTEGER, SignalType.LONG, SignalType.FLOAT, SignalType.DOUBLE, SignalType.BOOLEAN, SignalType.KEYWORD, SignalType.STRING, SignalType.TEXT, SignalType.DATE_TIME]);
-const DerivedSignalTypes = new Set([SignalType.PAINLESS, SignalType.PAINLESS_DATE_TIME]);
-const AllSignalTypes = new Set([...RawSignalTypes, ...DerivedSignalTypes]);
+if (Object.freeze) {
+    Object.freeze(SignalType);
+}
 
+const AllSignalTypes = new Set(Object.values(SignalType));
+
+const SignalSource = {
+    RAW: 'raw',
+    DERIVED: 'derived',
+    JOB: 'job'
+};
+
+const AllSignalSources = new Set(Object.values(SignalSource));
+
+if (Object.freeze) {
+    Object.freeze(SignalSource);
+}
+
+// Maps sources to their allowed types
+const typesMap = {
+    [SignalSource.DERIVED]: [
+        ...AllSignalTypes
+    ],
+    [SignalSource.RAW]: [
+        ...AllSignalTypes
+    ],
+    // TODO check job types requirements
+    [SignalSource.JOB]: [
+        ...AllSignalTypes
+    ],
+};
+
+function getTypesBySource(source) {
+    const types = typesMap[source];
+    return types ? types : null;
+}
 
 const deserializeFromDb = {
     [SignalType.INTEGER]: x => x,
@@ -59,8 +89,9 @@ const IndexMethod = {
 module.exports = {
     SignalType,
     AllSignalTypes,
-    RawSignalTypes,
-    DerivedSignalTypes,
+    AllSignalSources,
+    getTypesBySource,
+    SignalSource,
     IndexingStatus,
     IndexMethod,
     deserializeFromDb,

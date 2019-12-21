@@ -112,6 +112,25 @@ async function listRunsDTAjax(context, id, params) {
     });
 }
 
+async function listOwnedSignalSetsDTAjax(context, id, params) {
+    return await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
+
+        return await dtHelpers.ajaxListWithPermissionsTx(
+            tx,
+            context,
+            [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
+            params,
+            builder => builder
+                .from('signal_sets_owners')
+                .innerJoin('signal_sets', 'signal_sets_owners.set', 'signal_sets.id')
+                .where({'signal_sets_owners.job': id})
+                .orderBy('signal_sets.id', 'desc'),
+            ['signal_sets_owners.set', 'signal_sets.name', 'signal_sets.description']
+        );
+    });
+}
+
 async function listRunningDTAjax(context, params) {
     return await knex.transaction(async tx => {
         //await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
@@ -318,6 +337,7 @@ module.exports.getByIdWithTaskParams = getByIdWithTaskParams;
 module.exports.getRunById = getRunById;
 module.exports.listDTAjax = listDTAjax;
 module.exports.listRunsDTAjax = listRunsDTAjax;
+module.exports.listOwnedSignalSetsDTAjax = listOwnedSignalSetsDTAjax;
 module.exports.listRunningDTAjax = listRunningDTAjax;
 module.exports.listByTaskDTAjax = listByTaskDTAjax;
 module.exports.create = create;

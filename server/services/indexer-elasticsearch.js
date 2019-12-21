@@ -4,7 +4,7 @@ const elasticsearch = require('../lib/elasticsearch');
 const knex = require('../lib/knex');
 const {getIndexName, getFieldName, createIndex} = require('../lib/indexers/elasticsearch-common');
 const {getTableName, getColumnName} = require('../models/signal-storage');
-const {IndexingStatus, deserializeFromDb, SignalType, IndexMethod, RawSignalTypes} = require('../../shared/signals');
+const {IndexingStatus, deserializeFromDb, SignalSource, getTypesBySource, IndexMethod } = require('../../shared/signals');
 const log = require('../lib/log');
 const signalSets = require('../models/signal-sets');
 
@@ -55,13 +55,15 @@ async function index(cid, method, from) {
             });
 
             if (exists) {
-                if (from === undefined) {
+                // This counts on id field existing, which is true for values stored in DB, in case of future changes
+                // this needs to be updated accordingly
+                if (from == null) {
                     const response = await elasticsearch.search({
                         index: indexName,
                         body: {
-                            _source: ['_id'],
+                            _source: ['id'],
                             sort: {
-                                _id: {
+                                id: {
                                     order: 'desc'
                                 }
                             },
@@ -70,14 +72,14 @@ async function index(cid, method, from) {
                     });
 
                     if (response.hits.hits.length > 0) {
-                        last = response.hits.hits[0]._id;
+                        last = response.hits.hits[0]._source.id;
                     }
                 } else {
                     await elasticsearch.deleteByQuery({
                         index: indexName,
                         body: {
                             "range" : {
-                                "_id" : {
+                                "id" : {
                                     "gte" : from
                                 }
                             }
@@ -110,13 +112,13 @@ async function index(cid, method, from) {
                 query = query.where('id', '>', last);
             }
 
-            if (from !== undefined) {
+            if (from != null) {
                 query = query.where('id', '>=', from);
             }
 
             const rows = await query.select();
 
-            if (rows.length == 0)
+            if (rows.length === 0)
                 break;
 
             log.info('Indexer', `Indexing ${rows.length} records in id interval ${rows[0].id}..${rows[rows.length - 1].id}`);
@@ -133,9 +135,10 @@ async function index(cid, method, from) {
                 });
 
                 const esDoc = {};
+                esDoc['id'] = row.id;
                 for (const fieldCid in signalByCidMap) {
                     const field = signalByCidMap[fieldCid];
-                    if (RawSignalTypes.has(field.type)) {
+                    if (getTypesBySource(SignalSource.RAW).includes(field.type)) {
                         esDoc[getFieldName(field.id)] = deserializeFromDb[field.type](row[getColumnName(field.id)]);
                     }
                 }
