@@ -11,8 +11,7 @@ import {ScatterPlot} from "./ScatterPlot";
 
 @withComponentMixins([
     withTranslation,
-    withErrorHandling,
-    intervalAccessMixin()
+    withErrorHandling
 ])
 export class BubblePlot extends Component {
     constructor(props) {

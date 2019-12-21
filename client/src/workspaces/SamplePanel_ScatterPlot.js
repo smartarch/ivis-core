@@ -4,8 +4,9 @@ import React, {Component} from "react";
 import {Panel} from "../lib/panel";
 import {rgb} from "d3-color";
 import {
+    IntervalSpec,
     Legend,
-    LegendPosition, withPanelConfig,
+    LegendPosition, TimeContext, TimeRangeSelector, withPanelConfig,
 } from "../ivis/ivis";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
@@ -91,14 +92,15 @@ class TestScatterPlot extends Component {
         };
 
         return (
-            <div>
+            <TimeContext initialIntervalSpec={new IntervalSpec("now-5y", "now", null, null)}>
+                <TimeRangeSelector/>
                 <Legend label="Sensors" configPath={['sensors']} withSelector structure={sensorsStructure} withConfigurator configSpec={sensorsConfigSpec}/>
                 <ScatterPlot config={cnf}
                              height={400} width={400}
-                             margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
+                             margin={{ left: 40, right: 5, top: 5, bottom: 40 }}
                              maxDotCount={5}
                              />
-            </div>
+            </TimeContext>
         );
     }
 }
@@ -120,7 +122,8 @@ export default class SamplePanel_Scatterplot extends Component {
                     label: "Random",
                     enabled: true,
                     X_label: "X value",
-                    Y_label: "Y value"
+                    Y_label: "Y value",
+                    tsSigCid: "ts"
                 },
                 {
                     signalSet: "top:random_correlated",
@@ -134,7 +137,8 @@ export default class SamplePanel_Scatterplot extends Component {
                     regressions: [{
                         type: "linear",
                         color: rgb(0, 0, 169)
-                    }]
+                    }],
+                    tsSigCid: "ts"
                 }
             ]
         };

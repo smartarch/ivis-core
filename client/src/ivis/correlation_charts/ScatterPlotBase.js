@@ -45,7 +45,8 @@ function compareSignalSetConfigs(conf1, conf2) {
     if (conf1.cid !== conf2.cid ||
         conf1.X_sigCid !== conf2.X_sigCid ||
         conf1.Y_sigCid !== conf2.Y_sigCid ||
-        conf1.dotSize_sigCid !== conf2.dotSize_sigCid) {
+        conf1.dotSize_sigCid !== conf2.dotSize_sigCid ||
+        conf1.tsSigCid !== conf2.tsSigCid) {
         diffResult = ConfigDifference.DATA_WITH_CLEAR;
     } else if (conf1.color !== conf2.color ||
                conf1.enabled !== conf2.enabled ||
@@ -140,6 +141,7 @@ export class ScatterPlotBase extends Component {
                 cid: PropTypes.string.isRequired,
                 X_sigCid: PropTypes.string.isRequired,
                 Y_sigCid: PropTypes.string.isRequired,
+                tsSigCid: PropTypes.string, // for use of TimeContext
                 color: PropTypes.object.isRequired,
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
@@ -212,8 +214,19 @@ export class ScatterPlotBase extends Component {
         if (this.state.lastQueryWasWithRangeFilter && isNaN(this.props.xMin) && isNaN(this.props.xMax) && isNaN(this.props.yMin) && isNaN(this.props.yMax))
             configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
 
+        const considerTs =  this.props.config.signalSets.some(setConf => !!setConf.tsSigCid);
+        if (considerTs) {
+            const prevAbs = this.getIntervalAbsolute(prevProps);
+            const prevSpec = this.getIntervalSpec(prevProps);
 
-        if (configDiff === ConfigDifference.DATA_WITH_CLEAR || this.props.maxDotCount !== prevProps.maxDotCount)
+            if (prevSpec !== this.getIntervalSpec()) {
+                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
+            } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
+                configDiff = Math.max(configDiff, ConfigDifference.DATA);
+            }
+        }
+
+        if (configDiff === ConfigDifference.DATA_WITH_CLEAR)
         {
             this.setState({
                 signalSetsData: null,
@@ -222,6 +235,10 @@ export class ScatterPlotBase extends Component {
 
             signalSetsData = null;
 
+            // noinspection JSIgnoredPromiseFromCall
+            this.fetchData();
+        }
+        else if (configDiff === ConfigDifference.DATA) {
             // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
         }
@@ -259,6 +276,16 @@ export class ScatterPlotBase extends Component {
                     }
                 ]
             };
+
+            if (signalSet.tsSigCid) {
+                const abs = this.getIntervalAbsolute();
+                filter.children.push({
+                    type: 'range',
+                    sigCid: signalSet.tsSigCid,
+                    gte: abs.from.toISOString(),
+                    lt: abs.to.toISOString()
+                });
+            }
 
             if (!isNaN(this.props.xMin))
                 filter.children.push({
@@ -355,6 +382,16 @@ export class ScatterPlotBase extends Component {
 
         if (!signalSetsData) {
             return;
+        }
+
+        const noData = !signalSetsData.some(d => d.length > 0);
+        if (noData) {
+            this.statusMsgSelection.text(this.props.t('No data.'));
+
+            this.brushSelection
+                .on('mouseenter', null)
+                .on('mousemove', null)
+                .on('mouseleave', null);
         }
 
         // used for Tooltip
@@ -831,6 +868,9 @@ export class ScatterPlotBase extends Component {
                               visibility="hidden"/>
                         <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
                               visibility="hidden"/>
+                        {/* status message */}
+                        <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%"
+                              fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
                         {/* tooltip */}
                         {this.props.withTooltip &&
                         <Tooltip

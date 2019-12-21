@@ -148,8 +148,7 @@ class ScatterPlotToolbar extends Component {
 
 @withComponentMixins([
     withTranslation,
-    withErrorHandling,
-    intervalAccessMixin()
+    withErrorHandling
 ])
 export class ScatterPlot extends Component {
     constructor(props) {
