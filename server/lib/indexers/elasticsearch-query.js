@@ -407,7 +407,8 @@ class QueryProcessor {
                     min_doc_count: agg.minDocCount
                 };
 
-                if (agg.hasOwnProperty("computedMin") && agg.hasOwnProperty("computedMax"))
+                if (agg.hasOwnProperty("computedMin") && Number.isFinite(agg.computedMin) &&
+                    agg.hasOwnProperty("computedMax") && Number.isFinite(agg.computedMax))
                 {
                     elsAgg.histogram.extended_bounds = {
                         min: agg.computedMin,
