@@ -317,6 +317,12 @@ class QueryProcessor {
 
                 let step;
                 let offset;
+                let min, max;
+
+                if (agg.hasOwnProperty("min"))
+                    min = agg.min;
+                if (agg.hasOwnProperty("max"))
+                    max = agg.max;
 
                 if (agg.step) {
                     step = agg.step;
@@ -327,18 +333,26 @@ class QueryProcessor {
                     const stepAndOffset = _computeStepAndOffset(field.type, agg.maxBucketCount, agg.minStep, minMax.min, minMax.max);
                     step = stepAndOffset.step;
                     offset = stepAndOffset.offset;
+                    min = minMax.min;
+                    max = minMax.max;
 
                 } else if (agg.bucketGroup) {
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
                     step = bucketGroup.step;
                     offset = bucketGroup.offset;
-
+                    min = bucketGroup.min;
+                    max = bucketGroup.max;
                 } else {
                     throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or buckteGroup have to be specified.');
                 }
 
                 agg.computedStep = step;
                 agg.computedOffset = offset;
+
+                if (min !== undefined)
+                    agg.computedMin = min;
+                if (max !== undefined)
+                    agg.computedMax = max;
 
                 if (agg.aggs) {
                     await _setStepAndOffset(agg.aggs);
@@ -392,6 +406,14 @@ class QueryProcessor {
                     offset: agg.computedOffset,
                     min_doc_count: agg.minDocCount
                 };
+
+                if (agg.hasOwnProperty("computedMin") && agg.hasOwnProperty("computedMax"))
+                {
+                    elsAgg.histogram.extended_bounds = {
+                        min: agg.computedMin,
+                        max: agg.computedMax
+                    }
+                }
 
             } else {
                 throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');

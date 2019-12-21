@@ -190,7 +190,7 @@ export class HistogramChart extends Component {
                         signalSetsData: {
                             step: results.step,
                             offset: results.offset,
-                            buckets: results.buckets[0]
+                            buckets: results.buckets
                         }
                     });
                 }
