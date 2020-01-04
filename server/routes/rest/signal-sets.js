@@ -71,22 +71,33 @@ users.registerRestrictedAccessTokenMethod('template', async ({templateId, params
         }
     };
 
-    //ret.permissions.panel[panel.id] = new Set(['view']);
+    if (template.elevated_access) {
+        ret.permissions.signalSet = new Set(['view', 'query']);
+        ret.permissions.signal = new Set(['view', 'query']);
 
-    const allowedSignalsMap = await signalSets.getAllowedSignals(template.settings.params, params);
+        ret.permissions.panel['default'] = new Set(['view']);
 
-    const signalSetsPermissions = {};
-    const signalsPermissions = {};
+        ret.permissions.workspace = new Set(['view', 'createPanel']);
+        ret.permissions.namespace = new Set(['view', 'createPanel']);
 
-    for (const setEntry of allowedSignalsMap.values()) {
-        signalSetsPermissions[setEntry.id] = new Set(['query']);
-        for (const sigId of setEntry.sigs.values()) {
-            signalsPermissions[sigId] = new Set(['query']);
+    } else {
+        //ret.permissions.panel[panel.id] = new Set(['view']);
+
+        const allowedSignalsMap = await signalSets.getAllowedSignals(template.settings.params, params);
+
+        const signalSetsPermissions = {};
+        const signalsPermissions = {};
+
+        for (const setEntry of allowedSignalsMap.values()) {
+            signalSetsPermissions[setEntry.id] = new Set(['query']);
+            for (const sigId of setEntry.sigs.values()) {
+                signalsPermissions[sigId] = new Set(['query']);
+            }
         }
-    }
 
-    ret.permissions.signalSet = signalSetsPermissions;
-    ret.permissions.signal = signalsPermissions;
+        ret.permissions.signalSet = signalSetsPermissions;
+        ret.permissions.signal = signalsPermissions;
+    }
 
     return ret;
 });
