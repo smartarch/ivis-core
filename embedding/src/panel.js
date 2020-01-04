@@ -25,7 +25,7 @@ export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToke
     let refreshAccessTokenTimeout = null;
     const scheduleRefreshAccessToken = () => {
         refreshAccessTokenTimeout = setTimeout(() => {
-            restCall('PUT', getSandboxUrl('rest/embedded-panel-renew-restricted-access-token'), { token: accessToken }, () => {
+            restCall('PUT', getSandboxUrl('rest/embedded-entity-renew-restricted-access-token'), {token: accessToken}, () => {
                 scheduleRefreshAccessToken();
             });
         }, 30 * 1000);
@@ -53,7 +53,7 @@ export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToke
                     panel: panel
                 };
 
-                sendMessage('init', { accessToken, contentProps });
+                sendMessage('init', {accessToken, contentProps});
 
             } else if (msg.type === 'rpcRequest') {
                 const method = msg.data.method;

@@ -137,11 +137,12 @@ export default class CUD extends Component {
             'name',
             'description',
             'record_id_template',
-            'namespace'
+            'namespace',
+            'cid'
         ];
 
         if (!this.props.entity){
-            allowedKeys.push('cid', 'type');
+            allowedKeys.push('type');
         }
 
         return filterData(data, allowedKeys);

@@ -6,8 +6,10 @@ const shares = require('../../models/shares');
 
 const router = require('../../lib/router-async').create();
 
-router.putAsync('/embedded-panel-renew-restricted-access-token', passport.loggedIn, async (req, res) => {
-    if (req.user.restrictedAccessMethod === 'panel' && req.user.restrictedAccessParams.renewableBySandbox) {
+router.putAsync('/embedded-entity-renew-restricted-access-token', passport.loggedIn, async (req, res) => {
+    const method =  req.user.restrictedAccessMethod;
+    if ((method === 'panel' || method === 'template')
+        && req.user.restrictedAccessParams.renewableBySandbox) {
         await users.refreshRestrictedAccessToken(req.context, req.body.token);
         return res.json();
 
@@ -15,5 +17,6 @@ router.putAsync('/embedded-panel-renew-restricted-access-token', passport.logged
         shares.throwPermissionDenied();
     }
 });
+
 
 module.exports = router;

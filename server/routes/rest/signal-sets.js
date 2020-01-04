@@ -4,6 +4,7 @@ const passport = require('../../lib/passport');
 const moment = require('moment');
 const signalSets = require('../../models/signal-sets');
 const panels = require('../../models/panels');
+const templates = require('../../models/templates');
 const users = require('../../models/users');
 const contextHelpers = require('../../lib/context-helpers');
 const base64url = require('base64-url');
@@ -57,6 +58,38 @@ users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
     return ret;
 });
 
+users.registerRestrictedAccessTokenMethod('template', async ({templateId, params}) => {
+    const template = await templates.getById(contextHelpers.getAdminContext(), templateId, false);
+
+    const ret = {
+        permissions: {
+            template: {
+                [template.id]: new Set(['view','execute', 'viewFiles'])
+            },
+            // FIXME should panel be here at all?
+            panel: new Set(['view', 'edit'])
+        }
+    };
+
+    //ret.permissions.panel[panel.id] = new Set(['view']);
+
+    const allowedSignalsMap = await signalSets.getAllowedSignals(template.settings.params, params);
+
+    const signalSetsPermissions = {};
+    const signalsPermissions = {};
+
+    for (const setEntry of allowedSignalsMap.values()) {
+        signalSetsPermissions[setEntry.id] = new Set(['query']);
+        for (const sigId of setEntry.sigs.values()) {
+            signalsPermissions[sigId] = new Set(['query']);
+        }
+    }
+
+    ret.permissions.signalSet = signalSetsPermissions;
+    ret.permissions.signal = signalsPermissions;
+
+    return ret;
+});
 
 router.getAsync('/signal-sets/:signalSetId', passport.loggedIn, async (req, res) => {
     const signalSet = await signalSets.getById(req.context, castToInteger(req.params.signalSetId));

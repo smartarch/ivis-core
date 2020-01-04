@@ -88,7 +88,10 @@ async function listDTAjax(context, params) {
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
-        builder => builder.from('jobs').innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
+        builder => builder
+            .from('jobs')
+            .innerJoin('tasks', 'tasks.id', 'jobs.task')
+            .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
         ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name']
     );
 }
