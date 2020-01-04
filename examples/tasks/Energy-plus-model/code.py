@@ -35,8 +35,8 @@ api_url_file = f'{api_url_base}/meteo-file'
 occ = params['occ']
 mod = params['mod']
 
-username = ''
-password = ''
+username = 'sieglp'
+password = 'jEkZTwB9l5oE033VoX2E'
  
 current_date = datetime.now()
  
@@ -143,15 +143,16 @@ idf = IDF(StringIO(idf_result.text))
 period =  idf.idfobjects["RunPeriod"][0]
 
 from_date = current_date - timedelta(days=3)
-#period.Begin_Day_of_Month =   from_date.day
-#period.Begin_Month =   from_date.month
-#period.Begin_Year =   from_date.year
+period.Begin_Day_of_Month =   from_date.day
+period.Begin_Month =   from_date.month
+period.Begin_Year =   from_date.year
 
 print(current_date)
 
-period.Begin_Day_of_Month =   20
-period.Begin_Month =   3
-period.Begin_Year =   2019
+# for debug
+#period.Begin_Day_of_Month =   7
+#period.Begin_Month =   10
+#period.Begin_Year =   2019
 
 #last =  state.get('last_run') or {}
 # Part of incremental update
@@ -167,13 +168,14 @@ period.Begin_Year =   2019
 #state['last_run']['year'] = period.End_Year = to_date.year
 
 to_date = current_date + timedelta(days=1)
-#period.End_Day_of_Month =  to_date.day
-#period.End_Month =  to_date.month
-#period.End_Year = to_date.year
+period.End_Day_of_Month =  to_date.day
+period.End_Month =  to_date.month
+period.End_Year = to_date.year
 
-period.End_Day_of_Month =  1
-period.End_Month =  4
-period.End_Year = 2019
+#for debug
+#period.End_Day_of_Month = 11
+#period.End_Month =  10
+#period.End_Year = 2019
 
 # Save to file
 idf.saveas(f'{model_dir}/input.idf')
@@ -214,7 +216,6 @@ def iterResults():
       
       line_data = line.split(',')
       if line_data[0]=='1':
-        # TODO check might be float?
         time_zone = float(line_data[4].strip())
         
       elif line_data[0]=='2':

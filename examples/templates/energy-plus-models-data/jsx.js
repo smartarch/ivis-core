@@ -136,43 +136,40 @@ export default class Panel extends Component {
                 signalSets
             };
 
-
-            let createChartFn = null;
-            let getGraphContentFn =null;
-            let getExtraQueriesFn =null;
-            let prepareExtraDataFn =null;
-
             const yMaxLimit = 3500;
             const step = 100;
 
+            const linechartProps = {};
             if (graphSpec.modelCid==='co2' ){
-                getExtraQueriesFn = (base, abs) => {
-                    return [
-                        {
-                            type: 'docs',
-                            args: [
-                                config.mod.sigSet,
-                                ['mod','ts','model'],
-                                {
-                                    type: 'range',
-                                    sigCid: 'ts',
-                                    gte: abs.from.toISOString(),
-                                    lt: abs.to.toISOString()
-                                },
-                                null,
-                                1000
-                            ]
-                        }
-                    ];
-                };
-
-                prepareExtraDataFn = (base, signalSetsData, extraData) => {
-                    return {
-                        mod: extraData[0].map(x => ({mod: x.mod, model: x.model, ts: moment(x.ts)}))
+                if (config.mod){
+                    lineChartConfig.modVisible = config.mod.visible;
+                    linechartProps.getExtraQueries = (base, abs) => {
+                        return [
+                            {
+                                type: 'docs',
+                                args: [
+                                    config.mod.sigSet,
+                                    ['mod','ts','model'],
+                                    {
+                                        type: 'range',
+                                        sigCid: 'ts',
+                                        gte: abs.from.toISOString(),
+                                        lt: abs.to.toISOString()
+                                    },
+                                    null,
+                                    1000
+                                ]
+                            }
+                        ];
                     };
-                };
+                    linechartProps.prepareExtraData = (base, signalSetsData, extraData) => {
+                        return {
+                            mod: extraData[0].map(x => ({mod: x.mod, model: x.model, ts: moment(x.ts)}))
+                        };
+                    };
+                }
 
-                createChartFn =  (base, signalSetsData, baseState, abs, xScale, yScales, points) => {
+                linechartProps.createChart =  (base, signalSetsData, baseState, abs, xScale, yScales, points) => {
                     const yScale = yScales[0];
                     const domain = yScale.domain();
                     const yMin = domain[0];
@@ -180,6 +177,7 @@ export default class Panel extends Component {
                     const ySize = base.props.height - base.props.margin.top - base.props.margin.bottom;
 
 
+                    // Ruler lines
                     const getLineAttrs = (value) => {return {
                         'x1': xScale(abs.from),
                         'x2': xScale(abs.to),
@@ -193,21 +191,6 @@ export default class Panel extends Component {
                         lines.push(getLineAttrs(i));
                     }
 
-                    // Mod
-                    const modData = [];
-                    const modArr = baseState.mod;
-                    for (let i = 1; i< modArr.length; i++) {
-                        modData.push({
-                            'x1': xScale(modArr[i].ts),
-                            'x2': xScale(modArr[i].ts),
-                            'y1': 0,
-                            'y2': ySize,
-                            'mod': modArr[i].mod
-                        });
-                    }
-
-
-                    // Ruler lines
                     const ruler = base.rulerSelection
                         .selectAll('line')
                         .data(lines);
@@ -224,44 +207,58 @@ export default class Panel extends Component {
                     ruler.exit()
                         .remove();
 
-                    // Mod lines
-                    const modLines = base.modSelection
-                        .selectAll('line')
-                        .data(modData);
+                    if (config.mod){
+                        // Mod
+                        const modData = [];
+                        for (const element of baseState.mod) {
+                            modData.push({
+                                'x1': xScale(element.ts),
+                                'x2': xScale(element.ts),
+                                'y1': 0,
+                                'y2': ySize,
+                                'mod': element.mod
+                            });
+                        }
+
+                        // Mod lines
+                        const modLines = base.modSelection
+                            .selectAll('line')
+                            .data(modData);
 
 
-                    modLines.enter()
-                        .append('line')
-                        .merge(modLines)
-                        .attr('x1', l => l.x1)
-                        .attr('x2', l => l.x2)
-                        .attr('y1', l => l.y1)
-                        .attr('y2', l => l.y2)
-                        .attr("class", styles.modLine);
+                        modLines.enter()
+                            .append('line')
+                            .merge(modLines)
+                            .attr('x1', l => l.x1)
+                            .attr('x2', l => l.x2)
+                            .attr('y1', l => l.y1)
+                            .attr('y2', l => l.y2)
+                            .attr("class", styles.modLine);
 
-                    modLines.exit()
-                        .remove();
+                        modLines.exit()
+                            .remove();
 
-                    // Mod lines labels
-                    const modLabels = base.modSelection
-                        .selectAll('text')
-                        .data(modData);
+                        // Mod lines labels
+                        const modLabels = base.modSelection
+                            .selectAll('text')
+                            .data(modData);
 
 
-                    modLabels.enter()
-                        .append("text")
-                        .merge(modLabels)
-                        .attr("y", l => l.y1 + 10)
-                        .attr("x", l => l.x2 + 10)
-                        .text(l => l.mod)
-                        .attr("class", styles.modLabel);
+                        modLabels.enter()
+                            .append("text")
+                            .merge(modLabels)
+                            .attr("y", l => l.y1 + 10)
+                            .attr("x", l => l.x2 + 10)
+                            .text(l => l.mod)
+                            .attr("class", styles.modLabel);
 
-                    modLabels.exit()
-                        .remove();
+                        modLabels.exit()
+                            .remove();
+                    }
 
                 }
 
-                getGraphContentFn = (base, paths) => {
+                linechartProps.getGraphContent = (base, paths) => {
                     return [
                         <g ref={node => base.rulerSelection = select(node)} key="ruler"/>,
                         <g ref={node => base.modSelection = select(node)} key="mod"/>,
@@ -280,11 +277,7 @@ export default class Panel extends Component {
                         withTooltip
                         tooltipExtraProps={{ width: 500 }}
 
-                        createChart={createChartFn}
-                        getGraphContent={getGraphContentFn}
-                        getExtraQueries={getExtraQueriesFn}
-                        prepareExtraData={prepareExtraDataFn}
-
+                        {...linechartProps}
                     />
                 </div>
             );

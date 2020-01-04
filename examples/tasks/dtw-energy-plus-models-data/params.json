@@ -22,11 +22,6 @@
     "type": "number"
   },
   {
-    "id": "deviation",
-    "label": "allowed deviation ppm",
-    "type": "number"
-  },
-  {
     "id": "models",
     "label": "Models",
     "type": "fieldset",
