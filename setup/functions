@@ -37,8 +37,8 @@ case "$hostType" in
         redisService=redis-server
         apacheConf="/etc/apache2/conf-available/${productId}.conf"
         apacheLogsPath="/var/log/apache2"
-        userId=ubuntu
-        groupId=ubuntu
+        userId=dburian
+        groupId=dburian
 
         if hash ufw 2>/dev/null; then
             firewallCmdExists=true
