@@ -21,9 +21,9 @@ elasticsearch:
 
 mysql:
   host: localhost
-  user: ivis
+  user: ivis-core
   password: ivis
-  database: ivis
+  database: ivis-core
   port: 3306
   charset: utf8mb4
   timezone: local
