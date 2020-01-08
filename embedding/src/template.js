@@ -1,26 +1,12 @@
 'use strict';
 
-export function embedTemplate(domElementId, ivisSandboxUrlBase, templateId, params, accessToken, callbacks) {
-    function restCall(method, url, data, callback) {
-        const xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = () => {
-            if (xhttp.readyState === 4 && xhttp.status === 200) {
-                callback(xhttp.responseText ? JSON.parse(xhttp.responseText) : undefined);
-            }
-        };
-        xhttp.open(method, url);
-        xhttp.setRequestHeader("Content-type", "application/json");
+const {VIRTUAL_WORKSPACE_ID, VIRTUAL_PANEL_ID} = require('../../shared/panels');
+const {restCall, getAnonymousSandboxUrl: getAnonymousSandboxUrlHelper, getSandboxUrl: getSandboxUrlHelper} = require('./lib/helpers');
 
-        xhttp.send(data ? JSON.stringify(data) : null);
-    }
+export function embedTemplate(domElementId, ivisSandboxUrlBase, templateId, config, accessToken, callbacks) {
 
-    function getAnonymousSandboxUrl(path) {
-        return ivisSandboxUrlBase + 'anonymous/' + (path || '');
-    }
-
-    function getSandboxUrl(path) {
-        return ivisSandboxUrlBase + accessToken + '/' + (path || '');
-    }
+    const getAnonymousSandboxUrl = (path) => getAnonymousSandboxUrlHelper(ivisSandboxUrlBase, path);
+    const getSandboxUrl = (path) => getSandboxUrlHelper(ivisSandboxUrlBase, accessToken, path);
 
     let refreshAccessTokenTimeout = null;
     const scheduleRefreshAccessToken = () => {
@@ -50,13 +36,13 @@ export function embedTemplate(domElementId, ivisSandboxUrlBase, templateId, para
                 contentNodeIsLoaded = true;
 
                 const panel = {
-                    "id": 0,
-                    "name": "test embed template",
-                    "description": "test emved template",
-                    "workspace": 0,
+                    "id": VIRTUAL_PANEL_ID,
+                    "name": config.name || "",
+                    "description": config.description || "",
+                    "workspace": VIRTUAL_WORKSPACE_ID,
                     "template": templateId,
                     "builtin_template": null,
-                    "params": params,
+                    "params": config.params,
                     "namespace": template.namespace,
                     "order": null,
                     "templateParams": template.settings.params,

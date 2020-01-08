@@ -1,26 +1,10 @@
 'use strict';
+const {restCall, getAnonymousSandboxUrl: getAnonymousSandboxUrlHelper, getSandboxUrl: getSandboxUrlHelper} = require('./lib/helpers');
 
 export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToken, callbacks) {
-    function restCall(method, url, data, callback) {
-        const xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = () => {
-            if (xhttp.readyState === 4 && xhttp.status === 200) {
-                callback(xhttp.responseText ? JSON.parse(xhttp.responseText) : undefined);
-            }
-        };
-        xhttp.open(method, url);
-        xhttp.setRequestHeader("Content-type", "application/json");
 
-        xhttp.send(data ? JSON.stringify(data) : null);
-    }
-
-    function getAnonymousSandboxUrl(path) {
-        return ivisSandboxUrlBase + 'anonymous/' + (path || '');
-    }
-
-    function getSandboxUrl(path) {
-        return ivisSandboxUrlBase + accessToken + '/' + (path || '');
-    }
+    const getAnonymousSandboxUrl = (path) => getAnonymousSandboxUrlHelper(ivisSandboxUrlBase, path);
+    const getSandboxUrl = (path) => getSandboxUrlHelper(ivisSandboxUrlBase, accessToken, path);
 
     let refreshAccessTokenTimeout = null;
     const scheduleRefreshAccessToken = () => {

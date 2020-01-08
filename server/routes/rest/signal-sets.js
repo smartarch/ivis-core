@@ -12,6 +12,20 @@ const base64url = require('base64-url');
 const router = require('../../lib/router-async').create();
 const {castToInteger} = require('../../lib/helpers');
 
+function getSignalsPermissions(allowedSignalsMap){
+    const signalSetsPermissions = {};
+    const signalsPermissions = {};
+
+    for (const setEntry of allowedSignalsMap.values()) {
+        signalSetsPermissions[setEntry.id] = new Set(['query']);
+        for (const sigId of setEntry.sigs.values()) {
+            signalsPermissions[sigId] = new Set(['query']);
+        }
+    }
+
+    return {signalSetsPermissions, signalsPermissions};
+}
+
 users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
     const panel = await panels.getByIdWithTemplateParams(contextHelpers.getAdminContext(), panelId, false);
 
@@ -41,15 +55,7 @@ users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
 
         const allowedSignalsMap = await signalSets.getAllowedSignals(panel.templateParams, panel.params);
 
-        const signalSetsPermissions = {};
-        const signalsPermissions = {};
-
-        for (const setEntry of allowedSignalsMap.values()) {
-            signalSetsPermissions[setEntry.id] = new Set(['query']);
-            for (const sigId of setEntry.sigs.values()) {
-                signalsPermissions[sigId] = new Set(['query']);
-            }
-        }
+        const {signalSetsPermissions, signalsPermissions} = getSignalsPermissions(allowedSignalsMap);
 
         ret.permissions.signalSet = signalSetsPermissions;
         ret.permissions.signal = signalsPermissions;
@@ -65,9 +71,7 @@ users.registerRestrictedAccessTokenMethod('template', async ({templateId, params
         permissions: {
             template: {
                 [template.id]: new Set(['view','execute', 'viewFiles'])
-            },
-            // FIXME should panel be here at all?
-            panel: new Set(['view', 'edit'])
+            }
         }
     };
 
@@ -75,25 +79,13 @@ users.registerRestrictedAccessTokenMethod('template', async ({templateId, params
         ret.permissions.signalSet = new Set(['view', 'query']);
         ret.permissions.signal = new Set(['view', 'query']);
 
-        ret.permissions.panel['default'] = new Set(['view']);
-
         ret.permissions.workspace = new Set(['view', 'createPanel']);
         ret.permissions.namespace = new Set(['view', 'createPanel']);
 
     } else {
-        //ret.permissions.panel[panel.id] = new Set(['view']);
-
         const allowedSignalsMap = await signalSets.getAllowedSignals(template.settings.params, params);
 
-        const signalSetsPermissions = {};
-        const signalsPermissions = {};
-
-        for (const setEntry of allowedSignalsMap.values()) {
-            signalSetsPermissions[setEntry.id] = new Set(['query']);
-            for (const sigId of setEntry.sigs.values()) {
-                signalsPermissions[sigId] = new Set(['query']);
-            }
-        }
+        const {signalSetsPermissions, signalsPermissions} = getSignalsPermissions(allowedSignalsMap);
 
         ret.permissions.signalSet = signalSetsPermissions;
         ret.permissions.signal = signalsPermissions;
