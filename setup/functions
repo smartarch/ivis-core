@@ -209,8 +209,8 @@ certs:
         apiCerts=""
     fi
 
-    mysqlPassword=`pwgen 12 -1`
-    mysqlRoPassword=`pwgen 12 -1`
+    mysqlPassword=ivis
+    mysqlRoPassword=admin
     
     # Setup MySQL user
     mysql -u root -e "CREATE USER '$productId'@'localhost' IDENTIFIED BY '$mysqlPassword';"
