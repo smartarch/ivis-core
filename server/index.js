@@ -47,7 +47,7 @@ async function initAndStart() {
 
         server.on('listening', () => {
             const addr = server.address();
-            log.info('Express', `WWW server [${appName}] listening on HTTPS port ${addr.port}`);
+            log.info('Express', `WWW server [${appName}] listening on ${isHttps ? "HTTPS" : "HTTP" } port ${addr.port}`);
         });
 
         em.invoke('server.setup', server, app, appType);
