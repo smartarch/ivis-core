@@ -2,6 +2,7 @@
 
 const passport = require('../../lib/passport');
 const users = require('../../models/users');
+const serverAnim = require('./server-animation');
 
 const router = require('../../lib/router-async').create();
 
@@ -18,5 +19,7 @@ router.putAsync('/embedded-panel-token', passport.loggedIn, async (req, res) => 
     await users.refreshRestrictedAccessToken(req.context, req.body.token);
     return res.json();
 });
+
+router.use('/animation/server/', serverAnim);
 
 module.exports = router;
