@@ -186,11 +186,6 @@ export default class Develop extends Component {
         this.templateTypes[data.type].dataIn(data);
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
-    }
-
     resizeTabPaneContent() {
         if (this.tabPaneContentNode) {
             let desiredHeight;
@@ -250,7 +245,7 @@ export default class Develop extends Component {
         const submitSuccessful = await this.validateAndSendFormValuesToURL(FormSendMethod.PUT, `rest/templates/${this.props.entity.id}`);
 
         if (submitSuccessful) {
-            await this.loadFormValues();
+            await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
             this.enableForm();
             this.setState({
                 saveState: SaveState.SAVED,

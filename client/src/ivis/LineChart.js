@@ -1,7 +1,7 @@
 'use strict';
 
 import React, {Component} from "react";
-import {createBase, isSignalVisible, RenderStatus} from "./TimeBasedChartBase";
+import {createBase, isSignalVisible, RenderStatus, TimeBasedChartBase} from "./TimeBasedChartBase";
 import {getAxisIdx, LineChartBase, pointsOnNoAggregation} from "./LineChartBase";
 import {select} from "d3-selection";
 import * as d3Shape from "d3-shape";
@@ -83,6 +83,7 @@ export class LineChart extends Component {
 
         getExtraQueries: PropTypes.func,
         prepareExtraData: PropTypes.func,
+        getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
         compareConfigs: PropTypes.func,
@@ -182,6 +183,7 @@ export class LineChart extends Component {
                 getExtraQueries={this.props.getExtraQueries}
                 getGraphContent={this.boundGetGraphContent}
                 createChart={this.boundCreateChart}
+                getSvgDefs={props.getSvgDefs}
                 compareConfigs={props.compareConfigs}
                 getSignalGraphContent={(base, sigSetCid, sigCid) => <path ref={node => this.areaPathSelection[sigSetCid][sigCid] = select(node)}/>}
                 withTooltip={props.withTooltip}

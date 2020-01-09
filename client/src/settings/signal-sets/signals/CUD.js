@@ -108,11 +108,6 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
-    }
-
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);

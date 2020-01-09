@@ -5,13 +5,27 @@ productId=${productId:-"ivis-core"}
 productLabel=${productLabel:-"IVIS Core"}
 
 case "$hostType" in
-    centos7)
+    centos7|centos7-aws)
         hostTypeLabel="CentOS 7"
         redisService=redis
         apacheConf="/etc/httpd/conf.d/${productId}.conf"
         apacheLogsPath="logs"
         userId=centos
         groupId=centos
+        hostType=centos7-aws
+
+        if hash firewall-cmd 2>/dev/null; then
+            firewallCmdExists=true
+        fi
+        ;;
+
+    centos7-minimal)
+        hostTypeLabel="CentOS 7"
+        redisService=redis
+        apacheConf="/etc/httpd/conf.d/${productId}.conf"
+        apacheLogsPath="logs"
+        userId=root
+        groupId=root
 
         if hash firewall-cmd 2>/dev/null; then
             firewallCmdExists=true
@@ -128,7 +142,7 @@ function installPrerequisities {
     fi
 
     case "$hostType" in
-        centos7)
+        centos7-aws|centos7-minimal)
             yum -y install epel-release
 
             curl --silent --location https://rpm.nodesource.com/setup_10.x | bash -
@@ -139,8 +153,11 @@ function installPrerequisities {
 
         ubuntu1804)
             curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-            apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libxss libatk-bridge2.0 libgtk-3
-            dpkg -i https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.deb
+            apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libatk-bridge2.0 libgtk-3-0
+			TEMP_DEB="$(mktemp)"
+			wget -O "$TEMP_DEB" 'https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.deb'
+			dpkg -i "$TEMP_DEB"
+			rm -f "$TEMP_DEB"
             ;;
     esac
 
@@ -266,7 +283,7 @@ function installHttpd {
     local portAPI="$3"
 
     case "$hostType" in
-        centos7)
+        centos7-aws|centos7-minimal)
             yum -y install httpd mod_ssl
             systemctl start httpd
             systemctl enable httpd
@@ -390,7 +407,7 @@ EOT
     fi
 
     case "$hostType" in
-        centos7)
+        centos7-aws|centos7-minimal)
             systemctl restart httpd
             ;;
 
@@ -416,7 +433,7 @@ function createCertificates {
     local email="$4"
 
     case "$hostType" in
-        centos7)
+        centos7-aws|centos7-minimal)
             yum install -y certbot python2-certbot-apache
             ;;
 

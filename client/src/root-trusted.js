@@ -113,8 +113,11 @@ const getStructure = t => {
                 navs: {
                     edit: {
                         title: t('Account'),
+                        resolve: {
+                            user: params => `rest/account`
+                        },
                         link: '/account/edit',
-                        panelComponent: Account
+                        panelRender: props => (<Account entity={props.resolved.user} />)
                     },
                     api: {
                         title: t('API'),

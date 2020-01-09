@@ -74,11 +74,6 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
-    }
-
     getFormValuesMutator(data) {
         data.elevated_access = !!data.elevated_access;
     }
