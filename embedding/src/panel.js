@@ -46,11 +46,11 @@ function restCall(method, url, data, callback) {
 
 function embedEntity(domElementId, ivisSandboxUrlBase, entityParams, accessToken, callbacks) {
 
-    function getAnonymousSandboxUrl(ivisSandboxUrlBase, path) {
+    function getAnonymousSandboxUrl(path) {
         return ivisSandboxUrlBase + 'anonymous/' + (path || '');
     }
 
-    function getSandboxUrl(ivisSandboxUrlBase, accessToken, path) {
+    function getSandboxUrl(path) {
         return ivisSandboxUrlBase + accessToken + '/' + (path || '');
     }
 
