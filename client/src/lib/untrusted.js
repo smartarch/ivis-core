@@ -77,7 +77,7 @@ export class UntrustedContentHost extends Component {
 
     sendMessage(type, data) {
         if (this.contentNodeIsLoaded && this.contentNode) { // This is to avoid errors: Failed to execute 'postMessage' on 'DOMWindow': The target origin provided ('http://localhost:8081') does not match the recipient window's origin ('http://localhost:3000')"
-                                                            // When the child window is closed during processing of the message, the this.contentNode becomes null and we can't deliver the response
+            // When the child window is closed during processing of the message, the this.contentNode becomes null and we can't deliver the response
             this.contentNode.contentWindow.postMessage({type, data}, getSandboxUrl());
         }
     }
@@ -166,11 +166,34 @@ export class UntrustedContentHost extends Component {
     render() {
         return (
             // The 40 px below corresponds to the height in .sandbox-loading-message
-            <iframe className={styles.untrustedContent + ' ' + this.props.className} height="40px" ref={this.contentNodeRefHandler} src={getSandboxUrl(this.props.contentSrc)} onLoad={::this.contentNodeLoaded}></iframe>
+            <iframe className={styles.untrustedContent + ' ' + this.props.className} height="40px"
+                    ref={this.contentNodeRefHandler} src={getSandboxUrl(this.props.contentSrc)}
+                    onLoad={::this.contentNodeLoaded}></iframe>
         );
     }
 }
 
+class ErrorBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {hasError: false};
+    }
+
+    static getDerivedStateFromError(error) {
+        return {
+            hasError: true,
+            error: error
+        };
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return <p>Embedding failed. There is probably error in panel parameters.</p>;
+        }
+
+        return this.props.children;
+    }
+}
 
 @withComponentMixins([
     withTranslation
@@ -243,7 +266,11 @@ export class UntrustedContentRoot extends Component {
         const t = this.props.t;
 
         if (this.state.initialized) {
-            return this.props.render(this.state.contentProps);
+            return (
+                <ErrorBoundary>
+                    {this.props.render(this.state.contentProps)}
+                </ErrorBoundary>
+            );
         } else {
             return (
                 <div className="sandbox-loading-message">
