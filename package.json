@@ -1,0 +1,25 @@
+{
+  "name": "ivis-core",
+  "version": "1.0.0",
+  "description": "Just to make my dev environment a little easier to use.",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "dev": "NODE_ENV=development node server/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dburian/ivis-core.git"
+  },
+  "author": "Tomas Bures",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dburian/ivis-core/issues"
+  },
+  "homepage": "https://github.com/dburian/ivis-core#readme",
+  "devDependencies": {
+    "nodemon": "^2.0.2"
+  }
+}
