@@ -7,9 +7,10 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
-import styles from "../TimeRangeSelector.scss";
+import styles from "../TimeRangeSelector.scss"; // FIXME use own styles
 import {ActionLink, Button, Icon} from "../../lib/bootstrap-components";
 import {CheckBox, Form, InputField, withForm} from "../../lib/form";
+import {Range} from "../../lib/range";
 
 @withComponentMixins([
     withTranslation,
@@ -29,7 +30,7 @@ class ScatterPlotToolbar extends Component {
     static propTypes = {
         zoomOutClick: PropTypes.func.isRequired,
         setSettings: PropTypes.func,
-        setZoom: PropTypes.func,
+        setLimits: PropTypes.func,
         withSettings: PropTypes.bool.isRequired,
         settings: PropTypes.object
     };
@@ -92,7 +93,7 @@ class ScatterPlotToolbar extends Component {
             yMax = parseFloat(yMax);
 
             this.props.setSettings(maxDotCount, withTooltip);
-            this.props.setZoom(xMin, xMax, yMin, yMax);
+            this.props.setLimits(xMin, xMax, yMin, yMax);
 
             this.setState({
                 opened: false
@@ -111,9 +112,8 @@ class ScatterPlotToolbar extends Component {
                 <div className="card">
                     <div className="card-header" onClick={() => this.setState({opened: !this.state.opened})}>
                         <div className={styles.headingButtons}>
-                            <ActionLink onClickAsync={async () => this.setState({opened: !this.state.opened})}><Icon
-                                icon="sliders-h" title={t('Open settings')}/></ActionLink>
                             <ActionLink onClickAsync={async () => this.props.zoomOutClick()}><Icon icon="search-minus" title={t('Reset zoom')}/></ActionLink>
+                            <ActionLink onClickAsync={async () => this.setState({opened: !this.state.opened})}><Icon icon="sliders-h" title={t('Open settings')}/></ActionLink>
                         </div>
                     </div>
                     {this.state.opened &&
@@ -166,8 +166,8 @@ export class ScatterPlot extends Component {
             this.state.maxDotCount = props.maxDotCount;
         }
 
-        this.boundSetDefaultZoom = ::this.setDefaultZoom;
-        this.boundSetZoom = ::this.setZoom;
+        this.boundSetDefaultLimits = ::this.setDefaultLimits;
+        this.boundSetLimits = ::this.setLimits;
         this.boundSetSettings = ::this.setSettings;
     }
 
@@ -215,7 +215,7 @@ export class ScatterPlot extends Component {
         withSettings: true
     };
 
-    setDefaultZoom() {
+    setDefaultLimits() {
         this.setState({
             xMin: NaN,
             xMax: NaN,
@@ -224,7 +224,7 @@ export class ScatterPlot extends Component {
         });
     }
 
-    setZoom(xMin, xMax, yMin, yMax) {
+    setLimits(xMin, xMax, yMin, yMax) {
         this.setState({
             xMin: xMin,
             xMax: xMax,
@@ -250,10 +250,10 @@ export class ScatterPlot extends Component {
 
             return (
                 <div>
-                    <ScatterPlotToolbar zoomOutClick={this.boundSetDefaultZoom}
+                    <ScatterPlotToolbar zoomOutClick={this.boundSetDefaultLimits}
                                         withSettings={true}
                                         setSettings={this.boundSetSettings}
-                                        setZoom={this.boundSetZoom}
+                                        setLimits={this.boundSetLimits}
                                         settings={{
                                             xMin: state.xMin,
                                             xMax: state.xMax,
@@ -264,7 +264,7 @@ export class ScatterPlot extends Component {
                                         }}
                     />
                     <ScatterPlotBase {...props}
-                                     setZoom={this.boundSetZoom}
+                                     setLimits={this.boundSetLimits}
                                      xMin={state.xMin}
                                      xMax={state.xMax}
                                      yMin={state.yMin}
@@ -274,11 +274,11 @@ export class ScatterPlot extends Component {
             );
         } else {
             return (<div>
-                    <ScatterPlotToolbar zoomOutClick={this.boundSetDefaultZoom}
+                    <ScatterPlotToolbar zoomOutClick={this.boundSetDefaultLimits}
                                         withSettings={false}
                     />
                     <ScatterPlotBase {...this.props}
-                                     setZoom={this.boundSetZoom}
+                                     setLimits={this.boundSetLimits}
                                      xMin={state.xMin}
                                      xMax={state.xMax}
                                      yMin={state.yMin}

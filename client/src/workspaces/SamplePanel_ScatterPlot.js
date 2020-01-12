@@ -99,6 +99,8 @@ class TestScatterPlot extends Component {
                              height={400} width={400}
                              margin={{ left: 40, right: 5, top: 5, bottom: 40 }}
                              maxDotCount={5}
+                             withBrush={false}
+                             withTransition={false}
                              />
             </TimeContext>
         );
@@ -106,7 +108,7 @@ class TestScatterPlot extends Component {
 }
 
 
-export default class SamplePanel_Scatterplot extends Component {
+export default class SamplePanel_ScatterPlot extends Component {
     constructor(props) {
         super(props);
     }

@@ -16,6 +16,7 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
+import * as d3Zoom from "d3-zoom";
 
 const ConfigDifference = {
     NONE: 0,
@@ -125,7 +126,9 @@ export class ScatterPlotBase extends Component {
             statusMsg: t('Loading...'),
             width: 0,
             selections: null,
-            lastQueryWasWithRangeFilter: false
+            lastQueryWasWithRangeFilter: false,
+            zoomTransform: d3Zoom.zoomIdentity,
+            zoomInProgress: false
         };
 
         this.resizeListener = () => {
@@ -176,7 +179,7 @@ export class ScatterPlotBase extends Component {
         xMax: PropTypes.number,
         yMin: PropTypes.number,
         yMax: PropTypes.number,
-        setZoom: PropTypes.func
+        setLimits: PropTypes.func
     };
 
     static defaultProps = {
@@ -251,7 +254,7 @@ export class ScatterPlotBase extends Component {
                 || !Object.is(prevProps.yMin, this.props.yMin)
                 || !Object.is(prevProps.yMax, this.props.yMax);
 
-            this.createChart(signalSetsData, forceRefresh);
+            this.createChart(signalSetsData, forceRefresh, prevState.zoomTransform !== this.state.zoomTransform);
             this.prevContainerNode = this.containerNode;
         }
     }
@@ -368,14 +371,16 @@ export class ScatterPlotBase extends Component {
         return [min, max];
     }
 
-    createChart(signalSetsData, forceRefresh) {
+    createChart(signalSetsData, forceRefresh, updateZoom) {
+        const self = this;
+
         const width = this.containerNode.getClientRects()[0].width;
         if (this.state.width !== width) {
             this.setState({
                 width
             });
         }
-        if (!forceRefresh && width === this.renderedWidth) {
+        if (!forceRefresh && width === this.renderedWidth && !updateZoom) {
             return;
         }
         this.renderedWidth = width;
@@ -412,8 +417,10 @@ export class ScatterPlotBase extends Component {
         const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
         const xSize = width - this.props.margin.left - this.props.margin.right;
 
+        // data
         const processedSetsData = this.processData(signalSetsData);
 
+        //<editor-fold desc="Scales">
         // y Scale
         let yExtent = this.getExtent(processedSetsData, function (d) {  return d.y });
         yExtent = this.extentWithMargin(yExtent, 0.1);
@@ -421,9 +428,9 @@ export class ScatterPlotBase extends Component {
             yExtent[0] = this.props.yMin;
         if (!isNaN(this.props.yMax))
             yExtent[1] = this.props.yMax;
-        const yScale = d3Scale.scaleLinear()
+        const yScale = this.state.zoomTransform.rescaleY(d3Scale.scaleLinear()
             .domain(yExtent)
-            .range([ySize, 0]);
+            .range([ySize, 0]));
         const yAxis = d3Axis.axisLeft(yScale);
         (this.props.withTransition ?
             this.yAxisSelection.transition() :
@@ -437,9 +444,9 @@ export class ScatterPlotBase extends Component {
             xExtent[0] = this.props.xMin;
         if (!isNaN(this.props.xMax))
             xExtent[1] = this.props.xMax;
-        const xScale = d3Scale.scaleLinear()
+        const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
             .domain(xExtent)
-            .range([0, xSize]);
+            .range([0, xSize]));
         const xAxis = d3Axis.axisBottom(xScale);
         (this.props.withTransition ?
             this.xAxisSelection.transition() :
@@ -462,6 +469,7 @@ export class ScatterPlotBase extends Component {
                 .domain(sExtent)
                 .range([this.props.minDotRadius, this.props.maxDotRadius]);
         }
+        //</editor-fold>
 
         this.regressions = [];
         let i = 0;
@@ -473,7 +481,46 @@ export class ScatterPlotBase extends Component {
         this.drawRegressions(xScale, yScale);
 
         this.createChartCursor(xScale, yScale, sScale, processedSetsData);
-        this.createChartBrush(xScale, yScale);
+
+        if (!forceRefresh)
+            return;
+
+        this.createChartBrush(xScale, yScale); // the brush object should not be modified when updating only zoom as it is the one on which touch events happen on mobile (thus the return above)
+
+        //<editor-fold desc="Zoom">
+        const handleZoom = function () {
+            //console.log(d3Event.transform);
+            self.setState({
+                zoomTransform: d3Event.transform
+            });
+        };
+
+        const handleZoomEnd = function () {
+            /*if (!Object.is(self.state.zoomTransform, d3Zoom.zoomIdentity))
+                self.setState({
+                    refreshRequired: true
+                });*/
+            self.setState({
+                zoomInProgress: false
+            });
+        };
+
+        const handleZoomStart = function () {
+            self.setState({
+                zoomInProgress: true
+            });
+        };
+
+        const zoomExtent = [[0,0], [xSize, ySize]];
+        this.zoom = d3Zoom.zoom()
+            .scaleExtent([0.25, 4])
+            .translateExtent(zoomExtent)
+            .extent(zoomExtent)
+            .on("zoom", handleZoom)
+            .on("end", handleZoomEnd)
+            .on("start", handleZoomStart);
+        this.svgContainerSelection.call(this.zoom);
+        //</editor-fold>
     }
 
     /**
@@ -798,8 +845,8 @@ export class ScatterPlotBase extends Component {
                         const yMin = yScale.invert(sel[1][1]);
                         const yMax = yScale.invert(sel[0][1]);
 
-                        if (self.props.setZoom)
-                            self.props.setZoom(xMin, xMax, yMin, yMax);
+                        if (self.props.setLimits)
+                            self.props.setLimits(xMin, xMax, yMin, yMax);
 
                         self.brushSelection.call(brush.move, null);
                         self.deselectPoints();
@@ -852,45 +899,57 @@ export class ScatterPlotBase extends Component {
 
             return (
                 <div>
-                    <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
-                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
-                            <g name={"dots"}>{dotsSelectionGroups}</g>
-                            <g name={"highlightDots"}>{dotsHighlightSelectionGroups}</g>
-                            <g name={"regressions"} ref={node => this.regressionsSelection = select(node)} />
-                        </g>
-                        {/* axes */}
-                        <g ref={node => this.xAxisSelection = select(node)}
-                           transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
-                        <g ref={node => this.yAxisSelection = select(node)}
-                           transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                        {/* cursor lines */}
-                        <line ref={node => this.cursorSelectionX = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
-                              visibility="hidden"/>
-                        <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1" stroke="rgb(50,50,50)"
-                              visibility="hidden"/>
-                        {/* status message */}
-                        <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%"
-                              fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
-                        {/* tooltip */}
-                        {this.props.withTooltip &&
-                        <Tooltip
-                            name={"Tooltip"}
-                            config={this.props.config}
-                            signalSetsData={{}}
-                            containerHeight={this.props.height}
-                            containerWidth={this.state.width}
-                            mousePosition={this.state.mousePosition}
-                            selection={this.state.selections}
-                            width={250}
-                            contentRender={props => <TooltipContent {...props} labels={this.labels}/>}
-                        />
-                        }
-                        {/* brush */}
-                        <g ref={node => this.brushSelection = select(node)}
-                           transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                    </svg>
+                    <div ref={node => this.svgContainerSelection = select(node)}>
+                        <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                            <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
+                                <g name={"dots"}>{dotsSelectionGroups}</g>
+                                {!this.state.zoomInProgress &&
+                                <g name={"highlightDots"}>{dotsHighlightSelectionGroups}</g>}
+                                <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
+                            </g>
+
+                            {/* axes */}
+                            <g ref={node => this.xAxisSelection = select(node)}
+                               transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                            <g ref={node => this.yAxisSelection = select(node)}
+                               transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+
+                            {/* cursor lines */}
+                            {!this.state.zoomInProgress &&
+                            <line ref={node => this.cursorSelectionX = select(node)} strokeWidth="1"
+                                  stroke="rgb(50,50,50)"
+                                  visibility="hidden"/> }
+                            {!this.state.zoomInProgress &&
+                            <line ref={node => this.cursorSelectionY = select(node)} strokeWidth="1"
+                                  stroke="rgb(50,50,50)"
+                                  visibility="hidden"/> }
+
+                            {/* status message */}
+                            <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%"
+                                  y="50%"
+                                  fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
+
+                            {/* tooltip */}
+                            {this.props.withTooltip && !this.state.zoomInProgress &&
+                            <Tooltip
+                                name={"Tooltip"}
+                                config={this.props.config}
+                                signalSetsData={{}}
+                                containerHeight={this.props.height}
+                                containerWidth={this.state.width}
+                                mousePosition={this.state.mousePosition}
+                                selection={this.state.selections}
+                                width={250}
+                                contentRender={props => <TooltipContent {...props} labels={this.labels}/>}
+                            /> }
+
+                            {/* brush */}
+                            <g ref={node => this.brushSelection = select(node)}
+                               transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                        </svg>
+                    </div>
                     {this.props.withRegressionCoefficients &&
-                    <div ref={node => this.regressionsCoefficients = select(node)} />}
+                    <div ref={node => this.regressionsCoefficients = select(node)}/>}
                 </div>
             );
         }
