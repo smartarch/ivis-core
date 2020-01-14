@@ -7,13 +7,10 @@
     "example": "examples"
   },
   "scripts": {
-    "watch": "npm-run-all --parallel watch-client watch-server",
-    "dev-server": "npm run build && npm run watch-server",
-    "dev-client": "npm run build && npm run watch-client",
-
-    "build": "npm run build --prefix client/",
-    "watch-client": "npm run watch --prefix client/",
-    "watch-server": "NODE_ENV=development nodemon -w server -i server/files -- server/index.js"
+    "client-build": "npm run build --prefix client/",
+    "client-watch": "npm run watch --prefix client/",
+    "server-run-dev": "NODE_ENV=development node server/index.js",
+    "server-watch-dev": "NODE_ENV=development nodemon -w server -i server/files -- server/index.js"
   },
   "repository": {
     "type": "git",
@@ -26,8 +23,7 @@
   },
   "homepage": "https://github.com/dburian/ivis-core#readme",
   "devDependencies": {
-    "nodemon": "^2.0.2",
-    "npm-run-all": "^4.1.5"
+    "nodemon": "^2.0.2"
   },
   "dependencies": {}
 }
