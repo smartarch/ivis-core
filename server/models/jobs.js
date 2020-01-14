@@ -295,6 +295,13 @@ async function removeRun(context, jobId, runId) {
     });
 }
 
+async function removeAllRuns(context, jobId) {
+    await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'delete');
+        await tx('job_runs').where({job: jobId}).del();
+    });
+}
+
 /**
  * Run job.
  * @param context
@@ -347,6 +354,7 @@ module.exports.create = create;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.remove = remove;
 module.exports.removeRun = removeRun;
+module.exports.removeAllRuns = removeAllRuns;
 module.exports.run = run;
 module.exports.stop = stop;
 
