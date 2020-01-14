@@ -57,6 +57,7 @@ import SignalsCUD from './settings/signal-sets/signals/CUD';
 
 import SettingsSidebar from './settings/Sidebar';
 
+import ServerAnimationPanel from './workspaces/ServerAnimationPanel.js';
 import SamplePanel from './workspaces/SamplePanel';
 import SamplePanel2 from './workspaces/SamplePanel2';
 
@@ -175,6 +176,11 @@ const getStructure = t => {
                         title: t('Sample workspace 2'),
                         link: '/workspaces/sample2',
                         panelComponent: SamplePanel2,
+                    },
+                    animation: {
+                        title: t('Server-side animation'),
+                        link: '/workspaces/animation/server',
+                        panelComponent: ServerAnimationPanel,
                     }
                 }
             },

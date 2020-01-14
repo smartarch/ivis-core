@@ -76,8 +76,16 @@ export class UntrustedContentHost extends Component {
     }
 
     sendMessage(type, data) {
-        if (this.contentNodeIsLoaded && this.contentNode) { // This is to avoid errors: Failed to execute 'postMessage' on 'DOMWindow': The target origin provided ('http://localhost:8081') does not match the recipient window's origin ('http://localhost:3000')"
-                                                            // When the child window is closed during processing of the message, the this.contentNode becomes null and we can't deliver the response
+        if (this.contentNodeIsLoaded && this.contentNode) {
+            // This is to avoid errors: Failed to execute 'postMessage' on
+            // 'DOMWindow': The target origin provided ('http://localhost:8081')
+            // does not match the recipient window's origin
+            // ('http://localhost:3000')"
+            //
+            // When the child window is closed during processing of the message,
+            // the this.contentNode becomes null and we can't deliver the
+            // response
+
             this.contentNode.contentWindow.postMessage({type, data}, getSandboxUrl());
         }
     }
@@ -164,9 +172,21 @@ export class UntrustedContentHost extends Component {
     }
 
     render() {
+            console.log(this.props.contenSrc);
+            console.log(getSandboxUrl(this.props.contenSrc));
+
         return (
-            // The 40 px below corresponds to the height in .sandbox-loading-message
-            <iframe className={styles.untrustedContent + ' ' + this.props.className} height="40px" ref={this.contentNodeRefHandler} src={getSandboxUrl(this.props.contentSrc)} onLoad={::this.contentNodeLoaded}></iframe>
+            // The 40 px below corresponds to the height in
+            // .sandbox-loading-message
+
+
+            <iframe
+                className={styles.untrustedContent + ' ' + this.props.className}
+                height="40px"
+                ref={this.contentNodeRefHandler}
+                src={getSandboxUrl(this.props.contentSrc)}
+                onLoad={::this.contentNodeLoaded}>
+            </iframe>
         );
     }
 }
