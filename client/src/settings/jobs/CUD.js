@@ -417,7 +417,7 @@ export default class CUD extends Component {
                     <Dropdown id="state" label={t('State')} options={stateOptions}/>
                     <NamespaceSelect/>
                     <Fieldset id="triggers" label={t('Triggers')}>
-                        <InputField id="trigger" label={t('Trigger')} placeholder="Automatic trigger time in seconds"/>
+                        <InputField id="trigger" label={t('Periodic trigger')} placeholder="Automatic trigger time in seconds"/>
                         <InputField id="min_gap" label={t('Minimal interval')}
                                     placeholder="Minimal time between runs in seconds"/>
                         <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>

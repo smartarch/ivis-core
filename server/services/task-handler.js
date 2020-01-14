@@ -857,7 +857,6 @@ async function processSetReq(jobId, sigSet) {
  * @returns {Promise<void>} config field retrieved from ES
  */
 async function loadJobState(id) {
-    let jobState = null;
     try {
         const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
 
