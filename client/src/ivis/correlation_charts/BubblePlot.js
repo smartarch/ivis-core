@@ -1,12 +1,11 @@
 'use strict';
 
 import React, {Component} from "react";
-import {intervalAccessMixin} from "../TimeContext";
 import {withErrorHandling} from "../../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {ScatterPlot} from "./ScatterPlot";
+import {ScatterPlotBase} from "./ScatterPlotBase";
 
 
 @withComponentMixins([
@@ -55,7 +54,7 @@ export class BubblePlot extends Component {
 
     render() {
         return (
-                <ScatterPlot {...this.props} />
+                <ScatterPlotBase {...this.props} />
         );
     }
 }
