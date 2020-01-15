@@ -22,7 +22,7 @@ import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
-import {WizardType, wizards} from "./wizards";
+import {WizardType, getWizard, getWizardsForType} from "./wizards";
 import {TaskType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
@@ -81,15 +81,11 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    static getWizard(wizardType) {
-        return wizards.get(wizardType);
-    }
-
     submitFormValuesMutator(data) {
         if (!this.props.entity) {
-            const wizard = CUD.getWizard(data.wizard);
-            if (wizard) {
-                wizard(data);
+            const wizardData = getWizard(data.type, data.wizard);
+            if (wizardData) {
+                wizardData.wizard(data);
             } else {
                 data.settings = {
                     params: [],
@@ -156,15 +152,23 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const typeOptions = [
-            {key: TaskType.NUMPY, label: t('Numpy task')},
             {key: TaskType.PYTHON, label: t('Python task')},
+            {key: TaskType.NUMPY, label: t('Numpy task')},
             {key: TaskType.ENERGY_PLUS, label: t('EnergyPlus task')}
         ];
 
-        const wizardOptions = [
-            {key: WizardType.BLANK, label: t('Blank')},
-            {key: WizardType.BASIC, label: t('Basic functionality')}
-        ];
+        const taskType = this.getFormValue('type');
+
+        const wizardOptions = [];
+        if (taskType) {
+            const wizardsForType = getWizardsForType(taskType);
+            Object.entries(wizardsForType).forEach((entry) => {
+                wizardOptions.push({
+                    key: entry[0],
+                    label: t(entry[1].label)
+                });
+            });
+        }
 
         return (
             <Panel title={isEdit ? t('Task Settings') : t('Create Task')}>

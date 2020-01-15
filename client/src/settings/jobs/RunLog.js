@@ -116,7 +116,7 @@ export default class Log extends Component {
                 <Toolbar>
                     {canDelete && eraseButton}
                 </Toolbar>
-                <Table ref={node => this.table = node} withHeader dataUrl={"rest/job-runs-table/" + job.id}
+                <Table ref={node => this.table = node} withHeader dataUrl={`rest/job-runs-table/${job.id}`}
                        columns={columns}/>
             </Panel>
         );
