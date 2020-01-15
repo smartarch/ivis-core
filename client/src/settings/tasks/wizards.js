@@ -3,14 +3,30 @@ import {TaskType} from "../../../../shared/tasks";
 
 const WizardType = {
     BLANK: 'blank',
-    BASIC: 'basic'
+    BASIC: 'basic',
+    ENERGY_PLUS: 'energy_plus',
+    MOVING_AVERAGE: 'moving_average',
+    AGGREGATION: 'aggregation',
+    MODEL_COMPARISON: 'model_comparison'
 };
 
 if (Object.freeze) {
     Object.freeze(WizardType)
 }
 
-const apiShowcaseFn = (data) => {
+// BLANK
+const blank = {
+    label: 'Blank',
+    wizard: (data) => {
+        data.settings = {
+            params: [],
+            code: ''
+        };
+    }
+};
+
+// BASIC
+function apiShowcaseFn(data) {
     data.settings = {
         params:
             [
@@ -155,34 +171,607 @@ res = es.index(index=state['index'], doc_type='_doc', body=doc)
 
 os.close(3)`
     };
-};
+}
 
 const apiShowcase = {
     label: 'Api Showcase',
     wizard: apiShowcaseFn
 };
 
-const blank = {
-    label: 'Blank',
-    wizard: (data)=>{
-        data.settings = {
-            params: [],
-            code: ''
-        };
+// ENERGY_PLUS
+
+function energyPlusFn(data) {
+    data.settings = {
+        params: [],
+        code: ``
+    };
+}
+
+const energyPlus = {
+    label: 'Energy plus example',
+    wizard: energyPlusFn
+};
+
+
+// MOVING_AVERAGE
+
+function movingAvarageFn(data) {
+    data.settings = {
+        params: [
+            {
+                "id": "sigSet",
+                "help": "Signal set for the sensors",
+                "type": "signalSet",
+                "label": "Signal Set"
+            },
+            {
+                "id": "ts",
+                "help": "Timestamp order is based on",
+                "type": "signal",
+                "label": "Timestamp",
+                "cardinality": "1",
+                "signalSetRef": "sigSet"
+            },
+            {
+                "id": "source",
+                "help": "Source of values",
+                "type": "signal",
+                "label": "Source of value",
+                "cardinality": "1",
+                "signalSetRef": "sigSet"
+            },
+            {
+                "id": "window",
+                "help": "Mean window",
+                "type": "number",
+                "label": "Mean window"
+            }
+        ],
+        code: `
+import sys
+import os
+import json
+from elasticsearch import Elasticsearch, helpers
+from collections import deque
+
+# Get parameters and set up elasticsearch
+data = json.loads(sys.stdin.readline())
+es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
+
+state = data.get('state')
+
+params= data['params']
+entities= data['entities']
+
+# Task parameters' values
+# from params we get cid of signal/signal set and from according key in entities dictionary 
+# we can access data for that entity (like es index or namespace)
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
+window = int(params['window'])
+
+values = []
+if state is not None:
+  values = state.get("values") if state.get("values") else []
+queue = deque(values, maxlen=window)
+
+if state is None or state.get('index') is None:
+  ns = sig_set['namespace']
+  
+  msg = {}
+  msg['type'] = 'sets'
+  # Request new signal set creation 
+  msg['sigSet'] = {
+    "cid" : "moving_average",
+    "name" : "moving average" ,
+    "namespace": ns,
+    "description" : "moving average" 
+  }
+
+  signals= [] 
+  signals.append({
+    "cid": "mean",
+    "name": "mean",
+    "description": "mean",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+  msg['sigSet']['signals'] = signals
+
+  ret = os.write(3,(json.dumps(msg) + '\\n').encode())
+  state = json.loads(sys.stdin.readline())
+  error = state.get('error')
+  if error:
+    sys.stderr.write(error+"\\n")
+    sys.exit(1)
+  else:
+    store_msg = {}
+    store_msg["type"] = "store"
+    store_msg["state"] = state
+    ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+    
+last = None
+if state is not None and state.get('last') is not None:
+  last = state['last']
+  query_content = {
+    "range" : {
+      ts['field'] : {
+        "gt" : last
+      }
     }
+  }
+else:
+  query_content = {'match_all': {}}
+
+
+query = {
+    'size': 10000,
+    '_source': [source['field'], ts['field']],
+    'sort': [{ts['field']: 'asc'}],
+    'query': query_content
+}
+
+results = helpers.scan(es,
+                       preserve_order=True,
+                       query=query,
+                       index=sig_set['index']
+                       )
+
+i = 0
+for item in results:
+  last = item["_source"][ts['field']]
+  val = item["_source"][source['field']]
+  if val is not None:
+    queue.append(val)
+  else:
+    continue
+  if i < (window-1):
+    i += 1
+  else:
+    mean = sum(queue) / float(window)
+    doc = {
+      state['fields']['mean']: mean 
+    }
+    res = es.index(index=state['index'], doc_type='_doc', body=doc)
+
+state["last"] = last
+state["values"] = list(queue)
+# Request to store state
+msg = {}
+msg["type"] = "store"
+msg["state"] = state
+ret = os.write(3,(json.dumps(msg).encode()))
+os.close(3)
+        `
+    };
+}
+
+const movingAvarage = {
+    label: 'Moving average example',
+    wizard: movingAvarageFn
+};
+
+// AGGREGATION
+function aggregationFn(data) {
+    data.settings = {
+        params: [
+            {
+                "id": "sigSet",
+                "help": "Signal set for the sensors",
+                "type": "signalSet",
+                "label": "Signal Set"
+            },
+            {
+                "id": "ts",
+                "help": "Timestamp aggregation is based on",
+                "type": "signal",
+                "label": "Timestamp",
+                "cardinality": "1",
+                "signalSetRef": "sigSet"
+            },
+            {
+                "id": "source",
+                "help": "Source of values",
+                "type": "signal",
+                "label": "Source of value",
+                "cardinality": "1",
+                "signalSetRef": "sigSet"
+            },
+            {
+                "id": "interval",
+                "help": "interval in minutes",
+                "type": "number",
+                "label": "Interval in minutes"
+            }
+        ],
+        code: `
+import sys
+import os
+import json
+from elasticsearch import Elasticsearch, helpers
+
+# Get parameters and set up elasticsearch
+data = json.loads(sys.stdin.readline())
+es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
+
+state = data.get('state')
+
+params= data['params']
+entities= data['entities']
+
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
+interval = params['interval']
+
+if state is None or state.get('index') is None:
+  ns = sig_set['namespace']
+  
+  msg = {}
+  msg['type'] = 'sets'
+  # Request new signal set creation 
+  msg['sigSet'] = {
+    "cid" : "aggs",
+    "name" : "aggs" ,
+    "namespace": ns,
+    "description" : "aggs"
+  }
+    
+
+  signals= []
+  signals.append({
+    "cid": "ts",
+    "name": "Timestamp",
+    "description": "Interval timestamp",
+    "namespace": ns,
+    "type": "date",
+    "indexed": False,
+    "settings": {}
+  })
+  signals.append({
+    "cid": "min",
+    "name": "min",
+    "description": "min",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+    signals.append({
+    "cid": "avg",
+    "name": "avg",
+    "description": "avg",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+  signals.append({
+    "cid": "max",
+    "name": "max",
+    "description": "max",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+  msg['sigSet']['signals'] = signals
+
+  ret = os.write(3,(json.dumps(msg) + '\\n').encode())
+  state = json.loads(sys.stdin.readline())
+  error = state.get('error')
+  if error:
+    sys.stderr.write(error+"\\n")
+    sys.exit(1)
+  else:
+    store_msg = {}
+    store_msg["type"] = "store"
+    store_msg["state"] = state
+    ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+
+last = None
+if state is not None and state.get('last') is not None:
+  last = state['last']
+  query_content = {
+    "range" : {
+      ts['field'] : {
+        "gte" : last
+      }
+    }
+  }
+  
+  es.delete_by_query(index=state['index'], body={
+    "query": { 
+      "match": {
+        state['fields']['ts']: last
+      }
+    }}
+  )
+  
+else:
+  query_content = {'match_all': {}}
+
+query = {
+  'size': 0,
+  'query': query_content,
+  "aggs": {
+    "stats": {
+      "date_histogram": {
+        "field": ts['field'],
+        "interval": interval+"m"
+      },
+      "aggs": {
+        "avg": {
+          "avg": {
+            "field": source['field']
+          }
+        },
+        "max": {
+          "max" : {
+            "field": source['field']
+          }
+        },
+        "min": {
+          "min" : {
+            "field": source['field']
+          }
+        }
+      }
+    }
+  }
+}
+
+res = es.search(index=sig_set['index'], body=query)
+
+for hit in res['aggregations']['stats']['buckets']:
+  last = hit['key_as_string']
+  doc = {
+    state['fields']['ts']: last,
+    state['fields']['min']: hit['min']['value'],
+    state['fields']['avg']: hit['avg']['value'],
+    state['fields']['max']: hit['max']['value']
+  }
+  res = es.index(index=state['index'], doc_type='_doc', body=doc)
+
+# Request to store state
+msg={}
+msg={"type": "store"}
+state['last'] = last
+msg["state"] = state
+ret = os.write(3,(json.dumps(msg).encode()))
+os.close(3)
+`
+    };
+}
+
+const aggregation = {
+    label: 'Aggregation example',
+    wizard: aggregationFn
+};
+
+// MODEL COMPARISON
+function modelComparisonFn(data) {
+    data.settings = {
+        params: [
+            {
+                "id": "sensors",
+                "label": "Sensor data",
+                "type": "signalSet"
+            },
+            {
+                "id": "source",
+                "label": "Value to compare on",
+                "type": "signal",
+                "signalSetRef": "sensors"
+            },
+            {
+                "id": "ts",
+                "label": "ts",
+                "type": "signal",
+                "signalSetRef": "sensors"
+            },
+            {
+                "id": "models",
+                "label": "Models",
+                "type": "fieldset",
+                "cardinality": "1..n",
+                "children": [
+                    {
+                        "id": "sigSet",
+                        "label": "Signal Set",
+                        "type": "signalSet"
+                    },
+                    {
+                        "id": "source",
+                        "label": "Value to compare on",
+                        "type": "signal",
+                        "signalSetRef": "sigSet"
+                    },
+                    {
+                        "id": "ts",
+                        "label": "ts",
+                        "type": "signal",
+                        "signalSetRef": "sigSet"
+                    }
+                ]
+            }
+        ],
+        code:` 
+import sys
+import os
+import json
+from elasticsearch import Elasticsearch, helpers
+
+from datetime import datetime, timezone
+import numpy as np
+from dtw import dtw
+
+# Get parameters and set up elasticsearch
+data = json.loads(sys.stdin.readline())
+es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
+
+state = data.get('state')
+
+params= data['params']
+entities= data['entities']
+
+# Get ES index and fields
+sensor_set = entities['signalSets'][params['sensors']]
+sensor_ts = entities['signals'][params['sensors']][params['ts']]
+sensor_source = entities['signals'][params['sensors']][params['source']]
+
+limit_val = float(params['limitValue'])
+
+limit = limit_val
+
+if state is None or state.get('index') is None:
+    ns = sensor_set['namespace']
+  
+    msg = {}
+    msg['type'] = 'sets'
+    # Request new signal set creation 
+    msg['sigSet'] = {
+    "cid" : "models_comparison",
+    "name" : "Comparison of models" ,
+    "namespace": ns,
+    "description" : "Comparison of models" 
+    }
+
+    signals= [] 
+    signals.append({
+      "cid": "ts",
+      "name": "ts",
+      "description": "timestamp",
+      "namespace": ns,
+      "type": "date",
+      "indexed": False,
+      "settings": {}
+    })
+    signals.append({
+      "cid": "model",
+      "name": "model",
+      "description": "Closest model's cid",
+      "namespace": ns,
+      "type": "keyword",
+      "indexed": False,
+      "settings": {}
+    })
+    msg['sigSet']['signals'] = signals
+
+    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
+    state = json.loads(sys.stdin.readline())
+    error = state.get('error')
+    if error:
+      sys.stderr.write(error+"\\n")
+      sys.exit(1)
+    else:
+      store_msg = {}
+      store_msg["type"] = "store"
+      store_msg["state"] = state
+      ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+
+def get_source_values(index,ts_field, source_field):
+  # sensor data query
+  query = {
+      '_source': [source_field, ts_field],
+      'sort': [{ts_field: 'asc'}],
+      'query': {
+        "range" : {
+          ts_field : {
+            "gt" : "now-180m/m",
+            "lt" : "now/m"
+          }
+        }
+      }
+  }
+  
+  results = es.search(index=index, body=query)
+  
+  sensor_data = []
+  for item in results['hits']['hits']:
+    val = item["_source"][source_field]
+    if val is not None:
+      sensor_data.append(val)
+    else:
+      continue
+  
+  return sensor_data
+
+sensor_data = get_source_values(sensor_set['index'], sensor_ts['field'], sensor_source['field'])
+
+if not sensor_data:
+  print('No sensor data to measure on')
+  exit()
+
+sensor_np = np.array(sensor_data, dtype=float).reshape(-1, 1)
+
+euclidean_norm = lambda x, y: np.abs(x - y)
+
+min_model={}
+min_distance=float("inf")
+for model in params['models']:
+  
+  ts =entities['signals'][model['sigSet']][model['ts']]['field']
+  source =entities['signals'][model['sigSet']][model['source']]['field']
+  sig_set = entities['signalSets'][model['sigSet']]['index']
+  
+  model_data = get_source_values(sig_set, ts,source)
+  if not model_data:
+    print(f'No data for signal set {sig_set}')
+    continue
+  # Calculate for all models
+  model_np = np.array(model_data, dtype=float).reshape(-1, 1)
+  
+  # Calculate for all models
+  d, cost_matrix, acc_cost_matrix, path = dtw(sensor_np, model_np, dist=euclidean_norm)
+  
+  if d<min_distance:
+    min_distance = d
+    min_model['name'] = entities["signalSets"][model["sigSet"]]["name"]
+    min_model['cid'] = model["sigSet"]
+    min_model['ts'] = ts
+    min_model['source'] =source 
+    min_model['index'] = sig_set
+
+# Do something with closest model
+if not min_model:
+  print('No model found')
+  exit()
+print(f'Closest model is: {min_model["name"]}')
+
+ts = datetime.now(timezone.utc).astimezone()
+doc = {
+  state['fields']['ts']: ts,
+  state['fields']['model']: min_model['cid'],
+}
+res = es.index(index=state['index'], doc_type='_doc', id=ts, body=doc)
+`
+    };
+}
+
+const modelComparison = {
+    label: 'Model comparison example',
+    wizard: modelComparisonFn()
 };
 
 const wizards = {};
 
 wizards[TaskType.PYTHON] = {
     [WizardType.BLANK]: blank,
-    [WizardType.BASIC]: apiShowcase
+    [WizardType.BASIC]: apiShowcase,
+    [WizardType.MOVING_AVERAGE]: movingAvarage,
+    [WizardType.AGGREGATION]: aggregation
 };
 wizards[TaskType.NUMPY] = {
-    ...wizards[TaskType.PYTHON]
+    ...wizards[TaskType.PYTHON],
+    [WizardType.MODEL_COMPARISON]: modelComparison
 };
 wizards[TaskType.ENERGY_PLUS] = {
-    ...wizards[TaskType.PYTHON]
+    ...wizards[TaskType.PYTHON],
+    [WizardType.ENERGY_PLUS]: energyPlus
 };
 
 if (Object.freeze) {
