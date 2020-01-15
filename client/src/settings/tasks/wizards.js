@@ -1008,7 +1008,7 @@ res = es.index(index=state['index'], doc_type='_doc', id=ts, body=doc)
 
 const modelComparison = {
     label: 'Model comparison example',
-    wizard: modelComparisonFn()
+    wizard: modelComparisonFn
 };
 
 const wizards = {};

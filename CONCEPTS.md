@@ -116,5 +116,86 @@ roles:
 ```
 
 
+## IVIS for developers
+This section describes the task API for communication with IVIS core.
+
+### Primary attributes 
+Each job once stared receives attributes in json format on the standard input, file descriptor 0. Example of data:
+```json
+{
+  "params": {
+    "sigSet": "example_set",
+    "ts_signal": "ts",
+    "source_signal": "source"
+  },
+  "entities": {
+    "signalSets": {
+      "example_set": {
+        "index": "signal_set_1",
+        "name": "Example set",
+        "namespace": 1
+      }
+    },
+    "signals": {
+      "example_set": {
+        "source": {
+          "field": "s1",
+          "name": "Source of values",
+          "namespace": 1
+        },
+        "ts": {
+          "field": "s2",
+          "name": "Timestamp",
+          "namespace": 1
+        }
+      }
+    }
+  },
+  "state": {
+    "index": "signal_set_2",
+    "type": "_doc",
+    "fields": {
+      "created_signal": "s3"
+    }
+  },
+  "es": {
+    "host": "localhost",
+    "port": "9200"
+  }
+}
+```
+There are 4 main JSON objects in incoming data: 
+- `params`
+- `entities`
+- `state`
+- `es`
+
+`params` are parameters from the job being run that were set previously in GUI of the job's settings page. It is always a pair of parameter's identifier and selected value. Entities have 2 JSON objects, `signalSets` and `signals`. Each signal set found in the parameters of the job is listed in the `signalSets` under his CID with 3 properties, `index`, that is corresponding index in the ElasticSearch, `name` and `namespace`. Each signal found in the parameters is listed in the `signals` object under CID of the signal set it belongs to under its CID with 3 properties, `field`, that is field in ElasticSearch in the index of its signal set, `name` and `namespace`.
+
+`state` is job's state stored in the ElasticSearch. Content of `state` depends completely on what is stored there in the job's code. More on that later. 
+
+`es` contains information about ElasticSearch instance. Under `host` is host's address and under `port` is port it is listening on.
+
+### Job requests
+Job can send request to the IVIS core. Requests are accepted on the file descriptor 3 in JSON format and answer is received on the standard input. Example of a request:
+ ```json
+{
+  "type": "store",
+  "state": {
+    "index": "signal_set_2",
+    "type": "_doc",
+    "fields": {
+      "created_signal": "s3"
+    }
+  }
+}
+```
+ 
+ There are 2 requests it can send:
+- `store` 
+- `sets`
+
+
+
 ## IVIS Extension for Domain-Specific Applications
 IVIS-CORE can be extended thourgh IVIS extensions mechanism, and plug-ins in order to develop Domain-Specific Applications. For that, we need to create another project in another repository for the Domain-Specific Application, where we include the core as a git submodule and add domain-specific modules, and components, import/management components and possibly some branding.
