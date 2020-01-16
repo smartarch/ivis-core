@@ -93,17 +93,17 @@ ts_sig = params['ts']
 #print()
 
 
-if state is None or state.get('index') is None:
+if state is None or state.get('api_set') is None:
   ns = entities['signalSets'][sigSet]['namespace']
 
   msg = {}
   msg['type'] = 'create'
   # Request new signal set creation 
-  msg['sigSet'] = {
-  "cid" : "api_set",
-  "name" : "API test" ,
-  "namespace": ns,
-  "description" : "API test" ,
+  msg['signalSets'] = {
+    "cid" : "api_set",
+    "name" : "API test" ,
+    "namespace": ns,
+    "description" : "API test",
   }
 
   signals= []
@@ -116,10 +116,11 @@ if state is None or state.get('index') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['sigSet']['signals'] = signals
+  msg['signalSets']['signals'] = signals
     
   ret = os.write(3,(json.dumps(msg) + '\\n').encode())
   state = json.loads(sys.stdin.readline())
+  
   error = state.get('error')
   if error:
     sys.stderr.write(error+"\\n")
@@ -130,14 +131,13 @@ if state is None or state.get('index') is None:
     store_msg["state"] = state
     ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
 
-
 # FILES
-#with open('../files/test.txt', 'r') as file: 
-#  lines = file.readlines()
-#  value = lines[0].strip()
-#  print('File:')
-#  print(value)
-#  print()
+with open('../files/test.txt', 'r') as file: 
+  lines = file.readlines()
+  value = lines[0].strip()
+  print('File:')
+  print(value)
+  print()
 
 # Elasticsearch reading
 val_field = entities['signals'][sigSet][value_sig]['field']
@@ -164,11 +164,14 @@ print()
 
 # Elasticsearch indexing
 doc = {
-  state['fields']['api_signal']: value
+  state['api_set']['fields']['api_signal']: value
 }
-res = es.index(index=state['index'], doc_type='_doc', body=doc)
+res = es.index(index=state['api_set']['index'], doc_type='_doc', body=doc)
 
-
+store_msg = {}
+store_msg["type"] = "store"
+store_msg["state"] = state
+ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
 os.close(3)`
     };
 }
@@ -258,13 +261,13 @@ os.makedirs(f'{model_dir}', exist_ok=True)
 with open(f'{model_dir}/weather.epw', 'wb') as f:
   f.write(epw_result.content)
 
-if state is None or state.get('index') is None:
+if state is None or state.get(f'energy_plus_{mod}_{occ}') is None:
   ns = 1
 
   msg = {}
   msg['type'] = 'create'
   # Request new signal set creation 
-  msg['sigSet'] = {
+  msg['signalSets'] = {
   "cid" : f"energy_plus_{mod}_{occ}",
   "name" : f"EnergyPlus mod{mod} occ{occ}" ,
   "namespace": ns,
@@ -309,7 +312,7 @@ if state is None or state.get('index') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['sigSet']['signals'] = signals
+  msg['signalSets']['signals'] = signals
 
   ret = os.write(3,(json.dumps(msg) + '\\n').encode())
   state = json.loads(sys.stdin.readline())
@@ -325,7 +328,7 @@ if state is None or state.get('index') is None:
     ret = os.write(3,(json.dumps(store_msg) + '\n').encode())
 else: 
   #clean up before calculation
-  es.delete_by_query(index=state['index'],request_timeout=60,body={"query" :{
+  es.delete_by_query(index=state[f'energy_plus_{mod}_{occ}']['index'],request_timeout=60,body={"query" :{
     "match_all": {}
   }})
 
@@ -398,7 +401,7 @@ def iterResults():
 
         if doc_source is not None:
           yield {
-            "_index": state['index'],
+            "_index": state['energy_plus_{mod}_{occ}']['index'],
             "_type": '_doc',
             "_id":  date,
             "_source": doc_source
@@ -428,11 +431,11 @@ def iterResults():
         }
          
       elif line_data[0]=='118': #Temperature
-        doc_source[state['fields']['temperature']]= line_data[1]
+        doc_source[state[f'energy_plus_{mod}_{occ}']['fields']['temperature']]= line_data[1]
       elif line_data[0]=='205': #Humidity
-        doc_source[state['fields']['humidity']]= line_data[1]
+        doc_source[state[f'energy_plus_{mod}_{occ}']['fields']['humidity']]= line_data[1]
       elif line_data[0]=='206': #CO2
-        doc_source[state['fields']['co2']]= line_data[1]
+        doc_source[state[f'energy_plus_{mod}_{occ}']['fields']['co2']]= line_data[1]
 
 helpers.bulk(es, iterResults())
 
@@ -510,13 +513,13 @@ if state is not None:
   values = state.get("values") if state.get("values") else []
 queue = deque(values, maxlen=window)
 
-if state is None or state.get('index') is None:
+if state is None or state.get('moving_average') is None:
   ns = sig_set['namespace']
   
   msg = {}
   msg['type'] = 'create'
   # Request new signal set creation 
-  msg['sigSet'] = {
+  msg['signalSets'] = {
     "cid" : "moving_average",
     "name" : "moving average" ,
     "namespace": ns,
@@ -533,7 +536,7 @@ if state is None or state.get('index') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['sigSet']['signals'] = signals
+  msg['signalSets']['signals'] = signals
 
   ret = os.write(3,(json.dumps(msg) + '\\n').encode())
   state = json.loads(sys.stdin.readline())
@@ -587,9 +590,9 @@ for item in results:
   else:
     mean = sum(queue) / float(window)
     doc = {
-      state['fields']['mean']: mean 
+      state['moving_average']['fields']['mean']: mean 
     }
-    res = es.index(index=state['index'], doc_type='_doc', body=doc)
+    res = es.index(index=state['moving_average']['index'], doc_type='_doc', body=doc)
 
 state["last"] = last
 state["values"] = list(queue)
@@ -661,13 +664,13 @@ ts = entities['signals'][params['sigSet']][params['ts']]
 source = entities['signals'][params['sigSet']][params['source']]
 interval = params['interval']
 
-if state is None or state.get('index') is None:
+if state is None or state.get('aggs') is None:
   ns = sig_set['namespace']
   
   msg = {}
   msg['type'] = 'create'
   # Request new signal set creation 
-  msg['sigSet'] = {
+  msg['signalSets'] = {
     "cid" : "aggs",
     "name" : "aggs" ,
     "namespace": ns,
@@ -712,7 +715,7 @@ if state is None or state.get('index') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['sigSet']['signals'] = signals
+  msg['signalSets']['signals'] = signals
 
   ret = os.write(3,(json.dumps(msg) + '\\n').encode())
   state = json.loads(sys.stdin.readline())
@@ -737,10 +740,10 @@ if state is not None and state.get('last') is not None:
     }
   }
   
-  es.delete_by_query(index=state['index'], body={
+  es.delete_by_query(index=state['aggs']['index'], body={
     "query": { 
       "match": {
-        state['fields']['ts']: last
+        state['aggs']['fields']['ts']: last
       }
     }}
   )
@@ -783,12 +786,12 @@ res = es.search(index=sig_set['index'], body=query)
 for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
   doc = {
-    state['fields']['ts']: last,
-    state['fields']['min']: hit['min']['value'],
-    state['fields']['avg']: hit['avg']['value'],
-    state['fields']['max']: hit['max']['value']
+    state['aggs']['fields']['ts']: last,
+    state['aggs']['fields']['min']: hit['min']['value'],
+    state['aggs']['fields']['avg']: hit['avg']['value'],
+    state['aggs']['fields']['max']: hit['max']['value']
   }
-  res = es.index(index=state['index'], doc_type='_doc', body=doc)
+  res = es.index(index=state['aggs']['index'], doc_type='_doc', body=doc)
 
 # Request to store state
 msg={}
@@ -881,13 +884,13 @@ limit_val = float(params['limitValue'])
 
 limit = limit_val
 
-if state is None or state.get('index') is None:
+if state is None or state.get('models_comparison') is None:
     ns = sensor_set['namespace']
   
     msg = {}
     msg['type'] = 'create'
     # Request new signal set creation 
-    msg['sigSet'] = {
+    msg['signalSets'] = {
     "cid" : "models_comparison",
     "name" : "Comparison of models" ,
     "namespace": ns,
@@ -913,7 +916,7 @@ if state is None or state.get('index') is None:
       "indexed": False,
       "settings": {}
     })
-    msg['sigSet']['signals'] = signals
+    msg['signalSets']['signals'] = signals
 
     ret = os.write(3,(json.dumps(msg) + '\\n').encode())
     state = json.loads(sys.stdin.readline())
@@ -998,10 +1001,10 @@ print(f'Closest model is: {min_model["name"]}')
 
 ts = datetime.now(timezone.utc).astimezone()
 doc = {
-  state['fields']['ts']: ts,
-  state['fields']['model']: min_model['cid'],
+  state['models_comparison']['fields']['ts']: ts,
+  state['models_comparison']['fields']['model']: min_model['cid'],
 }
-res = es.index(index=state['index'], doc_type='_doc', id=ts, body=doc)
+res = es.index(index=state['models_comparison']['index'], doc_type='_doc', id=ts, body=doc)
 `
     };
 }

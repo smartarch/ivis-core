@@ -11,8 +11,8 @@ const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-comm
 const moment = require('moment');
 const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputDir;
 const {getAdminContext} = require('../lib/context-helpers');
-const createSigSet = require('../models/signal-sets').create;
-const createSignal = require('../models/signals').create;
+const createSigSet = require('../models/signal-sets').createTx;
+const createSignal = require('../models/signals').createTx;
 const {resolveAbs, getFieldsetPrefix} = require('../../shared/templates');
 
 const es = require('../lib/elasticsearch');
@@ -792,7 +792,7 @@ async function onRunRequest(jobId, request) {
                         if (req.signalSets || req.signals) {
                             return await processCreateRequest(jobId, req.signalSets, req.signals);
                         } else {
-                            response.error(`Either signalSets or signals have to be specified`)
+                            response.error = `Either signalSets or signals have to be specified`;
                         }
                         break;
                     case  JobMsgType.STORE_STATE:
@@ -845,7 +845,7 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
 
         signalSet.type = SignalSetType.COMPUTED;
 
-        signalSet.id = await createSigSet(getAdminContext(), signalSet);
+        signalSet.id = await createSigSet(tx, getAdminContext(), signalSet);
         esSetInfo.index = getIndexName(signalSet);
         esSetInfo.type = TYPE_JOBS;
 
@@ -855,7 +855,7 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
             signal.weight_list = 0;
             signal.weight_edit = null;
             signal.source = SignalSource.JOB;
-            const sigId = await createSignal(getAdminContext(), signalSet.id, signal);
+            const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
             esSetInfo.fields[signal.cid] = getFieldName(sigId);
         }
 
@@ -868,7 +868,7 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
         signal.weight_list = 0;
         signal.weight_edit = null;
         signal.source = SignalSource.JOB;
-        const sigId = await createSignal(getAdminContext(), signalSetId, signal);
+        const sigId = await createSignal(tx, getAdminContext(), signalSetId, signal);
 
         // TODO should add something like signal_sets_owners for signals probably
         return getFieldName(sigId);
@@ -876,33 +876,36 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
 
     try {
         await knex.transaction(async (tx) => {
-            if (Array.isArray(signalSets)) {
-                for (let signalSet of signalSets) {
-                    esInfo[signalSet.cid] = await createSignalSetWithSignals(tx, signalSet);
-                }
-            } else {
-                esInfo[signalSets.cid] = await createSignalSetWithSignals(tx, signalSets);
-            }
-
-            for (let [sigSetCid, signals] of Object.entries(signalsSpec)) {
-                const sigSet = await tx('signal_sets').where('cid', sigSetCid).first();
-                if (!sigSet) {
-                    throw new Error(`Signal set with cid ${sigSetCid} not found`);
-                }
-
-                esInfo[sigSetCid]['index'] = getIndexName(sigSet);
-                esInfo[sigSetCid]['type'] = TYPE_JOBS;
-
-                if (Array.isArray(signals)) {
-                    for (let signal of signals) {
-                        esInfo[sigSetCid]['fields'][signal.cid] = createComputedSignal(tx, sigSet.id, signal);
+            if (signalSets) {
+                if (Array.isArray(signalSets)) {
+                    for (let signalSet of signalSets) {
+                        esInfo[signalSet.cid] = await createSignalSetWithSignals(tx, signalSet);
                     }
                 } else {
-                    esInfo[sigSetCid]['fields'][signals.cid] = createComputedSignal(tx, sigSet.id, signals);
+                    esInfo[signalSets.cid] = await createSignalSetWithSignals(tx, signalSets);
                 }
-
             }
 
+            if (signalsSpec) {
+                for (let [sigSetCid, signals] of Object.entries(signalsSpec)) {
+                    const sigSet = await tx('signal_sets').where('cid', sigSetCid).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${sigSetCid} not found`);
+                    }
+
+                    esInfo[sigSetCid]['index'] = getIndexName(sigSet);
+                    esInfo[sigSetCid]['type'] = TYPE_JOBS;
+
+                    if (Array.isArray(signals)) {
+                        for (let signal of signals) {
+                            esInfo[sigSetCid]['fields'][signal.cid] = createComputedSignal(tx, sigSet.id, signal);
+                        }
+                    } else {
+                        esInfo[sigSetCid]['fields'][signals.cid] = createComputedSignal(tx, sigSet.id, signals);
+                    }
+
+                }
+            }
         });
     } catch (error) {
         log.warn(LOG_ID, error);
