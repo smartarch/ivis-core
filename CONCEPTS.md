@@ -152,10 +152,12 @@ Each job once stared receives attributes in json format on the standard input, f
     }
   },
   "state": {
-    "index": "signal_set_2",
-    "type": "_doc",
-    "fields": {
-      "created_signal": "s3"
+    "created_set": {
+      "index": "signal_set_2",
+      "type": "_doc",
+      "fields": {
+        "created_signal": "s3"
+      }
     }
   },
   "es": {
@@ -217,16 +219,16 @@ In the `store` request everything in `state` object will be stored.
 ```json
 {
   "type": "create",
-  "sigSet": {
+  "signalSets": {
       "cid" : "created_set",
-      "name" : "API test" ,
+      "name" : "Example set" ,
       "namespace": 1,
-      "description" : "API test" ,
+      "description" : "Documentation example signal set" ,
       "signals": [
         {
           "cid": "created_signal",
-          "name": "showcase signal",
-          "description": "api showcase signal",
+          "name": "Example signal",
+          "description": "Documentation example signal set",
           "namespace": 1,
           "type": "text",
           "indexed": false,
@@ -236,6 +238,86 @@ In the `store` request everything in `state` object will be stored.
   }
 }
 ```
+and received answer:
+```json
+{
+  "created_set": {
+    "index": "signal_set_2",
+    "type": "_doc",
+    "fields": {
+      "created_signal": "s3"
+     }
+  }
+}
+```
+It is possible to request multiple signal sets at once:
+```json
+{
+  "type": "create",
+  "signalSets": [
+    {
+      "cid" : "created_set1",
+      "namespace": 1,
+      "signals": [
+      ]
+    },
+    {
+      "cid" : "created_set2",
+      "namespace": 1,
+      "signals": [
+      ]
+    }
+  ]
+}
+```
+answer:
+```json
+{
+  "created_set1": {
+    "index": "signal_set_23",
+    "type": "_doc",
+    "fields": {
+     }
+  },
+  "created_set2": {
+    "index": "signal_set_24",
+    "type": "_doc",
+    "fields": {
+     }
+  }
+}
+```
 
+It is also possible to request creation of signals in an existing signal set:
+```json
+{
+  "type": "create",
+  "signals": {
+    "existing_signal_set_cid": [
+      {
+        "cid": "created_signal",
+        "name": "Example signal",
+        "description": "Documentation example signal set",
+        "namespace": 1,
+        "type": "text",
+        "indexed": false,
+        "settings": {} 
+      }   
+    ]   
+  }
+}
+```
+answer:
+```json
+{
+  "existing_signal_set_cid": {
+    "index": "signal_set_16",
+    "type": "_doc",
+    "fields": {
+      "created_signal": "s25"
+     }
+  }
+}
+```
 ## IVIS Extension for Domain-Specific Applications
 IVIS-CORE can be extended thourgh IVIS extensions mechanism, and plug-ins in order to develop Domain-Specific Applications. For that, we need to create another project in another repository for the Domain-Specific Application, where we include the core as a git submodule and add domain-specific modules, and components, import/management components and possibly some branding.

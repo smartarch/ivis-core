@@ -850,13 +850,15 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
         esSetInfo.type = TYPE_JOBS;
 
         esSetInfo.fields = {};
-        for (const signal of signals) {
-            // Here are possible overwrites of input form job
-            signal.weight_list = 0;
-            signal.weight_edit = null;
-            signal.source = SignalSource.JOB;
-            const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
-            esSetInfo.fields[signal.cid] = getFieldName(sigId);
+        if (signals) {
+            for (const signal of signals) {
+                // Here are possible overwrites of input form job
+                signal.weight_list = 0;
+                signal.weight_edit = null;
+                signal.source = SignalSource.JOB;
+                const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
+                esSetInfo.fields[signal.cid] = getFieldName(sigId);
+            }
         }
 
         await tx('signal_sets_owners').insert({job: jobId, set: signalSet.id});
@@ -893,15 +895,17 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
                         throw new Error(`Signal set with cid ${sigSetCid} not found`);
                     }
 
+                    esInfo[sigSetCid] = {};
                     esInfo[sigSetCid]['index'] = getIndexName(sigSet);
                     esInfo[sigSetCid]['type'] = TYPE_JOBS;
+                    esInfo[sigSetCid]['fields'] = {};
 
                     if (Array.isArray(signals)) {
                         for (let signal of signals) {
-                            esInfo[sigSetCid]['fields'][signal.cid] = createComputedSignal(tx, sigSet.id, signal);
+                            esInfo[sigSetCid]['fields'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
                         }
                     } else {
-                        esInfo[sigSetCid]['fields'][signals.cid] = createComputedSignal(tx, sigSet.id, signals);
+                        esInfo[sigSetCid]['fields'][signals.cid] = await createComputedSignal(tx, sigSet.id, signals);
                     }
 
                 }
