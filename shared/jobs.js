@@ -37,7 +37,7 @@ if (Object.freeze) {
 
 const JobMsgType = {
     STORE_STATE: 'store',
-    CREATE_SIGNALS: 'sets'
+    CREATE_SIGNALS: 'create'
 };
 
 if (Object.freeze) {

@@ -45,7 +45,7 @@ const numpyHandler = {
     init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail)
 };
 
-const energyHandler= {
+const energyHandler = {
     ...pythonHandler,
     init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.ENERGY_PLUS, id, code, destDir, onSuccess, onFail)
 };
@@ -775,26 +775,43 @@ async function onRunRequest(jobId, request) {
         let req = {};
         try {
             req = parseRequest(request);
+
+            if (req.id) {
+                response.id = req.id;
+            }
+
         } catch (err) {
             response.error = `Request parsing failed: ${err.message}`;
             return response;
         }
 
         if (req.type) {
-            switch (req.type) {
-                case JobMsgType.CREATE_SIGNALS:
-                    if (req.sigSet) {
-                        return await processSetReq(jobId, req.sigSet);
-                    }
-                    break;
-                case  JobMsgType.STORE_STATE:
-                    if (req[STATE_FIELD]) {
-                        await storeRunState(jobId, req[STATE_FIELD]);
-                    }
-                    break;
-                default:
-                    break;
+            try {
+                switch (req.type) {
+                    case JobMsgType.CREATE_SIGNALS:
+                        if (req.signalSets || req.signals) {
+                            return await processCreateRequest(jobId, req.signalSets, req.signals);
+                        } else {
+                            response.error(`Either signalSets or signals have to be specified`)
+                        }
+                        break;
+                    case  JobMsgType.STORE_STATE:
+                        if (req[STATE_FIELD]) {
+                            await storeRunState(jobId, req[STATE_FIELD]);
+                        } else {
+                            response.error(`${STATE_FIELD} not specified`)
+                        }
+                        break;
+                    default:
+                        response.error = "Type not recognized";
+                        break;
+                }
+            } catch (error) {
+                log.warn(LOG_ID, error);
+                response.error = error.message;
             }
+        } else {
+            response.error = "Type not specified";
         }
     }
     return response;
@@ -813,42 +830,86 @@ async function onRunRequest(jobId, request) {
  * Signals are specified in sigSet.signals
  * Uses same data format as web creation
  * @param jobId
- * @param sigSet
+ * @param signalSets
  * @returns {Promise<IndexInfo>} Created indices and mapping
  */
-async function processSetReq(jobId, sigSet) {
-    const indexInfo = {};
+async function processCreateRequest(jobId, signalSets, signalsSpec) {
+    const esInfo = {};
 
-    const signals = sigSet.signals;
-    delete sigSet.signals;
+    async function createSignalSetWithSignals(tx, signalSet) {
 
-    sigSet.type = SignalSetType.COMPUTED;
+        const esSetInfo = {};
+
+        const signals = signalSet.signals;
+        delete signalSet.signals;
+
+        signalSet.type = SignalSetType.COMPUTED;
+
+        signalSet.id = await createSigSet(getAdminContext(), signalSet);
+        esSetInfo.index = getIndexName(signalSet);
+        esSetInfo.type = TYPE_JOBS;
+
+        esSetInfo.fields = {};
+        for (const signal of signals) {
+            // Here are possible overwrites of input form job
+            signal.weight_list = 0;
+            signal.weight_edit = null;
+            signal.source = SignalSource.JOB;
+            const sigId = await createSignal(getAdminContext(), signalSet.id, signal);
+            esSetInfo.fields[signal.cid] = getFieldName(sigId);
+        }
+
+        await tx('signal_sets_owners').insert({job: jobId, set: signalSet.id});
+        return esSetInfo;
+    }
+
+    async function createComputedSignal(tx, signalSetId, signal) {
+        // Here are possible overwrites of input form job
+        signal.weight_list = 0;
+        signal.weight_edit = null;
+        signal.source = SignalSource.JOB;
+        const sigId = await createSignal(getAdminContext(), signalSetId, signal);
+
+        // TODO should add something like signal_sets_owners for signals probably
+        return getFieldName(sigId);
+    }
 
     try {
         await knex.transaction(async (tx) => {
-                sigSet.id = await createSigSet(getAdminContext(), sigSet);
-                indexInfo.index = getIndexName(sigSet);
-                indexInfo.type = '_doc';
+            if (Array.isArray(signalSets)) {
+                for (let signalSet of signalSets) {
+                    esInfo[signalSet.cid] = await createSignalSetWithSignals(tx, signalSet);
+                }
+            } else {
+                esInfo[signalSets.cid] = await createSignalSetWithSignals(tx, signalSets);
+            }
 
-                indexInfo.fields = {};
-                for (const signal of signals) {
-                    // Here are possible overwrites of input form job
-                    signal.weight_list = 0;
-                    signal.weight_edit = null;
-                    signal.source = SignalSource.JOB;
-                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal);
-                    indexInfo.fields[signal.cid] = getFieldName(sigId);
+            for (let [sigSetCid, signals] of Object.entries(signalsSpec)) {
+                const sigSet = await tx('signal_sets').where('cid', sigSetCid).first();
+                if (!sigSet) {
+                    throw new Error(`Signal set with cid ${sigSetCid} not found`);
                 }
 
-                await tx('signal_sets_owners').insert({job: jobId, set: sigSet.id});
+                esInfo[sigSetCid]['index'] = getIndexName(sigSet);
+                esInfo[sigSetCid]['type'] = TYPE_JOBS;
+
+                if (Array.isArray(signals)) {
+                    for (let signal of signals) {
+                        esInfo[sigSetCid]['fields'][signal.cid] = createComputedSignal(tx, sigSet.id, signal);
+                    }
+                } else {
+                    esInfo[sigSetCid]['fields'][signals.cid] = createComputedSignal(tx, sigSet.id, signals);
+                }
+
             }
-        );
+
+        });
     } catch (error) {
         log.warn(LOG_ID, error);
-        indexInfo.error = error.message;
+        esInfo.error = error.message;
     }
 
-    return indexInfo;
+    return esInfo;
 }
 
 /**
@@ -882,11 +943,7 @@ async function loadJobState(id) {
 async function storeRunState(id, state) {
     const jobBody = {};
     jobBody[STATE_FIELD] = state;
-    try {
-        await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
-    } catch (error) {
-        log.warn(LOG_ID, error);
-    }
+    await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
 }
 
 /**

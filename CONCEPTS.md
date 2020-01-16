@@ -170,16 +170,24 @@ There are 4 main JSON objects in incoming data:
 - `state`
 - `es`
 
-`params` are parameters from the job being run that were set previously in GUI of the job's settings page. It is always a pair of parameter's identifier and selected value. Entities have 2 JSON objects, `signalSets` and `signals`. Each signal set found in the parameters of the job is listed in the `signalSets` under his CID with 3 properties, `index`, that is corresponding index in the ElasticSearch, `name` and `namespace`. Each signal found in the parameters is listed in the `signals` object under CID of the signal set it belongs to under its CID with 3 properties, `field`, that is field in ElasticSearch in the index of its signal set, `name` and `namespace`.
+`params` are parameters from the job being run that were set previously in GUI of the job's settings page. It is always a pair of parameter's identifier and selected value.
+ 
+`entities` have 2 JSON objects, `signalSets` and `signals`. Each signal set found in the parameters of the job is listed in the `signalSets` under his CID with 3 properties, `index`, that is corresponding index in the ElasticSearch, `name` and `namespace`. Each signal found in the parameters is listed in the `signals` object under CID of the signal set it belongs to under its CID with 3 properties, `field`, that is field in ElasticSearch in the index of its signal set, `name` and `namespace`.
 
 `state` is job's state stored in the ElasticSearch. Content of `state` depends completely on what is stored there in the job's code. More on that later. 
 
 `es` contains information about ElasticSearch instance. Under `host` is host's address and under `port` is port it is listening on.
 
 ### Job requests
-Job can send request to the IVIS core. Requests are accepted on the file descriptor 3 in JSON format and answer is received on the standard input. Example of a request:
+Job can send request to the IVIS core. Requests are accepted on the file descriptor 3 in JSON format and answer is received on the standard input.  There are 2 types of requests job can send:
+- `store` 
+- `create`
+
+`store` will request storing given state. This state is received on each run start in `state` object mentioned previously. `create` will request creating new signal set and signals.
+Example of a `store` request:
  ```json
 {
+  "id": 1,
   "type": "store",
   "state": {
     "index": "signal_set_2",
@@ -190,12 +198,44 @@ Job can send request to the IVIS core. Requests are accepted on the file descrip
   }
 }
 ```
- 
- There are 2 requests it can send:
-- `store` 
-- `sets`
+and received answer:
+```json
+{
+  "id": 1
+}
+```
+Each request has `type`, either `store` or `create`, that determines requested action. If there is `id` present in the request it will be copied to the answer unless the JSON format was incorrect. If there is no `error` present, request succeeded. Otherwise `error` with error message will be present in the answer:
+```json
+{
+  "id": 1,
+  "error": "Request failed"
+}
+```
+In the `store` request everything in `state` object will be stored.
 
-
+`create` request looks like this:
+```json
+{
+  "type": "create",
+  "sigSet": {
+      "cid" : "created_set",
+      "name" : "API test" ,
+      "namespace": 1,
+      "description" : "API test" ,
+      "signals": [
+        {
+          "cid": "created_signal",
+          "name": "showcase signal",
+          "description": "api showcase signal",
+          "namespace": 1,
+          "type": "text",
+          "indexed": false,
+          "settings": {} 
+        }       
+      ]
+  }
+}
+```
 
 ## IVIS Extension for Domain-Specific Applications
 IVIS-CORE can be extended thourgh IVIS extensions mechanism, and plug-ins in order to develop Domain-Specific Applications. For that, we need to create another project in another repository for the Domain-Specific Application, where we include the core as a git submodule and add domain-specific modules, and components, import/management components and possibly some branding.

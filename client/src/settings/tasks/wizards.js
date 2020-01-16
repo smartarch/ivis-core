@@ -97,7 +97,7 @@ if state is None or state.get('index') is None:
   ns = entities['signalSets'][sigSet]['namespace']
 
   msg = {}
-  msg['type'] = 'sets'
+  msg['type'] = 'create'
   # Request new signal set creation 
   msg['sigSet'] = {
   "cid" : "api_set",
@@ -262,7 +262,7 @@ if state is None or state.get('index') is None:
   ns = 1
 
   msg = {}
-  msg['type'] = 'sets'
+  msg['type'] = 'create'
   # Request new signal set creation 
   msg['sigSet'] = {
   "cid" : f"energy_plus_{mod}_{occ}",
@@ -514,7 +514,7 @@ if state is None or state.get('index') is None:
   ns = sig_set['namespace']
   
   msg = {}
-  msg['type'] = 'sets'
+  msg['type'] = 'create'
   # Request new signal set creation 
   msg['sigSet'] = {
     "cid" : "moving_average",
@@ -665,7 +665,7 @@ if state is None or state.get('index') is None:
   ns = sig_set['namespace']
   
   msg = {}
-  msg['type'] = 'sets'
+  msg['type'] = 'create'
   # Request new signal set creation 
   msg['sigSet'] = {
     "cid" : "aggs",
@@ -885,7 +885,7 @@ if state is None or state.get('index') is None:
     ns = sensor_set['namespace']
   
     msg = {}
-    msg['type'] = 'sets'
+    msg['type'] = 'create'
     # Request new signal set creation 
     msg['sigSet'] = {
     "cid" : "models_comparison",
