@@ -97,7 +97,7 @@ if state is None or state.get('api_set') is None:
   ns = entities['signalSets'][sigSet]['namespace']
 
   msg = {}
-  msg['type'] = 'create'
+  msg['type'] = 'create_signals'
   # Request new signal set creation 
   msg['signalSets'] = {
     "cid" : "api_set",
@@ -127,7 +127,7 @@ if state is None or state.get('api_set') is None:
     sys.exit(1)
   else:
     store_msg = {}
-    store_msg["type"] = "store"
+    store_msg["type"] = "store_state"
     store_msg["state"] = state
     ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
 
@@ -169,7 +169,7 @@ doc = {
 res = es.index(index=state['api_set']['index'], doc_type='_doc', body=doc)
 
 store_msg = {}
-store_msg["type"] = "store"
+store_msg["type"] = "store_state"
 store_msg["state"] = state
 ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
 os.close(3)`
@@ -265,7 +265,7 @@ if state is None or state.get(f'energy_plus_{mod}_{occ}') is None:
   ns = 1
 
   msg = {}
-  msg['type'] = 'create'
+  msg['type'] = 'create_signals'
   # Request new signal set creation 
   msg['signalSets'] = {
   "cid" : f"energy_plus_{mod}_{occ}",
@@ -323,7 +323,7 @@ if state is None or state.get(f'energy_plus_{mod}_{occ}') is None:
     sys.exit(1)
   else
     store_msg = {}
-    store_msg["type"] = "store"
+    store_msg["type"] = "store_state"
     store_msg["state"] = state
     ret = os.write(3,(json.dumps(store_msg) + '\n').encode())
 else: 
@@ -517,7 +517,7 @@ if state is None or state.get('moving_average') is None:
   ns = sig_set['namespace']
   
   msg = {}
-  msg['type'] = 'create'
+  msg['type'] = 'create_signals'
   # Request new signal set creation 
   msg['signalSets'] = {
     "cid" : "moving_average",
@@ -546,7 +546,7 @@ if state is None or state.get('moving_average') is None:
     sys.exit(1)
   else:
     store_msg = {}
-    store_msg["type"] = "store"
+    store_msg["type"] = "store_state"
     store_msg["state"] = state
     ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
     
@@ -598,7 +598,7 @@ state["last"] = last
 state["values"] = list(queue)
 # Request to store state
 msg = {}
-msg["type"] = "store"
+msg["type"] = "store_state"
 msg["state"] = state
 ret = os.write(3,(json.dumps(msg).encode()))
 os.close(3)
@@ -668,7 +668,7 @@ if state is None or state.get('aggs') is None:
   ns = sig_set['namespace']
   
   msg = {}
-  msg['type'] = 'create'
+  msg['type'] = 'create_signals'
   # Request new signal set creation 
   msg['signalSets'] = {
     "cid" : "aggs",
@@ -725,7 +725,7 @@ if state is None or state.get('aggs') is None:
     sys.exit(1)
   else:
     store_msg = {}
-    store_msg["type"] = "store"
+    store_msg["type"] = "store_state"
     store_msg["state"] = state
     ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
 
@@ -795,7 +795,7 @@ for hit in res['aggregations']['stats']['buckets']:
 
 # Request to store state
 msg={}
-msg={"type": "store"}
+msg={"type": "store_state"}
 state['last'] = last
 msg["state"] = state
 ret = os.write(3,(json.dumps(msg).encode()))
@@ -888,7 +888,7 @@ if state is None or state.get('models_comparison') is None:
     ns = sensor_set['namespace']
   
     msg = {}
-    msg['type'] = 'create'
+    msg['type'] = 'create_signals'
     # Request new signal set creation 
     msg['signalSets'] = {
     "cid" : "models_comparison",
@@ -926,7 +926,7 @@ if state is None or state.get('models_comparison') is None:
       sys.exit(1)
     else:
       store_msg = {}
-      store_msg["type"] = "store"
+      store_msg["type"] = "store_state"
       store_msg["state"] = state
       ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
 
