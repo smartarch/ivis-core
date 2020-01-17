@@ -1,8 +1,13 @@
 import React, {Component} from "react";
+import {PropTypes} from "prop-types";
 
 export class Debug extends Component {
+    static propTypes = {
+        funcs: PropTypes.array,
+    }
+
     stringifyProp(prop, key) {
-        if (prop[key] && typeof prop[key] === 'object')
+        if (prop[key] && typeof prop[key] === "object")
             return (
                 <li key={key.toString()}>
                     <b>{key.toString()}:</b>
@@ -29,7 +34,23 @@ export class Debug extends Component {
         return Object.keys(props).map(key => this.stringifyProp(props, key));
     }
 
+    displayFunc(func) {
+        return (
+            <button key={func.name} className="btn btn-secondary" onClick={func.call}>
+                {func.name}
+            </button>
+        );
+    }
+
     render() {
+        const functionsDisplay = (
+            <>
+                <h2> Functions </h2>
+                {this.props.funcs && this.props.funcs.map(func => this.displayFunc(func))}
+            </>
+        );
+
+
         return (
             <div>
                 <h2> Debug </h2>
@@ -42,6 +63,7 @@ export class Debug extends Component {
                         </ol>
                     </li>
                 </ul>
+                { this.props.funcs && functionsDisplay }
             </div>
         );
     }
