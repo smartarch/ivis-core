@@ -44,12 +44,13 @@ class PanelRoute extends Component {
             jQuery(document.body).removeClass('inside-iframe');
         }
 
-        const render = resolved => {
-            if (resolved) {
+        const render = (resolved, permissions) => {
+            if (resolved && permissions) {
                 const compProps = {
                     match: this.props.match,
                     location: this.props.location,
-                    resolved
+                    resolved,
+                    permissions
                 };
 
                 let panel;
@@ -107,6 +108,14 @@ export class SectionContent extends Component {
 
     navigateToWithFlashMessage(path, severity, text) {
         parentRPC.ask('navigateToWithFlashMessage', {path, severity, text});
+    }
+
+    registerBeforeUnloadHandlers(handlers) {
+        // This is not implemented because we don't have a case yet when it would be needed. This might become needed when a panel has a form that needs saving, or similar.
+    }
+
+    deregisterBeforeUnloadHandlers(handlers) {
+        // Dtto (as above)
     }
 
     errorHandler(error) {

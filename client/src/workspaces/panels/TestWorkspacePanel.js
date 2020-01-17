@@ -35,7 +35,7 @@ export default class TestWorkspacePanel extends Component {
     render() {
         const PanelModule = this.props.content;
         return (
-            <Panel title={this.props.title} panelMenu={this.state.panelMenu} onPanelMenuAction={action => this.contentNode.onPanelMenuAction(action)}>
+            <Panel title={this.props.title} panelMenu={this.state.panelMenu} onPanelMenuAction={async action => await this.contentNode.onPanelMenuAction(action)}>
                 <PanelModule ref={node => this.contentNode = node} panel={this.props.panel} params={this.props.params} setPanelMenu={::this.setPanelMenu}/>
             </Panel>
         );

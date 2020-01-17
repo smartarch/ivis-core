@@ -22,6 +22,8 @@ export default class WorkspacePanelSandbox extends PureComponent {
         this.state = {
             moduleLoaded: false
         };
+
+        this.contentNode = null;
     }
 
     static propTypes = {
@@ -52,7 +54,8 @@ export default class WorkspacePanelSandbox extends PureComponent {
     }
 
     async onPanelMenuAction(method, params) {
-        this.contentNode.onPanelMenuAction(params.action);
+        // This can be called only if entry has been added to panel menu via setPanelMenu. This cannot happen on line 74, thus no check for this.contentNode === null is needed here.
+        await this.contentNode.onPanelMenuAction(params.action);
     }
 
     render() {

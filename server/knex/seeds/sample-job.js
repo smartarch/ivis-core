@@ -46,25 +46,26 @@ from collections import deque
 data = json.loads(sys.stdin.readline())
 es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
 
-config = data.get('config')
+state = data.get('state')
 
-params_conf = data['params']
-params_ns = params_conf['namespaces']
+params= data['params']
+entities= data['entities']
 
 # Task parameters' values
-params = params_conf['map']
-source = params['source']
-sig_set = params['sigSet']
-ts = params['ts']
+# from params we get cid of signal/signal set and from according key in entities dictionary 
+# we can access data for that entity (like es index or namespace)
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
 window = int(params['window'])
 
 values = []
-if config is not None:
-  values = config.get("values") if config.get("values") else []
+if state is not None:
+  values = state.get("values") if state.get("values") else []
 queue = deque(values, maxlen=window)
 
-if config is None or config.get('index') is None:
-    ns = params_ns['sigSet']
+if state is None or state.get('index') is None:
+    ns = sig_set['namespace']
   
     msg = {}
     msg['type'] = 'sets'
@@ -89,19 +90,19 @@ if config is None or config.get('index') is None:
     })
     msg['sigSet']['signals'] = signals
 
-    ret = os.write(3,json.dumps(msg) + '\\n')
-    config = json.loads(sys.stdin.readline())
-    error = config.get('error')
+    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
+    state = json.loads(sys.stdin.readline())
+    error = state.get('error')
     if error:
       sys.stderr.write(error+"\\n")
       sys.exit(1)
     
 last = None
-if config is not None and config.get('last') is not None:
-  last = config['last']
+if state is not None and state.get('last') is not None:
+  last = state['last']
   query_content = {
     "range" : {
-      "ts" : {
+      ts['field'] : {
         "gt" : last
       }
     }
@@ -109,23 +110,24 @@ if config is not None and config.get('last') is not None:
 else:
   query_content = {'match_all': {}}
 
+
 query = {
     'size': 10000,
-    '_source': [source, ts],
-    'sort': [{ts: 'asc'}],
+    '_source': [source['field'], ts['field']],
+    'sort': [{ts['field']: 'asc'}],
     'query': query_content
 }
 
 results = helpers.scan(es,
                        preserve_order=True,
                        query=query,
-                       index=sig_set
+                       index=sig_set['index']
                        )
 
 i = 0
 for item in results:
-  last = item["_source"][ts]
-  val = item["_source"][source]
+  last = item["_source"][ts['field']]
+  val = item["_source"][source['field']]
   if val is not None:
     queue.append(val)
   else:
@@ -135,17 +137,17 @@ for item in results:
   else:
     mean = sum(queue) / float(window)
     doc = {
-      config['fields']['mean']: mean 
+      state['fields']['mean']: mean 
     }
-    res = es.index(index=config['index'], doc_type='_doc', body=doc)
+    res = es.index(index=state['index'], doc_type='_doc', body=doc)
 
-config["last"] = last
-config["values"] = list(queue)
-# Request to store config
+state["last"] = last
+state["values"] = list(queue)
+# Request to store state
 msg = {}
 msg["type"] = "store"
-msg["config"] = config
-ret = os.write(3,json.dumps(msg))
+msg["state"] = state
+ret = os.write(3,(json.dumps(msg).encode()))
 os.close(3)`
     });
 
@@ -189,19 +191,20 @@ from elasticsearch import Elasticsearch, helpers
 
 # Get parameters and set up elasticsearch
 data = json.loads(sys.stdin.readline())
-config = data.get('config')
-params_conf = data.get('params')
-params = params_conf.get('map')
-param_ns = params_conf.get('namespaces')
 es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
 
-source = params['source']
-sig_set = params['sigSet']
-ts = params['ts']
+state = data.get('state')
+
+params= data['params']
+entities= data['entities']
+
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
 interval = params['interval']
 
-if config is None or config.get('index') is None:
-    ns = param_ns['sigSet']
+if state is None or state.get('index') is None:
+    ns = sig_set['namespace']
   
     msg = {}
     msg['type'] = 'sets'
@@ -254,28 +257,28 @@ if config is None or config.get('index') is None:
     })
     msg['sigSet']['signals'] = signals
 
-    ret = os.write(3,json.dumps(msg) + '\\n')
-    config = json.loads(sys.stdin.readline())
-    error = config.get('error')
+    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
+    state = json.loads(sys.stdin.readline())
+    error = state.get('error')
     if error:
       sys.stderr.write(error+"\\n")
       sys.exit(1)
 
 last = None
-if config is not None and config.get('last') is not None:
-  last = config['last']
+if state is not None and state.get('last') is not None:
+  last = state['last']
   query_content = {
     "range" : {
-      ts : {
+      ts['field'] : {
         "gte" : last
       }
     }
   }
   
-  es.delete_by_query(index=config['index'], body={
+  es.delete_by_query(index=state['index'], body={
   "query": { 
     "match": {
-      config['fields']['ts']: last
+      state['fields']['ts']: last
     }
   }}
   )
@@ -289,23 +292,23 @@ query = {
     "aggs": {
       "stats": {
         "date_histogram": {
-          "field": ts,
+          "field": ts['field'],
           "interval": interval+"m"
         },
         "aggs": {
           "avg": {
             "avg": {
-              "field": source
+              "field": source['field']
             }
           },
           "max": {
             "max" : {
-              "field": source
+              "field": source['field']
             }
           },
           "min": {
             "min" : {
-              "field": source
+              "field": source['field']
             }
           }
         }
@@ -313,24 +316,24 @@ query = {
     }
   }
 
-res = es.search(index=sig_set, body=query)
+res = es.search(index=sig_set['index'], body=query)
 
 for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
   doc = {
-    config['fields']['ts']: last,
-    config['fields']['min']: hit['min']['value'],
-    config['fields']['avg']: hit['avg']['value'],
-    config['fields']['max']: hit['max']['value']
+    state['fields']['ts']: last,
+    state['fields']['min']: hit['min']['value'],
+    state['fields']['avg']: hit['avg']['value'],
+    state['fields']['max']: hit['max']['value']
   }
-  res = es.index(index=config['index'], doc_type='_doc', body=doc)
+  res = es.index(index=state['index'], doc_type='_doc', body=doc)
 
-# Request to store config
+# Request to store state
 msg={}
 msg={"type": "store"}
-config['last'] = last
-msg["config"] = config
-ret = os.write(3,json.dumps(msg))
+state['last'] = last
+msg["state"] = state
+ret = os.write(3,(json.dumps(msg).encode()))
 os.close(3)`
     });
 

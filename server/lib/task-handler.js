@@ -154,7 +154,7 @@ async function initIndices() {
         reachable = false;
     }
     if (reachable) {
-        let exists = await esClient.indices.exists({index: INDEX_JOBS});
+        const exists = await esClient.indices.exists({index: INDEX_JOBS});
         if (!exists) {
             let settings = {
                 "mappings": {
@@ -180,7 +180,7 @@ async function initIndices() {
  * @returns {Promise<void>}
  */
 async function cleanRuns() {
-    let runs = await knex('job_runs').whereIn('status', [RunStatus.INITIALIZATION, RunStatus.SCHEDULED, RunStatus.RUNNING]);
+    const runs = await knex('job_runs').whereIn('status', [RunStatus.INITIALIZATION, RunStatus.SCHEDULED, RunStatus.RUNNING]);
     if (runs) {
         for (let i = 0; i < runs.length; i++) {
             try {
@@ -200,7 +200,7 @@ async function cleanRuns() {
  * @returns {Promise<void>}
  */
 async function cleanBuilds() {
-    let tasks = await knex('tasks').whereIn('build_state', getTransitionStates());
+    const tasks = await knex('tasks').whereIn('build_state', getTransitionStates());
     if (tasks) {
         for (let i = 0; i < tasks.length; i++) {
             const task = tasks[i];

@@ -100,8 +100,8 @@ export default class WorkspacePanelContent extends Component {
         }
     }
 
-    onPanelMenuAction(action) {
-        this.contentNode.ask('panelMenuAction', {
+    async onPanelMenuAction(action) {
+        await this.contentNode.ask('panelMenuAction', {
             action
         });
     }

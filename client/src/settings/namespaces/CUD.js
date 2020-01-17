@@ -16,7 +16,8 @@ import {
     InputField,
     TextArea,
     TreeTableSelect,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import axios
     from "../../lib/axios";
@@ -127,7 +128,8 @@ export default class CUD extends Component {
         }
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -143,10 +145,26 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-            if (submitSuccessful) {
-                this.navigateToWithFlashMessage('/settings/namespaces', 'success', t('Namespace saved'));
+            if (submitResult) {
+                if (this.props.entity) {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/namespaces', 'success', t('Namespace updated'));
+                    } else {
+                        await this.getFormValuesFromURL(`rest/namespaces/${this.props.entity.id}`);
+                        await this.loadTreeData();
+
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('Namespace updated'));
+                    }
+                } else {
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/namespaces', 'success', t('Namespace created'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/namespaces/${submitResult}/edit`, 'success', t('Namespace created'));
+                    }
+                }
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -204,6 +222,7 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')} onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/namespaces/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
