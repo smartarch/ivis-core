@@ -10,6 +10,7 @@ const config = require('../../lib/config');
 const JOB_FILE_NAME = 'job.py';
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
+const IVIS_PCKG_DIR = path.join(__dirname,'..','..','lib','tasks','python','dist');
 
 const packagesForType = new Map();
 packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy', 'dtw']);
@@ -186,7 +187,7 @@ async function initType(type, id, code, destDir, onSuccess, onFail) {
 
         const virtDir = path.join(envDir, 'bin', 'activate');
         const virtEnv = spawn(
-            `${config.tasks.python.venvCmd} ${envDir} && source ${virtDir} && pip install ${packages.join(' ')} && deactivate`,
+            `${config.tasks.python.venvCmd} ${envDir} && source ${virtDir} && pip install ${packages.join(' ')} && pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis && deactivate`,
             {
                 shell: '/bin/bash'
             }

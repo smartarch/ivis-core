@@ -182,15 +182,15 @@ There are 4 main JSON objects in incoming data:
 
 ### Job requests
 Job can send request to the IVIS core. Requests are accepted on the file descriptor 3 in JSON format and answer is received on the standard input.  There are 2 types of requests job can send:
-- `store` 
-- `create`
+- `store_state` 
+- `create_signals`
 
-`store` will request storing given state. This state is received on each run start in `state` object mentioned previously. `create` will request creating new signal set and signals.
-Example of a `store` request:
+`store_state` will request storing given state. This state is received on each run start in `state` object mentioned previously. `create_signals` will request creating new signal set and signals.
+Example of a `store_state` request:
  ```json
 {
   "id": 1,
-  "type": "store",
+  "type": "store_state",
   "state": {
     "index": "signal_set_2",
     "type": "_doc",
@@ -206,19 +206,19 @@ and received answer:
   "id": 1
 }
 ```
-Each request has `type`, either `store` or `create`, that determines requested action. If there is `id` present in the request it will be copied to the answer unless the JSON format was incorrect. If there is no `error` present, request succeeded. Otherwise `error` with error message will be present in the answer:
+Each request has `type`, either `store_state` or `create_signals`, that determines requested action. If there is `id` present in the request it will be copied to the answer unless the JSON format was incorrect. If there is no `error` present, request succeeded. Otherwise `error` with error message will be present in the answer:
 ```json
 {
   "id": 1,
   "error": "Request failed"
 }
 ```
-In the `store` request everything in `state` object will be stored.
+In the `store_state` request everything in `state` object will be stored.
 
-`create` request looks like this:
+`create_signals` request looks like this:
 ```json
 {
-  "type": "create",
+  "type": "create_signals",
   "signalSets": {
       "cid" : "created_set",
       "name" : "Example set" ,
@@ -253,7 +253,7 @@ and received answer:
 It is possible to request multiple signal sets at once:
 ```json
 {
-  "type": "create",
+  "type": "create_signals",
   "signalSets": [
     {
       "cid" : "created_set1",
@@ -291,7 +291,7 @@ answer:
 It is also possible to request creation of signals in an existing signal set:
 ```json
 {
-  "type": "create",
+  "type": "create_signals",
   "signals": {
     "existing_signal_set_cid": [
       {
