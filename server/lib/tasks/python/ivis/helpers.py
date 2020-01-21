@@ -45,13 +45,22 @@ class Ivis:
         os.write(3, (json.dumps(msg) + '\n').encode())
 
     @staticmethod
-    def create_signal_set(cid, namespace, name=None, description=None, record_id_template=None, signals=None):
-        if cid is None or namespace is None:
-            raise RequestException('cid and namespace can\'t be None')
-
+    def create_signals(signal_sets=None, signals=None):
         msg = {
             'type': 'create_signals',
         }
+
+        if signal_sets is not None:
+            msg['signalSets'] = signal_sets
+
+        if signals is not None:
+            msg['signals'] = signals
+
+        Ivis._send_request_message(msg)
+        return Ivis._get_response_message()
+
+    @staticmethod
+    def create_signal_set(cid, namespace, name=None, description=None, record_id_template=None, signals=None):
 
         signal_set = {
             "cid": cid,
@@ -67,17 +76,40 @@ class Ivis:
         if signals is not None:
             signal_set['signals'] = signals
 
-        msg['signalSets'] = signal_set
-
-        Ivis._send_request_message(msg)
-        return Ivis._get_response_message()
+        return Ivis.create_signals(signal_sets=signal_set)
 
     @staticmethod
-    def create_signal(self, cid, name, description,
-                      signal_type, source, indexed,
-                      settings, signal_set, namespace,
-                      weight_list, weight_edit, **extra_keys):
-        pass
+    def create_signal(signal_set_cid, cid, namespace, type, name=None, description=None, indexed=None, settings=None,
+                      weight_list=None, weight_edit=None, **extra_keys):
+
+        # built-in type is shadowed here because this way we are able to call create_signal(set_cid, **signal),
+        # where signal is dictionary with same structure as json that is accepted by REST API for signal creation
+
+        signal = {
+            "cid": cid,
+            "type": type,
+            "namespace": namespace,
+        }
+
+        if indexed is not None:
+            signal["indexed"] = indexed
+        if settings is not None:
+            signal["settings"] = settings
+        if weight_list is not None:
+            signal["weight_list"] = weight_list
+        if weight_edit is not None:
+            signal["weight_edit"] = weight_edit
+        if name is not None:
+            signal["name"] = name
+        if description is not None:
+            signal["description"] = description
+
+        signal.update(extra_keys)
+
+        signals = {
+            [signal_set_cid]: signal
+        }
+        return Ivis.create_signals(signals=signals)
 
     @staticmethod
     def store_state(state):
