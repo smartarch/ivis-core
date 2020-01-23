@@ -1,21 +1,10 @@
 import json
 import os
 import sys
-import select
 
 from .exceptions import *
 
 from elasticsearch import Elasticsearch
-
-
-def init():
-    """Initializes IVIS library"""
-    # Check input availability
-    r, w, e = select.select([sys.stdin], [], [], 5)
-    if r:
-        return Ivis()
-    else:
-        raise TimeoutException('No init data on standard input, ivis can\'t be initialized')
 
 
 class Ivis:
@@ -120,3 +109,6 @@ class Ivis:
 
         Ivis._send_request_message(msg)
         return Ivis._get_response_message()
+
+
+ivis = Ivis()
