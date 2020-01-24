@@ -1,0 +1,17 @@
+@import "../../scss/variables";
+
+.headingButtons {
+  float: right;
+
+  & > * {
+    margin-right: 15px;
+  }
+
+  & > *:last-child {
+    margin-right: 0px;
+  }
+}
+
+a.active {
+  color: $success;
+}

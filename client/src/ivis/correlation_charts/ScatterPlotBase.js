@@ -18,7 +18,7 @@ import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
 import * as d3Zoom from "d3-zoom";
 import {Button, CheckBox, Form, InputField, withForm} from "../../lib/form";
-import styles from "../TimeRangeSelector.scss";  // FIXME use own styles
+import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../../lib/bootstrap-components";
 
 const ConfigDifference = {
@@ -216,9 +216,10 @@ class ScatterPlotToolbar extends Component {
                         <ActionLink onClickAsync={async () => this.props.zoomInClick()}><Icon icon="search-plus" title={t('Zoom in')}/></ActionLink>
                         <ActionLink onClickAsync={async () => this.props.reloadDataClick()}><Icon icon="sync-alt" title={t('Reload data')}/></ActionLink>
                         {this.props.brushClick &&
-                        <ActionLink onClickAsync={async () => this.props.brushClick()}>
-                            {!this.props.brushInProgress && <Icon icon="edit" title={t('Select area')}/>}
-                            {this.props.brushInProgress && <Icon icon="pen-square" title={t('Cancel selection')}/>}
+                        <ActionLink onClickAsync={async () => this.props.brushClick()}
+                                    className={this.props.brushInProgress ? styles.active : ""}>
+                            <Icon icon="edit"
+                                  title={this.props.brushInProgress ? t('Cancel selection') : t('Select area')}/>
                         </ActionLink>}
                         <ActionLink onClickAsync={async () => this.props.resetLimitsClick()}><Icon icon="backspace" title={t('Reset zoom')}/></ActionLink>
                         {this.props.withSettings &&
@@ -268,6 +269,7 @@ export class ScatterPlotBase extends Component {
             selections: null,
             lastQueryWasWithRangeFilter: false,
             zoomTransform: d3Zoom.zoomIdentity,
+            zoomYScaleMultiplier: 1,
             zoomInProgress: false,
             brushInProgress: false,
             xMin: props.xMin,
@@ -412,9 +414,12 @@ export class ScatterPlotBase extends Component {
             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || prevState.brushInProgress !== this.state.brushInProgress
+                || prevState.zoomYScaleMultiplier !== this.state.zoomYScaleMultiplier
                 || configDiff !== ConfigDifference.NONE;
 
-            this.createChart(signalSetsData, forceRefresh, prevState.zoomTransform !== this.state.zoomTransform);
+            const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
+
+            this.createChart(signalSetsData, forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
         }
     }
@@ -524,7 +529,8 @@ export class ScatterPlotBase extends Component {
                 width
             });
         }
-        if (!forceRefresh && width === this.renderedWidth && !updateZoom) {
+        const widthChanged = width !== this.renderedWidth;
+        if (!forceRefresh && !widthChanged && !updateZoom) {
             return;
         }
         this.renderedWidth = width;
@@ -574,7 +580,7 @@ export class ScatterPlotBase extends Component {
             yExtent[0] = this.state.yMin;
         if (!isNaN(this.state.yMax))
             yExtent[1] = this.state.yMax;
-        const yScale = this.state.zoomTransform.rescaleY(d3Scale.scaleLinear()
+        const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
             .domain(yExtent)
             .range([ySize, 0]));
         this.yScale = yScale;
@@ -619,13 +625,13 @@ export class ScatterPlotBase extends Component {
         }
         //</editor-fold>
 
-        if (forceRefresh || width !== this.renderedWidth)
+        if (forceRefresh || widthChanged)
             this.regressions = [];
 
         let i = 0;
         for (const data of processedSetsData) {
             this.drawDots(data, xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
-            if (forceRefresh || width !== this.renderedWidth)
+            if (forceRefresh || widthChanged)
                 this.createRegressions(data, xExtent, SignalSetsConfigs[i]);
             i++;
         }
@@ -634,7 +640,7 @@ export class ScatterPlotBase extends Component {
         this.createChartCursor(xScale, yScale, sScale, processedSetsData);
 
         // we don't want to change brush and zoom when updating only zoom
-        if (forceRefresh || width !== this.renderedWidth) {
+        if (forceRefresh || widthChanged) {
             this.createChartBrush(xScale, yScale);
 
             //<editor-fold desc="Zoom">
@@ -662,10 +668,11 @@ export class ScatterPlotBase extends Component {
                 });
             };
 
-            const zoomExtent = [[this.props.margin.left, this.props.margin.top], [xSize, ySize]];
+            const zoomExtent = [[0, 0], [xSize, ySize]];
+            const translateExtent = [[0, 0], [xSize, ySize * this.state.zoomYScaleMultiplier]];
             this.zoom = d3Zoom.zoom()
                 .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
-                .translateExtent(zoomExtent)
+                .translateExtent(translateExtent)
                 .extent(zoomExtent)
                 .filter(() => {
                     return !d3Selection.event.ctrlKey && !d3Selection.event.button && !this.state.brushInProgress;
@@ -1017,19 +1024,42 @@ export class ScatterPlotBase extends Component {
         const self = this;
 
         if (this.props.withBrush && this.state.brushInProgress) {
+            const width = this.renderedWidth - this.props.margin.left - this.props.margin.right;
+            const height = this.props.height - this.props.margin.top - this.props.margin.bottom;
             const brush = d3Brush.brush()
-                .extent([[0, 0], [this.renderedWidth - this.props.margin.left - this.props.margin.right, this.props.height - this.props.margin.top - this.props.margin.bottom]])
+                .extent([[0, 0], [width, height]])
+                .on("start", function () {
+                    self.setState({
+                        zoomInProgress: true
+                    });
+                })
                 .on("end", function brushed() {
+                    self.setState({
+                        zoomInProgress: false
+                    });
                     const sel = d3Event.selection;
 
                     if (sel) {
-                        const xMin = xScale.invert(sel[0][0]);
-                        const xMax = xScale.invert(sel[1][0]);
-                        const yMin = yScale.invert(sel[1][1]);
-                        const yMax = yScale.invert(sel[0][1]);
+                        const selWidth = sel[1][0] - sel[0][0];
+                        const selHeight = sel[1][1] - sel[0][1];
 
-                        self.setLimits(xMin, xMax, yMin, yMax);
+                        const oldZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
+                        const scaleFactor = (height * selWidth) / (width * selHeight);
+                        const newZoomYScaleMultiplier =  scaleFactor * oldZoomYScaleMultiplier;
 
+                        const selTopLeftInverted = self.state.zoomTransform.invert(sel[0]);
+                        const transition = self.svgContainerSelection.transition().duration(1000);
+
+                        const transform = d3Zoom.zoomIdentity.scale(self.state.zoomTransform.k * width / selWidth).translate(-selTopLeftInverted[0], -selTopLeftInverted[1] * scaleFactor);
+                        transition.tween("yZoom", () => function (t) {
+                            self.setState({
+                                zoomYScaleMultiplier: oldZoomYScaleMultiplier * (1-t) + newZoomYScaleMultiplier * t
+                            });
+                        });
+
+                        transition.call(self.zoom.transform, transform);
+
+                        // hide brush
                         self.brushSelection.call(brush.move, null);
                         self.deselectPoints();
                         self.setState({
@@ -1065,7 +1095,8 @@ export class ScatterPlotBase extends Component {
     //<editor-fold desc="Toolbar">
     setDefaultLimits() {
         this.setLimits(this.props.xMin, this.props.xMax, this.props.yMin, this.props.yMax);
-        //this.resetZoom();
+
+        this.resetZoom();
     }
 
     setLimits(xMin, xMax, yMin, yMax) {
@@ -1093,9 +1124,22 @@ export class ScatterPlotBase extends Component {
     };
 
     resetZoom(withTransition = true) {
-        (withTransition ?
-            this.svgContainerSelection.transition() : this.svgContainerSelection)
-            .call(this.zoom.transform, d3Zoom.zoomIdentity);
+        if (withTransition) {
+            const self = this;
+            const transition = this.svgContainerSelection.transition().duration(1000)
+                .tween("yZoom", () => function (t) {
+                    self.setState({ // zoomYScaleMultiplier = 1
+                        zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1-t) + 1 * t
+                    });
+                });
+            transition.call(this.zoom.transform, d3Zoom.zoomIdentity);
+        }
+        else {
+            this.svgContainerSelection.call(this.zoom.transform, d3Zoom.zoomIdentity);
+            this.setState({
+                zoomYScaleMultiplier: 1
+            });
+        }
     }
 
     setLimitsToCurrentZoom() {
@@ -1166,7 +1210,7 @@ export class ScatterPlotBase extends Component {
                         <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                             <defs>
                                 <clipPath id="plotRect">
-                                    <rect x="0" y="0" width={this.renderedWidth} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
+                                    <rect x="0" y="0" width={this.state.width} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                                 </clipPath>
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
