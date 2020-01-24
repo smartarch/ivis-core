@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 export class AnimatedBase extends Component {
     static propTypes = {
         interpolationFunc: PropTypes.func,
-        animationKeyframeContext: PropTypes.object
+        keyframeContext: PropTypes.object
     };
 
     constructor(props) {
@@ -13,7 +13,6 @@ export class AnimatedBase extends Component {
 
         this.state = {
         };
-
     }
 
     interpolate(left, right, f, ratio) {
@@ -47,7 +46,12 @@ export class AnimatedBase extends Component {
         this.frameNum += 1;
     }
 
-    componentDidUpdate(prevProps, prevState) {
+    componentDidUpdate(prevProps) {
+        if (prevProps.keyframeContext.shiftKeyframes != this.props.keyframeContext.shiftKeyframes) {
+            this.props.keyframeContext.shiftKeyframes();
+        }
+
+
         console.log("PrevProps:", prevProps);
         console.log("currentProps", this.props);
     }

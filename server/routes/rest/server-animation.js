@@ -47,7 +47,7 @@ class AnimationTest {
             ver: 0,
             keyframeRefreshRate: 500,
             numOfFrames: 20,
-            status: animationStatus.STOPED,
+            playStatus: animationStatus.STOPED,
         };
 
         this.animationData = {
@@ -62,7 +62,7 @@ class AnimationTest {
     }
 
     play() {
-        switch (this.animationStatus.status) {
+        switch (this.animationStatus.playStatus) {
             case animationStatus.PAUSED:
                 {
                     const timeDiff = this.animationStatus.keyframeRefreshRate - (this.pausedTS.milliseconds() - this.lastUpdateTS.milliseconds());
@@ -80,13 +80,13 @@ class AnimationTest {
                 break;
         }
 
-        this.animationStatus.status = animationStatus.PLAYING;
+        this.animationStatus.playStatus = animationStatus.PLAYING;
         this.animationStatus.ver += 1;
     }
 
     pause() {
-        if (this.animationStatus.status === animationStatus.PLAYING) {
-            this.animationStatus.status = animationStatus.PAUSED;
+        if (this.animationStatus.playStatus === animationStatus.PLAYING) {
+            this.animationStatus.playStatus = animationStatus.PAUSED;
             this.animationStatus.ver += 1;
 
             this.pausedTS = moment();

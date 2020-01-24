@@ -43,15 +43,20 @@ export class ServerAnimationContext extends Component {
 
         //TODO: update context properly from function
         if (this.displayedKeyframe == -1) {
-            const newKeyframeContext = Object.assign(
-                {},
-                this.state.keyframeContext,
-                {
-                    shiftKeyframes: ::this.shiftKeyframes
-                }
-            );
 
-            this.setState({keyframeContext: newKeyframeContext});
+            this.setState((prevState) => {
+                const newKeyframeContext = Object.assign(
+                    {},
+                    prevState.keyframeContext,
+                    {shiftKeyframes: ::this.shiftKeyframes}
+                );
+
+                return Object.assign(
+                    {},
+                    prevState,
+                    {keyframeContext: newKeyframeContext}
+                );
+            });
         }
     }
 
@@ -71,16 +76,20 @@ export class ServerAnimationContext extends Component {
         const nextKeyframeNum =
             this.displayedKeyframe + 1;
 
-        const newKeyframeContext = {
-            status: this.state.keyframeContext.status,
-            shiftKeyframes: this.state.keyframeContext.shiftKeyframes,
-            currKeyframeNum: nextKeyframeNum,
-            currKeyframeData: this.data[nextKeyframeNum],
-            nextKeyframeData: this.data[nextKeyframeNum + 1]
-        };
-
         this.displayedKeyframe += 1;
-        this.setState({keyframeContext: newKeyframeContext});
+        this.setState((prevState) => {
+            const newKeyframeContext = Object.assign(
+                {},
+                prevState.keyframeContext,
+                {
+                    currKeyframeNum: nextKeyframeNum,
+                    currKeyframeData: this.data[nextKeyframeNum],
+                    nextKeyframeData: this.data[nextKeyframeNum + 1]
+                }
+            );
+
+            return Object.assign({}, prevState, {keyframeContext: newKeyframeContext});
+        });
     }
 
     stopIntervals() {
@@ -89,13 +98,11 @@ export class ServerAnimationContext extends Component {
     }
 
     componentDidUpdate(prevProps, prevState) {
-        console.log(prevState.status);
-        console.log(this.state.status.ver);
         if (prevState.status?.ver != this.state.status?.ver)
         {
-
             this.setState((prevState) => {
-                return prevState.keyframeContext.status = this.state.status;
+                const newkeyframeContext = Object.assign({}, prevState.keyframeContext, {status: prevState.status});
+                return Object.assign({}, prevState, { keyframeContext: newkeyframeContext});
             });
 
 //          For changing speed later

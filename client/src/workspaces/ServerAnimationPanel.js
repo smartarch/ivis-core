@@ -21,7 +21,7 @@ class SampleAnimation extends Component {
                             <AnimatedBase
                                 interpolationFunc={linear}
                                 fromPanel={this.props}
-                                animationKeyframeContext={value}
+                                keyframeContext={value}
                             />
                         }
                     </AnimationKeyframeContext.Consumer>
