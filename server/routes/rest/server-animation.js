@@ -11,39 +11,25 @@ const animationStatus = {
 }
 
 class AnimationTest {
-    constructor(settings) {
-        this.animationSett = {
-            id: 1,
-            numberOfKeyframes: 10,
-            msBetweenFrames: 500,
-        };
-
-        this.boundUpdateStatus = this._updateData.bind(this);
-
-        if (settings) {
-            Object.assign(this.animationSett, settings);
-        }
-
-        this._reset();
-    }
-
-    getInfo() {
-        return this.animationSett;
+    constructor() {
+        this._animationReset();
     }
 
     getStatus() {
-        return this.animData;
+        return this.animationStatus;
+    }
 
+    getData () {
+        return this.animationData;
     }
 
     _updateData() {
         const jump = 10;
 
-        this.animData.currentFrame = this.animData.nextFrame;
-        this.animData.nextFrame = {
-            order: this.animData.currentFrame.order + 1,
-            distance: this.animData.currentFrame.distance + jump
-        };
+        this.animationData.currKeyframeData = this.animationData.nextKeyframeData;
+        this.animationData.nextKeyframeData.distance =
+            this.animationData.currKeyframeData.distance + jump;
+        this.animationData.currKeyframeNum += 1;
 
         this.lastUpdateTS = moment();
     }
@@ -51,30 +37,35 @@ class AnimationTest {
     _setPlayInterval() {
         this.playInterval = setInterval(
             this._updateData.bind(this),
-            this.animationSett.msBetweenFrames
+            this.animationStatus.keyframeRefreshRate
         );
     }
 
-    _reset() {
+    _animationReset() {
         this.lastUpdateTS = null;
-        this.animData = {
+        this.animationStatus = {
+            ver: 0,
+            keyframeRefreshRate: 500,
+            numOfFrames: 20,
             status: animationStatus.STOPED,
-            currentFrame: {
-                order: 0,
+        };
+
+        this.animationData = {
+            currKeyframeNum: 0,
+            currKeyframeData: {
                 distance: 0
             },
-            nextFrame: {
-                order: 1,
+            nextKeyframeData: {
                 distance: 10
             }
-        }
+        };
     }
 
     play() {
-        switch (this.animData.status) {
+        switch (this.animationStatus.status) {
             case animationStatus.PAUSED:
                 {
-                    const timeDiff = this.animationSett.msBetweenFrames - (this.pausedTS.milliseconds() - this.lastUpdateTS.milliseconds());
+                    const timeDiff = this.animationStatus.keyframeRefreshRate - (this.pausedTS.milliseconds() - this.lastUpdateTS.milliseconds());
 
                     setTimeout(() => {
                         this._updateData();
@@ -89,12 +80,15 @@ class AnimationTest {
                 break;
         }
 
-        this.animData.status = animationStatus.PLAYING;
+        this.animationStatus.status = animationStatus.PLAYING;
+        this.animationStatus.ver += 1;
     }
 
     pause() {
-        if (this.animData.status === animationStatus.PLAYING) {
-            this.animData.status = animationStatus.PAUSED;
+        if (this.animationStatus.status === animationStatus.PLAYING) {
+            this.animationStatus.status = animationStatus.PAUSED;
+            this.animationStatus.ver += 1;
+
             this.pausedTS = moment();
             clearInterval(this.playInterval);
         }
@@ -102,18 +96,18 @@ class AnimationTest {
 
     stop() {
         clearInterval(this.playInterval);
-        this._reset();
+        this._animationReset();
     }
 }
 
 let currentAnimation = new AnimationTest();
 
-router.get('/animation/server/init', (req, res) => {
-    res.json(currentAnimation.getInfo());
+router.get('/animation/server/status', (req, res) => {
+    res.status(200).json(currentAnimation.getStatus());
 });
 
-router.get('/animation/server/status', (req, res) => {
-    res.json(currentAnimation.getStatus());
+router.get('/animation/server/data', (req, res) => {
+    res.status(200).json(currentAnimation.getData());
 });
 
 

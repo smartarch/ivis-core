@@ -1,12 +1,35 @@
-'use strict';
+"use strict";
 
 import React, {Component} from "react";
-import {Panel} from "../lib/panel";
-import {rgb} from "d3-color";
-import {ServerAnimationContext} from "../ivis/ServerAnimationContext.js";
+import {ServerAnimationContext, AnimationKeyframeContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
+import {AnimatedBase} from "../ivis/AnimatedBase";
+import {linear} from "../lib/animation-interpolations";
 
+class SampleAnimation extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        return (
+            <>
+                <ServerAnimationContext>
+                    <AnimationKeyframeContext.Consumer>
+                        {value =>
+                            <AnimatedBase
+                                interpolationFunc={linear}
+                                fromPanel={this.props}
+                                animationKeyframeContext={value}
+                            />
+                        }
+                    </AnimationKeyframeContext.Consumer>
+                </ServerAnimationContext>
+            </>
+        );
+    }
+}
 
 export default class SamplePanel extends Component {
     constructor(props) {
@@ -24,7 +47,7 @@ export default class SamplePanel extends Component {
                     template: 1
                 }}
                 params={panelParams}
-                content={ServerAnimationContext}
+                content={SampleAnimation}
             />
         );
     }
