@@ -4,12 +4,6 @@ const router = require('../../lib/router-async').create();
 const moment = require('moment');
 const log = require('../../lib/log');
 
-const animationStatus = {
-    STOPED: 0,
-    PLAYING: 1,
-    PAUSED: 2
-}
-
 class AnimationTest {
     constructor() {
         this._animationReset();
@@ -47,7 +41,7 @@ class AnimationTest {
             ver: 0,
             keyframeRefreshRate: 500,
             numOfFrames: 20,
-            playStatus: animationStatus.STOPED,
+            playStatus: "stoped",
         };
 
         this.animationData = {
@@ -63,7 +57,7 @@ class AnimationTest {
 
     play() {
         switch (this.animationStatus.playStatus) {
-            case animationStatus.PAUSED:
+            case "paused":
                 {
                     const timeDiff = this.animationStatus.keyframeRefreshRate - (this.pausedTS.milliseconds() - this.lastUpdateTS.milliseconds());
 
@@ -80,13 +74,16 @@ class AnimationTest {
                 break;
         }
 
-        this.animationStatus.playStatus = animationStatus.PLAYING;
-        this.animationStatus.ver += 1;
+        if (this.animationStatus.playStatus !== "playing") {
+            this.animationStatus.ver += 1;
+        }
+
+        this.animationStatus.playStatus = "playing";
     }
 
     pause() {
-        if (this.animationStatus.playStatus === animationStatus.PLAYING) {
-            this.animationStatus.playStatus = animationStatus.PAUSED;
+        if (this.animationStatus.playStatus === "playing") {
+            this.animationStatus.playStatus = "paused";
             this.animationStatus.ver += 1;
 
             this.pausedTS = moment();
@@ -94,7 +91,7 @@ class AnimationTest {
         }
     }
 
-    stop() {
+    reset() {
         clearInterval(this.playInterval);
         this._animationReset();
     }
@@ -122,7 +119,7 @@ router.post('/animation/server/pause', (req, res) => {
 });
 
 router.post('/animation/server/reset', (req, res) => {
-    currentAnimation.stop();
+    currentAnimation.reset();
     res.sendStatus(200);
 });
 

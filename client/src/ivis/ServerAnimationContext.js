@@ -37,13 +37,11 @@ export class ServerAnimationContext extends Component {
     async fetchData() {
         const res = await axios.get(getUrl("rest/animation/server/data"));
         if (this.data.length == 0) {
-            this.data.push(res.data.currKeyframeData);
+            this.data[res.data.currKeyframeNum] = (res.data.currKeyframeData);
         }
-        this.data.push(res.data.nextKeyframeData);
+        this.data[res.data.currKeyframeNum + 1] = (res.data.nextKeyframeData);
 
-        //TODO: update context properly from function
         if (this.displayedKeyframe == -1) {
-
             this.setState((prevState) => {
                 const newKeyframeContext = Object.assign(
                     {},
@@ -73,18 +71,15 @@ export class ServerAnimationContext extends Component {
     }
 
     shiftKeyframes() {
-        const nextKeyframeNum =
-            this.displayedKeyframe + 1;
-
         this.displayedKeyframe += 1;
         this.setState((prevState) => {
             const newKeyframeContext = Object.assign(
                 {},
                 prevState.keyframeContext,
                 {
-                    currKeyframeNum: nextKeyframeNum,
-                    currKeyframeData: this.data[nextKeyframeNum],
-                    nextKeyframeData: this.data[nextKeyframeNum + 1]
+                    currKeyframeNum: this.displayedKeyframe,
+                    currKeyframeData: this.data[this.displayedKeyframe],
+                    nextKeyframeData: this.data[this.displayedKeyframe + 1]
                 }
             );
 

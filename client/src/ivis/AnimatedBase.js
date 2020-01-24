@@ -13,6 +13,8 @@ export class AnimatedBase extends Component {
 
         this.state = {
         };
+
+        this.frameNum = 0;
     }
 
     interpolate(left, right, f, ratio) {
@@ -31,10 +33,10 @@ export class AnimatedBase extends Component {
     }
 
     refresh() {
-        const visDataCurr = this.context.currentKeyFrame.visualizationData;
-        const visDataNext = this.context.nextKeyFrame.visualizationData;
+        const visDataCurr = this.props.keyframeContext.currentKeyFrameData;
+        const visDataNext = this.props.keyframeContext.nextKeyFrameData;
 
-        const ratio = this.context.numberOfFramesPerKeyframe / this.frameNum;
+        const ratio = this.props.keyframeContext.numOfFrames / this.frameNum;
         const visualizationData = this.interpolate(
             visDataCurr,
             visDataNext,
@@ -43,12 +45,43 @@ export class AnimatedBase extends Component {
         );
 
         this.setState({visualizationData});
-        this.frameNum += 1;
+        if (this.frameNum == this.props.keyframeContext.status.numOfFrames) {
+            this.props.keyframeContext.shiftKeyframes();
+            this.frameNum = 0;
+        }
+        else {
+            this.frameNum += 1;
+        }
+    }
+
+    onPlayStatusChange(playStatus) {
+
+        switch (playStatus) {
+            case "playing":
+                this.refreshInterval = setInterval(
+                    ::this.refresh,
+                    this.props.keyframeContext.status.keyframeRefreshRate / this.props.keyframeContext.status.numOfFrames
+                );
+                break;
+            case "paused":
+            case "stoped":
+                clearInterval(this.refreshInterval);
+                break;
+            default:
+                break;
+        }
     }
 
     componentDidUpdate(prevProps) {
         if (prevProps.keyframeContext.shiftKeyframes != this.props.keyframeContext.shiftKeyframes) {
             this.props.keyframeContext.shiftKeyframes();
+        }
+
+        if(prevProps.keyframeContext.status?.playStatus != this.props.keyframeContext.status?.playStatus)
+        {
+            console.log("PlayStatus changed to:", this.props.keyframeContext.status.playStatus);
+            console.log("PlayStatus changed from:", prevProps.keyframeContext.status?.playStatus);
+            this.onPlayStatusChange(this.props.keyframeContext.status.playStatus);
         }
 
 
@@ -62,7 +95,10 @@ export class AnimatedBase extends Component {
     render() {
         return (
             <>
-                <Debug props={this.props} />
+                <Debug
+                    props={this.props}
+                    visData={this.state.visualizationData}
+                />
             </>
         );
     }
