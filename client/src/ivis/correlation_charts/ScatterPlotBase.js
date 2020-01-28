@@ -160,7 +160,7 @@ class ScatterPlotToolbar extends Component {
     }
 
     localValidateFormValues(state) {
-        this.validateNumber(state, "maxDotCount", "Maximum number of dots must be empty or a number.")
+        this.validateNumber(state, "maxDotCount", "Maximum number of dots must be empty or a number.");
         this.validateNumber(state, "xMin","X axis minimum must be empty or a number.");
         this.validateNumber(state, "xMax","Y axis maximum must be empty or a number.");
         this.validateNumber(state, "yMin","Y axis minimum must be empty or a number.");
@@ -263,6 +263,8 @@ export class ScatterPlotBase extends Component {
             this.createChart();
         };
         this.labels = {};
+        this.globalRegressions = [];
+        this.regressions = [];
 
         this.state = {
             signalSetsData: null, // data from last request
@@ -324,6 +326,7 @@ export class ScatterPlotBase extends Component {
         withRegressionCoefficients: PropTypes.bool,
         withToolbar: PropTypes.bool,
         withSettings: PropTypes.bool,
+        withAutoRefreshOnBrush: PropTypes.bool,
 
         xMin: PropTypes.number, // these will get copied to state in constructor, changing them later will not update them, use setLimits to update them
         xMax: PropTypes.number,
@@ -342,6 +345,7 @@ export class ScatterPlotBase extends Component {
         withRegressionCoefficients: true,
         withToolbar: true,
         withSettings: true,
+        withAutoRefreshOnBrush: true,
 
         xMin: NaN,
         xMax: NaN,
@@ -503,15 +507,35 @@ export class ScatterPlotBase extends Component {
                 const processedResults = this.processData(results);
 
                 if (!q.queryWithRangeFilter) { // zoomed completely out
-                    this.setState({
-                        globalSignalSetsData: processedResults
-                    });
+                    // update extents of axes
+                    this.yExtent = this.getExtent(processedResults, function (d) {  return d.y });
+                    this.yExtent = this.extentWithMargin(this.yExtent, 0.1);
+                    if (!isNaN(this.props.yMin)) this.yExtent[0] = this.props.yMin;
+                    if (!isNaN(this.props.yMax)) this.yExtent[1] = this.props.yMax;
+                    this.xExtent = this.getExtent(processedResults, function (d) {  return d.x });
+                    this.xExtent = this.extentWithMargin(this.xExtent, 0.1);
+                    if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
+                    if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
+                    this.sExtent = this.getExtent(processedResults, function (d) {  return d.s });
+                    if (this.props.hasOwnProperty("minDotRadiusValue"))
+                        this.sExtent[0] = this.props.minDotRadiusValue;
+                    if (this.props.hasOwnProperty("maxDotRadiusValue"))
+                        this.sExtent[1] = this.props.maxDotRadiusValue;
                 }
 
                 this.setState({
                     signalSetsData: processedResults
                 });
-                //this.resetZoom(false);
+
+                if (!q.queryWithRangeFilter) { // zoomed completely out
+                    this.setState({
+                        globalSignalSetsData: processedResults
+                    });
+                    this.globalRegressions = await this.createRegressions(processedResults, 0.3);
+                }
+
+                this.regressions = await this.createRegressions(processedResults);
+                this.createChart(true);
             }
         } catch (err) {
             throw err;
@@ -571,28 +595,16 @@ export class ScatterPlotBase extends Component {
 
         //<editor-fold desc="Scales">
         // y Scale
-        let yExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.y });
-        yExtent = this.extentWithMargin(yExtent, 0.1);
-        if (!isNaN(this.props.yMin))
-            yExtent[0] = this.props.yMin;
-        if (!isNaN(this.props.yMax))
-            yExtent[1] = this.props.yMax;
         const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
-            .domain(yExtent)
+            .domain(this.yExtent)
             .range([ySize, 0]));
         this.yScale = yScale;
         const yAxis = d3Axis.axisLeft(yScale);
         this.yAxisSelection.call(yAxis);
 
         // x Scale
-        let xExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.x });
-        xExtent = this.extentWithMargin(xExtent, 0.1);
-        if (!isNaN(this.props.xMin))
-            xExtent[0] = this.props.xMin;
-        if (!isNaN(this.props.xMax))
-            xExtent[1] = this.props.xMax;
         const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
-            .domain(xExtent)
+            .domain(this.xExtent)
             .range([0, xSize]));
         this.xScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale);
@@ -603,28 +615,16 @@ export class ScatterPlotBase extends Component {
         // s Scale (dot size)
         let sScale = undefined;
         if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
-            let sExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.s });
-            if (this.props.hasOwnProperty("minDotRadiusValue"))
-                sExtent[0] = this.props.minDotRadiusValue;
-            if (this.props.hasOwnProperty("maxDotRadiusValue"))
-                sExtent[1] = this.props.maxDotRadiusValue;
-
             sScale = d3Scale.scalePow()
                 .exponent(1/3)
-                .domain(sExtent)
+                .domain(this.sExtent)
                 .range([this.props.minDotRadius, this.props.maxDotRadius]);
         }
         //</editor-fold>
 
-        if (forceRefresh || widthChanged)
-            this.regressions = [];
-
         for (let i = 0; i < signalSetsData.length; i++) {
             const data = signalSetsData[i];
             this.drawDots(data, xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
-            if (forceRefresh || widthChanged)
-                this.createRegressions(data, xExtent, SignalSetsConfigs[i]);
-
             this.drawSquares(globalSignalSetsData[i], xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
         }
         this.drawRegressions(xScale, yScale);
@@ -808,11 +808,23 @@ export class ScatterPlotBase extends Component {
     }
 
     //<editor-fold desc="Regressions">
-    createRegressions(data, domain, SignalSetConfig) {
-        if (SignalSetConfig.hasOwnProperty("regressions"))
-            for (const regConfig of SignalSetConfig.regressions) {
-                this.createRegression(data, domain, regConfig, SignalSetConfig);
+    async createRegressions(signalSetsData, opacity = 1) {
+        let ret = [];
+        for (let i = 0; i < signalSetsData.length; i++) {
+            const data = signalSetsData[i];
+            const SignalSetConfig = this.props.config.signalSets[i];
+
+            if (SignalSetConfig.hasOwnProperty("regressions")) {
+                for (const regConfig of SignalSetConfig.regressions) {
+                    regConfig.color = d3Color.rgb(regConfig.color.r, regConfig.color.g, regConfig.color.b, opacity);
+
+                    const reg = this.createRegression(data, this.xExtent, regConfig, SignalSetConfig);
+                    if (reg !== undefined)
+                        ret.push(reg);
+                }
             }
+        }
+        return ret;
     }
 
     createRegression(data, domain, regressionConfig, SignalSetConfig) {
@@ -838,7 +850,8 @@ export class ScatterPlotBase extends Component {
                 break;
             case "power":
                 regression = d3Regression.regressionPow();
-                break;*/
+                break;
+            /**/
             case "loess":
                 regression = d3Regression.regressionLoess();
                 if (regressionConfig.bandwidth)
@@ -846,7 +859,7 @@ export class ScatterPlotBase extends Component {
                 break;
             default:
                 console.error("Regression type not supported: ", regressionConfig.type);
-                return;
+                return undefined;
         }
 
         regression.x(d => d.x)
@@ -854,17 +867,21 @@ export class ScatterPlotBase extends Component {
         if (typeof regression.domain === "function")
             regression.domain(domain);
 
-        this.regressions.push({
+        return {
             data: regression(data),
             color: regressionConfig.color,
             label: SignalSetConfig.label ? SignalSetConfig.label : SignalSetConfig.cid
-        });
+        };
     }
 
     drawRegressions(xScale, yScale) {
+        if (this.globalRegressions.length === 0 && this.regressions.length === 0)
+            return;
+
         const regressions = this.regressionsSelection
             .selectAll("path")
-            .data(this.regressions);
+            .data(d3Array.merge([this.globalRegressions, this.regressions]));
+
         const lineGenerator = d3Shape.line()
             .x(d => xScale(d[0]))
             .y(d => yScale(d[1]))
@@ -872,10 +889,10 @@ export class ScatterPlotBase extends Component {
 
         regressions.enter()
             .append('path')
-            .attr('stroke', d => d.color)
             .attr('stroke-width', "2px")
             .attr('fill', 'none')
             .merge(regressions)
+            .attr('stroke', d => d.color)
             .attr('d', d => lineGenerator(d.data));
 
         regressions.exit()
@@ -1031,12 +1048,17 @@ export class ScatterPlotBase extends Component {
                     const sel = d3Event.selection;
 
                     if (sel) {
-                        self.setZoomToLimits(
-                            self.xScale.invert(sel[0][0]),
-                            self.xScale.invert(sel[1][0]),
-                            self.yScale.invert(sel[1][1]),
-                            self.yScale.invert(sel[0][1])
-                        );
+                        const xMin = self.xScale.invert(sel[0][0]);
+                        const xMax = self.xScale.invert(sel[1][0]);
+                        const yMin = self.yScale.invert(sel[1][1]);
+                        const yMax = self.yScale.invert(sel[0][1]);
+                        self.setZoomToLimits(xMin, xMax, yMin, yMax);
+
+                        if (self.props.withAutoRefreshOnBrush) {
+                            // load new data for brushed region
+                            self.setState({xMin, xMax, yMin, yMax});
+                            self.reloadData();
+                        }
 
                         // hide brush
                         self.brushSelection.call(brush.move, null);
@@ -1107,8 +1129,6 @@ export class ScatterPlotBase extends Component {
     }
 
     setZoomToLimits(xMin, xMax, yMin, yMax) {
-        const self = this;
-
         const newXSize = xMax - xMin;
         const newYSize = yMax - yMin;
         const oldXSize = this.xScale.domain()[1] - this.xScale.domain()[0];

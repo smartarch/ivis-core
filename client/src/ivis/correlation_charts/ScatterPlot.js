@@ -49,6 +49,7 @@ export class ScatterPlot extends Component {
         withRegressionCoefficients: PropTypes.bool,
         withToolbar: PropTypes.bool,
         withSettings: PropTypes.bool,
+        withAutoRefreshOnBrush: PropTypes.bool,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
@@ -61,6 +62,7 @@ export class ScatterPlot extends Component {
         withTransition: true,
         withToolbar: true,
         withSettings: true,
+        withAutoRefreshOnBrush: true,
 
         zoomLevelMin: 1,
         zoomLevelMax: 4,
