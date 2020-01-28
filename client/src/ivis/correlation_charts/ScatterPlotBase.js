@@ -582,10 +582,7 @@ export class ScatterPlotBase extends Component {
             .range([ySize, 0]));
         this.yScale = yScale;
         const yAxis = d3Axis.axisLeft(yScale);
-        (this.props.withTransition ?
-            this.yAxisSelection.transition() :
-            this.yAxisSelection)
-            .call(yAxis);
+        this.yAxisSelection.call(yAxis);
 
         // x Scale
         let xExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.x });
@@ -599,10 +596,7 @@ export class ScatterPlotBase extends Component {
             .range([0, xSize]));
         this.xScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale);
-        (this.props.withTransition ?
-            this.xAxisSelection.transition() :
-            this.xAxisSelection)
-            .call(xAxis);
+        this.xAxisSelection.call(xAxis);
 
         const SignalSetsConfigs = this.props.config.signalSets;
 
@@ -643,10 +637,28 @@ export class ScatterPlotBase extends Component {
 
             //<editor-fold desc="Zoom">
             const handleZoom = function () {
-                //console.log(d3Event.transform);
-                self.setState({
-                    zoomTransform: d3Event.transform
-                });
+                if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                    const prevTransform = self.state.zoomTransform;
+                    const newTransform = d3Event.transform;
+                    const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
+                    const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
+                    const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
+
+                    select(self).transition().duration(150)
+                        .tween("yZoom", () => function (t) {
+                            self.setState({
+                                zoomTransform: d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t))
+                            });
+                        })
+                        .on("end", () => {
+                            self.deselectPoints();
+                        });
+                }
+                else {
+                    self.setState({
+                        zoomTransform: d3Event.transform
+                    });
+                }
             };
 
             const handleZoomEnd = function () {
@@ -755,26 +767,13 @@ export class ScatterPlotBase extends Component {
                 return d.x + " " + d.y;
             });
 
-        // duplicate code (attribute assignments) needed so animation doesn't start with all dots with x=y=0
-        let new_dots = function() {
-            dots.enter()
-                .append('circle')
-                .attr('cx', d => xScale(d.x))
-                .attr('cy', d => yScale(d.y))
-                .attr('r', d => constantRadius ? radius : sScale(d.s))
-                .attr('fill', color);
-        };
-
-        if (this.props.withTransition && dots.size() !== 0)
-            setTimeout(new_dots, 250, this);
-        else
-            new_dots(this);
-
-        (this.props.withTransition ?
-            dots.transition() : dots)
+        dots.enter()
+            .append('circle')
+            .merge(dots)
             .attr('cx', d => xScale(d.x))
             .attr('cy', d => yScale(d.y))
-            .attr('r', d => constantRadius ? radius : sScale(d.s));
+            .attr('r', d => constantRadius ? radius : sScale(d.s))
+            .attr('fill', color);
 
         dots.exit()
             .remove();
@@ -794,30 +793,15 @@ export class ScatterPlotBase extends Component {
                 return d.x + " " + d.y;
             });
 
-        // duplicate code (attribute assignments) needed so animation doesn't start with all dots with x=y=0
-        let new_squares = function() {
-            squares.enter()
-                .append('rect')
-                .attr('x', d => xScale(d.x) - s(d))
-                .attr('y', d => yScale(d.y) - s(d))
-                .attr('width', d => 2 * s(d))
-                .attr('height', d => 2 * s(d))
-                .attr('transform', d => `rotate(45, ${xScale(d.x)}, ${yScale(d.y)})`)
-                .attr('fill', color);
-        };
-
-        if (this.props.withTransition && squares.size() !== 0)
-            setTimeout(new_squares, 250, this);
-        else
-            new_squares(this);
-
-        (this.props.withTransition ?
-            squares.transition() : squares)
+        squares.enter()
+            .append('rect')
+            .merge(squares)
             .attr('x', d => xScale(d.x) - s(d))
             .attr('y', d => yScale(d.y) - s(d))
             .attr('width', d => 2 * s(d))
             .attr('height', d => 2 * s(d))
             .attr('transform', d => `rotate(45, ${xScale(d.x)}, ${yScale(d.y)})`)
+            .attr('fill', color);
 
         squares.exit()
             .remove();
@@ -886,22 +870,12 @@ export class ScatterPlotBase extends Component {
             .y(d => yScale(d[1]))
             .curve(d3Shape.curveBasis);
 
-        let new_lines = function() {
-            regressions.enter()
-                .append('path')
-                .attr('d', d => lineGenerator(d.data))
-                .attr('stroke', d => d.color)
-                .attr('stroke-width', "2px")
-                .attr('fill', 'none');
-        };
-
-        if (this.props.withTransition && regressions.size() !== 0)
-            setTimeout(new_lines, 250, this);
-        else
-            new_lines(this);
-
-        (this.props.withTransition ?
-            regressions.transition() : regressions)
+        regressions.enter()
+            .append('path')
+            .attr('stroke', d => d.color)
+            .attr('stroke-width', "2px")
+            .attr('fill', 'none')
+            .merge(regressions)
             .attr('d', d => lineGenerator(d.data));
 
         regressions.exit()
@@ -1122,23 +1096,8 @@ export class ScatterPlotBase extends Component {
         this.svgContainerSelection.transition().call(this.zoom.scaleBy, 1.0 / this.props.zoomLevelStepFactor);
     };
 
-    resetZoom(withTransition = true) {
-        if (withTransition) {
-            const self = this;
-            const transition = this.svgContainerSelection.transition().duration(1000)
-                .tween("yZoom", () => function (t) {
-                    self.setState({ // zoomYScaleMultiplier = 1
-                        zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1-t) + 1 * t
-                    });
-                });
-            transition.call(this.zoom.transform, d3Zoom.zoomIdentity);
-        }
-        else {
-            this.svgContainerSelection.call(this.zoom.transform, d3Zoom.zoomIdentity);
-            this.setState({
-                zoomYScaleMultiplier: 1
-            });
-        }
+    resetZoom() {
+        this.setZoom(d3Zoom.zoomIdentity, 1);
     }
 
     setLimitsToCurrentZoom() {
@@ -1160,16 +1119,28 @@ export class ScatterPlotBase extends Component {
         const newZoomYScaleMultiplier =  scaleFactor * oldZoomYScaleMultiplier;
 
         const selTopLeftInverted = this.state.zoomTransform.invert([this.xScale(xMin), this.yScale(yMax)]);
-        const transition = this.svgContainerSelection.transition().duration(1000);
-
         const transform = d3Zoom.zoomIdentity.scale(this.state.zoomTransform.k * oldXSize / newXSize).translate(-selTopLeftInverted[0], -selTopLeftInverted[1] * scaleFactor);
-        transition.tween("yZoom", () => function (t) {
-            self.setState({
-                zoomYScaleMultiplier: oldZoomYScaleMultiplier * (1-t) + newZoomYScaleMultiplier * t
-            });
-        });
 
-        transition.call(this.zoom.transform, transform);
+        this.setZoom(transform, newZoomYScaleMultiplier);
+    }
+
+    setZoom(transform, yScaleMultiplier) {
+        if (this.props.withTransition) {
+            const self = this;
+            const transition = this.svgContainerSelection.transition().duration(500)
+                .tween("yZoom", () => function (t) {
+                    self.setState({ // zoomYScaleMultiplier = 1
+                        zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1-t) + yScaleMultiplier * t
+                    });
+                });
+            transition.call(this.zoom.transform, transform);
+        }
+        else {
+            this.svgContainerSelection.call(this.zoom.transform, transform);
+            this.setState({
+                zoomYScaleMultiplier: yScaleMultiplier
+            });
+        }
     }
 
     reloadData() {
