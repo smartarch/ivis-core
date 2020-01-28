@@ -8,6 +8,9 @@ import * as d3Selection from "d3-selection";
 import * as d3Brush from "d3-brush";
 import * as d3Regression from "d3-regression";
 import * as d3Shape from "d3-shape";
+import * as d3Zoom from "d3-zoom";
+import * as d3Interpolate from "d3-interpolate";
+import * as d3Color from "d3-color";
 import {event as d3Event, select} from "d3-selection";
 import {intervalAccessMixin} from "../TimeContext";
 import {DataAccessSession} from "../DataAccess";
@@ -16,7 +19,6 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
-import * as d3Zoom from "d3-zoom";
 import {Button, CheckBox, Form, InputField, withForm} from "../../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../../lib/bootstrap-components";
@@ -124,7 +126,7 @@ class ScatterPlotToolbar extends Component {
     }
 
     static propTypes = {
-        resetLimitsClick: PropTypes.func.isRequired,
+        resetZoomClick: PropTypes.func.isRequired,
         zoomOutClick: PropTypes.func.isRequired,
         zoomInClick: PropTypes.func.isRequired,
         reloadDataClick: PropTypes.func.isRequired,
@@ -221,7 +223,7 @@ class ScatterPlotToolbar extends Component {
                             <Icon icon="edit"
                                   title={this.props.brushInProgress ? t('Cancel selection') : t('Select area')}/>
                         </ActionLink>}
-                        <ActionLink onClickAsync={async () => this.props.resetLimitsClick()}><Icon icon="backspace" title={t('Reset zoom')}/></ActionLink>
+                        <ActionLink onClickAsync={async () => this.props.resetZoomClick()}><Icon icon="backspace" title={t('Reset zoom')}/></ActionLink>
                         {this.props.withSettings &&
                         <ActionLink onClickAsync={async () => this.setState({opened: !this.state.opened})}><Icon icon="sliders-h" title={t('Open settings')}/></ActionLink>}
                     </div>
@@ -258,16 +260,16 @@ export class ScatterPlotBase extends Component {
         const t = props.t;
         this.dataAccessSession = new DataAccessSession();
         this.resizeListener = () => {
-            this.createChart(this.state.signalSetsData);
+            this.createChart();
         };
         this.labels = {};
 
         this.state = {
-            signalSetsData: null,
+            signalSetsData: null, // data from last request
+            globalSignalSetsData: null, // data from request without range filters (completely zoomed out)
             statusMsg: t('Loading...'),
             width: 0,
             selections: null,
-            lastQueryWasWithRangeFilter: false,
             zoomTransform: d3Zoom.zoomIdentity,
             zoomYScaleMultiplier: 1,
             zoomInProgress: false,
@@ -358,20 +360,17 @@ export class ScatterPlotBase extends Component {
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
-        this.createChart(null, false);
+        this.createChart(false);
         // noinspection JSIgnoredPromiseFromCall
         this.fetchData();
     }
 
     componentDidUpdate(prevProps, prevState) {
-        let signalSetsData = this.state.signalSetsData;
         const t = this.props.t;
 
         let configDiff = compareConfigs(this.props.config, prevProps.config);
 
         if (this.state.maxDotCount !== prevState.maxDotCount)
-            configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
-        if (this.state.lastQueryWasWithRangeFilter && Object.is(this.state.xMin , this.props.xMin) && Object.is(this.state.xMax, this.props.xMax) && Object.is(this.state.yMin, this.props.yMin) && Object.is(this.state.yMax, this.props.yMax)) // if last query was with range filter and the current one is not
             configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
 
         const considerTs =  this.props.config.signalSets.some(setConf => !!setConf.tsSigCid);
@@ -386,22 +385,13 @@ export class ScatterPlotBase extends Component {
             }
         }
 
-        const limitsChanged = !Object.is(prevState.xMin, this.state.xMin)
-                           || !Object.is(prevState.xMax, this.state.xMax)
-                           || !Object.is(prevState.yMin, this.state.yMin)
-                           || !Object.is(prevState.yMax, this.state.yMax);
-        if (limitsChanged || this.forceRefresh)
-            configDiff = Math.max(configDiff, ConfigDifference.DATA);
-
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR)
         {
             this.setState({
                 signalSetsData: null,
-                statusMsg: t('Loading...'),
-                lastQueryWasWithRangeFilter: false
+                globalSignalSetsData: null,
+                statusMsg: t('Loading...')
             });
-
-            signalSetsData = null;
 
             // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
@@ -413,13 +403,14 @@ export class ScatterPlotBase extends Component {
         else {
             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
+                || prevState.globalSignalSetsData !== this.state.globalSignalSetsData
                 || prevState.brushInProgress !== this.state.brushInProgress
                 || prevState.zoomYScaleMultiplier !== this.state.zoomYScaleMultiplier
                 || configDiff !== ConfigDifference.NONE;
 
             const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
 
-            this.createChart(signalSetsData, forceRefresh, updateZoom);
+            this.createChart(forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
         }
     }
@@ -432,6 +423,7 @@ export class ScatterPlotBase extends Component {
     getQueries() {
         const config = this.props.config;
         let queries = [];
+        let queryWithRangeFilter = false;
 
         for (const signalSet of config.signalSets) {
             let filter = {
@@ -481,9 +473,7 @@ export class ScatterPlotBase extends Component {
                     lte: this.state.yMax
                 });
             if (!Object.is(this.state.xMin, this.props.xMin) || !Object.is(this.state.xMax, this.props.xMax) || !Object.is(this.state.yMin, this.props.yMin) || !Object.is(this.state.yMax, this.props.yMax))
-                this.setState({lastQueryWasWithRangeFilter: true});
-            else
-                this.setState({lastQueryWasWithRangeFilter: false});
+                queryWithRangeFilter = true;
 
             let limit = undefined;
             if (this.state.maxDotCount >= 0) {
@@ -500,27 +490,37 @@ export class ScatterPlotBase extends Component {
             });
         }
 
-        return queries;
+        return { queries, queryWithRangeFilter };
     }
 
     @withAsyncErrorHandler
     async fetchData() {
-        this.forceRefresh = false;
         try {
-            const results = await this.dataAccessSession.getLatestMixed(this.getQueries());
+            const q = this.getQueries();
+            const results = await this.dataAccessSession.getLatestMixed(q.queries);
 
             if (results) { // Results is null if the results returned are not the latest ones
+                const processedResults = this.processData(results);
+
+                if (!q.queryWithRangeFilter) { // zoomed completely out
+                    this.setState({
+                        globalSignalSetsData: processedResults
+                    });
+                }
+
                 this.setState({
-                    signalSetsData: this.processData(results)
+                    signalSetsData: processedResults
                 });
-                this.resetZoom(false);
+                //this.resetZoom(false);
             }
         } catch (err) {
             throw err;
         }
     }
 
-    createChart(signalSetsData, forceRefresh, updateZoom) {
+    createChart(forceRefresh, updateZoom) {
+        const signalSetsData = this.state.signalSetsData;
+        const globalSignalSetsData = this.state.globalSignalSetsData;
         const self = this;
 
         const width = this.containerNode.getClientRects()[0].width;
@@ -535,7 +535,7 @@ export class ScatterPlotBase extends Component {
         }
         this.renderedWidth = width;
 
-        if (!signalSetsData) {
+        if (!signalSetsData || !globalSignalSetsData) {
             return;
         }
 
@@ -569,17 +569,14 @@ export class ScatterPlotBase extends Component {
         const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
         const xSize = width - this.props.margin.left - this.props.margin.right;
 
-        // data
-        const processedSetsData = this.filterData(signalSetsData);
-
         //<editor-fold desc="Scales">
         // y Scale
-        let yExtent = this.getExtent(processedSetsData, function (d) {  return d.y });
+        let yExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.y });
         yExtent = this.extentWithMargin(yExtent, 0.1);
-        if (!isNaN(this.state.yMin))
-            yExtent[0] = this.state.yMin;
-        if (!isNaN(this.state.yMax))
-            yExtent[1] = this.state.yMax;
+        if (!isNaN(this.props.yMin))
+            yExtent[0] = this.props.yMin;
+        if (!isNaN(this.props.yMax))
+            yExtent[1] = this.props.yMax;
         const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
             .domain(yExtent)
             .range([ySize, 0]));
@@ -591,12 +588,12 @@ export class ScatterPlotBase extends Component {
             .call(yAxis);
 
         // x Scale
-        let xExtent = this.getExtent(processedSetsData, function (d) {  return d.x });
+        let xExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.x });
         xExtent = this.extentWithMargin(xExtent, 0.1);
-        if (!isNaN(this.state.xMin))
-            xExtent[0] = this.state.xMin;
-        if (!isNaN(this.state.xMax))
-            xExtent[1] = this.state.xMax;
+        if (!isNaN(this.props.xMin))
+            xExtent[0] = this.props.xMin;
+        if (!isNaN(this.props.xMax))
+            xExtent[1] = this.props.xMax;
         const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
             .domain(xExtent)
             .range([0, xSize]));
@@ -612,7 +609,7 @@ export class ScatterPlotBase extends Component {
         // s Scale (dot size)
         let sScale = undefined;
         if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
-            let sExtent = this.getExtent(processedSetsData, function (d) {  return d.s });
+            let sExtent = this.getExtent(globalSignalSetsData, function (d) {  return d.s });
             if (this.props.hasOwnProperty("minDotRadiusValue"))
                 sExtent[0] = this.props.minDotRadiusValue;
             if (this.props.hasOwnProperty("maxDotRadiusValue"))
@@ -628,20 +625,21 @@ export class ScatterPlotBase extends Component {
         if (forceRefresh || widthChanged)
             this.regressions = [];
 
-        let i = 0;
-        for (const data of processedSetsData) {
+        for (let i = 0; i < signalSetsData.length; i++) {
+            const data = signalSetsData[i];
             this.drawDots(data, xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
             if (forceRefresh || widthChanged)
                 this.createRegressions(data, xExtent, SignalSetsConfigs[i]);
-            i++;
+
+            this.drawSquares(globalSignalSetsData[i], xScale, yScale, sScale,SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
         }
         this.drawRegressions(xScale, yScale);
 
-        this.createChartCursor(xScale, yScale, sScale, processedSetsData);
+        this.createChartCursor(xScale, yScale, sScale, signalSetsData);
 
         // we don't want to change brush and zoom when updating only zoom
         if (forceRefresh || widthChanged) {
-            this.createChartBrush(xScale, yScale);
+            this.createChartBrush();
 
             //<editor-fold desc="Zoom">
             const handleZoom = function () {
@@ -652,14 +650,11 @@ export class ScatterPlotBase extends Component {
             };
 
             const handleZoomEnd = function () {
-                /*if (!Object.is(self.state.zoomTransform, d3Zoom.zoomIdentity))
-                    self.setState({
-                        refreshRequired: true
-                    });*/
                 self.deselectPoints();
                 self.setState({
                     zoomInProgress: false
                 });
+                self.setLimitsToCurrentZoom();
             };
 
             const handleZoomStart = function () {
@@ -679,35 +674,14 @@ export class ScatterPlotBase extends Component {
                 })
                 .on("zoom", handleZoom)
                 .on("end", handleZoomEnd)
-                .on("start", handleZoomStart);
+                .on("start", handleZoomStart)
+                .interpolate(d3Interpolate.interpolate);
             this.svgContainerSelection.call(this.zoom);
             //</editor-fold>
         }
     }
 
     //<editor-fold desc="Data processing">
-    /** signalSetsData = [data], data = [{x,y}] */
-    filterData(signalSetsData) {
-        const state = this.state;
-        if (!isNaN(state.xMin) || !isNaN(state.xMax) || !isNaN(state.yMin) || !isNaN(state.yMax)) {
-            let ret = [];
-            for (const data of signalSetsData) {
-                let filteredData = [];
-                for (const d of data) {
-                    if ((isNaN(state.xMin) || d.x >= state.xMin) &&
-                        (isNaN(state.xMax) || d.x <= state.xMax) &&
-                        (isNaN(state.yMin) || d.y >= state.yMin) &&
-                        (isNaN(state.yMax) || d.y <= state.yMax)) {
-                        filteredData.push(d);
-                    }
-                }
-                ret.push(filteredData);
-            }
-            return ret;
-        } else
-            return signalSetsData;
-    }
-
     /**
      * renames data from all signalSets to be in format [{x,y}]
      */
@@ -803,6 +777,49 @@ export class ScatterPlotBase extends Component {
             .attr('r', d => constantRadius ? radius : sScale(d.s));
 
         dots.exit()
+            .remove();
+    }
+
+    /** data = [{ x, y, s? }] */
+    drawSquares(data, xScale, yScale, sScale, cidIndex, SignalSetConfig) {
+        const color = d3Color.rgb(SignalSetConfig.color.r, SignalSetConfig.color.g, SignalSetConfig.color.b, 0.5);
+        const size = (SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius) / Math.SQRT2;
+        const constantSize = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
+        const s = d => constantSize ? size : sScale(d.s);
+
+        // create dots on chart
+        const squares = this.squaresSelection[cidIndex]
+            .selectAll('rect')
+            .data(data, (d) => {
+                return d.x + " " + d.y;
+            });
+
+        // duplicate code (attribute assignments) needed so animation doesn't start with all dots with x=y=0
+        let new_squares = function() {
+            squares.enter()
+                .append('rect')
+                .attr('x', d => xScale(d.x) - s(d))
+                .attr('y', d => yScale(d.y) - s(d))
+                .attr('width', d => 2 * s(d))
+                .attr('height', d => 2 * s(d))
+                .attr('transform', d => `rotate(45, ${xScale(d.x)}, ${yScale(d.y)})`)
+                .attr('fill', color);
+        };
+
+        if (this.props.withTransition && squares.size() !== 0)
+            setTimeout(new_squares, 250, this);
+        else
+            new_squares(this);
+
+        (this.props.withTransition ?
+            squares.transition() : squares)
+            .attr('x', d => xScale(d.x) - s(d))
+            .attr('y', d => yScale(d.y) - s(d))
+            .attr('width', d => 2 * s(d))
+            .attr('height', d => 2 * s(d))
+            .attr('transform', d => `rotate(45, ${xScale(d.x)}, ${yScale(d.y)})`)
+
+        squares.exit()
             .remove();
     }
 
@@ -1020,7 +1037,7 @@ export class ScatterPlotBase extends Component {
         });
     }
 
-    createChartBrush(xScale, yScale) {
+    createChartBrush() {
         const self = this;
 
         if (this.props.withBrush && this.state.brushInProgress) {
@@ -1040,24 +1057,12 @@ export class ScatterPlotBase extends Component {
                     const sel = d3Event.selection;
 
                     if (sel) {
-                        const selWidth = sel[1][0] - sel[0][0];
-                        const selHeight = sel[1][1] - sel[0][1];
-
-                        const oldZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
-                        const scaleFactor = (height * selWidth) / (width * selHeight);
-                        const newZoomYScaleMultiplier =  scaleFactor * oldZoomYScaleMultiplier;
-
-                        const selTopLeftInverted = self.state.zoomTransform.invert(sel[0]);
-                        const transition = self.svgContainerSelection.transition().duration(1000);
-
-                        const transform = d3Zoom.zoomIdentity.scale(self.state.zoomTransform.k * width / selWidth).translate(-selTopLeftInverted[0], -selTopLeftInverted[1] * scaleFactor);
-                        transition.tween("yZoom", () => function (t) {
-                            self.setState({
-                                zoomYScaleMultiplier: oldZoomYScaleMultiplier * (1-t) + newZoomYScaleMultiplier * t
-                            });
-                        });
-
-                        transition.call(self.zoom.transform, transform);
+                        self.setZoomToLimits(
+                            self.xScale.invert(sel[0][0]),
+                            self.xScale.invert(sel[1][0]),
+                            self.yScale.invert(sel[1][1]),
+                            self.yScale.invert(sel[0][1])
+                        );
 
                         // hide brush
                         self.brushSelection.call(brush.move, null);
@@ -1095,17 +1100,11 @@ export class ScatterPlotBase extends Component {
     //<editor-fold desc="Toolbar">
     setDefaultLimits() {
         this.setLimits(this.props.xMin, this.props.xMax, this.props.yMin, this.props.yMax);
-
-        this.resetZoom();
     }
 
     setLimits(xMin, xMax, yMin, yMax) {
-        this.setState({
-            xMin: xMin,
-            xMax: xMax,
-            yMin: yMin,
-            yMax: yMax
-        });
+        this.setZoomToLimits(xMin, xMax, yMin, yMax);
+        // zoom.end event saves limits to state
     }
 
     setSettings(maxDotCount, withTooltip) {
@@ -1145,9 +1144,38 @@ export class ScatterPlotBase extends Component {
     setLimitsToCurrentZoom() {
         const [xMin, xMax] = this.xScale.domain();
         const [yMin, yMax] = this.yScale.domain();
-        this.setLimits(xMin, xMax, yMin, yMax);
-        this.forceRefresh = true;
-    };
+        this.setState({xMin, xMax, yMin, yMax});
+    }
+
+    setZoomToLimits(xMin, xMax, yMin, yMax) {
+        const self = this;
+
+        const newXSize = xMax - xMin;
+        const newYSize = yMax - yMin;
+        const oldXSize = this.xScale.domain()[1] - this.xScale.domain()[0];
+        const oldYSize = this.yScale.domain()[1] - this.yScale.domain()[0];
+
+        const oldZoomYScaleMultiplier = this.state.zoomYScaleMultiplier;
+        const scaleFactor = (oldYSize * newXSize) / (oldXSize * newYSize);
+        const newZoomYScaleMultiplier =  scaleFactor * oldZoomYScaleMultiplier;
+
+        const selTopLeftInverted = this.state.zoomTransform.invert([this.xScale(xMin), this.yScale(yMax)]);
+        const transition = this.svgContainerSelection.transition().duration(1000);
+
+        const transform = d3Zoom.zoomIdentity.scale(this.state.zoomTransform.k * oldXSize / newXSize).translate(-selTopLeftInverted[0], -selTopLeftInverted[1] * scaleFactor);
+        transition.tween("yZoom", () => function (t) {
+            self.setState({
+                zoomYScaleMultiplier: oldZoomYScaleMultiplier * (1-t) + newZoomYScaleMultiplier * t
+            });
+        });
+
+        transition.call(this.zoom.transform, transform);
+    }
+
+    reloadData() {
+        // noinspection JSIgnoredPromiseFromCall
+        this.fetchData();
+    }
 
     // toggle between brush and zoom, returns true if brush is enabled after call
     brushButtonClick() {
@@ -1183,13 +1211,19 @@ export class ScatterPlotBase extends Component {
                    ref={node => this.dotsSelection[signalSet.cid + "-" + i] = select(node)}/>
             );
 
+            this.squaresSelection = {};
+            const squaresSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
+                <g key={signalSet.cid + "-" + i}
+                   ref={node => this.squaresSelection[signalSet.cid + "-" + i] = select(node)}/>
+            );
+
             return (
                 <div>
                     {this.props.withToolbar &&
-                    <ScatterPlotToolbar resetLimitsClick={::this.setDefaultLimits}
+                    <ScatterPlotToolbar resetZoomClick={::this.resetZoom}
                                         zoomInClick={::this.zoomIn}
                                         zoomOutClick={::this.zoomOut}
-                                        reloadDataClick={::this.setLimitsToCurrentZoom}
+                                        reloadDataClick={::this.reloadData}
                                         brushClick={this.props.withBrush ? ::this.brushButtonClick : undefined}
                                         brushInProgress={this.state.brushInProgress}
 
@@ -1214,6 +1248,7 @@ export class ScatterPlotBase extends Component {
                                 </clipPath>
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                                <g name={"squares"}>{squaresSelectionGroups}</g>
                                 <g name={"dots"}>{dotsSelectionGroups}</g>
                                 <g name={"highlightDots"} visibility={this.state.zoomInProgress ? "hidden" : "visible"} >{dotsHighlightSelectionGroups}</g>
                                 <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
