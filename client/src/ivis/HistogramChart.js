@@ -5,7 +5,7 @@ import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
-import {select} from "d3-selection";
+import {event as d3Event, select} from "d3-selection";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
@@ -14,7 +14,9 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
-
+import * as d3Zoom from "d3-zoom";
+import * as d3Brush from "d3-brush";
+import styles from "./correlation_charts/CorrelationCharts.scss";
 
 const ConfigDifference = {
     NONE: 0,
@@ -44,7 +46,7 @@ class TooltipContent extends Component {
         config: PropTypes.object.isRequired,
         signalSetsData: PropTypes.object,
         selection: PropTypes.object
-    }
+    };
 
     render() {
         if (this.props.selection) {
@@ -68,7 +70,6 @@ class TooltipContent extends Component {
     }
 }
 
-
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
@@ -85,7 +86,8 @@ export class HistogramChart extends Component {
             signalSetsData: null,
             statusMsg: t('Loading...'),
             width: 0,
-            maxBucketCount: 0
+            maxBucketCount: 0,
+            zoomTransform: d3Zoom.zoomIdentity
         };
 
         this.resizeListener = () => {
@@ -94,25 +96,41 @@ export class HistogramChart extends Component {
     }
 
     static propTypes = {
-        config: PropTypes.object.isRequired,
+        config: PropTypes.shape({
+            sigSetCid: PropTypes.string.isRequired,
+            sigCid: PropTypes.string.isRequired,
+            color: PropTypes.object.isRequired,
+            tsSigCid: PropTypes.string
+        }).isRequired,
         height: PropTypes.number.isRequired,
+        overviewHeight: PropTypes.number,
+        overviewMargin: PropTypes.object,
         margin: PropTypes.object.isRequired,
-        withBrush: PropTypes.bool,
+
+        withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
+        withOverview: PropTypes.bool,
 
         minStep: PropTypes.number,
-        minBarWidth: PropTypes.number
-    }
+        minBarWidth: PropTypes.number,
+        bucketCount: PropTypes.number
+    };
 
     static defaultProps = {
         minBarWidth: 20,
-        withBrush: true,
-        withTooltip: true
-    }
+        bucketCount: undefined,
+
+        withCursor: true,
+        withTooltip: true,
+        withOverview: true,
+
+        overviewHeight: 100,
+        overviewMargin: { top: 20, bottom: 20 }
+    };
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
-        this.createChart(null, false);
+        this.createChart(null, false, false);
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -152,11 +170,13 @@ export class HistogramChart extends Component {
             this.fetchData();
 
         } else {
-            const forceRefresh = this.prevContainerNode !== this.containerNode
+             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || configDiff !== ConfigDifference.NONE;
 
-            this.createChart(signalSetsData, forceRefresh);
+            const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
+
+            this.createChart(signalSetsData, forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
         }
     }
@@ -167,7 +187,6 @@ export class HistogramChart extends Component {
 
     @withAsyncErrorHandler
     async fetchData() {
-        const t = this.props.t;
         const config = this.props.config;
 
         if (this.state.maxBucketCount > 0) {
@@ -193,6 +212,9 @@ export class HistogramChart extends Component {
                             buckets: results.buckets
                         }
                     });
+
+                    if (this.zoom)
+                        this.cursorAreaSelection.call(this.zoom.transform, d3Zoom.zoomIdentity); // reset zoom
                 }
             } catch (err) {
                 throw err;
@@ -200,10 +222,8 @@ export class HistogramChart extends Component {
         }
     }
 
-    createChart(signalSetsData, forceRefresh) {
+    createChart(signalSetsData, forceRefresh, updateZoom) {
         const t = this.props.t;
-        const self = this;
-
         const width = this.containerNode.getClientRects()[0].width;
 
         if (this.state.width !== width) {
@@ -215,7 +235,8 @@ export class HistogramChart extends Component {
             });
         }
 
-        if (!forceRefresh && width === this.renderedWidth) {
+        const widthChanged = width !== this.renderedWidth;
+        if (!forceRefresh && !widthChanged && !updateZoom) {
             return;
         }
         this.renderedWidth = width;
@@ -230,12 +251,16 @@ export class HistogramChart extends Component {
             this.statusMsgSelection.text(t('No data.'));
             this.cursorSelection.attr('visibility', 'hidden');
 
-            this.brushSelection
+            this.cursorAreaSelection
                 .on('mouseenter', null)
                 .on('mousemove', null)
                 .on('mouseleave', null);
 
+            this.brush = null;
+            this.zoom = null;
+
         } else {
+            //<editor-fold desc="Data processing">
             const xMin = signalSetsData.buckets[0].key;
             const xMax = signalSetsData.buckets[signalSetsData.buckets.length - 1].key + signalSetsData.step;
 
@@ -253,141 +278,249 @@ export class HistogramChart extends Component {
             for (const bucket of signalSetsData.buckets) {
                 bucket.prob = bucket.count / totalCount;
             }
+            //</editor-fold>
 
+            //<editor-fold desc="Scales">
             const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
-            const step = signalSetsData.step;
-            const stepHalf = step / 2;
-            const barColor = this.props.config.color;
-            const pointColor = barColor.darker();
+            const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
 
             const yScale = d3Scale.scaleLinear()
                 .domain([0, yMax])
                 .range([ySize, 0]);
-
-            const xScale = d3Scale.scaleLinear()
-                .domain([xMin, xMax])
-                .range([0, width - this.props.margin.left - this.props.margin.right]);
-
-            const xAxis = d3Axis.axisBottom(xScale)
-                .tickSizeOuter(0);
-
-            this.xAxisSelection.call(xAxis);
-
             const yAxis = d3Axis.axisLeft(yScale)
                 .tickFormat(yScale.tickFormat(10, "-%"));
-
             this.yAxisSelection.call(yAxis);
 
-            const barWidth = xScale(step) - xScale(0) - 1;
+            let xScale = d3Scale.scaleLinear()
+                .domain([xMin, xMax])
+                .range([0, width - this.props.margin.left - this.props.margin.right]);
+            xScale = this.state.zoomTransform.rescaleX(xScale);
+            const xAxis = d3Axis.axisBottom(xScale)
+                .tickSizeOuter(0);
+            this.xAxisSelection.call(xAxis);
+            //</editor-fold>
 
-            const bars = this.barsSelection
-                .selectAll('rect')
-                .data(signalSetsData.buckets);
+            this.drawBars(signalSetsData, this.barsSelection, xScale, yScale, ySize, this.props.config.color);
 
-            bars.enter()
-                .append('rect')
-                .merge(bars)
-                .attr('x', d => xScale(d.key))
-                .attr('y', d => yScale(d.prob))
-                .attr("width", barWidth)
-                .attr("height", d => ySize - yScale(d.prob))
-                .attr("fill", barColor);
-
-            bars.exit()
-                .remove();
-
-            if (this.props.withBrush) {
-                this.barPointSelection
-                    .selectAll('circle')
-                    .remove();
-
-                this.brushSelection
-                    .selectAll('rect')
-                    .remove();
-
-                this.brushSelection
-                    .append('rect')
-                    .attr('pointer-events', 'all')
-                    .attr('cursor', 'crosshair')
-                    .attr('x', 0)
-                    .attr('y', 0)
-                    .attr('width', width - this.props.margin.left - this.props.margin.right)
-                    .attr('height', this.props.height - this.props.margin.top - this.props.margin.bottom)
-                    .attr('visibility', 'hidden');
-
-                let selection, mousePosition;
-
-                const selectPoints = function () {
-                    const containerPos = d3Selection.mouse(self.containerNode);
-                    const x = containerPos[0] - self.props.margin.left;
-
-                    const key = xScale.invert(x);
-                    let newSelection = null;
-                    for (const bucket of signalSetsData.buckets) {
-                        if (bucket.key <= key) {
-                            newSelection = bucket;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if (selection !== newSelection) {
-                        self.barPointSelection
-                            .selectAll('circle')
-                            .remove();
-
-                        if (newSelection) {
-                            self.barPointSelection
-                                .append('circle')
-                                .attr('cx', xScale(newSelection.key + stepHalf))
-                                .attr('cy', yScale(newSelection.prob))
-                                .attr('r', 3)
-                                .attr('fill', pointColor);
-                        }
-                    }
-
-                    self.cursorSelection
-                        .attr('y1', self.props.margin.top)
-                        .attr('y2', self.props.height - self.props.margin.bottom)
-                        .attr('x1', containerPos[0])
-                        .attr('x2', containerPos[0])
-                        .attr('visibility', 'visible');
-
-                    selection = newSelection;
-                    mousePosition = {x: containerPos[0], y: containerPos[1]};
-
-                    self.setState({
-                        selection,
-                        mousePosition
-                    });
-                };
-
-                const deselectPoints = function () {
-                    self.cursorSelection.attr('visibility', 'hidden');
-
-                    if (selection) {
-                        self.barPointSelection
-                            .selectAll('circle')
-                            .remove();
-                    }
-
-                    selection = null;
-                    mousePosition = null;
-
-                    self.setState({
-                        selection,
-                        mousePosition
-                    });
-                };
-
-                this.brushSelection
-                    .on('mouseenter', selectPoints)
-                    .on('mousemove', selectPoints)
-                    .on('mouseleave', deselectPoints);
+            // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
+            if (forceRefresh || widthChanged) {
+                this.createChartCursorArea();
+                this.createChartZoom(xSize, ySize);
             }
-        }
 
+            this.createChartCursor(signalSetsData, xScale, yScale, ySize);
+
+            if (this.props.withOverview)
+                this.createChartOverview(signalSetsData, xMin, xMax, yMax);
+        }
     }
+
+    drawBars(signalSetsData, barsSelection, xScale, yScale, ySize, barColor) {
+        const step = signalSetsData.step;
+        const barWidth = xScale(step) - xScale(0) - 1;
+
+        const bars = barsSelection
+            .selectAll('rect')
+            .data(signalSetsData.buckets);
+
+        bars.enter()
+            .append('rect')
+            .merge(bars)
+            .attr('x', d => xScale(d.key))
+            .attr('y', d => yScale(d.prob))
+            .attr("width", barWidth)
+            .attr("height", d => ySize - yScale(d.prob))
+            .attr("fill", barColor);
+
+        bars.exit()
+            .remove();
+    }
+
+    createChartCursorArea() {
+        this.cursorAreaSelection
+            .selectAll('rect')
+            .remove();
+
+        this.cursorAreaSelection
+            .append('rect')
+            .attr('pointer-events', 'all')
+            .attr('cursor', 'crosshair')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', this.renderedWidth - this.props.margin.left - this.props.margin.right)
+            .attr('height', this.props.height - this.props.margin.top - this.props.margin.bottom)
+            .attr('visibility', 'hidden');
+    }
+
+    createChartCursor(signalSetsData, xScale, yScale, ySize) {
+        const self = this;
+        const pointColor = this.props.config.color.darker();
+
+        this.barsHighlightSelection
+            .selectAll('rect')
+            .remove();
+
+        let selection, mousePosition;
+
+        const selectPoints = function () {
+            const containerPos = d3Selection.mouse(self.containerNode);
+            const x = containerPos[0] - self.props.margin.left;
+
+            const key = xScale.invert(x);
+            let newSelection = null;
+            for (const bucket of signalSetsData.buckets) {
+                if (bucket.key <= key) {
+                    newSelection = bucket;
+                } else {
+                    break;
+                }
+            }
+
+            if (selection !== newSelection && (self.props.withCursor || self.props.withTooltip)) {
+                self.drawBars({
+                    buckets: [newSelection],
+                    step: signalSetsData.step
+                }, self.barsHighlightSelection, xScale, yScale, ySize, pointColor)
+            }
+
+            self.cursorSelection
+                .attr('y1', self.props.margin.top)
+                .attr('y2', self.props.height - self.props.margin.bottom)
+                .attr('x1', containerPos[0])
+                .attr('x2', containerPos[0])
+                .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
+
+            selection = newSelection;
+            mousePosition = {x: containerPos[0], y: containerPos[1]};
+
+            self.setState({
+                selection,
+                mousePosition
+            });
+        };
+
+        this.cursorAreaSelection
+            .on('mouseenter', selectPoints)
+            .on('mousemove', selectPoints)
+            .on('mouseleave', ::this.deselectPoints);
+    }
+
+    deselectPoints() {
+        this.cursorSelection.attr('visibility', 'hidden');
+
+        this.barsHighlightSelection
+            .selectAll('rect')
+            .remove();
+
+        this.setState({
+            selection: null,
+            mousePosition: null
+        });
+    }
+
+    createChartZoom(xSize, ySize) {
+        const self = this;
+
+        // zoom
+        const handleZoom = function () {
+            self.setState({
+                zoomTransform: d3Event.transform
+            });
+            if (self.brush)
+                self.overviewBrushSelection.call(self.brush.move, self.defaultBrush.map(d3Event.transform.invertX, d3Event.transform));
+        };
+
+        const handleZoomEnd = function () {
+            self.deselectPoints();
+            self.setState({
+                zoomInProgress: false
+            });
+        };
+        const handleZoomStart = function () {
+            self.setState({
+                zoomInProgress: true
+            });
+        };
+
+        const zoomExtent = [[0,0], [xSize, ySize]];
+        this.zoom = d3Zoom.zoom()
+            .scaleExtent([1, 4])
+            .translateExtent(zoomExtent)
+            .extent(zoomExtent)
+            .on("zoom", handleZoom)
+            .on("end", handleZoomEnd)
+            .on("start", handleZoomStart);
+        this.cursorAreaSelection.call(this.zoom);
+    }
+
+    createChartOverview(signalSetsData, xMin, xMax, yMax) {
+        //<editor-fold desc="Scales">
+        const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
+
+        const yScale = d3Scale.scaleLinear()
+            .domain([0, yMax])
+            .range([ySize, 0]);
+
+        let xScale = d3Scale.scaleLinear()
+            .domain([xMin, xMax])
+            .range([0, this.renderedWidth - this.props.margin.left - this.props.margin.right]);
+        const xAxis = d3Axis.axisBottom(xScale)
+            .tickSizeOuter(0);
+        this.overviewXAxisSelection.call(xAxis);
+        //</editor-fold>
+
+        this.drawBars(signalSetsData, this.overviewBarsSelection, xScale, yScale, ySize, this.props.config.color);
+
+        this.createChartOverviewBrush();
+    }
+
+    createChartOverviewBrush() {
+        const self = this;
+
+        const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
+        const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
+        this.defaultBrush = [0, xSize];
+        this.brush = d3Brush.brushX()
+            .extent([[0, 0], [xSize, ySize]])
+            .handleSize(20)
+            .on("brush end", function () {
+                const sel = d3Event.selection;
+                self.overviewBrushSelection.call(::self.brushHandle, sel);
+
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+                const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
+                self.cursorAreaSelection.call(self.zoom.transform, newTransform);
+            });
+
+        this.overviewBrushSelection
+            .attr('pointer-events', 'all')
+            .call(this.brush);
+        this.overviewBrushSelection.select(".selection")
+            .classed(styles.selection, true);
+        this.overviewBrushSelection.select(".overlay")
+            .attr('pointer-events', 'none');
+    }
+
+    brushHandle(group, selection) {
+        const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
+
+        group.selectAll(".handle--custom")
+            .data([{type: "w"}, {type: "e"}])
+            .join(
+                enter => enter.append("rect")
+                    .attr("class", d => `handle--custom handle--custom--${d.type}`)
+                    .attr("fill", "#434343")
+                    .attr("cursor", "ew-resize")
+                    .attr("x", "-5px")
+                    .attr("width", "10px")
+                    .attr("y", ySize / 4)
+                    .attr("height", ySize / 2)
+                    .attr("rx", "5px")
+            )
+            .attr("display", selection === null ? "none" : null)
+            .attr("transform", selection === null ? null : (d, i) => `translate(${selection[i]},0)`);
+    }
+
 
     render() {
         const config = this.props.config;
@@ -404,28 +537,49 @@ export class HistogramChart extends Component {
         } else {
 
             return (
-                <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
-                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
-                        <g ref={node => this.barsSelection = select(node)}/>
-                        <g ref={node => this.barPointSelection = select(node)}/>
-                    </g>
-                    <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
-                    <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                    <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>
-                    <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
-                    {this.props.withTooltip &&
-                    <Tooltip
-                        config={this.props.config}
-                        signalSetsData={this.state.signalSetsData}
-                        containerHeight={this.props.height}
-                        containerWidth={this.state.width}
-                        mousePosition={this.state.mousePosition}
-                        selection={this.state.selection}
-                        contentRender={props => <TooltipContent {...props}/>}
-                    />
-                    }
-                    <g ref={node => this.brushSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
-                </svg>
+                <div>
+                    <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                        <defs>
+                            <clipPath id="plotRect">
+                                <rect x="0" y="0" width={this.state.width} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
+                            </clipPath>
+                        </defs>
+                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                            <g ref={node => this.barsSelection = select(node)}/>
+                            <g ref={node => this.barsHighlightSelection = select(node)}/>
+                        </g>
+                        <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                        <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                        {!this.state.zoomInProgress &&
+                        <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>}
+                        <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
+                        {this.props.withTooltip && !this.state.zoomInProgress &&
+                        <Tooltip
+                            config={this.props.config}
+                            signalSetsData={this.state.signalSetsData}
+                            containerHeight={this.props.height}
+                            containerWidth={this.state.width}
+                            mousePosition={this.state.mousePosition}
+                            selection={this.state.selection}
+                            contentRender={props => <TooltipContent {...props}/>}
+                        />
+                        }
+                        <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                    </svg>
+                    {this.props.withOverview &&
+                    <svg id="overview" ref={node => this.overview = node} height={this.props.overviewHeight}
+                         width="100%">
+                        <g transform={`translate(${this.props.margin.left}, ${this.props.overviewMargin.top})`}>
+                            <g ref={node => this.overviewBarsSelection = select(node)}/>
+                        </g>
+                        <g ref={node => this.overviewXAxisSelection = select(node)}
+                           transform={`translate(${this.props.margin.left}, ${this.props.overviewHeight - this.props.overviewMargin.bottom})`}/>
+                        <g ref={node => this.overviewBrushSelection = select(node)}
+                           transform={`translate(${this.props.margin.left}, ${this.props.overviewMargin.top})`}
+                           className={styles.brush}/>
+                    </svg>}
+                </div>
+
             );
         }
     }
