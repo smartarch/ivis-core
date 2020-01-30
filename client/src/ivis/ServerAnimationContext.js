@@ -16,17 +16,21 @@ export class ServerAnimationContext extends Component {
         super(props);
 
         this.data = [];
-        this.displayedKeyframe = -1;
+        this.waitingForKeyframes = false;
         this.state = {
             status: {
                 ver: -1,
             },
-            keyframeContext: {}
+            keyframeContext: {
+                status: {},
+            },
+            lastFetchedKeyframe: -1,
         };
 
 
         // status refresh rate - later from props/server..
         this.refreshRate = 500;
+        this.keyframeBufferLength = 5;
     }
 
     async fetchStatus() {
@@ -36,25 +40,13 @@ export class ServerAnimationContext extends Component {
 
     async fetchData() {
         const res = await axios.get(getUrl("rest/animation/server/data"));
-        if (this.data.length == 0) {
-            this.data[res.data.currKeyframeNum] = (res.data.currKeyframeData);
-        }
-        this.data[res.data.currKeyframeNum + 1] = (res.data.nextKeyframeData);
-
-        if (this.displayedKeyframe == -1) {
-            this.setState((prevState) => {
-                const newKeyframeContext = Object.assign(
-                    {},
-                    prevState.keyframeContext,
-                    {shiftKeyframes: ::this.shiftKeyframes}
-                );
-
-                return Object.assign(
-                    {},
-                    prevState,
-                    {keyframeContext: newKeyframeContext}
-                );
-            });
+        console.log("Data fetch:", res.data);
+        if (Array.isArray(res.data)) {
+            this.data.push(...res.data);
+            this.setState({lastFetchedKeyframe: res.data[res.data.length - 1].currKeyframeNum});
+        } else {
+            this.data.push(res.data);
+            this.setState({lastFetchedKeyframe: res.data.currKeyframeNum});
         }
     }
 
@@ -71,19 +63,12 @@ export class ServerAnimationContext extends Component {
     }
 
     shiftKeyframes() {
-        this.displayedKeyframe += 1;
+        console.log("Keyframes shift", {currKeyframe: this.data[0]});
         this.setState((prevState) => {
-            const newKeyframeContext = Object.assign(
-                {},
-                prevState.keyframeContext,
-                {
-                    currKeyframeNum: this.displayedKeyframe,
-                    currKeyframeData: this.data[this.displayedKeyframe],
-                    nextKeyframeData: this.data[this.displayedKeyframe + 1]
-                }
-            );
+            const newKeyframeContext = Object.assign({}, prevState.keyframeContext, this.data.shift());
+            if (prevState.keyframeContext.shiftKeyframes === undefined) newKeyframeContext.shiftKeyframes = ::this.shiftKeyframes;
 
-            return Object.assign({}, prevState, {keyframeContext: newKeyframeContext});
+            return { keyframeContext: newKeyframeContext };
         });
     }
 
@@ -92,28 +77,56 @@ export class ServerAnimationContext extends Component {
         clearInterval(this.statusFetchInterval);
     }
 
+    mergeStatus(statusOverride) {
+        console.log("Merging status");
+        this.setState((prevState) => {
+            const newKeyframeContext = {...prevState.keyframeContext};
+            newKeyframeContext.status = Object.assign({}, prevState.status, statusOverride);
+
+            return { keyframeContext: newKeyframeContext};
+        });
+    }
+
+    async handleStop() {
+        clearInterval(this.dataFetchInterval);
+        this.data = [];
+        await this.fetchData();
+        this.mergeStatus();
+        this.shiftKeyframes();
+    }
+
     componentDidUpdate(prevProps, prevState) {
-        if (prevState.status?.ver != this.state.status?.ver)
-        {
-            this.setState((prevState) => {
-                const newkeyframeContext = Object.assign({}, prevState.keyframeContext, {status: prevState.status});
-                return Object.assign({}, prevState, { keyframeContext: newkeyframeContext});
-            });
+        if (this.waitingForKeyframes && this.state.lastFetchedKeyframe >= 1 + this.keyframeBufferLength + (this.state.keyframeContext.currKeyframe || -1)) {
+            this.waitingForKeyframes = false;
+            this.mergeStatus();
+        }
 
-//          For changing speed later
-//          if (prevState.status.keyframeRefreshRate != this.state.status.keyframeRefreshRate)
-//          {
-//              if (this.dataFetchInterval) clearInterval(this.dataFetchInterval);
-//              this.dataFetchInterval = setInterval(::this.fetchData, this.state.status.keyframeRefreshRate);
-//          }
+        if (prevState.status.playStatus != this.state.status.playStatus) {
+            console.log("PlayStatus from:", prevState.status.playStatus);
+            console.log("PlayStatus to:", this.state.status.playStatus);
 
-
+            switch(this.state.status.playStatus) {
+                case "playing":
+                    this.fetchData();
+                    this.dataFetchInterval = setInterval(::this.fetchData, this.state.status.keyframeRefreshRate);
+                    this.waitingForKeyframes = true;
+                    this.mergeStatus({playStatus: "buffering"});
+                    break;
+                case "paused":
+                    clearInterval(this.dataFetchInterval);
+                    this.mergeStatus();
+                    break;
+                case "stoped":
+                    this.handleStop();
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
     componentDidMount() {
         this.statusFetchInterval = setInterval(::this.fetchStatus, this.refreshRate);
-        this.fetchData();
     }
 
     componendDidUnmount() {
@@ -145,12 +158,16 @@ export class ServerAnimationContext extends Component {
 
         return (
             <>
-                <AnimationKeyframeContext.Provider value={this.state.keyframeContext} >
-                    <Debug
-                        state={this.state}
-                        funcs={functions}
-                    />
+                <Debug
+                    state={this.state}
+                    funcs={functions}
+                    misc={{
+                        waitingForKeyframes: this.waitingForKeyframes
+                    }}
+                    data={this.data}
+                />
 
+                <AnimationKeyframeContext.Provider value={this.state.keyframeContext} >
                     {this.props.children}
                 </AnimationKeyframeContext.Provider>
             </>

@@ -14,29 +14,33 @@ export class AnimatedBase extends Component {
         this.state = {
         };
 
-        this.frameNum = 0;
+        this.frameNum = -1;
     }
 
     interpolate(left, right, f, ratio) {
-        if (typeof left === "undefined" || typeof right === "undefined") {
+        if (left === undefined || right === undefined) {
             return 0;
         }
-        else if (typeof left === "object" && typeof right === "object") {
+
+        if (typeof left === "object" && typeof right === "object") {
             const ret = Object.assign({}, left, right);
 
             for(let key in ret) {
                 ret[key] = this.interpolate(left[key], right[key], f, ratio);
             }
+
+            return ret;
         }
 
         return f(left, right, ratio);
     }
 
     refresh() {
-        const visDataCurr = this.props.keyframeContext.currentKeyFrameData;
-        const visDataNext = this.props.keyframeContext.nextKeyFrameData;
+        console.log("Refreshing, frame:", this.frameNum );
+        const visDataCurr = this.props.keyframeContext.currKeyframeData;
+        const visDataNext = this.props.keyframeContext.nextKeyframeData;
 
-        const ratio = this.props.keyframeContext.numOfFrames / this.frameNum;
+        const ratio = this.frameNum / this.props.keyframeContext.status.numOfFrames;
         const visualizationData = this.interpolate(
             visDataCurr,
             visDataNext,
@@ -45,51 +49,49 @@ export class AnimatedBase extends Component {
         );
 
         this.setState({visualizationData});
-        if (this.frameNum == this.props.keyframeContext.status.numOfFrames) {
+        if (this.frameNum == this.props.keyframeContext.status.numOfFrames - 1) {
             this.props.keyframeContext.shiftKeyframes();
-            this.frameNum = 0;
         }
         else {
             this.frameNum += 1;
         }
     }
 
-    onPlayStatusChange(playStatus) {
-
-        switch (playStatus) {
-            case "playing":
-                this.refreshInterval = setInterval(
-                    ::this.refresh,
-                    this.props.keyframeContext.status.keyframeRefreshRate / this.props.keyframeContext.status.numOfFrames
-                );
-                break;
-            case "paused":
-            case "stoped":
-                clearInterval(this.refreshInterval);
-                break;
-            default:
-                break;
-        }
+    play() {
+        this.refresh();
+        this.refreshInterval = setInterval(
+            ::this.refresh,
+            this.props.keyframeContext.status.keyframeRefreshRate / this.props.keyframeContext.status.numOfFrames
+        );
     }
 
     componentDidUpdate(prevProps) {
-        if (prevProps.keyframeContext.shiftKeyframes != this.props.keyframeContext.shiftKeyframes) {
-            this.props.keyframeContext.shiftKeyframes();
-        }
-
         if(prevProps.keyframeContext.status?.playStatus != this.props.keyframeContext.status?.playStatus)
         {
-            console.log("PlayStatus changed to:", this.props.keyframeContext.status.playStatus);
-            console.log("PlayStatus changed from:", prevProps.keyframeContext.status?.playStatus);
-            this.onPlayStatusChange(this.props.keyframeContext.status.playStatus);
+            switch (this.props.keyframeContext.status.playStatus) {
+                case "playing":
+                    this.play();
+                    break;
+                case "paused":
+                case "stoped":
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                    break;
+                default:
+                    break;
+            }
         }
 
+        if (prevProps.keyframeContext.currKeyframeNum != this.props.keyframeContext.currKeyframeNum) {
+            console.log("Change of keyframes; before:", prevProps.keyframeContext.currKeyframeNum, "after:", this.props.keyframeContext.currKeyframeNum);
+            console.log("Time from last kf change:", (Date.now() - this.lastKeyframeChange) / 1000);
+            if (this.refreshInterval === null) {
+                this.refresh();
+            }
 
-        console.log("PrevProps:", prevProps);
-        console.log("currentProps", this.props);
-    }
-
-    componentDidMount() {
+            this.frameNum = 0;
+            this.lastKeyframeChange = Date.now();
+        }
     }
 
     render() {

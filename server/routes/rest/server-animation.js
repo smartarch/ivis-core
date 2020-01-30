@@ -17,20 +17,40 @@ class AnimationTest {
         return this.animationData;
     }
 
-    _updateData() {
-        const jump = 10;
+    _updateData(begin) {
+        const beginKeyframeNum = 3;
 
-        this.animationData.currKeyframeData = this.animationData.nextKeyframeData;
-        this.animationData.nextKeyframeData.distance =
-            this.animationData.currKeyframeData.distance + jump;
-        this.animationData.currKeyframeNum += 1;
+        if (begin) {
+            this.animationData = [];
+            for (let i = 0; i < beginKeyframeNum; i += 1) {
+                this.animationData.push(this._advanceOneKeyframe());
+            }
+        } else {
+            this.animationData = this._advanceOneKeyframe();
+        }
 
         this.lastUpdateTS = moment();
     }
 
+    _advanceOneKeyframe() {
+        const jump = 10;
+        const nextData = {
+            currKeyframeData: {},
+            nextKeyframeData: {},
+        };
+
+        this.currKeyframeNum += 1;
+
+        nextData.currKeyframeData.distance = this.currKeyframeNum * jump;
+        nextData.nextKeyframeData.distance = (this.currKeyframeNum + 1) * jump;
+        nextData.currKeyframeNum = this.currKeyframeNum;
+
+        return nextData;
+    }
+
     _setPlayInterval() {
         this.playInterval = setInterval(
-            this._updateData.bind(this),
+            this._updateData.bind(this, false),
             this.animationStatus.keyframeRefreshRate
         );
     }
@@ -39,8 +59,8 @@ class AnimationTest {
         this.lastUpdateTS = null;
         this.animationStatus = {
             ver: 0,
-            keyframeRefreshRate: 500,
-            numOfFrames: 20,
+            keyframeRefreshRate: 5000,
+            numOfFrames: 5,
             playStatus: "stoped",
         };
 
@@ -53,6 +73,7 @@ class AnimationTest {
                 distance: 10
             }
         };
+        this.currKeyframeNum = 0;
     }
 
     play() {
@@ -62,15 +83,18 @@ class AnimationTest {
                     const timeDiff = this.animationStatus.keyframeRefreshRate - (this.pausedTS.milliseconds() - this.lastUpdateTS.milliseconds());
 
                     setTimeout(() => {
-                        this._updateData();
+                        this._updateData(false);
                         this._setPlayInterval();
                     }, timeDiff);
 
                     this.pausedTS = null;
                     break;
                 }
-            default:
+            case "stoped":
+                this._updateData(true);
                 this._setPlayInterval();
+                break;
+            default:
                 break;
         }
 

@@ -25,7 +25,7 @@ export class Debug extends Component {
         else
             return (
                 <li key={key.toString()}>
-                    <b>{key.toString()}:</b> {prop[key]}
+                    <b>{key.toString()}:</b> {prop[key] === undefined ? "undefined" : prop[key].toString()}
                 </li>
             );
     }
@@ -50,20 +50,22 @@ export class Debug extends Component {
             </>
         );
 
+        const propsToPrint = {...this.props};
+        delete propsToPrint.funcs;
 
         return (
             <div>
                 <h2> Debug </h2>
+                { this.props.funcs && functionsDisplay }
                 <ul>
                     <li>
                         <h3> Props </h3>
 
                         <ol>
-                            {this.stringifyProps(this.props)}
+                            {this.stringifyProps(propsToPrint)}
                         </ol>
                     </li>
                 </ul>
-                { this.props.funcs && functionsDisplay }
             </div>
         );
     }
