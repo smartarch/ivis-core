@@ -40,19 +40,6 @@ const checkInterval = config.tasks.checkInterval * 1000;
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
 
-const numpyHandler = {
-    ...pythonHandler,
-    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail)
-};
-
-const energyHandler = {
-    ...pythonHandler,
-    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.ENERGY_PLUS, id, code, destDir, onSuccess, onFail)
-};
-
-handlers.set(TaskType.NUMPY, numpyHandler);
-handlers.set(TaskType.ENERGY_PLUS, energyHandler);
-
 const events = require('events');
 const emitter = new events.EventEmitter();
 
@@ -637,9 +624,11 @@ async function handleBuild(workEntry) {
             await setState(id, BuildState.PROCESSING);
 
             await handler.build(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onBuildFail(id, warnings, errors));
         } catch (err) {
@@ -679,10 +668,15 @@ async function handleInit(workEntry) {
     } else {
         try {
             await setState(id, BuildState.INITIALIZING);
+            const task = await knex.table('tasks').where('id', id).first();
+            const subtype = JSON.parse(task.settings).subtype;
             await handler.init(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id: id,
+                    subtype: subtype,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onInitFail(id, warnings, errors));
         } catch (err) {

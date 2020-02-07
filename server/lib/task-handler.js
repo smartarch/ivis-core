@@ -15,7 +15,7 @@ const config = require("./config");
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
 const {BuildState, getTransitionStates} = require('../../shared/tasks');
-
+const builtinTasksList= require('../models/builtin-tasks').list;
 
 const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'services', 'task-handler.js'));
 
@@ -50,7 +50,19 @@ async function init() {
     log.info(LOG_ID, 'Spawning job handler process');
 
     await initIndices();
+    /*
+        await knex.transaction(async tx => {
+            const tasks = await tx('tasks').whereIn('type', ['energy_plus', 'numpy']);
 
+            for (let task of tasks) {
+                task.settings = JSON.parse(task.settings);
+                task.settings.subtype = task.type;
+                task.settings = JSON.stringify(task.settings);
+                task.type = 'python';
+                await tx('tasks').where('id', task.id).update(task);
+            }
+        });
+    */
     try {
         await cleanRuns();
     } catch (err) {
@@ -59,6 +71,12 @@ async function init() {
 
     try {
         await cleanBuilds();
+    } catch (err) {
+        log.error(LOG_ID, err);
+    }
+
+    try {
+        await initBuiltin();
     } catch (err) {
         log.error(LOG_ID, err);
     }
@@ -173,6 +191,10 @@ async function initIndices() {
         }
     }
 
+}
+
+async function initBuiltin(){
+    const builtins = builtinTasksList() ;
 }
 
 /**

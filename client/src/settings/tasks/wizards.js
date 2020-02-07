@@ -1,5 +1,5 @@
 'use strict';
-import {TaskType} from "../../../../shared/tasks";
+import {TaskType, subtypesByType} from "../../../../shared/tasks";
 
 const WizardType = {
     BLANK: 'blank',
@@ -856,7 +856,7 @@ function modelComparisonFn(data) {
                 ]
             }
         ],
-        code:` 
+        code: ` 
 import sys
 import os
 import json
@@ -1014,29 +1014,58 @@ const modelComparison = {
     wizard: modelComparisonFn
 };
 
-const wizards = {};
+const wizardSpecs = {};
 
-wizards[TaskType.PYTHON] = {
+const defaultPythonWizards = {
     [WizardType.BLANK]: blank,
     [WizardType.BASIC]: apiShowcase,
     [WizardType.MOVING_AVERAGE]: movingAvarage,
     [WizardType.AGGREGATION]: aggregation
 };
-wizards[TaskType.NUMPY] = {
-    ...wizards[TaskType.PYTHON],
-    [WizardType.MODEL_COMPARISON]: modelComparison
+
+const numpyWizardSpecs = {
+    wizards: {
+        ...defaultPythonWizards,
+        [WizardType.MODEL_COMPARISON]: modelComparison
+    }
 };
-wizards[TaskType.ENERGY_PLUS] = {
-    ...wizards[TaskType.PYTHON],
-    [WizardType.ENERGY_PLUS]: energyPlus
+
+const energyPlusWizardSpecs = {
+    wizards: {
+        ...defaultPythonWizards,
+        [WizardType.ENERGY_PLUS]: energyPlus
+    }
+};
+
+wizardSpecs[TaskType.PYTHON] = {
+    wizards: defaultPythonWizards,
+    subtypes: {
+        [subtypesByType[TaskType.PYTHON].ENERGY_PLUS]: numpyWizardSpecs,
+        [subtypesByType[TaskType.PYTHON].NUMPY]: energyPlusWizardSpecs,
+
+    }
 };
 
 if (Object.freeze) {
-    Object.freeze(wizards);
+    Object.freeze(wizardSpecs);
 }
 
-function getWizardsForType(taskType) {
-    return wizards[taskType] ? wizards[taskType] : null;
+function getWizardsForType(taskType, subtype = null) {
+    const specsForType = wizardSpecs[taskType];
+
+    if (!specsForType) {
+        return null;
+    }
+
+    if (subtype) {
+        if (!specsForType.subtypes){
+           return null;
+        }
+
+        return specsForType.subtypes[subtype] ? specsForType.subtypes[subtype].wizards : null;
+    } else {
+        return specsForType.wizards;
+    }
 }
 
 function getWizard(taskType, wizardType) {

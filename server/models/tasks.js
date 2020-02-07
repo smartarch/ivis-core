@@ -7,7 +7,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {BuildState, TaskType} = require('../../shared/tasks');
+const {BuildState, TaskType, subtypesByType} = require('../../shared/tasks');
 const {JobState} = require('../../shared/jobs');
 const fs = require('fs-extra-promise');
 const taskHandler = require('../lib/task-handler');
@@ -16,11 +16,10 @@ const dependencyHelpers = require('../lib/dependency-helpers');
 
 const allowedKeys = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 
-
-
 function hash(entity) {
     return hasher.hash(filterObject(entity, allowedKeys));
 }
+
 
 /**
  * Returns task.
@@ -62,9 +61,15 @@ async function create(context, task) {
 
         enforce(Object.values(TaskType).includes(task.type), 'Unknown task type');
 
+        // Settings check
+        if (task.settings.subtype) {
+            enforce(Object.values(subtypesByType[TaskType.PYTHON]).includes(task.settings.subtype), `Unknown ${task.type} type's subtype`);
+        }
+
         const filteredEntity = filterObject(task, allowedKeys);
         filteredEntity.settings = JSON.stringify(filteredEntity.settings);
         filteredEntity.build_state = BuildState.SCHEDULED;
+        filteredEntity.source = 'user';
 
         const ids = await tx('tasks').insert(filteredEntity);
         const id = ids[0];
@@ -85,7 +90,7 @@ async function create(context, task) {
  * @param taskId the primary key of the task
  * @returns {Promise<void>}
  */
-async function invalidateJobs(tx,taskId){
+async function invalidateJobs(tx, taskId) {
     await tx('jobs').where('task', taskId).update('state', JobState.INVALID_PARAMS);
 }
 
@@ -119,7 +124,7 @@ async function updateWithConsistencyCheck(context, task) {
         const filteredEntity = filterObject(task, allowedKeys);
         filteredEntity.settings = JSON.stringify(filteredEntity.settings);
 
-        if(hasher.hash(task.settings.params) !== hasher.hash(existing.settings.params)){
+        if (hasher.hash(task.settings.params) !== hasher.hash(existing.settings.params)) {
             await invalidateJobs(tx, task.id);
         }
 
@@ -209,7 +214,7 @@ async function compile(context, id) {
         await shares.enforceEntityPermissionTx(tx, context, 'task', id, 'edit');
 
         task = await tx('tasks').where('id', id).first();
-        if(!task){
+        if (!task) {
             throw new Error(`Task not found`);
         }
 

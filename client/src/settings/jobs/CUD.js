@@ -35,6 +35,14 @@ import axios from "axios";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {anyBuiltinTemplate, getBuiltinTemplateName, getBuiltinTemplates} from "../../lib/builtin-templates";
+
+import {
+    getBuiltinTasks,
+    getBuiltinTaskName,
+    anyBuiltinTask,
+    getBuiltinTask
+} from "../../lib/builtin-tasks";
 
 const SETS_PREFIX = 'sets_';
 
@@ -395,6 +403,16 @@ export default class CUD extends Component {
         const configSpec = this.getFormValue('taskParams');
         const params = configSpec ? this.paramTypes.render(configSpec, this) : null;
 
+        const taskSourceOptions = [
+            {key: 'user', label: t('User-defined task')},
+            {key: 'builtin', label: t('Built-in task')},
+        ];
+
+        const builtinTaskOptions = [];
+        for (const key in getBuiltinTask()) {
+            builtinTaskOptions.push({key, label: getBuiltinTaskName(key, t)});
+        }
+
         return (
             <Panel title={isEdit ? t('Job Settings') : t('Create Job')}>
                 {canDelete &&
@@ -411,6 +429,19 @@ export default class CUD extends Component {
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
+
+
+                    {anyBuiltinTask() &&
+                        <Dropdown id="taskSource" label={t('Task source')} options={taskSourceOptions}/>
+                    }
+
+                    {//this.getFormValue('taskSource') === 'user' ?
+                        <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
+                                     columns={taskColumns} selectionLabelIndex={1} disabled={isEdit}/>
+                        //:
+                        //<Dropdown id="builtin_task" label={t('Task')} options={builtinTaskOptions}/>
+                    }
+
                     <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
                                  columns={taskColumns} selectionLabelIndex={1} disabled={isEdit}/>
 

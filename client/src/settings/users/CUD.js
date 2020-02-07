@@ -118,6 +118,12 @@ export default class CUD extends Component {
             state.setIn(['name', 'error'], null);
         }
 
+        const role = state.getIn(['role', 'value']);
+        if (!role) {
+            state.setIn(['role', 'error'], t('Role must be specified'));
+        } else {
+            state.setIn(['role', 'error'], null);
+        }
 
         const password = state.getIn(['password', 'value']) || '';
         const password2 = state.getIn(['password2', 'value']) || '';
