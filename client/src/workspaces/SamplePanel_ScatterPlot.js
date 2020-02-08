@@ -96,11 +96,13 @@ class TestScatterPlot extends Component {
                 <TimeRangeSelector/>
                 <Legend label="Sensors" configPath={['sensors']} withSelector structure={sensorsStructure} withConfigurator configSpec={sensorsConfigSpec}/>
                 <ScatterPlot config={cnf}
-                             height={400} width={400}
+                             height={400}
                              margin={{ left: 40, right: 5, top: 5, bottom: 40 }}
-                             maxDotCount={5}
-                             withBrush={false}
-                             withTransition={false}
+                             withBrush={true}
+                             withSettings={true}
+                             xMin={0}
+                             yMin={0}
+                             withAutoRefreshOnBrush={true}
                              />
             </TimeContext>
         );
