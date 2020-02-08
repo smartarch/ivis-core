@@ -115,14 +115,14 @@ export class HistogramChart extends Component {
 
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
-        bucketCount: PropTypes.number,
+        maxBucketCount: PropTypes.number,
         xMin: PropTypes.number,
         xMax: PropTypes.number
     };
 
     static defaultProps = {
         minBarWidth: 20,
-        bucketCount: undefined,
+        maxBucketCount: undefined,
         xMin: NaN,
         xMax: NaN,
 
@@ -197,9 +197,9 @@ export class HistogramChart extends Component {
     async fetchData() {
         const config = this.props.config;
 
-        const bucketCount = this.props.bucketCount || this.state.maxBucketCount;
+        let maxBucketCount = this.props.maxBucketCount || this.state.maxBucketCount;
         let minStep = this.props.minStep;
-        if (bucketCount > 0) {
+        if (maxBucketCount > 0) {
             try {
                 let filter = {
                     type: 'and',
@@ -229,21 +229,15 @@ export class HistogramChart extends Component {
                     });
 
                 // filter by current zoom
-                if (this.state.zoomTransform !== d3Zoom.zoomIdentity && this.state.signalSetsData !== null && this.state.signalSetsData.buckets && this.state.signalSetsData.buckets.length > 0) {
-                    let [min, max] = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
-                        .domain(this.xExtent)
-                        .range([0, this.renderedWidth - this.props.margin.left - this.props.margin.right])).domain();
-                    filter.children.push({
-                        type: 'range',
-                        sigCid: config.sigCid,
-                        gte: min,
-                        lte: max
-                    });
-                    minStep = (max - min) / bucketCount;
+                if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) {
+                    const scale = this.state.zoomTransform.k;
+                    if (minStep !== undefined)
+                        minStep = Math.floor(minStep / scale);
+                    maxBucketCount = Math.ceil(maxBucketCount * scale);
                     queryWithRangeFilter = true;
                 }
 
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], bucketCount, minStep, filter);
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], maxBucketCount, minStep, filter);
 
                 if (results) { // Results is null if the results returned are not the latest ones
                     const processedResults = this.processData(results);

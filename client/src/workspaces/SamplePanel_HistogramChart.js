@@ -15,8 +15,6 @@ class TestHistogramChart extends Component {
     }
 
     render() {
-        const t = this.props.t;
-
         const cnf = {
             sigSetCid: "top:histogram",
             sigCid: "x_val",
@@ -27,18 +25,17 @@ class TestHistogramChart extends Component {
         return (
             <TimeContext initialIntervalSpec={new IntervalSpec("now-5y", "now", null, null)}>
                 <TimeRangeSelector/>
-                    <HistogramChart
-                        config={cnf}
-                        height={400}
-                        margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
-                        xMin={200}
-                    />
+                <HistogramChart
+                    config={cnf}
+                    height={400}
+                    margin={{left: 40, right: 5, top: 5, bottom: 20}}
+                    xMin={200}
+                />
                 {/*bucketCount={10}*/}
             </TimeContext>
         );
     }
 }
-
 
 export default class SamplePanel_HistogramChart extends Component {
     constructor(props) {
