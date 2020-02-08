@@ -31,6 +31,7 @@ class TestHistogramChart extends Component {
                         config={cnf}
                         height={400}
                         margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
+                        xMin={200}
                     />
                 {/*bucketCount={10}*/}
             </TimeContext>

@@ -17,6 +17,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
+import {isInExtent} from "./common";
 
 const ConfigDifference = {
     NONE: 0,
@@ -84,6 +85,7 @@ export class HistogramChart extends Component {
         this.dataAccessSession = new DataAccessSession();
         this.state = {
             signalSetsData: null,
+            globalSignalSetsData: null,
             statusMsg: t('Loading...'),
             width: 0,
             maxBucketCount: 0,
@@ -113,12 +115,16 @@ export class HistogramChart extends Component {
 
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
-        bucketCount: PropTypes.number
+        bucketCount: PropTypes.number,
+        xMin: PropTypes.number,
+        xMax: PropTypes.number
     };
 
     static defaultProps = {
         minBarWidth: 20,
         bucketCount: undefined,
+        xMin: NaN,
+        xMax: NaN,
 
         withCursor: true,
         withTooltip: true,
@@ -130,12 +136,10 @@ export class HistogramChart extends Component {
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
-        this.createChart(null, false, false);
+        this.createChart(false, false);
     }
 
     componentDidUpdate(prevProps, prevState) {
-        let signalSetsData = this.state.signalSetsData;
-
         const t = this.props.t;
 
         let configDiff = compareConfigs(this.props.config, prevProps.config);
@@ -146,37 +150,41 @@ export class HistogramChart extends Component {
             const prevSpec = this.getIntervalSpec(prevProps);
 
             if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = ConfigDifference.DATA_WITH_CLEAR;
+                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
             } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
-                configDiff = ConfigDifference.DATA;
+                configDiff = Math.max(configDiff, ConfigDifference.DATA);
             }
         }
 
         if (prevState.maxBucketCount !== this.state.maxBucketCount) {
-            configDiff = ConfigDifference.DATA;
+            configDiff = Math.max(configDiff, ConfigDifference.DATA);
         }
 
-        if (configDiff === ConfigDifference.DATA || configDiff === ConfigDifference.DATA_WITH_CLEAR) {
+        if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
             if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
                 this.setState({
                     signalSetsData: null,
-                    statusMsg: t('Loading...')
+                    globalSignalSetsData: null,
+                    statusMsg: t('Loading...'),
+                    zoomTransform: d3Zoom.zoomIdentity
+                }, () => {
+                    // noinspection JSIgnoredPromiseFromCall
+                    this.fetchData();
                 });
-
-                signalSetsData = null;
             }
-
+        }
+        else if (configDiff === ConfigDifference.DATA) {
             // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
-
-        } else {
+        }
+        else {
              const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || configDiff !== ConfigDifference.NONE;
 
             const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
 
-            this.createChart(signalSetsData, forceRefresh, updateZoom);
+            this.createChart(forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
         }
     }
@@ -189,32 +197,74 @@ export class HistogramChart extends Component {
     async fetchData() {
         const config = this.props.config;
 
-        if (this.state.maxBucketCount > 0) {
+        const bucketCount = this.props.bucketCount || this.state.maxBucketCount;
+        let minStep = this.props.minStep;
+        if (bucketCount > 0) {
             try {
-                let filter;
+                let filter = {
+                    type: 'and',
+                        children: []
+                };
+                let queryWithRangeFilter = false;
                 if (config.tsSigCid) {
                     const abs = this.getIntervalAbsolute();
-                    filter = {
+                    filter.children.push({
                         type: 'range',
                         sigCid: config.tsSigCid,
                         gte: abs.from.toISOString(),
                         lt: abs.to.toISOString()
-                    };
+                    });
                 }
-
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], this.state.maxBucketCount, this.props.minStep, filter);
-
-                if (results) { // Results is null if the results returned are not the latest ones
-                    this.setState({
-                        signalSetsData: {
-                            step: results.step,
-                            offset: results.offset,
-                            buckets: results.buckets
-                        }
+                if (!isNaN(this.props.xMin))
+                    filter.children.push({
+                        type: "range",
+                        sigCid: config.sigCid,
+                        gte: this.props.xMin
+                    });
+                if (!isNaN(this.props.xMax))
+                    filter.children.push({
+                        type: "range",
+                        sigCid: config.sigCid,
+                        lte: this.props.xMax
                     });
 
-                    if (this.zoom)
-                        this.cursorAreaSelection.call(this.zoom.transform, d3Zoom.zoomIdentity); // reset zoom
+                // filter by current zoom
+                if (this.state.zoomTransform !== d3Zoom.zoomIdentity && this.state.signalSetsData !== null && this.state.signalSetsData.buckets && this.state.signalSetsData.buckets.length > 0) {
+                    let [min, max] = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
+                        .domain(this.xExtent)
+                        .range([0, this.renderedWidth - this.props.margin.left - this.props.margin.right])).domain();
+                    filter.children.push({
+                        type: 'range',
+                        sigCid: config.sigCid,
+                        gte: min,
+                        lte: max
+                    });
+                    minStep = (max - min) / bucketCount;
+                    queryWithRangeFilter = true;
+                }
+
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], bucketCount, minStep, filter);
+
+                if (results) { // Results is null if the results returned are not the latest ones
+                    const processedResults = this.processData(results);
+
+                    if (!queryWithRangeFilter) { // zoomed completely out
+                        // update extent of x axis
+                        this.xExtent = [processedResults.min, processedResults.max];
+                        if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
+                        if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
+
+                        this.setState({
+                            globalSignalSetsData: processedResults
+                        });
+
+                        if (this.zoom)
+                            this.cursorAreaSelection.call(this.zoom.transform, d3Zoom.zoomIdentity); // reset zoom
+                    }
+
+                    this.setState({
+                        signalSetsData: processedResults
+                    });
                 }
             } catch (err) {
                 throw err;
@@ -222,7 +272,47 @@ export class HistogramChart extends Component {
         }
     }
 
-    createChart(signalSetsData, forceRefresh, updateZoom) {
+    processData(data) {
+        if (data.buckets.length === 0)
+            return {
+                buckets: data.buckets,
+                step: data.step,
+                offset: data.offset,
+                min: NaN,
+                max: NaN,
+                maxProb: 0
+            };
+
+        const min = data.buckets[0].key;
+        const max = data.buckets[data.buckets.length - 1].key + data.step;
+
+        let maxCount = 0;
+        let totalCount = 0;
+        for (const bucket of data.buckets) {
+            if (bucket.count > maxCount)
+                maxCount = bucket.count;
+            totalCount += bucket.count;
+        }
+
+        for (const bucket of data.buckets) {
+            bucket.prob = bucket.count / totalCount;
+        }
+        const maxProb = maxCount / totalCount;
+
+        return {
+            buckets: data.buckets,
+            step: data.step,
+            offset: data.offset,
+            min,
+            max,
+            maxProb
+        };
+    }
+
+    createChart(forceRefresh, updateZoom) {
+        const signalSetsData = this.state.signalSetsData;
+        const globalSignalSetsData = this.state.globalSignalSetsData;
+
         const t = this.props.t;
         const width = this.containerNode.getClientRects()[0].width;
 
@@ -241,12 +331,11 @@ export class HistogramChart extends Component {
         }
         this.renderedWidth = width;
 
-        if (!signalSetsData) {
+        if (!signalSetsData || !globalSignalSetsData) {
             return;
         }
 
         const noData = signalSetsData.buckets.length === 0;
-
         if (noData) {
             this.statusMsgSelection.text(t('No data.'));
             this.cursorSelection.attr('visibility', 'hidden');
@@ -260,39 +349,19 @@ export class HistogramChart extends Component {
             this.zoom = null;
 
         } else {
-            //<editor-fold desc="Data processing">
-            const xMin = signalSetsData.buckets[0].key;
-            const xMax = signalSetsData.buckets[signalSetsData.buckets.length - 1].key + signalSetsData.step;
-
-            let yMax = 0;
-            let totalCount = 0;
-            for (const bucket of signalSetsData.buckets) {
-                if (bucket.count > yMax) {
-                    yMax = bucket.count;
-                }
-
-                totalCount += bucket.count;
-            }
-            yMax /= totalCount;
-
-            for (const bucket of signalSetsData.buckets) {
-                bucket.prob = bucket.count / totalCount;
-            }
-            //</editor-fold>
-
-            //<editor-fold desc="Scales">
+             //<editor-fold desc="Scales">
             const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
             const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
 
             const yScale = d3Scale.scaleLinear()
-                .domain([0, yMax])
+                .domain([0, signalSetsData.maxProb])
                 .range([ySize, 0]);
             const yAxis = d3Axis.axisLeft(yScale)
                 .tickFormat(yScale.tickFormat(10, "-%"));
             this.yAxisSelection.call(yAxis);
 
             let xScale = d3Scale.scaleLinear()
-                .domain([xMin, xMax])
+                .domain(this.xExtent)
                 .range([0, width - this.props.margin.left - this.props.margin.right]);
             xScale = this.state.zoomTransform.rescaleX(xScale);
             const xAxis = d3Axis.axisBottom(xScale)
@@ -311,7 +380,7 @@ export class HistogramChart extends Component {
             this.createChartCursor(signalSetsData, xScale, yScale, ySize);
 
             if (this.props.withOverview)
-                this.createChartOverview(signalSetsData, xMin, xMax, yMax);
+                this.createChartOverview(globalSignalSetsData);
         }
     }
 
@@ -368,15 +437,20 @@ export class HistogramChart extends Component {
 
             const key = xScale.invert(x);
             let newSelection = null;
-            for (const bucket of signalSetsData.buckets) {
-                if (bucket.key <= key) {
-                    newSelection = bucket;
-                } else {
-                    break;
+            if (isInExtent(key, [self.state.signalSetsData.min, self.state.signalSetsData.max])) {
+                for (const bucket of signalSetsData.buckets) {
+                    if (bucket.key <= key) {
+                        newSelection = bucket;
+                    } else {
+                        break;
+                    }
                 }
             }
+            else {
+                self.deselectPoints();
+            }
 
-            if (selection !== newSelection && (self.props.withCursor || self.props.withTooltip)) {
+            if (selection !== newSelection && newSelection !== null && (self.props.withCursor || self.props.withTooltip)) {
                 self.drawBars({
                     buckets: [newSelection],
                     step: signalSetsData.step
@@ -453,16 +527,16 @@ export class HistogramChart extends Component {
         this.cursorAreaSelection.call(this.zoom);
     }
 
-    createChartOverview(signalSetsData, xMin, xMax, yMax) {
+    createChartOverview(signalSetsData) {
         //<editor-fold desc="Scales">
         const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
 
         const yScale = d3Scale.scaleLinear()
-            .domain([0, yMax])
+            .domain([0, signalSetsData.maxProb])
             .range([ySize, 0]);
 
         let xScale = d3Scale.scaleLinear()
-            .domain([xMin, xMax])
+            .domain(this.xExtent)
             .range([0, this.renderedWidth - this.props.margin.left - this.props.margin.right]);
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);

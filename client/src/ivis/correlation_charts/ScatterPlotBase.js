@@ -22,6 +22,7 @@ import {Tooltip} from "../Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../../lib/bootstrap-components";
+import {distance, extentWithMargin, getExtent, isSignalVisible} from "../common";
 
 const ConfigDifference = {
     NONE: 0,
@@ -514,15 +515,15 @@ export class ScatterPlotBase extends Component {
 
                 if (!q.queryWithRangeFilter) { // zoomed completely out
                     // update extents of axes
-                    this.yExtent = this.getExtent(processedResults, function (d) {  return d.y });
-                    this.yExtent = this.extentWithMargin(this.yExtent, 0.1);
+                    this.yExtent = getExtent(processedResults, function (d) {  return d.y });
+                    this.yExtent = extentWithMargin(this.yExtent, 0.1);
                     if (!isNaN(this.props.yMin)) this.yExtent[0] = this.props.yMin;
                     if (!isNaN(this.props.yMax)) this.yExtent[1] = this.props.yMax;
-                    this.xExtent = this.getExtent(processedResults, function (d) {  return d.x });
-                    this.xExtent = this.extentWithMargin(this.xExtent, 0.1);
+                    this.xExtent = getExtent(processedResults, function (d) {  return d.x });
+                    this.xExtent = extentWithMargin(this.xExtent, 0.1);
                     if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
                     if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
-                    this.sExtent = this.getExtent(processedResults, function (d) {  return d.s });
+                    this.sExtent = getExtent(processedResults, function (d) {  return d.s });
                     if (this.props.hasOwnProperty("minDotRadiusValue"))
                         this.sExtent[0] = this.props.minDotRadiusValue;
                     if (this.props.hasOwnProperty("maxDotRadiusValue"))
@@ -646,7 +647,7 @@ export class ScatterPlotBase extends Component {
         for (let i = 0; i < config.signalSets.length; i++) {
             const signalSetConfig = config.signalSets[i];
             let data = [];
-            if(this.isSignalVisible(signalSetConfig))
+            if(isSignalVisible(signalSetConfig))
                 for (const d of signalSetsData[i]) {
                     let d1 = {
                         x: d[signalSetConfig.X_sigCid],
@@ -676,40 +677,6 @@ export class ScatterPlotBase extends Component {
             if (signalSetConfig.Size_label)
                 this.labels[signalSetConfig.cid + "-" + i].Size_label = signalSetConfig.Size_label;
         }
-    }
-    //</editor-fold>
-
-    //<editor-fold desc="Helper functions">
-    /**
-     * Adds margin to extent in format of d3.extent()
-     */
-    extentWithMargin(extent, margin_percentage) {
-        const diff = extent[1] - extent[0];
-        const margin = diff * margin_percentage;
-        return [extent[0] - margin, extent[1] + margin];
-    }
-
-    getExtent(setsData, valueof) {
-        const min = d3Array.min(setsData, function(data) {
-            return d3Array.min(data, valueof);
-        });
-        const max = d3Array.max(setsData, function(data) {
-            return d3Array.max(data, valueof);
-        });
-        return [min, max];
-    }
-
-    isSignalVisible(sigConf) {
-        return (!('enabled' in sigConf) || sigConf.enabled);
-    }
-
-    /**
-     * Computes Euclidean distance of two points
-     * @param point1 object in format {x,y}
-     * @param point2 object in format {x,y}
-     */
-    distance(point1, point2) {
-        return Math.hypot(point1.x - point2.x, point1.y - point2.y);
     }
     //</editor-fold>
 
@@ -910,7 +877,7 @@ export class ScatterPlotBase extends Component {
                 let newSelection = null;
                 let minDist = Number.MAX_VALUE;
                 for (const point of data) {
-                    const dist = self.distance({x, y}, {x: xScale(point.x), y: yScale(point.y)});
+                    const dist = distance({x, y}, {x: xScale(point.x), y: yScale(point.y)});
                     if (dist < minDist) {
                         minDist = dist;
                         newSelection = point;
