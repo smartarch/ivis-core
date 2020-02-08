@@ -1212,7 +1212,7 @@ export class ScatterPlotBase extends Component {
                                         setSettings={::this.setSettings}
                     />}
 
-                    <div ref={node => this.svgContainerSelection = select(node)}>
+                    <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionNone}>
                         <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                             <defs>
                                 <clipPath id="plotRect">

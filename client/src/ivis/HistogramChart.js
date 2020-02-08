@@ -253,7 +253,7 @@ export class HistogramChart extends Component {
                         });
 
                         if (this.zoom)
-                            this.cursorAreaSelection.call(this.zoom.transform, d3Zoom.zoomIdentity); // reset zoom
+                            this.svgContainerSelection.call(this.zoom.transform, d3Zoom.zoomIdentity); // reset zoom
                     }
 
                     this.setState({
@@ -426,6 +426,9 @@ export class HistogramChart extends Component {
         let selection, mousePosition;
 
         const selectPoints = function () {
+            if (self.state.zoomInProgress)
+                return;
+
             const containerPos = d3Selection.mouse(self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
 
@@ -518,7 +521,7 @@ export class HistogramChart extends Component {
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart);
-        this.cursorAreaSelection.call(this.zoom);
+        this.svgContainerSelection.call(this.zoom);
     }
 
     createChartOverview(signalSetsData) {
@@ -557,7 +560,7 @@ export class HistogramChart extends Component {
 
                 if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
                 const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
-                self.cursorAreaSelection.call(self.zoom.transform, newTransform);
+                self.svgContainerSelection.call(self.zoom.transform, newTransform);
             });
 
         this.overviewBrushSelection
@@ -606,6 +609,7 @@ export class HistogramChart extends Component {
 
             return (
                 <div>
+                    <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionPanY}>
                     <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                         <defs>
                             <clipPath id="plotRect">
@@ -634,6 +638,7 @@ export class HistogramChart extends Component {
                         }
                         <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                     </svg>
+                    </div>
                     {this.props.withOverview &&
                     <svg id="overview" ref={node => this.overview = node} height={this.props.overviewHeight}
                          width="100%">

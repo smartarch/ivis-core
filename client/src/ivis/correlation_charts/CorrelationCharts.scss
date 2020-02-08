@@ -19,3 +19,11 @@ a.active {
 .brush .selection {
   stroke: #434343;
 }
+
+.touch-action-none {
+  touch-action: none;
+}
+
+.touch-action-pan-y {
+  touch-action: pan-y;
+}
