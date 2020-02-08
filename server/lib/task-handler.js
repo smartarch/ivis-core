@@ -49,6 +49,7 @@ let handlerProcess;
 async function init() {
     log.info(LOG_ID, 'Spawning job handler process');
 
+    
     await initIndices();
 
     try {
