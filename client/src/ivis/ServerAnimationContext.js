@@ -16,7 +16,6 @@ export class ServerAnimationContext extends Component {
         super(props);
 
         this.data = [];
-        this.waitingForKeyframes = false;
         this.state = {
             status: {
                 ver: -1,
@@ -31,6 +30,9 @@ export class ServerAnimationContext extends Component {
         // status refresh rate - later from props/server..
         this.refreshRate = 500;
         this.keyframeBufferLength = 5;
+
+        // For debug purposes
+        this.sabotageDataFetch = false;
     }
 
     async fetchStatus() {
@@ -39,14 +41,24 @@ export class ServerAnimationContext extends Component {
     }
 
     async fetchData() {
+        if (this.sabotageDataFetch) return;
+
         const res = await axios.get(getUrl("rest/animation/server/data"));
-        console.log("Data fetch:", res.data);
-        if (Array.isArray(res.data)) {
-            this.data.push(...res.data);
-            this.setState({lastFetchedKeyframe: res.data[res.data.length - 1].currKeyframeNum});
+        const animData = res.data.animationData;
+
+        console.log("Data fetch:", res.data, "last data fetch before:", (Date.now() - this.lastDataFetchTS) / 1000);
+        this.lastDataFetchTS = Date.now();
+
+        if (Array.isArray(animData)) {
+            this.data.push(...animData);
+            this.setState({lastFetchedKeyframe: animData[animData.length - 1].currKeyframeNum});
         } else {
-            this.data.push(res.data);
-            this.setState({lastFetchedKeyframe: res.data.currKeyframeNum});
+            this.data.push(animData);
+            this.setState({lastFetchedKeyframe: animData.currKeyframeNum});
+        }
+
+        if (res.data.nextKfRefreshIn !== null) {
+            this.refreshTimeout = setTimeout(::this.fetchData, res.data.nextKfRefreshIn);
         }
     }
 
@@ -63,6 +75,26 @@ export class ServerAnimationContext extends Component {
     }
 
     shiftKeyframes() {
+        if (this.state.status.playStatus != "playing") {
+            console.log("Trying to shift when status is:", this.state.status.playStatus);
+            return;
+        }
+
+        if (!this.enoughKeyframesBuffered(false)) {
+            this.delayedKeyframesShift = true;
+            this.pushStatus({playStatus: "buffering"});
+            return;
+        }
+
+        if(this.delayedKeyframesShift) {
+            this.delayedKeyframesShift = false;
+            this.pushStatus({playStatus: "playing"});
+        }
+
+        this._shiftKeyframes();
+    }
+
+    _shiftKeyframes() {
         console.log("Keyframes shift", {currKeyframe: this.data[0]});
         this.setState((prevState) => {
             const newKeyframeContext = Object.assign({}, prevState.keyframeContext, this.data.shift());
@@ -72,35 +104,78 @@ export class ServerAnimationContext extends Component {
         });
     }
 
+    enoughKeyframesBuffered(strict) {
+        const bufferedKfNum = this.state.lastFetchedKeyframe + (strict ? 0 : 1);
+        const neededKfNum = 1 + this.keyframeBufferLength + (this.state.keyframeContext.currKeyframeNum || -1);
+        console.log("Enough kf buffered, bufferedNum:", bufferedKfNum, "neededKfNum:", neededKfNum);
+        return bufferedKfNum >= neededKfNum;
+    }
+
     stopIntervals() {
-        clearInterval(this.dataFetchInterval);
+        clearTimeout(this.refreshTimeout);
         clearInterval(this.statusFetchInterval);
     }
 
-    mergeStatus(statusOverride) {
-        console.log("Merging status");
+    mergeStatus() {
         this.setState((prevState) => {
             const newKeyframeContext = {...prevState.keyframeContext};
-            newKeyframeContext.status = Object.assign({}, prevState.status, statusOverride);
+            newKeyframeContext.status = Object.assign({}, prevState.status);
 
+            //console.log("Merging status prevkfContext:", prevState.keyframeContext, "futurekfContext", newKeyframeContext);
             return { keyframeContext: newKeyframeContext};
         });
     }
 
-    async handleStop() {
-        clearInterval(this.dataFetchInterval);
-        this.data = [];
-        await this.fetchData();
-        this.mergeStatus();
-        this.shiftKeyframes();
+    pushStatus(status) {
+        console.log("Pushing status:", status);
+        this.setState((prevState) => {
+            const newKeyframeContext = {...prevState.keyframeContext};
+            newKeyframeContext.status = Object.assign({}, prevState.keyframeContext.status, status);
+            return { keyframeContext: newKeyframeContext };
+        });
     }
 
-    componentDidUpdate(prevProps, prevState) {
-        if (this.waitingForKeyframes && this.state.lastFetchedKeyframe >= 1 + this.keyframeBufferLength + (this.state.keyframeContext.currKeyframe || -1)) {
-            this.waitingForKeyframes = false;
-            this.mergeStatus();
-        }
+    async handleStopAsync() {
+        clearTimeout(this.refreshTimeout);
+        this.data = [];
+        this.mergeStatus();
+        await this.fetchData();
+        this._shiftKeyframes();
+    }
 
+    sabotageDataFetchFunc() {
+        this.sabotageDataFetch = true;
+    }
+
+    //startDataFetch(immediate) {
+    //    const startFetchLoop = () => {
+    //        this.fetchData();
+    //        this.dataFetchInterval = setInterval(::this.fetchData, this.state.status.keyframeRefreshRate);
+    //    };
+
+    //    clearInterval(this.dataFetchInterval);
+
+    //    if (immediate)
+    //    {
+    //        startFetchLoop();
+    //    } else
+    //    {
+    //        const restOfLastKeyframeTime = Math.max(
+    //            0,
+    //            this.state.status.keyframeRefreshRate - this.lastKeyframeTime);
+    //        console.log("Starting data fetch in:", restOfLastKeyframeTime);
+    //        setTimeout(() => {
+    //            startFetchLoop();
+    //        }, restOfLastKeyframeTime);
+    //    }
+    //}
+
+    //pauseDataFetch() {
+    //    clearInterval(this.dataFetchInterval);
+    //    this.lastKeyframeTime = Date.now() - this.lastDataFetchTS;
+    //}
+
+    componentDidUpdate(prevProps, prevState) {
         if (prevState.status.playStatus != this.state.status.playStatus) {
             console.log("PlayStatus from:", prevState.status.playStatus);
             console.log("PlayStatus to:", this.state.status.playStatus);
@@ -108,20 +183,25 @@ export class ServerAnimationContext extends Component {
             switch(this.state.status.playStatus) {
                 case "playing":
                     this.fetchData();
-                    this.dataFetchInterval = setInterval(::this.fetchData, this.state.status.keyframeRefreshRate);
-                    this.waitingForKeyframes = true;
-                    this.mergeStatus({playStatus: "buffering"});
-                    break;
-                case "paused":
-                    clearInterval(this.dataFetchInterval);
                     this.mergeStatus();
                     break;
-                case "stoped":
-                    this.handleStop();
+                case "paused":
+                    clearTimeout(this.refreshTimeout);
+                    this.mergeStatus();
+                    break;
+                case "stopped":
+                    this.handleStopAsync();
                     break;
                 default:
                     break;
             }
+        }
+
+        if (this.state.status.playStatus === "playing" &&
+            this.state.keyframeContext.status.playStatus === "buffering" &&
+            this.enoughKeyframesBuffered(true))
+        {
+            this.pushStatus({ playStatus: "playing" });
         }
     }
 
@@ -156,14 +236,16 @@ export class ServerAnimationContext extends Component {
             call: ::this.stopIntervals
         });
 
+        functions.push({
+            name: "Sabotage data fetch",
+            call: ::this.sabotageDataFetchFunc
+        });
+
         return (
             <>
                 <Debug
                     state={this.state}
                     funcs={functions}
-                    misc={{
-                        waitingForKeyframes: this.waitingForKeyframes
-                    }}
                     data={this.data}
                 />
 

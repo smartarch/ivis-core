@@ -1,7 +1,6 @@
 'use strict';
 
 const router = require('../../lib/router-async').create();
-const moment = require('moment');
 const log = require('../../lib/log');
 
 class AnimationTest {
@@ -14,7 +13,10 @@ class AnimationTest {
     }
 
     getData () {
-        return this.animationData;
+        return {
+            animationData: this.animationData,
+            nextKfRefreshIn: this.animationStatus.playStatus === "playing" ? this.nextKfRefreshIn : null,
+        };
     }
 
     _updateData(begin) {
@@ -29,7 +31,9 @@ class AnimationTest {
             this.animationData = this._advanceOneKeyframe();
         }
 
-        this.lastUpdateTS = moment();
+        this.lastUpdateTS = Date.now();
+        this.nextKfRefreshIn = this.defaultKfRefreshRate;
+        this.refreshTimeout = setTimeout(this._updateData.bind(this, false), this.nextKfRefreshIn);
     }
 
     _advanceOneKeyframe() {
@@ -45,15 +49,17 @@ class AnimationTest {
         nextData.nextKeyframeData.distance = (this.currKeyframeNum + 1) * jump;
         nextData.currKeyframeNum = this.currKeyframeNum;
 
+        log.info("Animation", "Current keyframe:" + this.currKeyframeNum, (this.lastKeyframeChangeTS - Date.now()) / 1000);
+        this.lastKeyframeChangeTS = Date.now();
         return nextData;
     }
 
-    _setPlayInterval() {
-        this.playInterval = setInterval(
-            this._updateData.bind(this, false),
-            this.animationStatus.keyframeRefreshRate
-        );
-    }
+    //_setPlayInterval() {
+    //    this.playInterval = setInterval(
+    //        this._updateData.bind(this, false),
+    //        this.animationStatus.keyframeRefreshRate
+    //    );
+    //}
 
     _animationReset() {
         this.lastUpdateTS = null;
@@ -61,7 +67,7 @@ class AnimationTest {
             ver: 0,
             keyframeRefreshRate: 5000,
             numOfFrames: 5,
-            playStatus: "stoped",
+            playStatus: "stopped",
         };
 
         this.animationData = {
@@ -74,49 +80,72 @@ class AnimationTest {
             }
         };
         this.currKeyframeNum = 0;
+        this.defaultKfRefreshRate = 5000;
+        this.nextKfRefreshIn = 0;
     }
 
     play() {
-        switch (this.animationStatus.playStatus) {
-            case "paused":
-                {
-                    const timeDiff = this.animationStatus.keyframeRefreshRate - (this.pausedTS.milliseconds() - this.lastUpdateTS.milliseconds());
-
-                    setTimeout(() => {
-                        this._updateData(false);
-                        this._setPlayInterval();
-                    }, timeDiff);
-
-                    this.pausedTS = null;
-                    break;
-                }
-            case "stoped":
-                this._updateData(true);
-                this._setPlayInterval();
-                break;
-            default:
-                break;
-        }
+        log.info("Animation", "Started play sequence");
 
         if (this.animationStatus.playStatus !== "playing") {
+            log.info("Debug", this.animationStatus.playStatus);
+            this.refreshTimeout = setTimeout(
+                this._updateData.bind(this, this.animationStatus.playStatus === "stopped"),
+                this.nextKfRefreshIn
+            );
+
+            this.animationStatus.playStatus = "playing";
             this.animationStatus.ver += 1;
         }
 
-        this.animationStatus.playStatus = "playing";
+        //switch (oldPlayStatus) {
+        //    case "paused":
+        //        {
+        //        log.info("Animation", "Paused branch");
+        //            const timeDiff = Math.max(
+        //                0,
+        //                this.animationStatus.keyframeRefreshRate - (
+        //                    this.pausedTS - this.lastUpdateTS
+        //                )
+        //            );
+
+        //            this.playTimeout = setTimeout(() => {
+        //                log.info("Animation", "Timeout running");
+        //                this._updateData(false);
+        //                this._setPlayInterval();
+        //            }, timeDiff);
+
+        //            this.pausedTS = null;
+        //            break;
+        //        }
+        //    case "stopped":
+        //        log.info("Animation", "stopped branch");
+
+        //        this._updateData(true);
+        //        this._setPlayInterval();
+        //        break;
+        //    default:
+        //        log.info("Animation", "Default branch taken");
+        //        break;
+        //}
+
+
+        log.info("Animation", "Play sequence ended");
     }
 
     pause() {
         if (this.animationStatus.playStatus === "playing") {
+            clearTimeout(this.refreshTimeout);
+            this.nextKfRefreshIn = this.defaultKfRefreshRate - (Date.now() - this.lastUpdateTS);
+            log.info("Animation", "Timeout cleared, continuing in" + this.nextKfRefreshIn);
+
             this.animationStatus.playStatus = "paused";
             this.animationStatus.ver += 1;
-
-            this.pausedTS = moment();
-            clearInterval(this.playInterval);
         }
     }
 
     reset() {
-        clearInterval(this.playInterval);
+        clearTimeout(this.refreshTimeout);
         this._animationReset();
     }
 }

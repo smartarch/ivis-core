@@ -36,7 +36,20 @@ export class AnimatedBase extends Component {
     }
 
     refresh() {
-        console.log("Refreshing, frame:", this.frameNum );
+        console.log("Refreshing, frame:", this.frameNum ,". Time from last frame", (Date.now() - this.lastFrameTS) / 1000);
+        this.lastFrameTS = Date.now();
+        this.paint();
+
+        if (this.frameNum == this.props.keyframeContext.status.numOfFrames - 1) {
+            this.props.keyframeContext.shiftKeyframes();
+        }
+        else {
+            this.frameNum += 1;
+        }
+    }
+
+    paint() {
+        //console.log("Painting frame", this.frameNum);
         const visDataCurr = this.props.keyframeContext.currKeyframeData;
         const visDataNext = this.props.keyframeContext.nextKeyframeData;
 
@@ -49,12 +62,6 @@ export class AnimatedBase extends Component {
         );
 
         this.setState({visualizationData});
-        if (this.frameNum == this.props.keyframeContext.status.numOfFrames - 1) {
-            this.props.keyframeContext.shiftKeyframes();
-        }
-        else {
-            this.frameNum += 1;
-        }
     }
 
     play() {
@@ -72,10 +79,12 @@ export class AnimatedBase extends Component {
                 case "playing":
                     this.play();
                     break;
-                case "paused":
-                case "stoped":
+                case "buffering":
                     clearInterval(this.refreshInterval);
-                    this.refreshInterval = null;
+                    break;
+                case "paused":
+                case "stopped":
+                    clearInterval(this.refreshInterval);
                     break;
                 default:
                     break;
@@ -83,13 +92,11 @@ export class AnimatedBase extends Component {
         }
 
         if (prevProps.keyframeContext.currKeyframeNum != this.props.keyframeContext.currKeyframeNum) {
+            this.frameNum = 0;
             console.log("Change of keyframes; before:", prevProps.keyframeContext.currKeyframeNum, "after:", this.props.keyframeContext.currKeyframeNum);
             console.log("Time from last kf change:", (Date.now() - this.lastKeyframeChange) / 1000);
-            if (this.refreshInterval === null) {
-                this.refresh();
-            }
+            if (this.props.keyframeContext != "playing") this.paint();
 
-            this.frameNum = 0;
             this.lastKeyframeChange = Date.now();
         }
     }

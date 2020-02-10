@@ -7,7 +7,7 @@ export class Debug extends Component {
     }
 
     stringifyProp(prop, key) {
-        if (prop[key] && typeof prop[key] === "object")
+        if (prop[key] && typeof prop[key] === "object") {
             return (
                 <li key={key.toString()}>
                     <b>{key.toString()}:</b>
@@ -16,18 +16,19 @@ export class Debug extends Component {
                     </ul>
                 </li>
             );
-        else if (prop[key] && typeof prop[key] === "function")
+        } else if (prop[key] && typeof prop[key] === "function") {
             return (
                 <li key={key.toString()}>
                     <b>{key.toString()}:</b> {prop[key].name}
                 </li>
             );
-        else
+        } else {
             return (
                 <li key={key.toString()}>
-                    <b>{key.toString()}:</b> {prop[key] === undefined ? "undefined" : prop[key].toString()}
+                    <b>{key.toString()}:</b> {prop[key]}
                 </li>
             );
+        }
     }
 
     stringifyProps(props) {
