@@ -8,32 +8,28 @@ class AnimationTest {
         this._animationReset();
     }
 
-    getStatus() {
-        return this.animationStatus;
-    }
-
-    getData () {
-        return {
-            animationData: this.animationData,
-            nextKfRefreshIn: this.animationStatus.playStatus === "playing" ? this.nextKfRefreshIn : null,
-        };
-    }
-
     _updateData(begin) {
         const beginKeyframeNum = 3;
 
-        if (begin) {
-            this.animationData = [];
-            for (let i = 0; i < beginKeyframeNum; i += 1) {
-                this.animationData.push(this._advanceOneKeyframe());
+        this.animationStatus.currFrameNum += 1;
+
+        if (this.animationStatus.currFrameNum === this.animationStatus.numOfFrames - 1) {
+            this.animationStatus.currFrameNum = 0;
+
+            if (begin) {
+                this.animationData = [];
+                for (let i = 0; i < beginKeyframeNum; i += 1) {
+                    this.animationData.push(this._advanceOneKeyframe());
+                }
+            } else {
+                this.animationData = this._advanceOneKeyframe();
             }
-        } else {
-            this.animationData = this._advanceOneKeyframe();
+
         }
 
+        this.animationStatus.ver += 1;
+
         this.lastUpdateTS = Date.now();
-        this.nextKfRefreshIn = this.defaultKfRefreshRate;
-        this.refreshTimeout = setTimeout(this._updateData.bind(this, false), this.nextKfRefreshIn);
     }
 
     _advanceOneKeyframe() {
@@ -54,20 +50,15 @@ class AnimationTest {
         return nextData;
     }
 
-    //_setPlayInterval() {
-    //    this.playInterval = setInterval(
-    //        this._updateData.bind(this, false),
-    //        this.animationStatus.keyframeRefreshRate
-    //    );
-    //}
-
     _animationReset() {
         this.lastUpdateTS = null;
         this.animationStatus = {
             ver: 0,
-            keyframeRefreshRate: 5000,
+            frameRefreshRate: 1000,
             numOfFrames: 5,
+            numOfKeyframes: 200,
             playStatus: "stopped",
+            currFrameNum: 0,
         };
 
         this.animationData = {
@@ -80,64 +71,39 @@ class AnimationTest {
             }
         };
         this.currKeyframeNum = 0;
-        this.defaultKfRefreshRate = 5000;
-        this.nextKfRefreshIn = 0;
+        this.defaultRefreshRate = 1000;
+    }
+
+    getStatus() {
+        return this.animationStatus;
+    }
+
+    getData () {
+        return this.animationData;
     }
 
     play() {
         log.info("Animation", "Started play sequence");
+        log.info("Debug", this.animationStatus.playStatus);
 
         if (this.animationStatus.playStatus !== "playing") {
-            log.info("Debug", this.animationStatus.playStatus);
-            this.refreshTimeout = setTimeout(
-                this._updateData.bind(this, this.animationStatus.playStatus === "stopped"),
-                this.nextKfRefreshIn
+            this._updateData(this.animationStatus.playStatus === "stopped");
+            this.refreshInterval = setInterval(
+                this._updateData.bind(this, false),
+                this.animationStatus.frameRefreshRate
             );
 
             this.animationStatus.playStatus = "playing";
             this.animationStatus.ver += 1;
         }
 
-        //switch (oldPlayStatus) {
-        //    case "paused":
-        //        {
-        //        log.info("Animation", "Paused branch");
-        //            const timeDiff = Math.max(
-        //                0,
-        //                this.animationStatus.keyframeRefreshRate - (
-        //                    this.pausedTS - this.lastUpdateTS
-        //                )
-        //            );
-
-        //            this.playTimeout = setTimeout(() => {
-        //                log.info("Animation", "Timeout running");
-        //                this._updateData(false);
-        //                this._setPlayInterval();
-        //            }, timeDiff);
-
-        //            this.pausedTS = null;
-        //            break;
-        //        }
-        //    case "stopped":
-        //        log.info("Animation", "stopped branch");
-
-        //        this._updateData(true);
-        //        this._setPlayInterval();
-        //        break;
-        //    default:
-        //        log.info("Animation", "Default branch taken");
-        //        break;
-        //}
-
-
         log.info("Animation", "Play sequence ended");
     }
 
     pause() {
         if (this.animationStatus.playStatus === "playing") {
-            clearTimeout(this.refreshTimeout);
-            this.nextKfRefreshIn = this.defaultKfRefreshRate - (Date.now() - this.lastUpdateTS);
-            log.info("Animation", "Timeout cleared, continuing in" + this.nextKfRefreshIn);
+            clearInterval(this.refreshInterval);
+            log.info("Animation", "Interval cleared, paused at frame num" + this.animationStatus.currFrameNum);
 
             this.animationStatus.playStatus = "paused";
             this.animationStatus.ver += 1;
@@ -145,7 +111,7 @@ class AnimationTest {
     }
 
     reset() {
-        clearTimeout(this.refreshTimeout);
+        clearInterval(this.refreshInterval);
         this._animationReset();
     }
 }

@@ -61,15 +61,8 @@ export class AnimatedBase extends Component {
             ratio
         );
 
+        this.lastVisualizationData = this.state.visualizationData;
         this.setState({visualizationData});
-    }
-
-    play() {
-        this.refresh();
-        this.refreshInterval = setInterval(
-            ::this.refresh,
-            this.props.keyframeContext.status.keyframeRefreshRate / this.props.keyframeContext.status.numOfFrames
-        );
     }
 
     componentDidUpdate(prevProps) {
@@ -77,13 +70,14 @@ export class AnimatedBase extends Component {
         {
             switch (this.props.keyframeContext.status.playStatus) {
                 case "playing":
-                    this.play();
+                    this.refreshInterval = setInterval(
+                        ::this.refresh,
+                        this.props.keyframeContext.status.keyframeRefreshRate / this.props.keyframeContext.status.numOfFrames
+                    );
                     break;
                 case "buffering":
-                    clearInterval(this.refreshInterval);
-                    break;
                 case "paused":
-                case "stopped":
+                case "stoped":
                     clearInterval(this.refreshInterval);
                     break;
                 default:
@@ -95,7 +89,7 @@ export class AnimatedBase extends Component {
             this.frameNum = 0;
             console.log("Change of keyframes; before:", prevProps.keyframeContext.currKeyframeNum, "after:", this.props.keyframeContext.currKeyframeNum);
             console.log("Time from last kf change:", (Date.now() - this.lastKeyframeChange) / 1000);
-            if (this.props.keyframeContext != "playing") this.paint();
+            if (this.props.keyframeContext.status.playStatus != "playing") this.paint();
 
             this.lastKeyframeChange = Date.now();
         }
@@ -107,6 +101,11 @@ export class AnimatedBase extends Component {
                 <Debug
                     props={this.props}
                     visData={this.state.visualizationData}
+                    lastVisData={this.lastVisualizationData}
+                    pos={{
+                        frameNum: this.frameNum,
+                        keyframeNum: this.props.keyframeContext.currKeyframeNum
+                    }}
                 />
             </>
         );

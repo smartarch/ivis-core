@@ -29,22 +29,27 @@ export class ServerAnimationContext extends Component {
 
         // status refresh rate - later from props/server..
         this.refreshRate = 500;
-        this.keyframeBufferLength = 5;
+        this.minBufferLength = 5;
+        this.safeBufferLength = 2;
 
         // For debug purposes
         this.sabotageDataFetch = false;
+
     }
 
     async fetchStatus() {
         const res = await axios.get(getUrl("rest/animation/server/status"));
-        this.setState({status: res.data});
+        this.setState(state => {
+            if (state.status.ver == res.data.ver) return null;
+            else return {status: res.data};
+        });
     }
 
     async fetchData() {
         if (this.sabotageDataFetch) return;
 
         const res = await axios.get(getUrl("rest/animation/server/data"));
-        const animData = res.data.animationData;
+        const animData = res.data;
 
         console.log("Data fetch:", res.data, "last data fetch before:", (Date.now() - this.lastDataFetchTS) / 1000);
         this.lastDataFetchTS = Date.now();
@@ -55,10 +60,6 @@ export class ServerAnimationContext extends Component {
         } else {
             this.data.push(animData);
             this.setState({lastFetchedKeyframe: animData.currKeyframeNum});
-        }
-
-        if (res.data.nextKfRefreshIn !== null) {
-            this.refreshTimeout = setTimeout(::this.fetchData, res.data.nextKfRefreshIn);
         }
     }
 
@@ -105,14 +106,16 @@ export class ServerAnimationContext extends Component {
     }
 
     enoughKeyframesBuffered(strict) {
-        const bufferedKfNum = this.state.lastFetchedKeyframe + (strict ? 0 : 1);
-        const neededKfNum = 1 + this.keyframeBufferLength + (this.state.keyframeContext.currKeyframeNum || -1);
-        console.log("Enough kf buffered, bufferedNum:", bufferedKfNum, "neededKfNum:", neededKfNum);
+        const bufferedKfNum = this.state.lastFetchedKeyframe + (strict ? 0 : this.safeBufferLength);
+        const neededKfNum = 1 + this.minBufferLength + (this.state.keyframeContext.currKeyframeNum || -1);
+        console.log("Keyframe buffer check, bufferedNum:", bufferedKfNum, "neededKfNum:", neededKfNum,
+            "lastFetchedKeyframe:", this.state.lastFetchedKeyframe, "currKeyframe", this.state.keyframeContext.currKeyframeNum,
+            "strict", strict);
         return bufferedKfNum >= neededKfNum;
     }
 
     stopIntervals() {
-        clearTimeout(this.refreshTimeout);
+        clearInterval(this.dataFetchInterval);
         clearInterval(this.statusFetchInterval);
     }
 
@@ -136,7 +139,7 @@ export class ServerAnimationContext extends Component {
     }
 
     async handleStopAsync() {
-        clearTimeout(this.refreshTimeout);
+        clearInterval(this.dataFetchInterval);
         this.data = [];
         this.mergeStatus();
         await this.fetchData();
@@ -147,46 +150,23 @@ export class ServerAnimationContext extends Component {
         this.sabotageDataFetch = true;
     }
 
-    //startDataFetch(immediate) {
-    //    const startFetchLoop = () => {
-    //        this.fetchData();
-    //        this.dataFetchInterval = setInterval(::this.fetchData, this.state.status.keyframeRefreshRate);
-    //    };
-
-    //    clearInterval(this.dataFetchInterval);
-
-    //    if (immediate)
-    //    {
-    //        startFetchLoop();
-    //    } else
-    //    {
-    //        const restOfLastKeyframeTime = Math.max(
-    //            0,
-    //            this.state.status.keyframeRefreshRate - this.lastKeyframeTime);
-    //        console.log("Starting data fetch in:", restOfLastKeyframeTime);
-    //        setTimeout(() => {
-    //            startFetchLoop();
-    //        }, restOfLastKeyframeTime);
-    //    }
-    //}
-
-    //pauseDataFetch() {
-    //    clearInterval(this.dataFetchInterval);
-    //    this.lastKeyframeTime = Date.now() - this.lastDataFetchTS;
-    //}
-
     componentDidUpdate(prevProps, prevState) {
+        //console.log("Context update");
         if (prevState.status.playStatus != this.state.status.playStatus) {
             console.log("PlayStatus from:", prevState.status.playStatus);
             console.log("PlayStatus to:", this.state.status.playStatus);
 
             switch(this.state.status.playStatus) {
                 case "playing":
-                    this.fetchData();
+                    if (prevState.status.playStatus == "stopped") this.fetchData();
+                    this.dataFetchInterval = setInterval(
+                        ::this.fetchData,
+                        this.state.status.frameRefreshRate * this.state.status.numOfFrames
+                    );
                     this.mergeStatus();
                     break;
                 case "paused":
-                    clearTimeout(this.refreshTimeout);
+                    clearInterval(this.dataFetchInterval);
                     this.mergeStatus();
                     break;
                 case "stopped":
@@ -249,9 +229,9 @@ export class ServerAnimationContext extends Component {
                     data={this.data}
                 />
 
-                <AnimationKeyframeContext.Provider value={this.state.keyframeContext} >
+                {/*<AnimationKeyframeContext.Provider value={this.state.keyframeContext} >
                     {this.props.children}
-                </AnimationKeyframeContext.Provider>
+                </AnimationKeyframeContext.Provider>*/}
             </>
         );
     }
