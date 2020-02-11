@@ -1,3 +1,5 @@
+'use strict';
+
 import * as d3Array from "d3-array";
 
 /**
@@ -34,4 +36,9 @@ export function isSignalVisible(sigConf) {
  */
 export function distance(point1, point2) {
     return Math.hypot(point1.x - point2.x, point1.y - point2.y);
+}
+
+export function roundTo(num, decimals = 2) {
+    const pow10 = Math.pow(10, decimals);
+    return Math.round(num * pow10) / pow10;
 }

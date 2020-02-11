@@ -22,7 +22,7 @@ import {Tooltip} from "../Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../../lib/bootstrap-components";
-import {distance, extentWithMargin, getExtent, isSignalVisible} from "../common";
+import {distance, extentWithMargin, getExtent, isSignalVisible, roundTo} from "../common";
 
 const ConfigDifference = {
     NONE: 0,
@@ -431,10 +431,10 @@ export class ScatterPlotBase extends Component {
     }
     //</editor-fold>
 
-    getQueries() {
+    getQueries(withRangeFilter = false) {
         const config = this.props.config;
         let queries = [];
-        let queryWithRangeFilter = false;
+        let queryWithRangeFilter = withRangeFilter;
 
         for (const signalSet of config.signalSets) {
             let filter = {
@@ -483,7 +483,10 @@ export class ScatterPlotBase extends Component {
                     sigCid: signalSet.Y_sigCid,
                     lte: this.state.yMax
                 });
-            if (!Object.is(this.state.xMin, this.props.xMin) || !Object.is(this.state.xMax, this.props.xMax) || !Object.is(this.state.yMin, this.props.yMin) || !Object.is(this.state.yMax, this.props.yMax))
+            if (Math.abs(this.state.zoomTransform.k - 1) > 0.01 ||
+                Math.abs(this.state.zoomYScaleMultiplier - 1) > 0.01 ||
+                Math.abs(this.state.zoomTransform.x) > 3 ||
+                Math.abs(this.state.zoomTransform.y) > 3)
                 queryWithRangeFilter = true;
 
             let limit = undefined;
@@ -505,9 +508,9 @@ export class ScatterPlotBase extends Component {
     }
 
     @withAsyncErrorHandler
-    async fetchData() {
+    async fetchData(withRangeFilter = false) {
         try {
-            const q = this.getQueries();
+            const q = this.getQueries(withRangeFilter);
             const results = await this.dataAccessSession.getLatestMixed(q.queries);
 
             if (results) { // Results is null if the results returned are not the latest ones
@@ -710,7 +713,7 @@ export class ScatterPlotBase extends Component {
         const color = d3Color.rgb(SignalSetConfig.color.r, SignalSetConfig.color.g, SignalSetConfig.color.b, 0.5);
         const size = (SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius) / Math.SQRT2;
         const constantSize = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
-        const s = d => constantSize ? size : sScale(d.s);
+        const s = d => constantSize ? size : (sScale(d.s) / Math.SQRT2);
 
         // create dots on chart
         const squares = this.squaresSelection[cidIndex]
@@ -846,13 +849,8 @@ export class ScatterPlotBase extends Component {
             .merge(coeffs)
             .html(d => {
             if (d.data.a)
-                return `<b>${d.label}</b>: <i>slope:</i> ${this.roundTo(d.data.a, 3)}; <i>intercept:</i> ${this.roundTo(d.data.b, 3)}`;
+                return `<b>${d.label}</b>: <i>slope:</i> ${roundTo(d.data.a, 3)}; <i>intercept:</i> ${roundTo(d.data.b, 3)}`;
         });
-    }
-
-    roundTo(num, decimals = 2) {
-        const pow10 = Math.pow(10, decimals);
-        return Math.round(num * pow10) / pow10;
     }
     //</editor-fold>
 
@@ -983,7 +981,7 @@ export class ScatterPlotBase extends Component {
                         if (self.props.withAutoRefreshOnBrush) {
                             // load new data for brushed region
                             self.setState({xMin, xMax, yMin, yMax});
-                            self.reloadData();
+                            self.reloadData(true);
                         }
 
                         // hide brush
@@ -1144,9 +1142,9 @@ export class ScatterPlotBase extends Component {
         }
     }
 
-    reloadData() {
+    reloadData(withRangeFilter = false) {
         // noinspection JSIgnoredPromiseFromCall
-        this.fetchData();
+        this.fetchData(withRangeFilter);
     }
 
     // toggle between brush and zoom, returns true if brush is enabled after call

@@ -107,8 +107,8 @@ class TestBubblePlot extends Component {
                 <BubblePlot config={cnf}
                             height={400} width={400}
                             margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
-                            minDotRadiusValue={0}
-                            maxDotRadiusValue={5000}
+                            maxDotCount={10}
+                            highlightDotRadius={1}
                              />
             </div>
         );
@@ -125,15 +125,15 @@ export default class SamplePanel_BubblePlot extends Component {
         const panelParams = {
             sensors: [
                 {
-                    signalSet: "top:random_area",
-                    X_sigCid: "x_val",
-                    Y_sigCid: "y_val",
+                    signalSet: "top:bubble",
+                    X_sigCid: "x",
+                    Y_sigCid: "y",
                     color: rgb(219, 0, 0),
-                    label: "Random",
+                    label: "Bubble",
                     enabled: true,
-                    dotSize_sigCid: "a_val"
+                    dotSize_sigCid: "z"
                 }
-            ]
+            ],
         };
 
         return (
