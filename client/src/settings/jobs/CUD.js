@@ -2,7 +2,6 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {translate} from "react-i18next";
 import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
 import {
     Button,
@@ -35,11 +34,10 @@ import axios from "axios";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {anyBuiltinTemplate, getBuiltinTemplateName, getBuiltinTemplates} from "../../lib/builtin-templates";
+import {TaskSource} from "../../../../shared/tasks"
 
 import {
     getBuiltinTasks,
-    getBuiltinTaskName,
     anyBuiltinTask,
     getBuiltinTask
 } from "../../lib/builtin-tasks";
@@ -63,7 +61,8 @@ export default class CUD extends Component {
         this.initForm({
             onChangeBeforeValidation: ::this.onChangeBeforeValidation,
             onChange: {
-                task: ::this.onTaskChange
+                task: ::this.onTaskChange,
+                taskSource: ::this.onTaskChange
             }
         });
 
@@ -82,6 +81,10 @@ export default class CUD extends Component {
         this.updateFormValue('taskParams', result.data);
     }
 
+    getDefaultBuiltinTask() {
+        return anyBuiltinTask() ? getBuiltinTasks()[0] : null;
+    }
+
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
@@ -91,6 +94,7 @@ export default class CUD extends Component {
                 description: '',
                 namespace: ivisConfig.user.namespace,
                 task: null,
+                taskSource: TaskSource.USER,
                 state: JobState.ENABLED,
                 signal_sets_triggers: [],
                 sets: [],
@@ -103,10 +107,25 @@ export default class CUD extends Component {
 
     onTaskChange(state, key, oldVal, newVal) {
         if (oldVal !== newVal) {
-            state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
+            const taskSource = state.formState.getIn(['data', 'taskSource', 'value']);
 
-            if (newVal) {
-                this.fetchTaskParams(newVal);
+            const taskId = state.formState.getIn(['data', 'task', 'value']);
+            if (taskSource === TaskSource.USER) {
+                state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
+
+                if (taskId) {
+                    this.fetchTaskParams(taskId);
+                }
+            } else {
+                const builtinTask = getBuiltinTask(taskId);
+
+                if (builtinTask) {
+                    state.formState = state.formState.setIn(['data', 'taskParams', 'value'], builtinTask.settings.params);
+                } else {
+                    const defaultTask = this.getDefaultBuiltinTask();
+                    state.formState = state.formState.setIn(['data', 'task', 'value'], defaultTask.id);
+                    state.formState = state.formState.setIn(['data', 'taskParams', 'value'], defaultTask.settings.params);
+                }
             }
         }
     }
@@ -137,6 +156,7 @@ export default class CUD extends Component {
         } else {
             state.setIn(['name', 'error'], null);
         }
+
 
         if (!state.getIn(['task', 'value'])) {
             state.setIn(['task', 'error'], t('Task must be selected'));
@@ -198,6 +218,9 @@ export default class CUD extends Component {
         if (data['state'] === JobState.INVALID_PARAMS) {
             data['state'] = JobState.DISABLED;
         }
+
+        const task = getBuiltinTask(data.task);
+        data.taskSource = task ? TaskSource.BUILTIN : TaskSource.USER;
 
         const sets = [];
         for (const trigger of data.signal_sets_triggers) {
@@ -375,7 +398,8 @@ export default class CUD extends Component {
                     </div>
                     <div className={cudStyles.entryContent}>
                         <TableSelect id={prefix + 'trigger'} label={t('Trigger on')} withHeader dropdown
-                                     dataUrl='rest/signal-sets-table' columns={setsColumns} selectionLabelIndex={2}/>
+                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
+                                     selectionLabelIndex={2}/>
                     </div>
                 </div>
             );
@@ -404,13 +428,13 @@ export default class CUD extends Component {
         const params = configSpec ? this.paramTypes.render(configSpec, this) : null;
 
         const taskSourceOptions = [
-            {key: 'user', label: t('User-defined task')},
-            {key: 'builtin', label: t('Built-in task')},
+            {key: TaskSource.USER, label: t('User-defined task')},
+            {key: TaskSource.BUILTIN, label: t('Built-in task')},
         ];
 
         const builtinTaskOptions = [];
-        for (const key in getBuiltinTask()) {
-            builtinTaskOptions.push({key, label: getBuiltinTaskName(key, t)});
+        for (const task of getBuiltinTasks()) {
+            builtinTaskOptions.push({key: task.id, label: t(task.name)});
         }
 
         return (
@@ -432,23 +456,21 @@ export default class CUD extends Component {
 
 
                     {anyBuiltinTask() &&
-                        <Dropdown id="taskSource" label={t('Task source')} options={taskSourceOptions}/>
+                    <Dropdown id="taskSource" label={t('Task source')} options={taskSourceOptions} disabled={isEdit}/>
                     }
 
-                    {//this.getFormValue('taskSource') === 'user' ?
+                    {this.getFormValue('taskSource') === TaskSource.USER ?
                         <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
                                      columns={taskColumns} selectionLabelIndex={1} disabled={isEdit}/>
-                        //:
-                        //<Dropdown id="builtin_task" label={t('Task')} options={builtinTaskOptions}/>
+                        :
+                        <Dropdown id="task" label={t('Task')} options={builtinTaskOptions} disabled={isEdit}/>
                     }
-
-                    <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
-                                 columns={taskColumns} selectionLabelIndex={1} disabled={isEdit}/>
 
                     <Dropdown id="state" label={t('State')} options={stateOptions}/>
                     <NamespaceSelect/>
                     <Fieldset id="triggers" label={t('Triggers')}>
-                        <InputField id="trigger" label={t('Periodic trigger')} placeholder="Automatic trigger time in seconds"/>
+                        <InputField id="trigger" label={t('Periodic trigger')}
+                                    placeholder="Automatic trigger time in seconds"/>
                         <InputField id="min_gap" label={t('Minimal interval')}
                                     placeholder="Minimal time between runs in seconds"/>
                         <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>

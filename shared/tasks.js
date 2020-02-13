@@ -50,6 +50,16 @@ if (Object.freeze) {
     Object.freeze(BuildState)
 }
 
+const TaskSource = {
+    USER: 'user',
+    BUILTIN: 'builtin',
+    BUILTIN_ADJACENT: 'builtin_adjacent'
+};
+
+if (Object.freeze) {
+    Object.freeze(BuildState)
+}
+
 function getFinalStates() {
     return [BuildState.FINISHED, BuildState.FAILED, BuildState.UNINITIALIZED];
 }
@@ -65,12 +75,12 @@ function isTransitionState(state) {
 function getSpecsForType(type, subtype = null) {
     const spec = taskSubtypeSpecs[type];
 
-    if (!spec){
+    if (!spec) {
         return null;
     }
 
     if (subtype) {
-        return spec[subtype] ? spec[subtype]: null;
+        return spec[subtype] ? spec[subtype] : null;
     }
 
     return spec;
@@ -81,6 +91,7 @@ module.exports = {
     subtypesByType,
     taskSubtypeSpecs,
     BuildState,
+    TaskSource,
     getFinalStates,
     getTransitionStates,
     isTransitionState

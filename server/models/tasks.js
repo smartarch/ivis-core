@@ -7,17 +7,18 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {BuildState, TaskType, subtypesByType} = require('../../shared/tasks');
+const {BuildState, TaskSource, TaskType, subtypesByType} = require('../../shared/tasks');
 const {JobState} = require('../../shared/jobs');
 const fs = require('fs-extra-promise');
 const taskHandler = require('../lib/task-handler');
 const files = require('./files');
 const dependencyHelpers = require('../lib/dependency-helpers');
 
-const allowedKeys = new Set(['name', 'description', 'type', 'settings', 'namespace']);
+const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
+const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);
 
 function hash(entity) {
-    return hasher.hash(filterObject(entity, allowedKeys));
+    return hasher.hash(filterObject(entity, allowedKeysCreate));
 }
 
 
@@ -43,7 +44,10 @@ async function listDTAjax(context, params) {
         context,
         [{entityTypeId: 'task', requiredOperations: ['view']}],
         params,
-        builder => builder.from('tasks').innerJoin('namespaces', 'namespaces.id', 'tasks.namespace'),
+        builder => builder
+            .from('tasks')
+            .whereIn('tasks.source', [TaskSource.USER])
+            .innerJoin('namespaces', 'namespaces.id', 'tasks.namespace'),
         ['tasks.id', 'tasks.name', 'tasks.description', 'tasks.type', 'tasks.created', 'tasks.build_state', 'namespaces.name']
     );
 }
@@ -63,13 +67,13 @@ async function create(context, task) {
 
         // Settings check
         if (task.settings.subtype) {
-            enforce(Object.values(subtypesByType[TaskType.PYTHON]).includes(task.settings.subtype), `Unknown ${task.type} type's subtype`);
+            enforce(Object.values(subtypesByType[task.type]).includes(task.settings.subtype), `Unknown ${task.type} type's subtype`);
         }
 
-        const filteredEntity = filterObject(task, allowedKeys);
+        const filteredEntity = filterObject(task, allowedKeysCreate);
         filteredEntity.settings = JSON.stringify(filteredEntity.settings);
         filteredEntity.build_state = BuildState.SCHEDULED;
-        filteredEntity.source = 'user';
+        filteredEntity.source = TaskSource.USER;
 
         const ids = await tx('tasks').insert(filteredEntity);
         const id = ids[0];
@@ -121,7 +125,7 @@ async function updateWithConsistencyCheck(context, task) {
         await namespaceHelpers.validateEntity(tx, task);
         await namespaceHelpers.validateMove(context, task, existing, 'task', 'createTask', 'delete');
 
-        const filteredEntity = filterObject(task, allowedKeys);
+        const filteredEntity = filterObject(task, allowedKeysUpdate);
         filteredEntity.settings = JSON.stringify(filteredEntity.settings);
 
         if (hasher.hash(task.settings.params) !== hasher.hash(existing.settings.params)) {

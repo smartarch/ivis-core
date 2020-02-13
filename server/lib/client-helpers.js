@@ -33,7 +33,7 @@ async function getAuthenticatedConfig(context) {
         },
         globalPermissions,
         builtinTemplates: builtinTemplates.list(),
-        builtinTasks: builtinTasks.list()
+        builtinTasks: await builtinTasks.list()
     }
 }
 

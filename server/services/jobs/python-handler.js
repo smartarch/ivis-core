@@ -37,8 +37,8 @@ async function run(id, runId, params, entities, state, taskDir, onRequest, onSuc
         dataInput.entities = entities;
         dataInput.state = state;
         dataInput.es = {
-            host: `${config.elasticsearch.host}`,
-            port: `${config.elasticsearch.port}`
+            host: `${ivisConfig.elasticsearch.host}`,
+            port: `${ivisConfig.elasticsearch.port}`
         };
 
         const pythonExec = path.join(taskDir, ENV_NAME, 'bin', 'python');

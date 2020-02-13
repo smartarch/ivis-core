@@ -183,13 +183,11 @@ export default class CUD extends Component {
         if (oldVal !== newVal) {
             const templateType = state.formState.getIn(['data', 'templateType', 'value']);
 
-            console.log(templateType);
             if (templateType === 'user') {
                 const template = state.formState.getIn(['data', 'template', 'value']);
 
                 state.formState = state.formState.setIn(['data', 'templateParams', 'value'], '');
 
-                console.log(template);
                 if (template) {
                     this.fetchUserTemplateParams(template);
                 }

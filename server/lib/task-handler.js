@@ -14,8 +14,8 @@ const config = require("./config");
 
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
-const {BuildState, getTransitionStates} = require('../../shared/tasks');
-const builtinTasksList= require('../models/builtin-tasks').list;
+const {BuildState, TaskSource, getTransitionStates} = require('../../shared/tasks');
+const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
 
 const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'services', 'task-handler.js'));
 
@@ -193,8 +193,8 @@ async function initIndices() {
 
 }
 
-async function initBuiltin(){
-    const builtins = builtinTasksList() ;
+async function initBuiltin() {
+    await storeBuiltinTasks();
 }
 
 /**
