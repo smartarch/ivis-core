@@ -25,7 +25,7 @@ export class Debug extends Component {
         } else {
             return (
                 <li key={key.toString()}>
-                    <b>{key.toString()}:</b> {prop[key]}
+                    <b>{key.toString()}:</b> {String(prop[key])}
                 </li>
             );
         }

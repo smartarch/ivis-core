@@ -8,60 +8,43 @@ class AnimationTest {
         this._animationReset();
     }
 
-    _updateData(begin) {
-        const beginKeyframeNum = 3;
+    _refresh() {
+        this.status.position += 1;
 
-        this.animationStatus.currFrameNum += 1;
-
-        if (this.animationStatus.currFrameNum === this.animationStatus.numOfFrames - 1) {
-            this.animationStatus.currFrameNum = 0;
-
-            if (begin) {
-                this.animationData = [];
-                for (let i = 0; i < beginKeyframeNum; i += 1) {
-                    this.animationData.push(this._advanceOneKeyframe());
-                }
-            } else {
-                this.animationData = this._advanceOneKeyframe();
-            }
-
+        if (this.status.position % this.status.numOfFrames === 0) {
+            this._updateData();
         }
 
-        this.animationStatus.ver += 1;
+        this.status.ver += 1;
 
         this.lastUpdateTS = Date.now();
     }
 
-    _advanceOneKeyframe() {
+    _updateData() {
         const jump = 10;
-        const nextData = {
-            currKeyframeData: {},
-            nextKeyframeData: {},
-        };
 
-        this.currKeyframeNum += 1;
+        this.data.currKeyframeNum = Math.floor(this.status.position / this.status.numOfFrames);
 
-        nextData.currKeyframeData.distance = this.currKeyframeNum * jump;
-        nextData.nextKeyframeData.distance = (this.currKeyframeNum + 1) * jump;
-        nextData.currKeyframeNum = this.currKeyframeNum;
+        this.data.currKeyframeData.distance = this.data.currKeyframeNum * jump;
+        this.data.nextKeyframeData.distance = this.data.currKeyframeData.distance + jump;
 
-        log.info("Animation", "Current keyframe:" + this.currKeyframeNum, (this.lastKeyframeChangeTS - Date.now()) / 1000);
+        log.info("Debug", "Data update....Current keyframe:" + this.data.currKeyframeNum, (this.lastKeyframeChangeTS - Date.now()) / 1000);
         this.lastKeyframeChangeTS = Date.now();
-        return nextData;
     }
 
     _animationReset() {
         this.lastUpdateTS = null;
-        this.animationStatus = {
+        this.status = {
             ver: 0,
-            frameRefreshRate: 1000,
+            refreshRate: 1000,
             numOfFrames: 5,
             numOfKeyframes: 200,
-            playStatus: "stopped",
-            currFrameNum: 0,
+            isPlaying: false,
+            didSeekOn: 0,
+            position: 0,
         };
 
-        this.animationData = {
+        this.data = {
             currKeyframeNum: 0,
             currKeyframeData: {
                 distance: 0
@@ -70,49 +53,72 @@ class AnimationTest {
                 distance: 10
             }
         };
-        this.currKeyframeNum = 0;
-        this.defaultRefreshRate = 1000;
     }
 
     getStatus() {
-        return this.animationStatus;
+        return this.status;
     }
 
     getData () {
-        return this.animationData;
+        return this.data;
     }
 
     play() {
         log.info("Animation", "Started play sequence");
-        log.info("Debug", this.animationStatus.playStatus);
+        log.info("Debug", this.status.playStatus);
 
-        if (this.animationStatus.playStatus !== "playing") {
-            this._updateData(this.animationStatus.playStatus === "stopped");
+        if (!this.status.isPlaying) {
             this.refreshInterval = setInterval(
-                this._updateData.bind(this, false),
-                this.animationStatus.frameRefreshRate
+                this._refresh.bind(this),
+                this.status.refreshRate
             );
 
-            this.animationStatus.playStatus = "playing";
-            this.animationStatus.ver += 1;
+            this.status.isPlaying = true;
+            this.status.ver += 1;
         }
 
         log.info("Animation", "Play sequence ended");
     }
 
     pause() {
-        if (this.animationStatus.playStatus === "playing") {
+        if (this.status.isPlaying) {
             clearInterval(this.refreshInterval);
-            log.info("Animation", "Interval cleared, paused at frame num" + this.animationStatus.currFrameNum);
+            log.info("Animation", "Interval cleared, paused at frame num" + this.status.position);
 
-            this.animationStatus.playStatus = "paused";
-            this.animationStatus.ver += 1;
+            this.status.isPlaying = false;
+            this.status.ver += 1;
         }
     }
 
     reset() {
         clearInterval(this.refreshInterval);
         this._animationReset();
+    }
+
+    seek(toFrameNum) {
+        const wasPlaying = this.status.isPlaying;
+        if (wasPlaying) {
+            clearInterval(this.refreshInterval);
+        }
+
+        const toFrameNumLimited = Math.max(
+            0, Math.min((this.status.numOfFrames * this.status.numOfKeyframes) - 1, toFrameNum)
+        );
+
+        log.info("Seek intended to:", toFrameNum, "limited to:", toFrameNumLimited);
+        this.status.position = toFrameNumLimited;
+
+        this._updateData();
+
+        if (wasPlaying) {
+            this.refreshInterval = setInterval(
+                this._refresh.bind(this),
+                this.status.refreshRate
+            );
+        }
+
+        this.status.didSeekOn = this.status.ver + 1;
+        this.status.ver += 1;
     }
 }
 
@@ -143,12 +149,13 @@ router.post('/animation/server/reset', (req, res) => {
 });
 
 router.post('/animation/server/changeSpeed', (req, res) => {
-    log.info("Animation", `Change of speed to ${req.body}`);
+    log.info("Animation", `Change of speed to ${JSON.stringigfy(req.body)}`);
     res.sendStatus(200);
 });
 
 router.post('/animation/server/seek', (req, res) => {
-    log.info("Animation", `Seek to ${req.body}`);
+    log.info("Animation", `Seek to ${JSON.stringify(req.body)}`);
+    currentAnimation.seek(req.body.to);
     res.sendStatus(200);
 });
 
