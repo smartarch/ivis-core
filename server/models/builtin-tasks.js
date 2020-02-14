@@ -16,6 +16,9 @@ const aggregationTask = {
     },
 };
 
+/**
+ * All default builtin tasks
+ */
 const builtinTasks = [
     aggregationTask
 ];
@@ -30,6 +33,12 @@ Sample builtin task:
 
 em.on('builtinTasks.add', addTasks);
 
+/**
+ * Check if builtin in task with fiven name alredy exists
+ * @param tx
+ * @param name
+ * @return {Promise<any>} undefined if not found, found task otherwise
+ */
 async function checkExistence(tx, name) {
     return await tx('tasks').where({
         source: TaskSource.BUILTIN,
@@ -37,6 +46,12 @@ async function checkExistence(tx, name) {
     }).first();
 }
 
+/**
+ * Store given task as a builtin task to system
+ * @param tx
+ * @param builtinTask task to add
+ * @return {Promise<void>}
+ */
 async function addBuiltinTask(tx, builtinTask) {
     const task = {...builtinTask};
     task.source = TaskSource.BUILTIN;
@@ -46,6 +61,13 @@ async function addBuiltinTask(tx, builtinTask) {
     await tx('tasks').insert(task);
 }
 
+/**
+ * Update existing task
+ * @param tx
+ * @param id of existing task
+ * @param builtinTask columns being updated
+ * @return {Promise<void>}
+ */
 async function updateBuiltinTask(tx, id, builtinTask) {
     const task = {...builtinTask};
     task.source = TaskSource.BUILTIN;
@@ -54,8 +76,25 @@ async function updateBuiltinTask(tx, id, builtinTask) {
     await tx('tasks').where('id', id).update({...task, build_state: BuildState.UNINITIALIZED});
 }
 
+/**
+ * Check if all default builtin tasks are in the system / set them to default state
+ * @return {Promise<void>}
+ */
 async function storeBuiltinTasks() {
-    for (const task of builtinTasks) {
+    await addTasks(builtinTasks);
+}
+
+/**
+ * Add given tasks as builtin tasks
+ * @param tasks
+ * @return {Promise<void>}
+ */
+async function addTasks(tasks) {
+    if (!Array.isArray(tasks)) {
+        tasks = [tasks];
+    }
+
+    for (const task of tasks) {
         await knex.transaction(async tx => {
             const exists = await checkExistence(tx, task.name);
             if (!exists) {
@@ -67,18 +106,10 @@ async function storeBuiltinTasks() {
     }
 }
 
-async function addTasks(tasks) {
-    if (!Array.isArray(tasks)) {
-        tasks = [tasks];
-    }
-
-    for (const task of tasks) {
-        await knex.transaction(async tx => {
-            await addBuiltinTask(tx, task);
-        });
-    }
-}
-
+/**
+ * List all builtin tasks currently in the system
+ * @return {Promise<any>}
+ */
 async function list() {
     const tasks = await knex('tasks').where({source: TaskSource.BUILTIN});
     tasks.forEach(task => task.settings = JSON.parse(task.settings));
