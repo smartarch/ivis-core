@@ -239,7 +239,7 @@ EOT
 
     (cd client && npm run build)
 
-    chown $userId.$groupId -R .
+    chown $userId:$groupId -R .
 }
 
 
