@@ -30,6 +30,7 @@ import {
     PropTypeArrayWithLengthAtLeast,
     roundTo
 } from "../common";
+import * as d3Color from "d3-color";
 
 const ConfigDifference = {
     NONE: 0,
@@ -549,6 +550,14 @@ export class ScatterPlotBase extends Component {
                     if (this.props.hasOwnProperty("maxDotRadiusValue"))
                         this.sExtent[1] = this.props.maxDotRadiusValue;
                     this.cExtent = getExtent(processedResults, function (d) { return d.c });
+                    this.cExtents = {};
+                    for (let i = 0; i < processedResults.length; i++) {
+                        const SignalSetConfig = this.props.config.signalSets[i];
+                        if (SignalSetConfig.hasOwnProperty("color_sigCid")) {
+                            const cidIndex = SignalSetConfig.cid + "-" + i;
+                            this.cExtents[cidIndex] = getExtent(processedResults.slice(i, i + 1), function (d) { return d.c });
+                        }
+                    }
                 }
 
                 this.setState({
@@ -643,6 +652,7 @@ export class ScatterPlotBase extends Component {
         if (this.props.colors && this.props.colors.length > 0 && SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("color_sigCid"))) {
             cScale = getColorScale(this.cExtent, this.props.colors);
         }
+        this.cScale = cScale;
         //</editor-fold>
 
         // draw data
@@ -710,27 +720,26 @@ export class ScatterPlotBase extends Component {
     }
     //</editor-fold>
 
-    getDrawColor(data, SignalSetConfig, cScale) {
+    getDrawColor(SignalSetConfig, cidIndex, cScale) {
         let color = SignalSetConfig.color;
-        let constantColor = true;
         if (SignalSetConfig.hasOwnProperty("color_sigCid")) {
-            const cExtent = getExtent([data], d => d.c);
+            const cExtent = this.cExtents[cidIndex];
             if (cScale === undefined || (Array.isArray(SignalSetConfig.color) && SignalSetConfig.color.length > 0)) {
                 cScale = getColorScale(cExtent, SignalSetConfig.color);
             }
-            constantColor = false;
+            return cScale;
         }
-        else
-        {
+        else {
             if (Array.isArray(color))
-                color = color[0];
+                return _ => color[0];
+            else
+                return _ => color;
         }
-        return [constantColor, color, cScale];
     }
 
     /** data = [{ x, y, s? }] */
     drawDots(data, xScale, yScale, sScale, cScale_, cidIndex, SignalSetConfig) {
-        const [constantColor, color, cScale] = this.getDrawColor(data, SignalSetConfig, cScale_);
+        const cScale = this.getDrawColor(SignalSetConfig, cidIndex, cScale_);
 
         const radius = SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius;
         const constantRadius = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
@@ -748,7 +757,7 @@ export class ScatterPlotBase extends Component {
             .attr('cx', d => xScale(d.x))
             .attr('cy', d => yScale(d.y))
             .attr('r', d => constantRadius ? radius : sScale(d.s))
-            .attr('fill', d => constantColor ? color : cScale(d.c));
+            .attr('fill', d => cScale(d.c));
 
         dots.exit()
             .remove();
@@ -756,7 +765,7 @@ export class ScatterPlotBase extends Component {
 
     /** data = [{ x, y, s? }] */
     drawSquares(data, xScale, yScale, sScale, cScale_, cidIndex, SignalSetConfig) {
-        const [constantColor, color, cScale] = this.getDrawColor(data, SignalSetConfig, cScale_);
+        const cScale = this.getDrawColor(SignalSetConfig, cidIndex, cScale_);
 
         const size = (SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius) / Math.SQRT2;
         const constantSize = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
@@ -777,7 +786,7 @@ export class ScatterPlotBase extends Component {
             .attr('width', d => 2 * s(d))
             .attr('height', d => 2 * s(d))
             .attr('transform', d => `rotate(45, ${xScale(d.x)}, ${yScale(d.y)})`)
-            .attr('fill', d => ModifyColorCopy(constantColor ? color : cScale(d.c), 0.5));
+            .attr('fill', d => ModifyColorCopy(cScale(d.c), 0.5));
 
         squares.exit()
             .remove();
@@ -942,20 +951,17 @@ export class ScatterPlotBase extends Component {
                         radius = SignalSetConfig.dotRadius;
                     if (SignalSetConfig.hasOwnProperty("dotSize_sigCid"))
                         radius = sScale(newSelection.s);
+                    const cScale = self.getDrawColor(SignalSetConfig, signalSetCidIndex, self.cScale);
 
                     self.dotHighlightSelections[signalSetCidIndex]
                         .append('circle')
                         .attr('cx', xScale(newSelection.x))
                         .attr('cy', yScale(newSelection.y))
-                        .attr('r', self.props.highlightDotRadius * radius);
-                    if (typeof SignalSetConfig.color.darker === "function") // TODO better color handling?
-                        self.dotHighlightSelections[signalSetCidIndex]
-                            .attr("fill", SignalSetConfig.color.darker());
-                    else
-                        self.dotHighlightSelections[signalSetCidIndex]
-                            .attr('fill', "none")
-                            .attr('stroke', "black")
-                            .attr("stroke-width", "1px");
+                        .attr('r', self.props.highlightDotRadius * radius)
+                        .attr("fill", d3Color.color(cScale(newSelection.c)).darker());
+                    /*self.dotHighlightSelections[signalSetCidIndex]
+                        .attr('stroke', "black")
+                        .attr("stroke-width", "1px");*/
                 }
 
                 newSelections[signalSetCidIndex] = newSelection;
