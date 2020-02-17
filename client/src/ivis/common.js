@@ -1,6 +1,8 @@
 'use strict';
 
 import * as d3Array from "d3-array";
+import * as d3Scale from "d3-scale";
+import * as d3Color from "d3-color";
 
 /**
  * Adds margin to extent in format of d3.extent()
@@ -41,4 +43,41 @@ export function distance(point1, point2) {
 export function roundTo(num, decimals = 2) {
     const pow10 = Math.pow(10, decimals);
     return Math.round(num * pow10) / pow10;
+}
+
+export function getColorScale(domain, colors) {
+    if (!Array.isArray(colors) || colors.length === 0)
+        throw new Error("colors parameter must be an array with at least one element");
+    colors = colors.length === 1 ? [colors[0], colors[0]] : colors; // if we have only one color, duplicate it
+
+    const [min, max] = domain;
+    const step = (max - min) / (colors.length - 1);
+    const subdividedDomain = colors.map((c, i) => i * step + min); // subdividedDomain contains a value from [min, max] for each color (domain and range of scaleLinear must have same length)
+    return d3Scale.scaleLinear()
+        .domain(subdividedDomain)
+        .range(colors);
+}
+
+export function PropTypeArrayWithLengthAtLeast(length) {
+    return function (props, propName, componentName) {
+        if (Array.isArray(props[propName])) {
+            if (props[propName].length >= length)
+                return;
+            else
+                return new Error(
+                    'Invalid prop `' + propName + '` supplied to' +
+                    ' `' + componentName + '`. Array must contain at least ' + length + ' elements.'
+                );
+        }
+        else
+            return new Error(
+                'Invalid prop `' + propName + '` supplied to' +
+                ' `' + componentName + '`. It must be an array with at least ' + length + ' elements.'
+            );
+    }
+}
+
+export function ModifyColorCopy(color, new_opacity) {
+    color = d3Color.color(color);
+    return d3Color.rgb(color.r, color.g, color.b, new_opacity);
 }

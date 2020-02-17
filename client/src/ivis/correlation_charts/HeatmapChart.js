@@ -15,6 +15,7 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
 import {Icon} from "../../lib/bootstrap-components";
+import {getColorScale} from "../common";
 
 
 const ConfigDifference = {
@@ -298,11 +299,7 @@ export class HeatmapChart extends Component {
 
             // color scale
             const colors = this.props.config.colors && this.props.config.colors.length >= 2 ? this.props.config.colors : HeatmapChart.defaultColors;
-            const step = maxProb / (colors.length - 1);
-            const colorProbs = colors.map((c, i) => i * step); // colorProbs contains a value from [0, maxProb] for each color (domain and range of scaleLinear must have same length)
-            const colorScale = d3Scale.scaleLinear()
-                .domain(colorProbs)
-                .range(colors);
+            const colorScale = getColorScale([0, maxProb], colors);
 
             // create rectangles
             const columns = this.columnsSelection

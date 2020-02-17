@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
+import {PropTypeArrayWithLengthAtLeast} from "../common";
 
 
 @withComponentMixins([
@@ -23,7 +24,7 @@ export class BubblePlot extends Component {
                 cid: PropTypes.string.isRequired,
                 X_sigCid: PropTypes.string.isRequired,
                 Y_sigCid: PropTypes.string.isRequired,
-                color: PropTypes.object.isRequired,
+                color: PropTypes.oneOfType([PropTypes.object, PropTypeArrayWithLengthAtLeast(1)]).isRequired,
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotSize_sigCid: PropTypes.string.isRequired,

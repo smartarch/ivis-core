@@ -128,10 +128,11 @@ export default class SamplePanel_BubblePlot extends Component {
                     signalSet: "top:bubble",
                     X_sigCid: "x",
                     Y_sigCid: "y",
-                    color: rgb(219, 0, 0),
+                    color: [rgb(200, 12, 0), rgb(200, 12, 0), rgb(0, 0, 219)],
                     label: "Bubble",
                     enabled: true,
-                    dotSize_sigCid: "z"
+                    dotSize_sigCid: "z",
+                    color_sigCid: "w"
                 }
             ],
         };
