@@ -15,30 +15,40 @@ class AnimationTest {
             this._updateData();
         }
 
-        this.status.ver += 1;
-
         this.lastUpdateTS = Date.now();
     }
 
     _updateData() {
-        const jump = 10;
+        const jump = 6;
 
-        this.data.currKeyframeNum = Math.floor(this.status.position / this.status.numOfFrames);
+        const nextKeyframeNum = Math.floor(this.status.position / this.status.numOfFrames);
+        if (nextKeyframeNum === this.status.numOfKeyframes) {
+            log.info("Debug...", this.data.currKeyframeData.circle.cx);
+            this.reset();
+            return;
+        }
 
-        this.data.currKeyframeData.distance = this.data.currKeyframeNum * jump;
-        this.data.nextKeyframeData.distance = this.data.currKeyframeData.distance + jump;
+        this.data.currKeyframeNum = nextKeyframeNum;
+
+        this.data.currKeyframeData = {
+            circle: { cx: (this.data.currKeyframeNum * jump) + 10 }
+        };
+        this.data.nextKeyframeData = {
+            circle: { cx: ((this.data.currKeyframeNum + 1) * jump) + 10 }
+        };
 
         log.info("Debug", "Data update....Current keyframe:" + this.data.currKeyframeNum, (this.lastKeyframeChangeTS - Date.now()) / 1000);
         this.lastKeyframeChangeTS = Date.now();
+        this.newDataIn = this.status.refreshRate * this.status.numOfFrames;
     }
 
     _animationReset() {
         this.lastUpdateTS = null;
         this.status = {
             ver: 0,
-            refreshRate: 1000,
-            numOfFrames: 5,
-            numOfKeyframes: 200,
+            refreshRate: 1000/24,
+            numOfFrames: 120,
+            numOfKeyframes: 30,
             isPlaying: false,
             didSeekOn: 0,
             position: 0,
@@ -47,11 +57,11 @@ class AnimationTest {
         this.data = {
             currKeyframeNum: 0,
             currKeyframeData: {
-                distance: 0
+                circle: { cx: 10 }
             },
             nextKeyframeData: {
-                distance: 10
-            }
+                circle: { cx: 16 }
+            },
         };
     }
 
@@ -60,7 +70,7 @@ class AnimationTest {
     }
 
     getData () {
-        return this.data;
+        return {data: this.data, newDataIn: this.status.isPlaying ? this.newDataIn : -1};
     }
 
     play() {
@@ -73,6 +83,7 @@ class AnimationTest {
                 this.status.refreshRate
             );
 
+            this.newDataIn = this.status.refreshRate * (this.status.numOfFrames - (this.status.position % this.status.numOfFrames));
             this.status.isPlaying = true;
             this.status.ver += 1;
         }
@@ -115,6 +126,7 @@ class AnimationTest {
                 this._refresh.bind(this),
                 this.status.refreshRate
             );
+            this.newDataIn = this.status.refreshRate * (this.status.numOfFrames - (this.status.position % this.status.numOfFrames));
         }
 
         this.status.didSeekOn = this.status.ver + 1;

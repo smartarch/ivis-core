@@ -1,6 +1,12 @@
 import React, {Component} from "react";
 import {Debug} from "./Debug";
 import PropTypes from "prop-types";
+import {SVG} from "./SVG";
+
+const svgImage = `<svg viewBox="0 0 200 100" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <line x1="10" y1="50" x2="190"  y2="50" stroke="purple" stroke-width="1"/>
+  <circle id="circle" cx="10" cy="50" r="5" stroke="black" fill="transparent" stroke-width="1"/>
+</svg>`;
 
 export class AnimatedBase extends Component {
     static propTypes = {
@@ -16,37 +22,35 @@ export class AnimatedBase extends Component {
     }
 
     interpolate(left, right, f, ratio) {
-        console.log("Interpoalte with args:", left, right, f, ratio);
-        if (left === undefined || right === undefined) {
-            return 0;
+        if (right === undefined) {
+            return left;
         }
 
-        if (typeof left === "object" && typeof right === "object") {
-            const ret = Object.assign({}, left, right);
+        const interpolatedAttrs = {};
+        for (const attrName in left) {
+            const leftVal = left[attrName];
+            const rightVal = right[attrName];
 
-            for(let key in ret) {
-                ret[key] = this.interpolate(left[key], right[key], f, ratio);
-            }
-
-            return ret;
+            interpolatedAttrs[attrName] = rightVal === undefined ? leftVal : f(leftVal, rightVal, ratio);
         }
 
-        return f(left, right, ratio);
+
+        return interpolatedAttrs;
     }
 
     paint() {
-        console.log("Painting frame", this.props.keyframeContext.status.position);
         const visDataCurr = this.props.keyframeContext.currKeyframeData;
         const visDataNext = this.props.keyframeContext.nextKeyframeData;
 
         const ratio = (this.props.keyframeContext.status.position % this.props.keyframeContext.status.numOfFrames) / this.props.keyframeContext.status.numOfFrames;
 
-        const visualizationData = this.interpolate(
-            visDataCurr,
-            visDataNext,
-            this.props.interpolationFunc,
-            ratio
-        );
+        const visualizationData = {};
+        for (const id in visDataCurr) {
+            const attrsCurr = visDataCurr[id];
+            const attrsNext = visDataNext[id];
+
+            visualizationData[id] = this.interpolate(attrsCurr, attrsNext, this.props.interpolationFunc, ratio);
+        }
 
         this.lastVisualizationData = this.state.visualizationData;
         this.setState({visualizationData});
@@ -57,7 +61,6 @@ export class AnimatedBase extends Component {
         const prevC = prevProps.keyframeContext;
         if (c.status.position != prevC.status.position) {
             this.repaintNeeded = true;
-            console.log("Repaint needed");
         }
 
         if (this.repaintNeeded && c.currKeyframeNum !== undefined
@@ -71,10 +74,9 @@ export class AnimatedBase extends Component {
         return (
             <>
                 <Debug
-                    context={this.props.keyframeContext}
                     visData={this.state.visualizationData}
-                    lastVisData={this.lastVisualizationData}
                 />
+                <SVG source={svgImage} update={this.state.visualizationData} />
             </>
         );
     }
