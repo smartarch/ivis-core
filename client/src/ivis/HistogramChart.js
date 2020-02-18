@@ -7,6 +7,7 @@ import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
 import {event as d3Event, select} from "d3-selection";
 import * as d3Array from "d3-array";
+import * as d3Interpolate from "d3-interpolate";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
@@ -113,6 +114,7 @@ export class HistogramChart extends Component {
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
         withOverview: PropTypes.bool,
+        withTransition: PropTypes.bool,
 
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
@@ -132,6 +134,7 @@ export class HistogramChart extends Component {
         withCursor: true,
         withTooltip: true,
         withOverview: true,
+        withTransition: true,
 
         overviewHeight: 100,
         overviewMargin: { top: 20, bottom: 20 }
@@ -378,7 +381,8 @@ export class HistogramChart extends Component {
                 .range([ySize, 0]);
             const yAxis = d3Axis.axisLeft(yScale)
                 .tickFormat(yScale.tickFormat(10, "-%"));
-            this.yAxisSelection.transition().call(yAxis);
+            (this.props.withTransition ? this.yAxisSelection.transition() : this.yAxisSelection)
+                .call(yAxis);
             //</editor-fold>
 
             this.drawBars(signalSetsData, this.barsSelection, xScale, yScale, ySize, this.props.config.color, false);
@@ -413,10 +417,10 @@ export class HistogramChart extends Component {
         allBars.attr('x', d => xScale(d.key))
             .attr("width", barWidth)
             .attr("fill", barColor);
-        (disableTransitions ?  allBars : allBars.transition())
+        (disableTransitions || !this.props.withTransition ?  allBars : allBars.transition())
             .attr('y', d => yScale(d.prob))
             .attr("height", d => ySize - yScale(d.prob));
-        
+
         bars.exit()
             .remove();
     }
@@ -516,11 +520,33 @@ export class HistogramChart extends Component {
 
         // zoom
         const handleZoom = function () {
+            // noinspection JSUnresolvedVariable
+            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                const prevTransform = self.state.zoomTransform;
+                const newTransform = d3Event.transform;
+                const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
+                const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
+                const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
+
+                select(self).transition().duration(150)
+                    .tween("zoom", () => function (t) {
+                        setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)));
+                    })
+                    .on("end", () => {
+                        self.deselectPoints();
+                    });
+            } else {
+                // noinspection JSUnresolvedVariable
+                setZoomTransform(d3Event.transform);
+            }
+        };
+
+        const setZoomTransform = function (transform) {
             self.setState({
-                zoomTransform: d3Event.transform
+                zoomTransform: transform
             });
             if (self.brush)
-                self.overviewBrushSelection.call(self.brush.move, self.defaultBrush.map(d3Event.transform.invertX, d3Event.transform));
+                self.overviewBrushSelection.call(self.brush.move, self.defaultBrush.map(transform.invertX, transform));
         };
 
         const handleZoomEnd = function () {
@@ -577,9 +603,11 @@ export class HistogramChart extends Component {
             .extent([[0, 0], [xSize, ySize]])
             .handleSize(20)
             .on("brush end", function () {
+                // noinspection JSUnresolvedVariable
                 const sel = d3Event.selection;
                 self.overviewBrushSelection.call(::self.brushHandle, sel);
 
+                // noinspection JSUnresolvedVariable
                 if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
                 const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
                 self.svgContainerSelection.call(self.zoom.transform, newTransform);
@@ -616,8 +644,6 @@ export class HistogramChart extends Component {
 
 
     render() {
-        const config = this.props.config;
-
         if (!this.state.signalSetsData) {
             return (
                 <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
