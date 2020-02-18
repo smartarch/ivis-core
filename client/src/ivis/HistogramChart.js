@@ -6,6 +6,7 @@ import * as d3Scale from "d3-scale";
 import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
 import {event as d3Event, select} from "d3-selection";
+import * as d3Array from "d3-array";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
@@ -17,7 +18,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
-import {isInExtent} from "./common";
+import {isInExtent, PropTypeNumberInRange} from "./common";
 
 const ConfigDifference = {
     NONE: 0,
@@ -116,6 +117,7 @@ export class HistogramChart extends Component {
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
         maxBucketCount: PropTypes.number,
+        topPaddingWhenZoomed: PropTypeNumberInRange(0, 1), // determines whether bars will be stretched up when zooming
         xMin: PropTypes.number,
         xMax: PropTypes.number
     };
@@ -125,6 +127,7 @@ export class HistogramChart extends Component {
         maxBucketCount: undefined,
         xMin: NaN,
         xMax: NaN,
+        topPaddingWhenZoomed: 0,
 
         withCursor: true,
         withTooltip: true,
@@ -347,13 +350,6 @@ export class HistogramChart extends Component {
             const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
             const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
 
-            const yScale = d3Scale.scaleLinear()
-                .domain([0, signalSetsData.maxProb])
-                .range([ySize, 0]);
-            const yAxis = d3Axis.axisLeft(yScale)
-                .tickFormat(yScale.tickFormat(10, "-%"));
-            this.yAxisSelection.call(yAxis);
-
             let xScale = d3Scale.scaleLinear()
                 .domain(this.xExtent)
                 .range([0, width - this.props.margin.left - this.props.margin.right]);
@@ -361,9 +357,31 @@ export class HistogramChart extends Component {
             const xAxis = d3Axis.axisBottom(xScale)
                 .tickSizeOuter(0);
             this.xAxisSelection.call(xAxis);
+
+            let maxProb = signalSetsData.maxProb;
+            let maxProbInZoom;
+            const [xDomainMin, xDomainMax] = xScale.domain();
+            if (this.state.zoomTransform.k > 1 && this.props.topPaddingWhenZoomed !== 1) {
+                maxProbInZoom = d3Array.max(signalSetsData.buckets, b => {
+                    if (b.key + signalSetsData.step >= xDomainMin &&
+                        b.key <= xDomainMax)
+                        return b.prob;
+                });
+            }
+            if (maxProbInZoom !== undefined && maxProbInZoom !== 0){
+                if (maxProbInZoom / maxProb < 1 - this.props.topPaddingWhenZoomed)
+                    maxProb = maxProbInZoom / (1 - this.props.topPaddingWhenZoomed);
+            }
+
+            const yScale = d3Scale.scaleLinear()
+                .domain([0, maxProb])
+                .range([ySize, 0]);
+            const yAxis = d3Axis.axisLeft(yScale)
+                .tickFormat(yScale.tickFormat(10, "-%"));
+            this.yAxisSelection.transition().call(yAxis);
             //</editor-fold>
 
-            this.drawBars(signalSetsData, this.barsSelection, xScale, yScale, ySize, this.props.config.color);
+            this.drawBars(signalSetsData, this.barsSelection, xScale, yScale, ySize, this.props.config.color, false);
 
             // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
             if (forceRefresh || widthChanged) {
@@ -378,23 +396,27 @@ export class HistogramChart extends Component {
         }
     }
 
-    drawBars(signalSetsData, barsSelection, xScale, yScale, ySize, barColor) {
+    drawBars(signalSetsData, barsSelection, xScale, yScale, ySize, barColor, disableTransitions = true) {
         const step = signalSetsData.step;
         const barWidth = xScale(step) - xScale(0) - 1;
 
         const bars = barsSelection
             .selectAll('rect')
-            .data(signalSetsData.buckets);
+            .data(signalSetsData.buckets, d => d.key);
 
-        bars.enter()
+        const allBars = bars.enter()
             .append('rect')
-            .merge(bars)
-            .attr('x', d => xScale(d.key))
-            .attr('y', d => yScale(d.prob))
-            .attr("width", barWidth)
-            .attr("height", d => ySize - yScale(d.prob))
-            .attr("fill", barColor);
+            .attr('y', yScale.range()[0])
+            .attr("height", 0)
+            .merge(bars);
 
+        allBars.attr('x', d => xScale(d.key))
+            .attr("width", barWidth)
+            .attr("fill", barColor);
+        (disableTransitions ?  allBars : allBars.transition())
+            .attr('y', d => yScale(d.prob))
+            .attr("height", d => ySize - yScale(d.prob));
+        
         bars.exit()
             .remove();
     }

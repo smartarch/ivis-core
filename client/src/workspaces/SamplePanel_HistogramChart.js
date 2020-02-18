@@ -30,6 +30,7 @@ class TestHistogramChart extends Component {
                     height={400}
                     margin={{left: 40, right: 5, top: 5, bottom: 20}}
                     xMin={200}
+                    topPaddingWhenZoomed={0.1}
                 />
                 {/*bucketCount={10}*/}
             </TimeContext>

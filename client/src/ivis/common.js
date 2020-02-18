@@ -77,6 +77,29 @@ export function PropTypeArrayWithLengthAtLeast(length) {
     }
 }
 
+export function PropTypeNumberInRange(min, max) {
+    return function (props, propName, componentName) {
+        if (!isNaN(props[propName])) {
+            if (min !== undefined && props[propName] < min)
+                return new Error(
+                    'Invalid prop `' + propName + '` supplied to' +
+                    ' `' + componentName + '`. Number must be greater than or equal to ' + min + '.'
+                );
+            if (max !== undefined && props[propName] > max)
+                return new Error(
+                    'Invalid prop `' + propName + '` supplied to' +
+                    ' `' + componentName + '`. Number must be less than or equal to ' + max + '.'
+                );
+            return;
+        }
+        else
+            return new Error(
+                'Invalid prop `' + propName + '` supplied to' +
+                ' `' + componentName + '`. It must be a number.'
+            );
+    }
+}
+
 export function ModifyColorCopy(color, new_opacity) {
     color = d3Color.color(color);
     return d3Color.rgb(color.r, color.g, color.b, new_opacity);
