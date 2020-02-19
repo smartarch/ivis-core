@@ -21,15 +21,7 @@ import {Tooltip} from "../Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../../lib/bootstrap-components";
-import {
-    distance,
-    extentWithMargin,
-    getColorScale,
-    getExtent,
-    isSignalVisible, ModifyColorCopy,
-    PropTypeArrayWithLengthAtLeast,
-    roundTo
-} from "../common";
+import {distance, extentWithMargin, getColorScale, getExtent, isSignalVisible, ModifyColorCopy, PropTypeArrayWithLengthAtLeast, roundTo} from "../common";
 import * as d3Color from "d3-color";
 
 const ConfigDifference = {
@@ -265,7 +257,7 @@ class ScatterPlotToolbar extends Component {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-], ["setSettings", "setLimits"])
+], ["setMaxDotCount", "setWithTooltip", "getLimits", "setLimits"])
 export class ScatterPlotBase extends Component {
     //<editor-fold desc="React methods, constructor">
     constructor(props) {
@@ -279,6 +271,9 @@ export class ScatterPlotBase extends Component {
         this.labels = {};
         this.globalRegressions = [];
         this.regressions = [];
+
+        this.brush = null;
+        this.zoom = null;
 
         this.state = {
             signalSetsData: null, // data from last request
@@ -326,7 +321,7 @@ export class ScatterPlotBase extends Component {
             })).isRequired
         }).isRequired,
 
-        maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setSettings to update it
+        maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotRadius: PropTypes.number,
         minDotRadius: PropTypes.number, // for BubblePlot
         maxDotRadius: PropTypes.number, // for BubblePlot
@@ -1101,7 +1096,6 @@ export class ScatterPlotBase extends Component {
                         self.deselectPoints();
                     });
             } else {
-
                 // noinspection JSUnresolvedVariable
                 self.setState({
                     zoomTransform: d3Event.transform
@@ -1125,6 +1119,7 @@ export class ScatterPlotBase extends Component {
 
         const zoomExtent = [[0, 0], [xSize, ySize]];
         const translateExtent = [[0, 0], [xSize, ySize * this.state.zoomYScaleMultiplier]];
+        const zoomExisted = this.zoom !== null;
         this.zoom = d3Zoom.zoom()
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(translateExtent)
@@ -1138,19 +1133,46 @@ export class ScatterPlotBase extends Component {
             .on("start", handleZoomStart)
             .interpolate(d3Interpolate.interpolate);
         this.svgContainerSelection.call(this.zoom);
+        if (!zoomExisted)
+            this.setLimitsToCurrentZoom(); // initialize limits
     }
     //</editor-fold>
 
     //<editor-fold desc="Toolbar">
     setLimits(xMin, xMax, yMin, yMax) {
+        if (isNaN(xMin) || isNaN(xMax) ||isNaN(yMin) || isNaN(yMax))
+            throw new Error("Parameters must be numbers.");
         this.setZoomToLimits(xMin, xMax, yMin, yMax);
         // zoom.end event saves limits to state
     }
+    getLimits() {
+        return {
+            xMin: this.state.xMin,
+            xMax: this.state.xMax,
+            yMin: this.state.yMin,
+            yMax: this.state.yMax
+        };
+    }
 
     setSettings(maxDotCount, withTooltip) {
+        this.setWithTooltip(withTooltip);
+        this.setMaxDotCount(maxDotCount)
+    }
+
+    setWithTooltip(newValue) {
+        if (typeof newValue !== "boolean")
+            newValue = ScatterPlotBase.defaultProps.withTooltip;
         this.setState({
-            maxDotCount,
-            withTooltip
+            withTooltip: newValue
+        });
+    }
+
+    /** set to negative number for unlimited */
+    setMaxDotCount(newValue) {
+        if (isNaN(newValue))
+            newValue = ScatterPlotBase.defaultProps.maxDotCount;
+        this.setState({
+            maxDotCount: newValue
         });
     }
 

@@ -94,6 +94,9 @@ export class HistogramChart extends Component {
             zoomTransform: d3Zoom.zoomIdentity
         };
 
+        this.zoom = null;
+        this.brush = null;
+
         this.resizeListener = () => {
             this.createChart(this.state.signalSetsData);
         };
@@ -599,6 +602,7 @@ export class HistogramChart extends Component {
         const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
         const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
         this.defaultBrush = [0, xSize];
+        const brushExisted = this.brush !== null;
         this.brush = d3Brush.brushX()
             .extent([[0, 0], [xSize, ySize]])
             .handleSize(20)
@@ -616,6 +620,8 @@ export class HistogramChart extends Component {
         this.overviewBrushSelection
             .attr('pointer-events', 'all')
             .call(this.brush);
+        if (!brushExisted)
+            this.overviewBrushSelection.call(this.brush.move, this.defaultBrush);
         this.overviewBrushSelection.select(".selection")
             .classed(styles.selection, true);
         this.overviewBrushSelection.select(".overlay")
