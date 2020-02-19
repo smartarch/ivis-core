@@ -354,7 +354,7 @@
   "confirmDeletion": "Confirm Deletion",
   "areYouSureYouWantToDeleteName?": "Are you sure you want to delete \"{{name}}\"?",
   "areYouSureYouWantToEraseAllRunLogs?": "Are you sure you want to erase all run logs for job with id \"{{id}}\"?",
-  "namespacemustBeSelected": "Namespace must be selected",
+  "namespaceMustBeSelected": "Namespace must be selected",
   "mjml": "MJML",
   "html": "HTML",
   "countEntriesSelected": "{{ count }} entries selected.",

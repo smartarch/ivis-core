@@ -13,6 +13,7 @@ import {
     ButtonRow,
     filterData,
     Form,
+    MultiPicker,
     FormSendMethod,
     InputField,
     TextArea,
@@ -133,6 +134,8 @@ export default class CUD extends Component {
             data.record_id_template = null;
         }
 
+        MultiPicker.submitFormValuesMutator('multi', data);
+
         const allowedKeys = [
             'name',
             'description',
@@ -141,7 +144,7 @@ export default class CUD extends Component {
             'cid'
         ];
 
-        if (!this.props.entity){
+        if (!this.props.entity) {
             allowedKeys.push('type');
         }
 
@@ -219,6 +222,10 @@ export default class CUD extends Component {
                                 help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
+
+                    <MultiPicker id="multi" label={t('Multi')} element={
+                        <InputField label={"Testing"}/>
+                    }/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>

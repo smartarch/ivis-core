@@ -34,6 +34,7 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
+import cudStyles from "../settings/jobs/CUD.scss";
 
 
 const FormState = {
@@ -60,7 +61,7 @@ const withFormStateOwner = createComponentMixin({
 export function withFormErrorHandlers(target, name, descriptor) {
     const asyncFn = descriptor.value;
 
-    descriptor.value = async function(...args) {
+    descriptor.value = async function (...args) {
         await this.formHandleErrors(async () => await asyncFn.apply(this, args));
     };
 
@@ -139,7 +140,8 @@ class Form extends Component {
                         </fieldset>
                         {!props.noStatus && statusMessageText &&
                         <AlignedRow format={props.format} htmlId="form-status-message">
-                            <div className={`alert alert-${statusMessageSeverity} ${styles.formStatus}`} role="alert">{statusMessageText}</div>
+                            <div className={`alert alert-${statusMessageSeverity} ${styles.formStatus}`}
+                                 role="alert">{statusMessageText}</div>
                         </AlignedRow>
                         }
                     </FormStateOwnerContext.Provider>
@@ -181,7 +183,8 @@ class Fieldset extends Component {
         if (id) {
             const validationMsg = id && owner.getFormValidationMessage(id);
             if (validationMsg) {
-                validationBlock = <small className="form-text text-muted" id={htmlId + '_help_validation'}>{validationMsg}</small>;
+                validationBlock =
+                    <small className="form-text text-muted" id={htmlId + '_help_validation'}>{validationMsg}</small>;
             }
         }
 
@@ -248,7 +251,7 @@ function wrapInput(id, htmlId, owner, format, rightContainerClass, label, help, 
 
     if (format === 'inline') {
         return (
-            <div className={className} >
+            <div className={className}>
                 {labelBlock}{input}
                 {helpBlock}
                 {validationBlock}
@@ -256,7 +259,7 @@ function wrapInput(id, htmlId, owner, format, rightContainerClass, label, help, 
         );
     } else {
         return (
-            <div className={className} >
+            <div className={className}>
                 {labelBlock}
                 <div className={`${colRight} ${rightContainerClass}`}>
                     {input}
@@ -344,7 +347,9 @@ class InputField extends Component {
         if (value === null || value === undefined) console.log(`Warning: InputField ${id} is ${value}`);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId} className={className} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}/>
+            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId}
+                   className={className} aria-describedby={htmlId + '_help'}
+                   onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}/>
         );
     }
 }
@@ -372,7 +377,9 @@ class CheckBox extends Component {
 
                         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                             <div className={`form-group form-check my-2 ${this.props.className}`}>
-                                <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)} id={htmlId} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
+                                <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)}
+                                       id={htmlId} aria-describedby={htmlId + '_help'}
+                                       onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
                                 <label className={styles.checkboxText} htmlFor={htmlId}>{props.text}</label>
                             </div>
                         );
@@ -428,7 +435,8 @@ class CheckBoxGroup extends Component {
 
             let number = options.push(
                 <div key={option.key} className="form-group form-check my-2">
-                    <input id={optId} type="checkbox" className={optClassName} checked={selection.includes(option.key)} onChange={evt => this.onChange(option.key)}/>
+                    <input id={optId} type="checkbox" className={optClassName} checked={selection.includes(option.key)}
+                           onChange={evt => this.onChange(option.key)}/>
                     <label className="form-check-label" htmlFor={optId}>{option.label}</label>
                 </div>
             );
@@ -476,7 +484,8 @@ class RadioGroup extends Component {
 
             let number = options.push(
                 <div key={option.key} className="form-group form-check my-2">
-                    <input id={optId} type="radio" className={optClassName} name={htmlId} checked={value === option.key} onChange={evt => owner.updateFormValue(id, option.key)}/>
+                    <input id={optId} type="radio" className={optClassName} name={htmlId} checked={value === option.key}
+                           onChange={evt => owner.updateFormValue(id, option.key)}/>
                     <label className="form-check-label" htmlFor={optId}>{option.label}</label>
                 </div>
             );
@@ -522,10 +531,11 @@ class TextArea extends Component {
         const owner = this.getFormStateOwner();
         const id = props.id;
         const htmlId = 'form_' + id;
-        const className = owner.addFormValidationClass('form-control ' + (props.className || '') , id);
+        const className = owner.addFormValidationClass('form-control ' + (props.className || ''), id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <textarea id={htmlId} placeholder={props.placeholder} value={owner.getFormValue(id) || ''} className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}></textarea>
+            <textarea id={htmlId} placeholder={props.placeholder} value={owner.getFormValue(id) || ''}
+                      className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}></textarea>
         );
     }
 }
@@ -578,12 +588,13 @@ class ColorPicker extends Component {
             <div>
                 <div className="input-group">
                     <div className={styles.colorPickerSwatchWrapper} onClick={::this.toggle}>
-                        <div className={styles.colorPickerSwatchColor} style={{background: `rgba(${ color.r }, ${ color.g }, ${ color.b }, ${ color.a })`}}/>
+                        <div className={styles.colorPickerSwatchColor}
+                             style={{background: `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`}}/>
                     </div>
                 </div>
                 {this.state.opened &&
                 <div className={styles.colorPickerWrapper}>
-                    <SketchPicker color={color} onChange={::this.selected} />
+                    <SketchPicker color={color} onChange={::this.selected}/>
                 </div>
                 }
             </div>
@@ -648,7 +659,7 @@ class DatePicker extends Component {
         const htmlId = 'form_' + id;
         const t = props.t;
 
-        function BirthdayPickerCaption({ date, localeUtils, onChange }) {
+        function BirthdayPickerCaption({date, localeUtils, onChange}) {
             const months = localeUtils.getMonths();
             return (
                 <div className="DayPicker-Caption">
@@ -697,9 +708,12 @@ class DatePicker extends Component {
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
             <>
                 <div className="input-group">
-                    <input type="text" value={selectedDateStr} placeholder={placeholder} id={htmlId} className={className} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, evt.target.value)}/>
+                    <input type="text" value={selectedDateStr} placeholder={placeholder} id={htmlId}
+                           className={className} aria-describedby={htmlId + '_help'}
+                           onChange={evt => owner.updateFormValue(id, evt.target.value)}/>
                     <div className="input-group-append">
-                        <Button iconTitle={t('openCalendar')} className="btn-secondary" icon="calendar-alt" onClickAsync={::this.toggleDayPicker}/>
+                        <Button iconTitle={t('openCalendar')} className="btn-secondary" icon="calendar-alt"
+                                onClickAsync={::this.toggleDayPicker}/>
                     </div>
                 </div>
                 {this.state.opened &&
@@ -756,10 +770,11 @@ class Dropdown extends Component {
             }
         }
 
-        const className = owner.addFormValidationClass('form-control ' + (props.className || '') , id);
+        const className = owner.addFormValidationClass('form-control ' + (props.className || ''), id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)} onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}>
+            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)}
+                    onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}>
                 {options}
             </select>
         );
@@ -808,6 +823,131 @@ class ButtonRow extends Component {
     }
 }
 
+@withComponentMixins([
+    withTranslation,
+    withFormStateOwner
+])
+class MultiPicker extends Component {
+    static propTypes = {
+        id: PropTypes.string.isRequired,
+        label: PropTypes.string,
+        help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+        format: PropTypes.string,
+        onAddEntry: PropTypes.func,
+        element: PropTypes.element
+    };
+
+    constructor(props) {
+        super(props);
+
+        this._nextItemId = 0;
+    }
+
+    static submitFormValuesMutator(pickerId, data) {
+        const items = [];
+        const itemIds = data[pickerId];
+
+        if (!itemIds) {
+            return items;
+        }
+
+        for (const itemId of itemIds) {
+            const itemFormId = MultiPicker.getFormValueIdForPicker(pickerId, itemId);
+            const value = data[itemFormId];
+            items.push(value);
+            delete data[itemFormId]
+        }
+
+        data[pickerId] = items;
+    }
+
+    static getFormValueIdForPicker(pickerId, itemId) {
+        return `${pickerId}_${itemId}`;
+    }
+
+    getFormValueId(itemId) {
+        return MultiPicker.getFormValueIdForPicker(this.props.id, itemId);
+    }
+
+    getNextItemId() {
+        return this._nextItemId++;
+    }
+
+    onAddEntry() {
+        if (this.props.onAddEntry) {
+            this.props.onAddEntry();
+        } else {
+            this.getFormStateOwner().updateForm(mutState => {
+                let itemIds = mutState.getIn([this.props.id, 'value']);
+
+                if (!itemIds) {
+                    itemIds = [];
+                }
+
+                const itemId = this.getNextItemId();
+
+
+                mutState.setIn([this.getFormValueId(itemId), 'value'], null);
+                itemIds.push(itemId);
+                mutState.setIn([this.props.id, 'value'], itemIds);
+            });
+        }
+    }
+
+    onRemoveSetEntry(itemId) {
+        this.getFormStateOwner().updateForm(mutState => {
+            const itemIds = mutState.getIn([this.props.id, 'value']);
+
+            mutState.delete(this.getFormValueId(itemId));
+
+            mutState.setIn([this.props.id, 'value'], itemIds.filter(id => id !== itemId));
+        });
+    }
+
+    render() {
+        const props = this.props;
+        const owner = this.getFormStateOwner();
+        const id = this.props.id;
+        const htmlId = 'form_' + id;
+        const t = this.props.t;
+
+        const items = [];
+        const itemIds = owner.getFormValue(id) || [];
+        for (const itemId of itemIds) {
+            const elementId = this.getFormValueId(itemId);
+
+            items.push(
+                <div key={itemId} className={cudStyles.entry + ' ' + cudStyles.entryWithButtons}>
+                    <div className={cudStyles.entryButtons}>
+                        <Button
+                            className="btn-secondary"
+                            icon="trash-alt fa-2x"
+                            title={t('remove')}
+                            onClickAsync={() => this.onRemoveSetEntry(itemId)}
+                        />
+                    </div>
+                    <div className={cudStyles.entryContent}>
+                        {React.cloneElement(this.props.element, {id: elementId})}
+                    </div>
+                </div>
+            );
+        }
+
+        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
+            <Fieldset label={t('Signal sets triggers')}>
+                {items}
+                <div key="newEntry" className={cudStyles.newEntry}>
+                    <Button
+                        className="btn-secondary"
+                        icon="plus"
+                        label={t('Add entry')}
+                        onClickAsync={() => this.onAddEntry()}
+                    />
+                </div>
+            </Fieldset>
+        );
+    }
+}
 
 @withComponentMixins([
     withFormStateOwner
@@ -833,10 +973,12 @@ class TreeTableSelect extends Component {
         const id = this.props.id;
         const htmlId = 'form_' + id;
 
-        const className = owner.addFormValidationClass('' , id);
+        const className = owner.addFormValidationClass('', id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <TreeTable className={className} data={props.data} dataUrl={props.dataUrl} selectMode={TreeSelectMode.SINGLE} selection={owner.getFormValue(id)} onSelectionChangedAsync={::this.onSelectionChangedAsync} />
+            <TreeTable className={className} data={props.data} dataUrl={props.dataUrl}
+                       selectMode={TreeSelectMode.SINGLE} selection={owner.getFormValue(id)}
+                       onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
         );
     }
 }
@@ -928,20 +1070,27 @@ class TableSelect extends Component {
         const t = props.t;
 
         if (props.dropdown) {
-            const className = owner.addFormValidationClass('form-control' , id);
+            const className = owner.addFormValidationClass('form-control', id);
 
             return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                 <div>
                     <div className={(props.disabled ? '' : 'input-group ') + styles.tableSelectDropdown}>
-                        <input type="text" className={className} value={this.state.selectedLabel} onClick={::this.toggleOpen} readOnly={!props.disabled} disabled={props.disabled}/>
+                        <input type="text" className={className} value={this.state.selectedLabel}
+                               onClick={::this.toggleOpen} readOnly={!props.disabled} disabled={props.disabled}/>
                         {!props.disabled &&
                         <div className="input-group-append">
                             <Button label={t('select')} className="btn-secondary" onClickAsync={::this.toggleOpen}/>
                         </div>
                         }
                     </div>
-                    <div className={styles.tableSelectTable + (this.state.open ? '' : ' ' + styles.tableSelectTableHidden)}>
-                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl} columns={props.columns} selectMode={props.selectMode} selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader} selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)} onSelectionDataAsync={::this.onSelectionDataAsync} onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
+                    <div
+                        className={styles.tableSelectTable + (this.state.open ? '' : ' ' + styles.tableSelectTableHidden)}>
+                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
+                               columns={props.columns} selectMode={props.selectMode}
+                               selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
+                               selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
+                               onSelectionDataAsync={::this.onSelectionDataAsync}
+                               onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
                     </div>
                 </div>
             );
@@ -949,7 +1098,11 @@ class TableSelect extends Component {
             return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                 <div>
                     <div>
-                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl} columns={props.columns} pageLength={props.pageLength} selectMode={props.selectMode} selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader} selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)} onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
+                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
+                               columns={props.columns} pageLength={props.pageLength} selectMode={props.selectMode}
+                               selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
+                               selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
+                               onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
                     </div>
                 </div>
             );
@@ -1607,6 +1760,7 @@ export {
     AlignedRow,
     ButtonRow,
     Button,
+    MultiPicker,
     TreeTableSelect,
     TableSelect,
     TableSelectMode,

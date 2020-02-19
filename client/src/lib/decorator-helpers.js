@@ -53,12 +53,30 @@ export function withComponentMixins(mixins, delegateFuns) {
 
             return self;
         }
+
         TargetClassWithCtors.displayName = TargetClass.name;
 
         TargetClassWithCtors.prototype = TargetClass.prototype;
 
         for (const attr in TargetClass) {
             TargetClassWithCtors[attr] = TargetClass[attr];
+        }
+
+        function addStaticMethods(clazz) {
+            // This dynamically gets all properties in a new class, as we want just target class specific
+            const newClassPropNames = Object.getOwnPropertyNames(class _ {
+            });
+            const propNames = Object.getOwnPropertyNames(TargetClass)
+                .filter(name => !newClassPropNames.includes(name) && typeof TargetClass[name] === 'function');
+            for (const name of propNames) {
+                if (!clazz[name]) {
+                    Object.defineProperty(
+                        clazz,
+                        name,
+                        Object.getOwnPropertyDescriptor(TargetClass, name)
+                    );
+                }
+            }
         }
 
         function incorporateMixins(DecoratedInner) {
@@ -102,6 +120,7 @@ export function withComponentMixins(mixins, delegateFuns) {
 
                     this._decoratorInnerInstanceRefFn = node => this._decoratorInnerInstance = node
                 }
+
                 render() {
                     let innerFn = parentProps => {
                         const props = {
@@ -136,6 +155,7 @@ export function withComponentMixins(mixins, delegateFuns) {
                 }
             }
 
+            addStaticMethods(ComponentMixinsOuter);
             return ComponentMixinsOuter;
 
         } else {
@@ -163,6 +183,7 @@ export function withComponentMixins(mixins, delegateFuns) {
                 return innerFn(props);
             }
 
+            addStaticMethods(ComponentContextProvider);
             return ComponentContextProvider;
         }
 
