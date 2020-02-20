@@ -13,11 +13,11 @@ import {
     ButtonRow,
     filterData,
     Form,
-    MultiPicker,
+    ListCreator,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm, withFormErrorHandlers
+    withForm, withFormErrorHandlers, TableSelect
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {
@@ -134,7 +134,7 @@ export default class CUD extends Component {
             data.record_id_template = null;
         }
 
-        MultiPicker.submitFormValuesMutator('multi', data);
+        ListCreator.submitFormValuesMutator('multi', data);
 
         const allowedKeys = [
             'name',
@@ -199,6 +199,11 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
+        const setsColumns = [
+            {data: 1, title: t('#')},
+            {data: 2, title: t('Name')},
+            {data: 3, title: t('Description')},
+        ];
 
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
@@ -223,8 +228,10 @@ export default class CUD extends Component {
 
                     <NamespaceSelect/>
 
-                    <MultiPicker id="multi" label={t('Multi')} element={
-                        <InputField label={"Testing"}/>
+                    <ListCreator id="multi" label={t('Multi')} entryElement={
+                        <TableSelect  label={t('Trigger on')} withHeader dropdown
+                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
+                                     selectionLabelIndex={2}/>
                     }/>
 
                     <ButtonRow>

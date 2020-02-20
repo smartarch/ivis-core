@@ -827,121 +827,179 @@ class ButtonRow extends Component {
     withTranslation,
     withFormStateOwner
 ])
-class MultiPicker extends Component {
+class ListCreator extends Component {
     static propTypes = {
         id: PropTypes.string.isRequired,
-        label: PropTypes.string,
+        label: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-        format: PropTypes.string,
-        onAddEntry: PropTypes.func,
-        element: PropTypes.element
+        flat: PropTypes.bool,
+        className: PropTypes.string,
+        entryElement: PropTypes.element.isRequired,
+        withOrder: PropTypes.bool,
+        initValues: PropTypes.array
     };
 
     constructor(props) {
         super(props);
 
-        this._nextItemId = 0;
+        this._nextEntryId = 0;
     }
 
-    static submitFormValuesMutator(pickerId, data) {
-        const items = [];
-        const itemIds = data[pickerId];
-
-        if (!itemIds) {
-            return items;
-        }
-
-        for (const itemId of itemIds) {
-            const itemFormId = MultiPicker.getFormValueIdForPicker(pickerId, itemId);
-            const value = data[itemFormId];
-            items.push(value);
-            delete data[itemFormId]
-        }
-
-        data[pickerId] = items;
-    }
-
-    static getFormValueIdForPicker(pickerId, itemId) {
-        return `${pickerId}_${itemId}`;
-    }
-
-    getFormValueId(itemId) {
-        return MultiPicker.getFormValueIdForPicker(this.props.id, itemId);
-    }
-
-    getNextItemId() {
-        return this._nextItemId++;
-    }
-
-    onAddEntry() {
-        if (this.props.onAddEntry) {
-            this.props.onAddEntry();
-        } else {
+    componentDidMount() {
+        const values = this.props.initValues;
+        if (values && values.length > 0) {
             this.getFormStateOwner().updateForm(mutState => {
-                let itemIds = mutState.getIn([this.props.id, 'value']);
+                let entryIds = mutState.getIn([this.props.id, 'value']);
 
-                if (!itemIds) {
-                    itemIds = [];
+                if (!entryIds) {
+                    entryIds = [];
                 }
 
-                const itemId = this.getNextItemId();
+                for (const entryValue of values) {
+                    const entryId = this.getNextEntryId();
+                    mutState.setIn([this.getFormValueId(entryId), 'value'], entryValue);
+                    entryIds.push(entryId);
+                }
 
-
-                mutState.setIn([this.getFormValueId(itemId), 'value'], null);
-                itemIds.push(itemId);
-                mutState.setIn([this.props.id, 'value'], itemIds);
+                mutState.setIn([this.props.id, 'value'], entryIds);
             });
         }
     }
 
-    onRemoveSetEntry(itemId) {
+    static submitFormValuesMutator(pickerId, data) {
+        const entryValues = [];
+        const entryIds = data[pickerId];
+
+        if (!entryIds) {
+            return entryValues;
+        }
+
+        for (const entryId of entryIds) {
+            const entryFormId = ListCreator.getFormValueIdForPicker(pickerId, entryId);
+            const value = data[entryFormId];
+            entryValues.push(value);
+            delete data[entryFormId]
+        }
+
+        data[pickerId] = entryValues;
+    }
+
+    static getFormValueIdForPicker(pickerId, entryId) {
+        return `${pickerId}_${entryId}`;
+    }
+
+    getFormValueId(entryId) {
+        return ListCreator.getFormValueIdForPicker(this.props.id, entryId);
+    }
+
+    getNextEntryId() {
+        return this._nextEntryId++;
+    }
+
+    onAddListEntry(positionBefore) {
         this.getFormStateOwner().updateForm(mutState => {
-            const itemIds = mutState.getIn([this.props.id, 'value']);
+            let entryIds = mutState.getIn([this.props.id, 'value']);
 
-            mutState.delete(this.getFormValueId(itemId));
+            if (!entryIds) {
+                entryIds = [];
+            }
 
-            mutState.setIn([this.props.id, 'value'], itemIds.filter(id => id !== itemId));
+            if (positionBefore == null) {
+                positionBefore = entryIds.length;
+            }
+
+            const entryId = this.getNextEntryId();
+
+            mutState.setIn([this.getFormValueId(entryId), 'value'], null);
+            mutState.setIn([this.props.id, 'value'], [...entryIds.slice(0, positionBefore), entryId, ...entryIds.slice(positionBefore)]);
         });
+    }
+
+    onRemoveSetEntry(entryId) {
+        this.getFormStateOwner().updateForm(mutState => {
+            const entryIds = mutState.getIn([this.props.id, 'value']);
+
+            mutState.delete(this.getFormValueId(entryId));
+
+            mutState.setIn([this.props.id, 'value'], entryIds.filter(id => id !== entryId));
+        });
+    }
+
+    onListEntryMoveUp(position) {
+        const owner = this.getFormStateOwner();
+        const entryIds = owner.getFormValue(this.props.id);
+        owner.updateFormValue(this.props.id, [...entryIds.slice(0, position - 1), entryIds[position], entryIds[position - 1], ...entryIds.slice(position + 1)]);
+    }
+
+    onListEntryMoveDown(position) {
+        const owner = this.getFormStateOwner();
+        const entryIds = owner.getFormValue(this.props.id);
+        owner.updateFormValue(this.props.id, [...entryIds.slice(0, position), entryIds[position + 1], entryIds[position], ...entryIds.slice(position + 2)]);
     }
 
     render() {
         const props = this.props;
         const owner = this.getFormStateOwner();
-        const id = this.props.id;
-        const htmlId = 'form_' + id;
-        const t = this.props.t;
+        const id = props.id;
+        const t = props.t;
+        const withOrder = props.withOrder;
+        const entries = [];
+        const entryIds = owner.getFormValue(id) || [];
 
-        const items = [];
-        const itemIds = owner.getFormValue(id) || [];
-        for (const itemId of itemIds) {
-            const elementId = this.getFormValueId(itemId);
-
-            items.push(
-                <div key={itemId} className={cudStyles.entry + ' ' + cudStyles.entryWithButtons}>
-                    <div className={cudStyles.entryButtons}>
+        const entryButtonsStyles = withOrder ? cudStyles.entryButtonsWithOrder : cudStyles.entryButtons;
+        for (let pos = 0; pos < entryIds.length; pos++) {
+            const entryId = entryIds[pos];
+            const elementId = this.getFormValueId(entryId);
+            entries.push(
+                <div key={entryId} className={cudStyles.entry + (withOrder? ' ' + cudStyles.withOrder : '') + ' ' + cudStyles.entryWithButtons}>
+                    <div className={entryButtonsStyles}>
                         <Button
                             className="btn-secondary"
-                            icon="trash-alt fa-2x"
+                            icon={`trash-alt ${withOrder ? "" : "fa-2x"}`}
                             title={t('remove')}
-                            onClickAsync={() => this.onRemoveSetEntry(itemId)}
+                            onClickAsync={() => this.onRemoveSetEntry(entryId)}
                         />
+                        {withOrder &&
+                        <Button
+                            className="btn-secondary"
+                            icon="plus"
+                            title={t('Insert new entry before this one')}
+                            onClickAsync={() => this.onAddListEntry(pos)}
+                        />
+                        }
+                        {withOrder && pos > 0 &&
+                        <Button
+                            className="btn-secondary"
+                            icon="chevron-up"
+                            title={t('Move up')}
+                            onClickAsync={() => this.onListEntryMoveUp(pos)}
+                        />
+                        }
+                        {withOrder && pos < entryIds.length - 1 &&
+                        <Button
+                            className="btn-secondary"
+                            icon="chevron-down"
+                            title={t('Move down')}
+                            onClickAsync={() => this.onListEntryMoveDown(pos)}
+                        />
+                        }
                     </div>
                     <div className={cudStyles.entryContent}>
-                        {React.cloneElement(this.props.element, {id: elementId})}
+                        {React.cloneElement(this.props.entryElement, {id: elementId})}
                     </div>
                 </div>
             );
         }
 
-        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <Fieldset label={t('Signal sets triggers')}>
-                {items}
+        return (
+            <Fieldset id={id} className={props.classname} help={props.help} flat={props.flat} label={props.label}>
+                {entries}
                 <div key="newEntry" className={cudStyles.newEntry}>
                     <Button
                         className="btn-secondary"
                         icon="plus"
                         label={t('Add entry')}
-                        onClickAsync={() => this.onAddEntry()}
+                        onClickAsync={() => this.onAddListEntry(entryIds.length)}
                     />
                 </div>
             </Fieldset>
@@ -1760,7 +1818,7 @@ export {
     AlignedRow,
     ButtonRow,
     Button,
-    MultiPicker,
+    ListCreator,
     TreeTableSelect,
     TableSelect,
     TableSelectMode,

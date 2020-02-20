@@ -204,7 +204,7 @@ function parseTriggerStr(triggerStr) {
  * @returns {Promise<void>}
  */
 async function updateSetTriggersTx(tx, id, sets) {
-
+    sets = sets.filter(s => s != null);
     await tx('job_triggers').where('job', id).whereNotIn('signal_set', sets).del();
 
     for (let i = 0; i < sets.length; i++) {

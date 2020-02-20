@@ -11,7 +11,7 @@ import {
     filterData,
     Form,
     FormSendMethod,
-    InputField,
+    InputField, ListCreator,
     TableSelect,
     TextArea,
     withForm,
@@ -27,7 +27,6 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {getJobStates} from './states';
 import {JobState} from "../../../../shared/jobs";
-import cudStyles from "./CUD.scss";
 import moment from "moment";
 import ParamTypes from "../workspaces/panels/ParamTypes"
 import axios from "axios";
@@ -42,8 +41,6 @@ import {
     getBuiltinTask
 } from "../../lib/builtin-tasks";
 
-const SETS_PREFIX = 'sets_';
-
 @withComponentMixins([
     withTranslation,
     withForm,
@@ -56,7 +53,6 @@ export default class CUD extends Component {
         super(props);
 
         this.state = {};
-        this.nextListEntryId = 0;
 
         this.initForm({
             onChangeBeforeValidation: ::this.onChangeBeforeValidation,
@@ -219,21 +215,6 @@ export default class CUD extends Component {
             data['state'] = JobState.DISABLED;
         }
 
-        const task = getBuiltinTask(data.task);
-        data.taskSource = task ? TaskSource.BUILTIN : TaskSource.USER;
-
-        const sets = [];
-        for (const trigger of data.signal_sets_triggers) {
-            const setUid = this.getNextSetEntryId();
-
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            data[prefix + 'trigger'] = trigger;
-
-            sets.push(setUid);
-        }
-        data["sets"] = sets;
-
     }
 
     submitFormValuesMutator(data) {
@@ -241,15 +222,8 @@ export default class CUD extends Component {
             data.settings = this.props.entity.settings;
         }
 
-        const triggers = [];
-        for (const setUid of data.sets) {
-            const prefix = SETS_PREFIX + setUid + '_';
-            let trigger = data[prefix + 'trigger'];
-            if (trigger) {
-                triggers.push(trigger)
-            }
-        }
-        data.signal_sets_triggers = triggers;
+        ListCreator.submitFormValuesMutator('signalSetTriggers',data);
+        data.signal_sets_triggers = data.signalSetTriggers;
 
         data.params = {};
         if (data.taskParams) {
@@ -334,38 +308,6 @@ export default class CUD extends Component {
         return stateOptions;
     }
 
-    getNextSetEntryId() {
-        const id = this.nextListEntryId;
-        this.nextListEntryId += 1;
-        return id;
-    }
-
-    onAddSetEntry() {
-        this.updateForm(mutState => {
-            const sets = mutState.getIn(['sets', 'value']);
-
-            const setUid = this.getNextSetEntryId();
-
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            mutState.setIn([prefix + 'trigger', 'value'], null);
-            sets.push(setUid);
-            mutState.setIn(['sets', 'value'], sets);
-        });
-    }
-
-    onRemoveSetEntry(setUid) {
-        this.updateForm(mutState => {
-            const sets = this.getFormValue('sets');
-
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            mutState.delete(prefix + 'trigger');
-
-            mutState.setIn(['sets', 'value'], sets.filter(val => val !== setUid));
-        });
-    }
-
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
@@ -380,43 +322,7 @@ export default class CUD extends Component {
         ];
 
 
-        const setsEditEntries = [];
-        const sets = this.getFormValue('sets') || [];
-        for (const setUid of sets) {
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            setsEditEntries.push(
-                <div key={setUid} className={cudStyles.entry + ' ' + cudStyles.entryWithButtons}>
-                    <div className={cudStyles.entryButtons}>
-                        <Button
-                            className="btn-secondary"
-                            icon="trash-alt fa-2x"
-                            title={t('remove')}
-                            onClickAsync={() => this.onRemoveSetEntry(setUid)}
-                        />
-
-                    </div>
-                    <div className={cudStyles.entryContent}>
-                        <TableSelect id={prefix + 'trigger'} label={t('Trigger on')} withHeader dropdown
-                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
-                                     selectionLabelIndex={2}/>
-                    </div>
-                </div>
-            );
-        }
-
-        const setTriggersEdit =
-            <Fieldset label={t('Signal sets triggers')}>
-                {setsEditEntries}
-                <div key="newEntry" className={cudStyles.newEntry}>
-                    <Button
-                        className="btn-secondary"
-                        icon="plus"
-                        label={t('Add signal set')}
-                        onClickAsync={() => this.onAddSetEntry()}
-                    />
-                </div>
-            </Fieldset>;
+        const signal_sets_triggers = this.getFormValue('signal_sets_triggers') || [];
 
         const taskColumns = [
             {data: 1, title: t('Name')},
@@ -476,7 +382,11 @@ export default class CUD extends Component {
                         <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>
                     </Fieldset>
 
-                    {setTriggersEdit}
+                    <ListCreator id={'signalSetTriggers'} label={t('Signal sets triggers')} withOrder={false} entryElement={
+                        <TableSelect label={t('Trigger on')} withHeader dropdown
+                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
+                                     selectionLabelIndex={2}/>
+                    } initValues={signal_sets_triggers}/>
 
                     {configSpec ?
                         params &&
