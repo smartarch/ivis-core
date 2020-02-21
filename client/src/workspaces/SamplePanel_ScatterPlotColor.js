@@ -1,12 +1,9 @@
 'use strict';
 
 import React, {Component} from "react";
-import {Panel} from "../lib/panel";
-import {rgb} from "d3-color";
+import * as d3Scheme from "d3-scale-chromatic";
 import {
-    IntervalSpec,
-    Legend,
-    LegendPosition, TimeContext, TimeRangeSelector, withPanelConfig,
+    Legend, withPanelConfig,
 } from "../ivis/ivis";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
@@ -99,7 +96,7 @@ class TestScatterPlotColor extends Component {
                              margin={{ left: 40, right: 5, top: 5, bottom: 40 }}
                              withBrush={true}
                              withSettings={true}
-                             maxDotCount={20}
+                             maxDotCount={15}
                              />
             </div>
         );
@@ -119,12 +116,17 @@ export default class SamplePanel_ScatterPlotColor extends Component {
                     signalSet: "top:bubble",
                     X_sigCid: "x",
                     Y_sigCid: "y",
-                    //color: [rgb(100, 150, 255), rgb(0, 0, 219)],
+                    color: d3Scheme.schemeDark2,
                     label: "Color Test",
                     enabled: true,
                     X_label: "X",
                     Y_label: "Y",
-                    colorDiscrete_sigCid: "a"
+                    colorDiscrete_sigCid: "a",
+                    regressions: [{
+                        type: "linear",
+                        createRegressionForEachColor: true,
+                        color: d3Scheme.schemePastel2
+                    }]
                 }
             ]
         };

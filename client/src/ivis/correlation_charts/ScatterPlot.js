@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
-import {PropType_ArrayWithLengthAtLeast} from "../../lib/CustomPropTypes";
+import {PropType_d3Color} from "../../lib/CustomPropTypes";
 
 @withComponentMixins([
     withTranslation,
@@ -26,7 +26,7 @@ export class ScatterPlot extends Component {
                 colorContinuous_sigCid: PropTypes.string,
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]),
+                color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
@@ -35,7 +35,8 @@ export class ScatterPlot extends Component {
                 Color_label: PropTypes.string,
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
-                    color: PropTypes.object,
+                    color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
+                    createRegressionForEachColor: PropTypes.bool, // default: false
                     bandwidth: PropTypes.number    // for LOESS
                 }))
             })).isRequired
@@ -43,7 +44,7 @@ export class ScatterPlot extends Component {
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotRadius: PropTypes.number,
-        colors: PropTypes.array, // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
+        colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
         highlightDotRadius: PropTypes.number, // radius multiplier
         updateColorOnZoom: PropTypes.bool,
 

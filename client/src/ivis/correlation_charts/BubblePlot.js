@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
-import {PropType_ArrayWithLengthAtLeast} from "../../lib/CustomPropTypes";
+import {PropType_d3Color} from "../../lib/CustomPropTypes";
 
 @withComponentMixins([
     withTranslation,
@@ -27,7 +27,7 @@ export class BubblePlot extends Component {
                 colorContinuous_sigCid: PropTypes.string,
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]),
+                color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 X_label: PropTypes.string,
@@ -42,7 +42,7 @@ export class BubblePlot extends Component {
         maxDotRadius: PropTypes.number,
         minDotRadiusValue: PropTypes.number,
         maxDotRadiusValue: PropTypes.number,
-        colors: PropTypes.array, // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
+        colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
         highlightDotRadius: PropTypes.number, // radius multiplier
         updateColorOnZoom: PropTypes.bool,
         updateSizeOnZoom: PropTypes.bool,

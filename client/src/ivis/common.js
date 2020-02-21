@@ -60,5 +60,9 @@ export function getColorScale(domain, colors) {
 
 export function ModifyColorCopy(color, new_opacity) {
     color = d3Color.color(color);
+    if (color === null)
+        return undefined;
+    if (new_opacity === undefined)
+        new_opacity = color.opacity;
     return d3Color.rgb(color.r, color.g, color.b, new_opacity);
 }
