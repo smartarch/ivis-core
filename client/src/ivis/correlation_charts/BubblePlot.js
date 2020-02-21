@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
-import {PropTypeArrayWithLengthAtLeast} from "../common";
+import {PropType_ArrayWithLengthAtLeast} from "../../lib/CustomPropTypes";
 
 @withComponentMixins([
     withTranslation,
@@ -26,7 +26,7 @@ export class BubblePlot extends Component {
                 dotSize_sigCid: PropTypes.string.isRequired,
                 color_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropTypes.object, PropTypeArrayWithLengthAtLeast(1)]).isRequired,
+                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]).isRequired,
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 X_label: PropTypes.string,

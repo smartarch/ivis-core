@@ -19,7 +19,8 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
-import {isInExtent, PropTypeNumberInRange} from "./common";
+import {isInExtent} from "./common";
+import {PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
     NONE: 0,
@@ -122,7 +123,7 @@ export class HistogramChart extends Component {
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
         maxBucketCount: PropTypes.number,
-        topPaddingWhenZoomed: PropTypeNumberInRange(0, 1), // determines whether bars will be stretched up when zooming
+        topPaddingWhenZoomed: PropType_NumberInRange(0, 1), // determines whether bars will be stretched up when zooming
         xMin: PropTypes.number,
         xMax: PropTypes.number
     };
