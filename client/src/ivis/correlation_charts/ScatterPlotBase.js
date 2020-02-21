@@ -10,6 +10,8 @@ import * as d3Regression from "d3-regression";
 import * as d3Shape from "d3-shape";
 import * as d3Zoom from "d3-zoom";
 import * as d3Interpolate from "d3-interpolate";
+import * as d3Color from "d3-color";
+import * as d3Scheme from "d3-scale-chromatic";
 import {event as d3Event, select} from "d3-selection";
 import {intervalAccessMixin} from "../TimeContext";
 import {DataAccessSession} from "../DataAccess";
@@ -29,10 +31,9 @@ import {
     isInExtent,
     isSignalVisible,
     ModifyColorCopy,
-    PropTypeArrayWithLengthAtLeast,
     roundTo
 } from "../common";
-import * as d3Color from "d3-color";
+import {PropType_ArrayWithLengthAtLeast} from "../../lib/CustomPropTypes";
 
 const ConfigDifference = {
     NONE: 0,
@@ -63,7 +64,8 @@ function compareSignalSetConfigs(conf1, conf2) {
         conf1.X_sigCid !== conf2.X_sigCid ||
         conf1.Y_sigCid !== conf2.Y_sigCid ||
         conf1.dotSize_sigCid !== conf2.dotSize_sigCid ||
-        conf1.color_sigCid !== conf2.color_sigCid ||
+        conf1.colorContinuous_sigCid !== conf2.colorContinuous_sigCid ||
+        conf1.colorDiscrete_sigCid !== conf2.colorDiscrete_sigCid ||
         conf1.tsSigCid !== conf2.tsSigCid) {
         diffResult = ConfigDifference.DATA_WITH_CLEAR;
     } else if (conf1.color !== conf2.color ||
@@ -312,9 +314,10 @@ export class ScatterPlotBase extends Component {
                 X_sigCid: PropTypes.string.isRequired,
                 Y_sigCid: PropTypes.string.isRequired,
                 dotSize_sigCid: PropTypes.string, // used for BubblePlot
-                color_sigCid: PropTypes.string,
+                colorContinuous_sigCid: PropTypes.string,
+                colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropTypes.object, PropTypeArrayWithLengthAtLeast(1)]).isRequired,
+                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
@@ -337,7 +340,7 @@ export class ScatterPlotBase extends Component {
         maxDotRadius: PropTypes.number, // for BubblePlot
         minDotRadiusValue: PropTypes.number, // for BubblePlot
         maxDotRadiusValue: PropTypes.number, // for BubblePlot
-        colors: PropTypes.array, // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
+        colors: PropType_ArrayWithLengthAtLeast(1), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         highlightDotRadius: PropTypes.number, // radius multiplier
@@ -390,7 +393,8 @@ export class ScatterPlotBase extends Component {
         maxDotCount: 100,
         zoomLevelMin: 1,
         zoomLevelMax: 4,
-        zoomLevelStepFactor: 1.5
+        zoomLevelStepFactor: 1.5,
+        colors: d3Scheme.schemeCategory10
     };
 
     componentDidMount() {
@@ -460,10 +464,11 @@ export class ScatterPlotBase extends Component {
 
     getQueries(withRangeFilter = false) {
         const config = this.props.config;
-        let queries = [];
+        const queries = [];
         let queryWithRangeFilter = withRangeFilter;
+        const aggsQueriesSignalSetIndices = [];
 
-        for (const signalSet of config.signalSets) {
+        for (const [i, signalSet] of config.signalSets.entries()) {
             let filter = {
                 type: 'and',
                 children: [
@@ -524,8 +529,23 @@ export class ScatterPlotBase extends Component {
             let signals = [signalSet.X_sigCid, signalSet.Y_sigCid];
             if (signalSet.dotSize_sigCid)
                 signals.push(signalSet.dotSize_sigCid);
-            if (signalSet.color_sigCid)
-                signals.push(signalSet.color_sigCid);
+            if (signalSet.colorContinuous_sigCid)
+                signals.push(signalSet.colorContinuous_sigCid);
+            if (signalSet.colorDiscrete_sigCid) {
+                signals.push(signalSet.colorDiscrete_sigCid);
+
+                if (!queryWithRangeFilter) {
+                    const aggs = [{
+                        sigCid: signalSet.colorDiscrete_sigCid,
+                        agg_type: "terms"
+                    }];
+                    queries.push({
+                        type: "aggs",
+                        args: [signalSet.cid, filter, aggs]
+                    });
+                    aggsQueriesSignalSetIndices.push(i);
+                }
+            }
 
             queries.push({
                 type: "docs",
@@ -533,19 +553,21 @@ export class ScatterPlotBase extends Component {
             });
         }
 
-        return { queries, queryWithRangeFilter };
+        return [ queries, queryWithRangeFilter, aggsQueriesSignalSetIndices ];
     }
 
     @withAsyncErrorHandler
     async fetchData(withRangeFilter = false) {
         try {
-            const q = this.getQueries(withRangeFilter);
-            const results = await this.dataAccessSession.getLatestMixed(q.queries);
+            const [queries, queryWithRangeFilter, aggsQueriesSignalSetIndices] = this.getQueries(withRangeFilter);
+            const results = await this.dataAccessSession.getLatestMixed(queries);
+
+            console.log("results", results);
 
             if (results) { // Results is null if the results returned are not the latest ones
-                const processedResults = this.processData(results);
+                const processedResults = this.processData(results.filter(res => !res.hasOwnProperty("aggs")));
 
-                if (!q.queryWithRangeFilter) { // zoomed completely out
+                if (!queryWithRangeFilter) { // zoomed completely out
                     // update extents of axes
                     // y extent
                     this.yExtent = getExtent(processedResults, function (d) {  return d.y });
@@ -557,29 +579,27 @@ export class ScatterPlotBase extends Component {
                     this.xExtent = extentWithMargin(this.xExtent, 0.1);
                     if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
                     if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
-                    // s extent
-                    this.sExtent = getExtent(processedResults, function (d) {  return d.s });
-                    if (this.props.hasOwnProperty("minDotRadiusValue"))
-                        this.sExtent[0] = this.props.minDotRadiusValue;
-                    if (this.props.hasOwnProperty("maxDotRadiusValue"))
-                        this.sExtent[1] = this.props.maxDotRadiusValue;
-                    // c extent
-                    this.cExtent = getExtent(processedResults, function (d) { return d.c });
-                    if (this.props.hasOwnProperty("minColorValue"))
-                        this.cExtent[0] = this.props.minColorValue;
-                    if (this.props.hasOwnProperty("maxColorValue"))
-                        this.cExtent[1] = this.props.maxColorValue;
+                    // size extent
+                    this.sExtent = this.getSExtent_notFlat(processedResults);
+                    // color (continuous) extent
                     this.cExtents = {};
                     for (let i = 0; i < processedResults.length; i++) {
                         const SignalSetConfig = this.props.config.signalSets[i];
-                        if (SignalSetConfig.hasOwnProperty("color_sigCid")) {
+                        if (SignalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
                             const cidIndex = SignalSetConfig.cid + "-" + i;
-                            this.cExtents[cidIndex] = d3Array.extent(processedResults[i], function (d) { return d.c });
-                            if (this.props.hasOwnProperty("minColorValue"))
-                                this.cExtents[cidIndex][0] = this.props.minColorValue;
-                            if (this.props.hasOwnProperty("maxColorValue"))
-                                this.cExtents[cidIndex][1] = this.props.maxColorValue;
+                            this.cExtents[cidIndex] = this.getCExtent(processedResults[i]);
                         }
+                    }
+                    //this.cExtent = [ d3Array.min(this.cExtents, ex => ex[0]), d3Array.max(this.cExtents, ex => ex[1]) ]; // FIXME make xExtents array
+                    // color (discrete) extent
+                    this.dExtent = [...new Set(results.filter(res => res.hasOwnProperty("aggs")).map(res => res.aggs[0].buckets.map(b => b.key)).flat())]; // extracts all keys from buckets from aggregations and then keeps only unique values
+                    this.dExtents = {};
+                    for (const [j, res] of results.filter(res => res.hasOwnProperty("aggs")).entries()) {
+                        const buckets = res.aggs[0].buckets;
+                        const i = aggsQueriesSignalSetIndices[j];
+                        const SignalSetConfig = this.props.config.signalSets[i];
+                        const cidIndex = SignalSetConfig.cid + "-" + i;
+                        this.dExtents[cidIndex] = buckets.map(b => b.key);
                     }
                 }
 
@@ -587,7 +607,7 @@ export class ScatterPlotBase extends Component {
                     signalSetsData: processedResults
                 });
 
-                if (!q.queryWithRangeFilter) { // zoomed completely out
+                if (!queryWithRangeFilter) { // zoomed completely out
                     this.setState({
                         globalSignalSetsData: processedResults
                     });
@@ -673,13 +693,9 @@ export class ScatterPlotBase extends Component {
         if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
             let sExtent = this.sExtent;
             if (this.props.updateSizeOnZoom && (this.state.zoomTransform.k > 1 || this.state.zoomYScaleMultiplier !== 1)) {
-                const allFilteredData = filteredData.concat(filteredGlobalData).flat();
+                const allFilteredData = filteredData.concat(filteredGlobalData);
                 if (allFilteredData.length > 1) {
-                    sExtent = d3Array.extent(allFilteredData, d => d.s);
-                    if (this.props.hasOwnProperty("minDotRadiusValue"))
-                        sExtent[0] = this.props.minDotRadiusValue;
-                    if (this.props.hasOwnProperty("maxDotRadiusValue"))
-                        sExtent[1] = this.props.maxDotRadiusValue;
+                    sExtent = this.getSExtent_notFlat(allFilteredData);
                 }
             }
 
@@ -693,28 +709,39 @@ export class ScatterPlotBase extends Component {
         let cScales = [];
         for (let i = 0; i < filteredData.length; i++) {
             const SignalSetConfig = SignalSetsConfigs[i];
-            if (SignalSetConfig.hasOwnProperty("color_sigCid")) {
+            if (SignalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
                 const cidIndex = SignalSetConfig.cid + "-" + i;
                 let cExtent = this.cExtents[cidIndex];
                 if (this.props.updateColorOnZoom && (this.state.zoomTransform.k > 1 || this.state.zoomYScaleMultiplier !== 1)) {
+                    // recompute extent on filtered data
                     const allFilteredData = filteredData[i].concat(filteredGlobalData[i]);
                     if (allFilteredData.length > 1) {
-                        cExtent = d3Array.extent(allFilteredData, d => d.c);
-                        if (this.props.hasOwnProperty("minColorValue"))
-                            cExtent[cidIndex] = this.props.minColorValue;
-                        if (this.props.hasOwnProperty("maxColorValue"))
-                            cExtent[cidIndex] = this.props.maxColorValue;
+                        cExtent = this.getCExtent(allFilteredData);
                     }
                 }
+
                 if (Array.isArray(SignalSetConfig.color) && SignalSetConfig.color.length > 0) {
                     cScales.push(getColorScale(cExtent, SignalSetConfig.color));
                 }
                 else {
-                    cScales.push(getColorScale(cExtent, this.props.colors));
+                    cScales.push(getColorScale(cExtent, this.props.colors)); // TODO replace cExtent with this.cExtent updated on filtered data
+                }
+            } else if (SignalSetConfig.hasOwnProperty("colorDiscrete_sigCid")) {
+                const cidIndex = SignalSetConfig.cid + "-" + i;
+                if (Array.isArray(SignalSetConfig.color) && SignalSetConfig.color.length > 0) {
+                    const dExtent = this.dExtents[cidIndex];
+                    if (dExtent.length > SignalSetConfig.color.length)
+                        console.warn("More values than colors in signal set config " + i + ". Colors will be repeated."); // TODO better warning
+                    cScales.push(d3Scale.scaleOrdinal(dExtent, SignalSetConfig.color));
+                }
+                else {
+                    if (this.dExtent.length > this.props.colors.length)
+                        console.warn("More values than colors in props. Colors will be repeated."); // TODO better warning
+                    cScales.push(d3Scale.scaleOrdinal(this.dExtent, this.props.colors));
                 }
             }
             else {
-                let color = SignalSetsConfigs[i].color;
+                let color = SignalSetsConfigs[i].color || this.props.colors[i] || d3Color.color("black");
                 if (Array.isArray(color))
                     cScales.push(_ => color[0]);
                 else
@@ -750,21 +777,40 @@ export class ScatterPlotBase extends Component {
         for (let i = 0; i < config.signalSets.length; i++) {
             const signalSetConfig = config.signalSets[i];
             let data = [];
-            if(isSignalVisible(signalSetConfig))
-                for (const d of signalSetsData[i]) {
-                    let d1 = {
-                        x: d[signalSetConfig.X_sigCid],
-                        y: d[signalSetConfig.Y_sigCid]
-                    };
-                    if (signalSetConfig.dotSize_sigCid)
-                        d1.s = d[signalSetConfig.dotSize_sigCid];
-                    if (signalSetConfig.color_sigCid)
-                        d1.c = d[signalSetConfig.color_sigCid];
-                    data.push(d1);
-                }
+            for (const d of signalSetsData[i]) {
+                let d1 = {
+                    x: d[signalSetConfig.X_sigCid],
+                    y: d[signalSetConfig.Y_sigCid]
+                };
+                if (signalSetConfig.dotSize_sigCid)
+                    d1.s = d[signalSetConfig.dotSize_sigCid];
+                if (signalSetConfig.colorContinuous_sigCid)
+                    d1.c = d[signalSetConfig.colorContinuous_sigCid];
+                if (signalSetConfig.colorDiscrete_sigCid)
+                    d1.d = d[signalSetConfig.colorDiscrete_sigCid];
+                data.push(d1);
+            }
             ret.push(data);
         }
         return ret;
+    }
+
+    getCExtent(data) {
+        let extent = d3Array.extent(data, d => d.c);
+        if (this.props.hasOwnProperty("minColorValue"))
+            extent = this.props.minColorValue;
+        if (this.props.hasOwnProperty("maxColorValue"))
+            extent = this.props.maxColorValue;
+        return extent;
+    }
+
+    getSExtent_notFlat(data) {
+        let extent = getExtent(data, d => d.s);
+        if (this.props.hasOwnProperty("minDotRadiusValue"))
+            extent = this.props.minDotRadiusValue;
+        if (this.props.hasOwnProperty("maxDotRadiusValue"))
+            extent = this.props.maxDotRadiusValue;
+        return extent;
     }
 
     updateLabels() {
@@ -787,7 +833,11 @@ export class ScatterPlotBase extends Component {
     }
 
     filterData(setsData, xExtent, yExtent) {
-        return setsData.map(data => data.filter(d => isInExtent(d.x, xExtent) && isInExtent(d.y, yExtent)));
+        return setsData.map((data, i) => {
+            if (!isSignalVisible(this.props.config.signalSets[i]))
+                return [];
+            return data.filter(d => isInExtent(d.x, xExtent) && isInExtent(d.y, yExtent))
+        });
     }
     //</editor-fold>
 
@@ -815,7 +865,7 @@ export class ScatterPlotBase extends Component {
         // update
         (this.props.withTransition ? allDots.transition() : allDots)
             .attr('r', d => constantRadius ? radius : sScale(d.s))
-            .attr('fill', d => cScale(d.c));
+            .attr('fill', d => cScale(d.c || d.d));
 
         // remove
         dots.exit()
@@ -848,7 +898,7 @@ export class ScatterPlotBase extends Component {
         // update
         (this.props.withTransition ? allSquares.transition() : allSquares)
             .attr('transform', d => `scale(${s(d)})`)
-            .attr('fill', d => ModifyColorCopy(cScale(d.c), 0.5));
+            .attr('fill', d => ModifyColorCopy(cScale(d.c || d.d), 0.5));
 
         // remove
         squares.exit()
@@ -867,7 +917,7 @@ export class ScatterPlotBase extends Component {
                 for (const regConfig of SignalSetConfig.regressions) {
                     regConfig.color = ModifyColorCopy(regConfig.color, opacity);
 
-                    const reg = this.createRegression(data, this.xExtent, regConfig, SignalSetConfig);
+                    const reg = this.createRegression(data, this.xExtent, regConfig, SignalSetConfig, i);
                     if (reg !== undefined)
                         ret.push(reg);
                 }
@@ -876,7 +926,7 @@ export class ScatterPlotBase extends Component {
         return ret;
     }
 
-    createRegression(data, domain, regressionConfig, SignalSetConfig) {
+    createRegression(data, domain, regressionConfig, SignalSetConfig, SignalSetConfigIndex) {
         let regression;
         switch (regressionConfig.type) {
             case "linear":
@@ -919,7 +969,8 @@ export class ScatterPlotBase extends Component {
         return {
             data: regression(data),
             color: regressionConfig.color,
-            label: SignalSetConfig.label ? SignalSetConfig.label : SignalSetConfig.cid
+            label: SignalSetConfig.label ? SignalSetConfig.label : SignalSetConfig.cid,
+            signalSetConfigIndex: SignalSetConfigIndex
         };
     }
 
@@ -929,7 +980,8 @@ export class ScatterPlotBase extends Component {
 
         const regressions = this.regressionsSelection
             .selectAll("path")
-            .data(d3Array.merge([this.globalRegressions, this.regressions]));
+            .data(d3Array.merge([this.globalRegressions, this.regressions])
+                .filter(reg => isSignalVisible(this.props.config.signalSets[reg.signalSetConfigIndex])));
 
         const lineGenerator = d3Shape.line()
             .x(d => xScale(d[0]))
@@ -1374,10 +1426,10 @@ export class ScatterPlotBase extends Component {
                                 <path id="square" d="M -1 0   L 0 1   L 1 0   L 0 -1   L -1 0" />
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                                <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
                                 <g name={"squares"}>{squaresSelectionGroups}</g>
                                 <g name={"dots"}>{dotsSelectionGroups}</g>
                                 <g name={"highlightDots"} visibility={(this.props.withCursor || this.state.withTooltip) && !this.state.zoomInProgress ? "visible" : "hidden"} >{dotsHighlightSelectionGroups}</g>
-                                <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
                             </g>
 
                             {/* axes */}

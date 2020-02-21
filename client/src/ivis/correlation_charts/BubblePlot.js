@@ -24,9 +24,10 @@ export class BubblePlot extends Component {
                 X_sigCid: PropTypes.string.isRequired,
                 Y_sigCid: PropTypes.string.isRequired,
                 dotSize_sigCid: PropTypes.string.isRequired,
-                color_sigCid: PropTypes.string,
+                colorContinuous_sigCid: PropTypes.string,
+                colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]).isRequired,
+                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 X_label: PropTypes.string,

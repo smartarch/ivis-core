@@ -23,9 +23,10 @@ export class ScatterPlot extends Component {
                 cid: PropTypes.string.isRequired,
                 X_sigCid: PropTypes.string.isRequired,
                 Y_sigCid: PropTypes.string.isRequired,
-                color_sigCid: PropTypes.string,
+                colorContinuous_sigCid: PropTypes.string,
+                colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]).isRequired,
+                color: PropTypes.oneOfType([PropTypes.object, PropType_ArrayWithLengthAtLeast(1)]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
