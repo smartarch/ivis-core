@@ -64,6 +64,10 @@ class DataAccess {
             histogram: {
                 getQueries: ::this.getHistogramQueries,
                 processResults: ::this.processHistogramResults
+            },
+            aggs: {
+                getQueries: ::this.getAggsQueries,
+                processResults: ::this.processAggsResults
             }
         };
     }
@@ -648,6 +652,24 @@ class DataAccess {
 
     processDocsResults(responseData, sigSetCid, signals) {
         return responseData[0].docs;
+    }
+
+
+    /*
+        aggs = [ { sigCid, agg_type } ]
+    */
+    getAggsQueries(sigSetCid, filter, aggs) {
+        const qry = {
+            sigSetCid,
+            filter,
+            aggs
+        };
+
+        return [qry];
+    }
+
+    processAggsResults(responseData, sigSetCid, signals) {
+        return responseData[0];
     }
 
 
