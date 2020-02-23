@@ -7,6 +7,7 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
 import {PropType_d3Color} from "../../lib/CustomPropTypes";
+import {dotShapeNames} from "../dot_shapes";
 
 @withComponentMixins([
     withTranslation,
@@ -28,6 +29,8 @@ export class BubblePlot extends Component {
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
                 color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
+                dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
+                dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 X_label: PropTypes.string,

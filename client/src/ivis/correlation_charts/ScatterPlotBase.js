@@ -34,6 +34,7 @@ import {
     roundTo
 } from "../common";
 import {PropType_d3Color} from "../../lib/CustomPropTypes";
+import {dotShapes, dotShapeNames} from "../dot_shapes";
 
 const ConfigDifference = {
     NONE: 0,
@@ -124,7 +125,6 @@ class TooltipContent extends Component {
                 }
             }
             return tooltipHTML;
-
         } else {
             return null;
         }
@@ -323,7 +323,9 @@ export class ScatterPlotBase extends Component {
                 color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
-                dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
+                dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
+                dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
+                dotSize: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
                 X_label: PropTypes.string,
                 Y_label: PropTypes.string,
                 Size_label: PropTypes.string, // for BubblePlot
@@ -339,7 +341,7 @@ export class ScatterPlotBase extends Component {
         }).isRequired,
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
-        dotRadius: PropTypes.number,
+        dotSize: PropTypes.number,
         minDotRadius: PropTypes.number, // for BubblePlot
         maxDotRadius: PropTypes.number, // for BubblePlot
         minDotRadiusValue: PropTypes.number, // for BubblePlot
@@ -388,7 +390,7 @@ export class ScatterPlotBase extends Component {
         yMin: NaN,
         yMax: NaN,
 
-        dotRadius: 5,
+        dotSize: 5,
         minDotRadius: 2,
         maxDotRadius: 14,
         highlightDotRadius: 1.2,
@@ -400,6 +402,9 @@ export class ScatterPlotBase extends Component {
         zoomLevelStepFactor: 1.5,
         colors: d3Scheme.schemeCategory10
     };
+
+    static defaultDotShape = "circle";
+    static defaultDotGlobalShape = "circle_empty";
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
@@ -753,8 +758,9 @@ export class ScatterPlotBase extends Component {
 
         // draw data
         for (let i = 0; i < filteredData.length; i++) {
-            this.drawDots(filteredData[i],          xScale, yScale, sScale, cScales[i],SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
-            this.drawSquares(filteredGlobalData[i], xScale, yScale, sScale, cScales[i],SignalSetsConfigs[i].cid + "-" + i, SignalSetsConfigs[i]);
+            const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
+            this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
+            this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotGlobalShape || ScatterPlotBase.defaultDotGlobalShape, c => ModifyColorCopy(c, 0.5));
         }
         this.drawRegressions(xScale, yScale, cScales);
 
@@ -851,66 +857,45 @@ export class ScatterPlotBase extends Component {
             return color;
     }
 
-    /** data = [{ x, y, s? }] */
-    drawDots(data, xScale, yScale, sScale, cScale, cidIndex, SignalSetConfig) {
-        const radius = SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius;
-        const constantRadius = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
-
-        // create dots on chart
-        const dots = this.dotsSelection[cidIndex]
-            .selectAll('circle')
-            .data(data, (d) => {
-                return d.x + " " + d.y;
-            });
-
-        // enter
-        const allDots = dots.enter()
-            .append('circle')
-            .attr('r', 0)
-            .merge(dots)
-            .attr('cx', d => xScale(d.x))
-            .attr('cy', d => yScale(d.y));
-
-        // update
-        (this.props.withTransition ? allDots.transition() : allDots)
-            .attr('r', d => constantRadius ? radius : sScale(d.s))
-            .attr('fill', d => cScale(d.c || d.d));
-
-        // remove
-        dots.exit()
-            .remove();
-    }
-
-    /** data = [{ x, y, s? }] */
-    drawSquares(data, xScale, yScale, sScale, cScale, cidIndex, SignalSetConfig) {
-        const size = (SignalSetConfig.dotRadius ? SignalSetConfig.dotRadius : this.props.dotRadius);
+    /** data = [{ x, y, s?, c?, d? }], dotShape = id (excl. '#') */
+    drawDots(data, selection, xScale, yScale, sScale, cScale, SignalSetConfig, dotShape, modifyColor) {
+        const size = (SignalSetConfig.dotSize ? SignalSetConfig.dotSize : this.props.dotSize);
         const constantSize = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
         const s = d => constantSize ? size : sScale(d.s);
+        if (modifyColor === undefined)
+            modifyColor = c => c;
 
-        // create squares on chart
-        const squares = this.squaresSelection[cidIndex]
+        if (dotShape === "none") {
+            selection.selectAll('use').remove();
+            return;
+        }
+        dotShape = "#" + dotShape;
+
+        // create global dots on chart
+        const dots = selection
             .selectAll('use')
             .data(data, (d) => {
                 return d.x + " " + d.y;
             });
 
         // enter
-        const allSquares = squares.enter()
+        const allDots = dots.enter()
             .append('use')
-            .attr('href', "#square")
+            .attr('href', dotShape)
             .attr('transform', "scale(0)")
-            .merge(squares)
+            .merge(dots)
             .attr('x', d => xScale(d.x))
             .attr('y', d => yScale(d.y))
             .style("transform-origin", d => `${xScale(d.x)}px ${yScale(d.y)}px`);
 
         // update
-        (this.props.withTransition ? allSquares.transition() : allSquares)
+        (this.props.withTransition ? allDots.transition() : allDots)
             .attr('transform', d => `scale(${s(d)})`)
-            .attr('fill', d => ModifyColorCopy(cScale(d.c || d.d), 0.5));
+            .attr('fill', d => modifyColor(cScale(d.c || d.d)))
+            .attr('stroke', d => modifyColor(cScale(d.c || d.d)));
 
         // remove
-        squares.exit()
+        dots.exit()
             .remove();
     }
     //</editor-fold>
@@ -1065,7 +1050,7 @@ export class ScatterPlotBase extends Component {
         coeffs.enter().append("div")
             .merge(coeffs)
             .html(d => {
-            if (d.data.a)
+            if (d.data.hasOwnProperty("a"))
                 return `<b>${d.label}</b>: <i>slope:</i> ${roundTo(d.data.a, 3)}; <i>intercept:</i> ${roundTo(d.data.b, 3)}`;
         });
     }
@@ -1101,24 +1086,27 @@ export class ScatterPlotBase extends Component {
 
                 if (selections && selections[signalSetCidIndex] !== newSelection) {
                     self.dotHighlightSelections[signalSetCidIndex]
-                        .selectAll('circle')
+                        .selectAll('use')
                         .remove();
                 }
 
                 if (newSelection) {
-                    const SignalSetConfig = self.props.config.signalSets[i];
-                    let radius = self.props.dotRadius;
-                    if (SignalSetConfig.dotRadius)
-                        radius = SignalSetConfig.dotRadius;
-                    if (SignalSetConfig.hasOwnProperty("dotSize_sigCid"))
-                        radius = sScale(newSelection.s);
+                    const signalSetConfig = self.props.config.signalSets[i];
+                    let size = self.props.dotSize;
+                    if (signalSetConfig.dotSize)
+                        size = signalSetConfig.dotSize;
+                    if (signalSetConfig.hasOwnProperty("dotSize_sigCid"))
+                        size = sScale(newSelection.s);
 
                     self.dotHighlightSelections[signalSetCidIndex]
-                        .append('circle')
-                        .attr('cx', xScale(newSelection.x))
-                        .attr('cy', yScale(newSelection.y))
-                        .attr('r', self.props.highlightDotRadius * radius)
-                        .attr("fill", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker());
+                        .append('use')
+                        .attr('href', "#" + (signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape))
+                        .attr('x', xScale(newSelection.x))
+                        .attr('y', yScale(newSelection.y))
+                        .attr('transform', `scale(${self.props.highlightDotRadius * size})`)
+                        .style("transform-origin", `${xScale(newSelection.x)}px ${yScale(newSelection.y)}px`)
+                        .attr("fill", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker())
+                        .attr("stroke", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker());
                     /*self.dotHighlightSelections[signalSetCidIndex]
                         .attr('stroke', "black")
                         .attr("stroke-width", "1px");*/
@@ -1141,6 +1129,13 @@ export class ScatterPlotBase extends Component {
                 .attr('x2', self.renderedWidth - self.props.margin.right)
                 .attr('visibility', self.props.withCursor ? "visible" : "hidden");
 
+            let allNull = true;
+            for (const selName in newSelections)
+                if (newSelections[selName] !== null)
+                    allNull = false;
+            if (allNull)
+                newSelections = null;
+
             selections = newSelections;
             mousePosition = {x: containerPos[0], y: containerPos[1]};
 
@@ -1162,7 +1157,7 @@ export class ScatterPlotBase extends Component {
 
         for (const cid in this.dotHighlightSelections) {
             this.dotHighlightSelections[cid]
-                .selectAll('circle')
+                .selectAll('use')
                 .remove();
         }
 
@@ -1433,10 +1428,10 @@ export class ScatterPlotBase extends Component {
                    ref={node => this.dotsSelection[signalSet.cid + "-" + i] = select(node)}/>
             );
 
-            this.squaresSelection = {};
-            const squaresSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
+            this.dotsGlobalSelection = {};
+            const dotsGlobalSelectionGroups = this.props.config.signalSets.map((signalSet, i) =>
                 <g key={signalSet.cid + "-" + i}
-                   ref={node => this.squaresSelection[signalSet.cid + "-" + i] = select(node)}/>
+                   ref={node => this.dotsGlobalSelection[signalSet.cid + "-" + i] = select(node)}/>
             );
 
             return (
@@ -1468,11 +1463,12 @@ export class ScatterPlotBase extends Component {
                                 <clipPath id="plotRect">
                                     <rect x="0" y="0" width={this.state.width} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                                 </clipPath>
-                                <path id="square" d="M -1 0   L 0 1   L 1 0   L 0 -1   L -1 0" />
+                                {/* dot shape definitions */}
+                                {dotShapes}
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
                                 <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
-                                <g name={"squares"}>{squaresSelectionGroups}</g>
+                                <g name={"dots_global"}>{dotsGlobalSelectionGroups}</g>
                                 <g name={"dots"}>{dotsSelectionGroups}</g>
                                 <g name={"highlightDots"} visibility={(this.props.withCursor || this.state.withTooltip) && !this.state.zoomInProgress ? "visible" : "hidden"} >{dotsHighlightSelectionGroups}</g>
                             </g>

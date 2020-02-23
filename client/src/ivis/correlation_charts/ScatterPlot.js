@@ -7,6 +7,7 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
 import {PropType_d3Color} from "../../lib/CustomPropTypes";
+import {dotShapeNames} from "../dot_shapes";
 
 @withComponentMixins([
     withTranslation,
@@ -29,7 +30,9 @@ export class ScatterPlot extends Component {
                 color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
-                dotRadius: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
+                dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
+                dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
+                dotSize: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
                 X_label: PropTypes.string,
                 Y_label: PropTypes.string,
                 Color_label: PropTypes.string,
@@ -43,7 +46,7 @@ export class ScatterPlot extends Component {
         }).isRequired,
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
-        dotRadius: PropTypes.number,
+        dotSize: PropTypes.number,
         colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
         highlightDotRadius: PropTypes.number, // radius multiplier
         updateColorOnZoom: PropTypes.bool,

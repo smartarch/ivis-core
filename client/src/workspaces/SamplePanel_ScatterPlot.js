@@ -142,7 +142,9 @@ export default class SamplePanel_ScatterPlot extends Component {
                         type: "linear",
                         color: rgb(0, 0, 169)
                     }],
-                    tsSigCid: "ts"
+                    tsSigCid: "ts",
+                    dotShape: "diamond",
+                    dotGlobalShape: "diamond_empty"
                 }
             ]
         };
