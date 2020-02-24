@@ -82,7 +82,6 @@ export class ServerAnimationContext extends Component {
             nextStatusOverride.ver = this.state.status.ver;
             this.pushStatus(nextStatusOverride);
         }
-
     }
 
     componentDidMount() {
@@ -168,6 +167,7 @@ export class ServerAnimationContext extends Component {
 
     async dataRefetch() {
         this.seeking = true;
+        this.pushStatus({isPlaying: false, isBuffering: true});
         const wasPlaying = this.state.keyframeContext.status.isPlaying;
         if (wasPlaying) {
             clearInterval(this.refreshInterval);
@@ -183,6 +183,7 @@ export class ServerAnimationContext extends Component {
             this.fetchDataLoop();
         }
 
+        this.pushStatus({isPlaying: wasPlaying, isBuffering: false});
         this.seeking = false;
     }
 
