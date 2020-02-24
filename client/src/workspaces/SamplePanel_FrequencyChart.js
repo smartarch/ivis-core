@@ -1,0 +1,44 @@
+'use strict';
+
+import React, {Component} from "react";
+import TestWorkspacePanel
+    from "./panels/TestWorkspacePanel";
+import {FrequencyPieChart} from "../ivis/FrequencyPieChart";
+import {LegendPosition} from "../ivis/PieChart";
+
+class TestFrequencyChart extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        const cnf = {
+            sigSetCid: "top:bubble",
+            sigCid: "a"
+        };
+
+        return (
+                <FrequencyPieChart
+                    config={cnf}
+                    height={400}
+                    legendPosition={LegendPosition.BOTTOM}
+                    legendRowClass="col-12 col-md-6 col-lg-4 col-xl-2"
+                />
+        );
+    }
+}
+
+export default class SamplePanel_FrequencyChart extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        return (
+            <TestWorkspacePanel
+                title="Sample Panel Frequency"
+                content={TestFrequencyChart}
+            />
+        );
+    }
+}
