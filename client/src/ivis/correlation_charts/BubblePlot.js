@@ -47,6 +47,8 @@ export class BubblePlot extends Component {
         maxDotRadiusValue: PropTypes.number,
         colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
         highlightDotRadius: PropTypes.number, // radius multiplier
+        xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
+        yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
         updateSizeOnZoom: PropTypes.bool,
 

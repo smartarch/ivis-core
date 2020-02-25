@@ -350,6 +350,8 @@ export class ScatterPlotBase extends Component {
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         highlightDotRadius: PropTypes.number, // radius multiplier
+        xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
+        yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
         updateSizeOnZoom: PropTypes.bool, // for BubblePlot
 
@@ -394,11 +396,13 @@ export class ScatterPlotBase extends Component {
         minDotRadius: 2,
         maxDotRadius: 14,
         highlightDotRadius: 1.2,
+        xAxisExtentFromSampledData: false,
+        yAxisExtentFromSampledData: false,
         updateColorOnZoom: false,
         updateSizeOnZoom: false,
         maxDotCount: 100,
         zoomLevelMin: 1,
-        zoomLevelMax: 4,
+        zoomLevelMax: 10,
         zoomLevelStepFactor: 1.5,
         colors: d3Scheme.schemeCategory10
     };
@@ -476,10 +480,10 @@ export class ScatterPlotBase extends Component {
     }
     //</editor-fold>
 
-    getQueries(withRangeFilter = false) {
+    getQueries(xMin, xMax, yMin, yMax) {
         const config = this.props.config;
         const queries = [];
-        let queryWithRangeFilter = withRangeFilter;
+        let queryWithRangeFilter = !isNaN(xMin) || !isNaN(xMax) || !isNaN(yMin) || !isNaN(yMax);
         const aggsQueriesSignalSetIndices = [];
 
         for (const [i, signalSet] of config.signalSets.entries()) {
@@ -505,35 +509,60 @@ export class ScatterPlotBase extends Component {
                 });
             }
 
-            if (!isNaN(this.state.xMin))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.X_sigCid,
-                    gte: this.state.xMin
-                });
-            if (!isNaN(this.state.xMax))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.X_sigCid,
-                    lte: this.state.xMax
-                });
-            if (!isNaN(this.state.yMin))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.Y_sigCid,
-                    gte: this.state.yMin
-                });
-            if (!isNaN(this.state.yMax))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.Y_sigCid,
-                    lte: this.state.yMax
-                });
             if (Math.abs(this.state.zoomTransform.k - 1) > 0.01 ||
                 Math.abs(this.state.zoomYScaleMultiplier - 1) > 0.01 ||
                 Math.abs(this.state.zoomTransform.x) > 3 ||
-                Math.abs(this.state.zoomTransform.y) > 3)
+                Math.abs(this.state.zoomTransform.y) > 3) {
+
                 queryWithRangeFilter = true;
+
+                // update limits with current zoom (if not set yet)
+                if (xMin === undefined && !isNaN(this.state.xMin))
+                    xMin = this.state.xMin;
+                if (xMax === undefined && !isNaN(this.state.xMax))
+                    xMax = this.state.xMax;
+                if (yMin === undefined && !isNaN(this.state.yMin))
+                    yMin = this.state.yMin;
+                if (yMax === undefined && !isNaN(this.state.yMax))
+                    yMax = this.state.yMax;
+                // TODO does not work when updating after brush zoom!!!
+            }
+
+            // set limits to props (if not set yet)
+            if (xMin === undefined && !isNaN(this.props.xMin))
+                xMin = this.props.xMin;
+            if (xMax === undefined && !isNaN(this.props.xMax))
+                xMax = this.props.xMax;
+            if (yMin === undefined && !isNaN(this.props.yMin))
+                yMin = this.props.yMin;
+            if (yMax === undefined && !isNaN(this.props.yMax))
+                yMax = this.props.yMax;
+
+            // add x and y filters
+            if (!isNaN(xMin))
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.X_sigCid,
+                    gte: xMin
+                });
+            if (!isNaN(xMax))
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.X_sigCid,
+                    lte: xMax
+                });
+            if (!isNaN(yMin))
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.Y_sigCid,
+                    gte: yMin
+                });
+            if (!isNaN(yMax))
+                filter.children.push({
+                    type: "range",
+                    sigCid: signalSet.Y_sigCid,
+                    lte: yMax
+                });
 
             let limit = undefined;
             if (this.state.maxDotCount >= 0) {
@@ -565,50 +594,102 @@ export class ScatterPlotBase extends Component {
                 type: "docs",
                 args: [ signalSet.cid, signals, filter, undefined, limit ]
             });
+
+            if (!queryWithRangeFilter) {
+                const summary = {
+                    signals: {}
+                };
+                summary.signals[signalSet.X_sigCid] = ["min", "max"];
+                summary.signals[signalSet.Y_sigCid] = ["min", "max"];
+                if (signalSet.dotSize_sigCid)
+                    summary.signals[signalSet.dotSize_sigCid] = ["min", "max"];
+                if (signalSet.colorContinuous_sigCid)
+                    summary.signals[signalSet.colorContinuous_sigCid] = ["min", "max"];
+                queries.push({
+                    type: "summary",
+                    args: [ signalSet.cid, filter, summary ]
+                });
+            }
         }
 
         return [ queries, queryWithRangeFilter, aggsQueriesSignalSetIndices ];
     }
 
     @withAsyncErrorHandler
-    async fetchData(withRangeFilter = false) {
+    async fetchData(xMin, xMax, yMin, yMax) {
         try {
-            const [queries, queryWithRangeFilter, aggsQueriesSignalSetIndices] = this.getQueries(withRangeFilter);
+            const [queries, queryWithRangeFilter, aggsQueriesSignalSetIndices] = this.getQueries(xMin, xMax, yMin, yMax);
             const results = await this.dataAccessSession.getLatestMixed(queries);
 
             if (results) { // Results is null if the results returned are not the latest ones
-                const processedResults = this.processData(results.filter(res => !res.hasOwnProperty("aggs")));
+                const processedResults = this.processData(results.filter((_, i) => queries[i].type === "docs"));
 
                 if (!queryWithRangeFilter) { // zoomed completely out
                     // update extents of axes
-                    // y extent
-                    this.yExtent = getExtent(processedResults, function (d) {  return d.y });
-                    this.yExtent = extentWithMargin(this.yExtent, 0.1);
+                    const summaries = results.filter((_, i) => queries[i].type === "summary");
+                    //<editor-fold desc="Y extent">
+                    if (this.props.yAxisExtentFromSampledData)
+                        this.yExtent = getExtent(processedResults, function (d) {  return d.y });
+                    else {
+                        const yMin = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
+                            return summary[this.props.config.signalSets[i].Y_sigCid].min;
+                        });
+                        const yMax = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
+                            return summary[this.props.config.signalSets[i].Y_sigCid].max;
+                        });
+                        this.yExtent = [yMin, yMax];
+                    }
+                    this.yExtent = extentWithMargin(this.yExtent, 0.05);
                     if (!isNaN(this.props.yMin)) this.yExtent[0] = this.props.yMin;
                     if (!isNaN(this.props.yMax)) this.yExtent[1] = this.props.yMax;
-                    // x extent
-                    this.xExtent = getExtent(processedResults, function (d) {  return d.x });
-                    this.xExtent = extentWithMargin(this.xExtent, 0.1);
+                    //</editor-fold>
+                    //<editor-fold desc="X extent">
+                    if (this.props.xAxisExtentFromSampledData)
+                        this.xExtent = getExtent(processedResults, function (d) {  return d.x });
+                    else {
+                        const xMin = d3Array.min(summaries, (summary, i) => {
+                            return summary[this.props.config.signalSets[i].X_sigCid].min;
+                        });
+                        const xMax = d3Array.min(summaries, (summary, i) => {
+                            return summary[this.props.config.signalSets[i].X_sigCid].max;
+                        });
+                        this.xExtent = [xMin, xMax];
+                    }
+                    this.xExtent = extentWithMargin(this.xExtent, 0.05);
                     if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
                     if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
-                    // size extent
-                    this.sExtent = this.getSExtent_notFlat(processedResults);
-                    // color (continuous) extent
+                    //</editor-fold>
+                    //<editor-fold desc="Size extent">
+                    const sMin = d3Array.min(summaries, (summary, i) => {
+                        if (this.props.config.signalSets[i].hasOwnProperty("dotSize_sigCid"))
+                            return summary[this.props.config.signalSets[i].dotSize_sigCid].min;
+                    });
+                    const sMax = d3Array.min(summaries, (summary, i) => {
+                        if (this.props.config.signalSets[i].hasOwnProperty("dotSize_sigCid"))
+                            return summary[this.props.config.signalSets[i].dotSize_sigCid].max;
+                    });
+                    this.sExtent = this.updateSExtent([sMin, sMax]);
+                    //</editor-fold>
+                    //<editor-fold desc="Color (continuous) extent">
                     this.cExtents = [];
                     for (let i = 0; i < processedResults.length; i++) {
-                        const SignalSetConfig = this.props.config.signalSets[i];
-                        if (SignalSetConfig.hasOwnProperty("colorContinuous_sigCid"))
-                            this.cExtents[i] = this.getCExtent(processedResults[i]);
+                        const signalSetConfig = this.props.config.signalSets[i];
+                        if (signalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
+                            const signal = summaries[i][signalSetConfig.colorContinuous_sigCid];
+                            this.cExtents[i] = this.updateCExtent([signal.min, signal.max]);
+                        }
                     }
                     this.cExtent = [ d3Array.min(this.cExtents, ex => ex[0]), d3Array.max(this.cExtents, ex => ex[1]) ];
-                    // color (discrete) extent
+                    //</editor-fold>
+                    //<editor-fold desc="Color (discrete) extent">
                     this.dExtents = [];
-                    for (const [j, res] of results.filter(res => res.hasOwnProperty("aggs")).entries()) {
-                        const buckets = res.aggs[0].buckets;
+                    for (const [j, res] of results.filter((_, i) => queries[i].type === "aggs").entries()) {
+                        const buckets = res[0].buckets;
                         const i = aggsQueriesSignalSetIndices[j];
                         this.dExtents[i] = buckets.map(b => b.key);
                     }
                     this.dExtent = [...new Set(this.dExtents.flat())]; // get all keys in extents and then keeps only unique values
+                    //</editor-fold>
                 }
 
                 this.setState({
@@ -696,20 +777,18 @@ export class ScatterPlotBase extends Component {
         const filteredGlobalData = this.filterData(globalSignalSetsData, xScale.domain(), yScale.domain());
 
         //<editor-fold desc="Size and Color Scales">
-        const zoomed = this.props.updateColorOnZoom && (this.state.zoomTransform.k > 1 || this.state.zoomYScaleMultiplier !== 1);
         // s Scale (dot size)
         let sScale = undefined;
         if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
             let sExtent = this.sExtent;
-            if (zoomed) {
+            if (this.props.updateSizeOnZoom) {
                 const allFilteredData = filteredData.concat(filteredGlobalData);
                 if (allFilteredData.length > 1) {
                     sExtent = this.getSExtent_notFlat(allFilteredData);
                 }
             }
 
-            sScale = d3Scale.scalePow()
-                .exponent(1/3)
+            sScale = d3Scale.scaleSqrt()
                 .domain(sExtent)
                 .range([this.props.minDotRadius, this.props.maxDotRadius]);
         }
@@ -717,7 +796,7 @@ export class ScatterPlotBase extends Component {
         // c Scale (color)
         let cScales = [];
         let cExtents = this.cExtents, cExtent = this.cExtent;
-        if (SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid")) && zoomed) {
+        if (this.props.updateColorOnZoom && SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid"))) {
             // recompute extents on filtered data
             for (let i = 0; i < filteredData.length; i++) {
                 if (SignalSetsConfigs[i].hasOwnProperty("colorContinuous_sigCid")) {
@@ -804,19 +883,27 @@ export class ScatterPlotBase extends Component {
 
     getCExtent(data) {
         let extent = d3Array.extent(data, d => d.c);
+        return this.updateCExtent(extent);
+    }
+
+    updateCExtent(extent) {
         if (this.props.hasOwnProperty("minColorValue"))
-            extent = this.props.minColorValue;
+            extent[0] = this.props.minColorValue;
         if (this.props.hasOwnProperty("maxColorValue"))
-            extent = this.props.maxColorValue;
+            extent[1] = this.props.maxColorValue;
         return extent;
     }
 
     getSExtent_notFlat(data) {
         let extent = getExtent(data, d => d.s);
+        return this.updateSExtent(extent);
+    }
+
+    updateSExtent(extent) {
         if (this.props.hasOwnProperty("minDotRadiusValue"))
-            extent = this.props.minDotRadiusValue;
+            extent[0] = this.props.minDotRadiusValue;
         if (this.props.hasOwnProperty("maxDotRadiusValue"))
-            extent = this.props.maxDotRadiusValue;
+            extent[1] = this.props.maxDotRadiusValue;
         return extent;
     }
 
@@ -858,9 +945,9 @@ export class ScatterPlotBase extends Component {
     }
 
     /** data = [{ x, y, s?, c?, d? }], dotShape = id (excl. '#') */
-    drawDots(data, selection, xScale, yScale, sScale, cScale, SignalSetConfig, dotShape, modifyColor) {
-        const size = (SignalSetConfig.dotSize ? SignalSetConfig.dotSize : this.props.dotSize);
-        const constantSize = !SignalSetConfig.hasOwnProperty("dotSize_sigCid");
+    drawDots(data, selection, xScale, yScale, sScale, cScale, signalSetConfig, dotShape, modifyColor) {
+        const size = (signalSetConfig.dotSize ? signalSetConfig.dotSize : this.props.dotSize);
+        const constantSize = !signalSetConfig.hasOwnProperty("dotSize_sigCid");
         const s = d => constantSize ? size : sScale(d.s);
         if (modifyColor === undefined)
             modifyColor = c => c;
@@ -1098,6 +1185,7 @@ export class ScatterPlotBase extends Component {
                     if (signalSetConfig.hasOwnProperty("dotSize_sigCid"))
                         size = sScale(newSelection.s);
 
+                    // noinspection JSUnresolvedVariable
                     self.dotHighlightSelections[signalSetCidIndex]
                         .append('use')
                         .attr('href', "#" + (signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape))
@@ -1196,8 +1284,7 @@ export class ScatterPlotBase extends Component {
 
                         if (self.props.withAutoRefreshOnBrush) {
                             // load new data for brushed region
-                            self.setState({xMin, xMax, yMin, yMax});
-                            self.reloadData(true);
+                            self.reloadData(xMin, xMax, yMin, yMax);
                         }
 
                         // hide brush
@@ -1389,9 +1476,9 @@ export class ScatterPlotBase extends Component {
         }
     }
 
-    reloadData(withRangeFilter = false) {
+    reloadData(xMin, xMax, yMin, yMax) {
         // noinspection JSIgnoredPromiseFromCall
-        this.fetchData(withRangeFilter);
+        this.fetchData(xMin, xMax, yMin, yMax);
     }
 
     // toggle between brush and zoom, returns true if brush is enabled after call
