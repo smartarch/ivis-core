@@ -344,14 +344,16 @@ class QueryProcessor {
                     max = bucketGroup.max;
                 } else if (agg.agg_type) {
                     // no step and offset for some types of aggregations (e.g. 'terms')
-                    step = null;
-                    offset = null;
+                    step = undefined;
+                    offset = undefined;
                 } else {
                     throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or bucketGroup or agg_type (and its arguments) have to be specified.');
                 }
 
-                agg.computedStep = step;
-                agg.computedOffset = offset;
+                if (step !== undefined)
+                    agg.computedStep = step;
+                if (offset !== undefined)
+                    agg.computedOffset = offset;
 
                 if (min !== undefined)
                     agg.computedMin = min;
@@ -555,13 +557,15 @@ class QueryProcessor {
                 }
             }
 
-            result.push({
-                step: agg.computedStep,
-                offset: agg.computedOffset,
+            const res = {
                 buckets,
                 ...additionalResponses
-            });
+            };
 
+            if (agg.computedStep) res.step = agg.computedStep;
+            if (agg.computedOffset) res.offset = agg.computedOffset;
+
+            result.push(res);
             aggNo += 1;
         }
 

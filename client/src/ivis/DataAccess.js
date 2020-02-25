@@ -68,6 +68,10 @@ class DataAccess {
             aggs: {
                 getQueries: ::this.getAggsQueries,
                 processResults: ::this.processAggsResults
+            },
+            summary: {
+                getQueries: ::this.getSummaryQueries,
+                processResults: ::this.processSummaryResults
             }
         };
     }
@@ -668,8 +672,28 @@ class DataAccess {
         return [qry];
     }
 
-    processAggsResults(responseData, sigSetCid, signals) {
-        return responseData[0];
+    processAggsResults(responseData) {
+        return responseData[0].aggs;
+    }
+
+
+    /*
+        summary: {
+            signals: [sigCid: ['min', 'max', 'avg']]
+        }
+     */
+    getSummaryQueries(sigSetCid, filter, summary) {
+        const qry = {
+            sigSetCid,
+            filter,
+            summary
+        };
+
+        return [qry];
+    }
+
+    processSummaryResults(responseData) {
+        return responseData[0].summary;
     }
 
 
