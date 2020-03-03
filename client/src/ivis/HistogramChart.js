@@ -19,7 +19,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
-import {isInExtent} from "./common";
+import {brushHandlesLeftRight, isInExtent} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
@@ -610,7 +610,7 @@ export class HistogramChart extends Component {
             .on("brush end", function () {
                 // noinspection JSUnresolvedVariable
                 const sel = d3Event.selection;
-                self.overviewBrushSelection.call(::self.brushHandle, sel);
+                self.overviewBrushSelection.call(brushHandlesLeftRight, sel, ySize);
 
                 // noinspection JSUnresolvedVariable
                 if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
@@ -628,27 +628,6 @@ export class HistogramChart extends Component {
         this.overviewBrushSelection.select(".overlay")
             .attr('pointer-events', 'none');
     }
-
-    brushHandle(group, selection) {
-        const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
-
-        group.selectAll(".handle--custom")
-            .data([{type: "w"}, {type: "e"}])
-            .join(
-                enter => enter.append("rect")
-                    .attr("class", d => `handle--custom handle--custom--${d.type}`)
-                    .attr("fill", "#434343")
-                    .attr("cursor", "ew-resize")
-                    .attr("x", "-5px")
-                    .attr("width", "10px")
-                    .attr("y", ySize / 4)
-                    .attr("height", ySize / 2)
-                    .attr("rx", "5px")
-            )
-            .attr("display", selection === null ? "none" : null)
-            .attr("transform", selection === null ? null : (d, i) => `translate(${selection[i]},0)`);
-    }
-
 
     render() {
         if (!this.state.signalSetData) {

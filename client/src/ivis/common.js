@@ -60,9 +60,46 @@ export function getColorScale(domain, colors) {
 
 export function ModifyColorCopy(color, new_opacity) {
     color = d3Color.color(color);
+    // noinspection JSIncompatibleTypesComparison
     if (color === null)
         return undefined;
     if (new_opacity === undefined)
         new_opacity = color.opacity;
     return d3Color.rgb(color.r, color.g, color.b, new_opacity);
+}
+
+export function brushHandlesLeftRight(group, selection, ySize) {
+    group.selectAll(".handle--custom")
+        .data([{type: "w"}, {type: "e"}])
+        .join(
+            enter => enter.append("rect")
+                .attr("class", d => `handle--custom handle--custom--${d.type}`)
+                .attr("fill", "#434343")
+                .attr("cursor", "ew-resize")
+                .attr("x", "-5px")
+                .attr("width", "10px")
+                .attr("y", ySize / 4)
+                .attr("height", ySize / 2)
+                .attr("rx", "5px")
+        )
+        .attr("display", selection === null ? "none" : null)
+        .attr("transform", selection === null ? null : (d, i) => `translate(${selection[i]},0)`);
+}
+
+export function brushHandlesTopBottom(group, selection, xSize) {
+    group.selectAll(".handle--custom")
+        .data([{type: "n"}, {type: "s"}])
+        .join(
+            enter => enter.append("rect")
+                .attr("class", d => `handle--custom handle--custom--${d.type}`)
+                .attr("fill", "#434343")
+                .attr("cursor", "ns-resize")
+                .attr("y", "-5px")
+                .attr("height", "10px")
+                .attr("x", xSize / 4)
+                .attr("width", xSize / 2)
+                .attr("ry", "5px")
+        )
+        .attr("display", selection === null ? "none" : null)
+        .attr("transform", selection === null ? null : (d, i) => `translate(0, ${selection[i]})`);
 }

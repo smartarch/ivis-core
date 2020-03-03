@@ -15,9 +15,12 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
 import {Icon} from "../../lib/bootstrap-components";
-import {getColorScale} from "../common";
+import {brushHandlesLeftRight, brushHandlesTopBottom, getColorScale} from "../common";
 import styles from "./CorrelationCharts.scss";
 import {PropType_d3Color} from "../../lib/CustomPropTypes";
+import * as d3Brush from "d3-brush";
+import {event as d3Event} from "d3-selection";
+import * as d3Zoom from "d3-zoom";
 
 
 const ConfigDifference = {
@@ -97,6 +100,9 @@ export class HeatmapChart extends Component {
             maxBucketCountX: 0,
             maxBucketCountY: 0
         };
+
+        this.brushBottom = null;
+        this.brushLeft = null;
 
         this.resizeListener = () => {
             this.createChart(this.state.signalSetData);
@@ -470,6 +476,7 @@ export class HeatmapChart extends Component {
         //</editor-fold>
 
         this.drawHorizontalBars(rowProbs, this.overviewLeftBarsSelection, yScale, xScale, barColor);
+        this.createChartOverviewLeftBrush();
     }
 
     createChartOverviewBottom(colProbs, xExtent, barColor) {
@@ -490,6 +497,71 @@ export class HeatmapChart extends Component {
         //</editor-fold>
 
         this.drawVerticalBars(colProbs, this.overviewBottomBarsSelection, xScale, yScale, barColor);
+        this.createChartOverviewBottomBrush();
+    }
+
+    createChartOverviewLeftBrush() {
+        const self = this;
+
+        const xSize = this.props.overviewLeftWidth - this.props.overviewLeftMargin.left - this.props.overviewLeftMargin.right;
+        const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
+        this.defaultBrushLeft = [0, ySize];
+        const brushExisted = this.brushLeft !== null;
+        this.brushLeft = d3Brush.brushY()
+            .extent([[0, 0], [xSize, ySize]])
+            .handleSize(20)
+            .on("brush end", function () {
+                // noinspection JSUnresolvedVariable
+                const sel = d3Event.selection;
+                self.overviewLeftBrushSelection.call(brushHandlesTopBottom, sel, xSize);
+
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+                const newTransform = d3Zoom.zoomIdentity.scale(ySize / (sel[1] - sel[0])).translate(0, -sel[0]);
+                //self.svgContainerSelection.call(self.zoom.transform, newTransform);
+            });
+
+        this.overviewLeftBrushSelection
+            .attr('pointer-events', 'all')
+            .call(this.brushLeft);
+        if (!brushExisted)
+            this.overviewLeftBrushSelection.call(this.brushLeft.move, this.defaultBrushLeft);
+        this.overviewLeftBrushSelection.select(".selection")
+            .classed(styles.selection, true);
+        this.overviewLeftBrushSelection.select(".overlay")
+            .attr('pointer-events', 'none');
+    }
+
+    createChartOverviewBottomBrush() {
+        const self = this;
+
+        const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
+        const ySize = this.props.overviewBottomHeight - this.props.overviewBottomMargin.top - this.props.overviewBottomMargin.bottom;
+        this.defaultBrushBottom = [0, xSize];
+        const brushExisted = this.brushBottom !== null;
+        this.brushBottom = d3Brush.brushX()
+            .extent([[0, 0], [xSize, ySize]])
+            .handleSize(20)
+            .on("brush end", function () {
+                // noinspection JSUnresolvedVariable
+                const sel = d3Event.selection;
+                self.overviewBottomBrushSelection.call(brushHandlesLeftRight, sel, ySize);
+
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+                const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
+                //self.svgContainerSelection.call(self.zoom.transform, newTransform);
+            });
+
+        this.overviewBottomBrushSelection
+            .attr('pointer-events', 'all')
+            .call(this.brushBottom);
+        if (!brushExisted)
+            this.overviewBottomBrushSelection.call(this.brushBottom.move, this.defaultBrushBottom);
+        this.overviewBottomBrushSelection.select(".selection")
+            .classed(styles.selection, true);
+        this.overviewBottomBrushSelection.select(".overlay")
+            .attr('pointer-events', 'none');
     }
 
     drawVerticalBars(data, barsSelection, keyScale, probScale, barColor) {
