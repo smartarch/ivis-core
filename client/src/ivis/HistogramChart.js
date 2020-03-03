@@ -20,7 +20,7 @@ import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
 import {isInExtent} from "./common";
-import {PropType_NumberInRange} from "../lib/CustomPropTypes";
+import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
     NONE: 0,
@@ -107,13 +107,13 @@ export class HistogramChart extends Component {
         config: PropTypes.shape({
             sigSetCid: PropTypes.string.isRequired,
             sigCid: PropTypes.string.isRequired,
-            color: PropTypes.object.isRequired,
+            color: PropType_d3Color_Required(),
             tsSigCid: PropTypes.string
         }).isRequired,
         height: PropTypes.number.isRequired,
+        margin: PropTypes.object.isRequired,
         overviewHeight: PropTypes.number,
         overviewMargin: PropTypes.object,
-        margin: PropTypes.object.isRequired,
 
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,

@@ -47,7 +47,7 @@ export function PropType_NumberInRange(min, max) {
     }
 }
 
-export function PropType_d3Color() {
+export function PropType_d3Color_Required() {
     return function (props, propName, componentName) {
         const val = props[propName];
         if (d3Color.color(val) === null)
@@ -55,5 +55,14 @@ export function PropType_d3Color() {
                 'Invalid prop `' + propName + '` supplied to' +
                 ' `' + componentName + '`. It must be a d3 color. See https://github.com/d3/d3-color#color for more information.'
             );
+    }
+}
+
+export function PropType_d3Color() {
+    return function (props, propName, componentName) {
+        const val = props[propName];
+        if (val === undefined)
+            return;
+        else return PropType_d3Color_Required()(props, propName, componentName);
     }
 }

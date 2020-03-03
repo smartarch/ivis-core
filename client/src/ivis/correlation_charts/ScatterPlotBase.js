@@ -33,7 +33,7 @@ import {
     ModifyColorCopy,
     roundTo
 } from "../common";
-import {PropType_d3Color} from "../../lib/CustomPropTypes";
+import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "../dot_shapes";
 
 const ConfigDifference = {
@@ -320,7 +320,7 @@ export class ScatterPlotBase extends Component {
                 colorContinuous_sigCid: PropTypes.string,
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
-                color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
+                color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
@@ -332,7 +332,7 @@ export class ScatterPlotBase extends Component {
                 Color_label: PropTypes.string,
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
-                    color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
+                    color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
                     createRegressionForEachColor: PropTypes.bool, // default: false
                     bandwidth: PropTypes.number,    // for LOESS
                     // order: PropTypes.number         // for polynomial
@@ -346,7 +346,7 @@ export class ScatterPlotBase extends Component {
         maxDotSize: PropTypes.number, // for BubblePlot
         minDotSizeValue: PropTypes.number, // for BubblePlot
         maxDotSizeValue: PropTypes.number, // for BubblePlot
-        colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
+        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         highlightDotSize: PropTypes.number, // radius multiplier
