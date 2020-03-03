@@ -36,17 +36,25 @@ export class BubblePlot extends Component {
                 X_label: PropTypes.string,
                 Y_label: PropTypes.string,
                 Size_label: PropTypes.string,
-                Color_label: PropTypes.string
+                Color_label: PropTypes.string,
+                regressions: PropTypes.arrayOf(PropTypes.shape({
+                    type: PropTypes.string.isRequired,
+                    color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
+                    createRegressionForEachColor: PropTypes.bool, // default: false
+                    bandwidth: PropTypes.number    // for LOESS
+                }))
             })).isRequired
         }).isRequired,
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
-        minDotRadius: PropTypes.number,
-        maxDotRadius: PropTypes.number,
-        minDotRadiusValue: PropTypes.number,
-        maxDotRadiusValue: PropTypes.number,
+        minDotSize: PropTypes.number,
+        maxDotSize: PropTypes.number,
+        minDotSizeValue: PropTypes.number,
+        maxDotSizeValue: PropTypes.number,
         colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
-        highlightDotRadius: PropTypes.number, // radius multiplier
+        minColorValue: PropTypes.number,
+        maxColorValue: PropTypes.number,
+        highlightDotSize: PropTypes.number, // radius multiplier
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,

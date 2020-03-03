@@ -28,11 +28,11 @@ export class ScatterPlot extends Component {
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
                 color: PropTypes.oneOfType([PropType_d3Color(), PropTypes.arrayOf(PropType_d3Color())]),
-                label: PropTypes.string,
-                enabled: PropTypes.bool,
                 dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
                 dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
-                dotSize: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
+                dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
+                label: PropTypes.string,
+                enabled: PropTypes.bool,
                 X_label: PropTypes.string,
                 Y_label: PropTypes.string,
                 Color_label: PropTypes.string,
@@ -48,7 +48,9 @@ export class ScatterPlot extends Component {
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
         colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
-        highlightDotRadius: PropTypes.number, // radius multiplier
+        minColorValue: PropTypes.number,
+        maxColorValue: PropTypes.number,
+        highlightDotSize: PropTypes.number, // radius multiplier
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,

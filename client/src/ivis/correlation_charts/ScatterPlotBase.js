@@ -342,14 +342,14 @@ export class ScatterPlotBase extends Component {
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
-        minDotRadius: PropTypes.number, // for BubblePlot
-        maxDotRadius: PropTypes.number, // for BubblePlot
-        minDotRadiusValue: PropTypes.number, // for BubblePlot
-        maxDotRadiusValue: PropTypes.number, // for BubblePlot
+        minDotSize: PropTypes.number, // for BubblePlot
+        maxDotSize: PropTypes.number, // for BubblePlot
+        minDotSizeValue: PropTypes.number, // for BubblePlot
+        maxDotSizeValue: PropTypes.number, // for BubblePlot
         colors: PropTypes.arrayOf(PropType_d3Color()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
-        highlightDotRadius: PropTypes.number, // radius multiplier
+        highlightDotSize: PropTypes.number, // radius multiplier
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
@@ -393,9 +393,9 @@ export class ScatterPlotBase extends Component {
         yMax: NaN,
 
         dotSize: 5,
-        minDotRadius: 2,
-        maxDotRadius: 14,
-        highlightDotRadius: 1.2,
+        minDotSize: 2,
+        maxDotSize: 14,
+        highlightDotSize: 1.2,
         xAxisExtentFromSampledData: false,
         yAxisExtentFromSampledData: false,
         updateColorOnZoom: false,
@@ -790,7 +790,7 @@ export class ScatterPlotBase extends Component {
 
             sScale = d3Scale.scaleSqrt()
                 .domain(sExtent)
-                .range([this.props.minDotRadius, this.props.maxDotRadius]);
+                .range([this.props.minDotSize, this.props.maxDotSize]);
         }
 
         // c Scale (color)
@@ -901,9 +901,9 @@ export class ScatterPlotBase extends Component {
 
     updateSExtent(extent) {
         if (this.props.hasOwnProperty("minDotRadiusValue"))
-            extent[0] = this.props.minDotRadiusValue;
+            extent[0] = this.props.minDotSizeValue;
         if (this.props.hasOwnProperty("maxDotRadiusValue"))
-            extent[1] = this.props.maxDotRadiusValue;
+            extent[1] = this.props.maxDotSizeValue;
         return extent;
     }
 
@@ -1191,7 +1191,7 @@ export class ScatterPlotBase extends Component {
                         .attr('href', "#" + (signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape))
                         .attr('x', xScale(newSelection.x))
                         .attr('y', yScale(newSelection.y))
-                        .attr('transform', `scale(${self.props.highlightDotRadius * size})`)
+                        .attr('transform', `scale(${self.props.highlightDotSize * size})`)
                         .style("transform-origin", `${xScale(newSelection.x)}px ${yScale(newSelection.y)}px`)
                         .attr("fill", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker())
                         .attr("stroke", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker());
