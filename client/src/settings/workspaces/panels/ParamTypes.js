@@ -8,7 +8,7 @@ import {
     CheckBox,
     ColorPicker,
     Fieldset,
-    InputField,
+    InputField, ParamsLoader,
     TableSelect,
     TextArea
 } from "../../../lib/form";
@@ -22,9 +22,10 @@ import {getSignalTypes} from "../../signal-sets/signals/signal-types";
 import {rgb} from "d3-color";
 
 export default class ParamTypes {
-    constructor(t) {
+    constructor(t, prefix) {
         this.paramTypes = {};
-
+        this.prefix = prefix;
+        this.taskParamTypesMap = {};
         // ---------------------------------------------------------------------
         // Helpers
 
@@ -311,6 +312,78 @@ export default class ParamTypes {
             }
         };
 
+        this.paramTypes.task = {
+            adopt: this.paramTypes.signalSet.adopt,
+            setFields: this.paramTypes.signalSet.setFields,
+            getParams: getParamsFromField,
+            validate: this.paramTypes.signalSet.validate,
+            render: (self, prefix, spec) => {
+                const taskColumns = [
+                    {data: 1, title: t('Name')},
+                    {data: 2, title: t('Description')},
+                    {data: 4, title: t('Created'), render: data => moment(data).fromNow()},
+                    {data: 6, title: t('Namespace')}
+                ];
+
+                return <TableSelect
+                    key={spec.id}
+                    id={this.getParamFormId(prefix, spec.id)}
+                    label={spec.label}
+                    help={spec.help}
+                    columns={taskColumns}
+                    withHeader
+                    dropdown
+                    selectMode={TableSelectMode.SINGLE}
+                    selectionLabelIndex={1}
+                    selectionKeyIndex={0}
+                    dataUrl="rest/tasks-table"
+                />;
+            },
+            upcast: this.paramTypes.signalSet.upcast
+        };
+
+        this.paramTypes.taskParams = {
+            adopt: (prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                this.taskParams[formId] = new ParamTypes(t, formId);
+                state.setIn([formId, 'value'], null);
+            },
+            setFields: (prefix, spec, param, data) => {
+                const paramTypes = new ParamTypes(t, spec.id);
+                data[this.getParamFormId(prefix, spec.id)] = paramTypes;
+                this.getSanitizedParamType(spec.type).setFields('/', spec, config[spec.id], data);
+
+                if (spec.taskRef) {
+                    const taskFormId = this.getParamFormId(prefix, spec.taskRef);
+                }
+                paramTypes.setFields(data.taskParams, data.params, data);
+            },
+            getParams: getParamsFromField,
+            validate: this.paramTypes.signalSet.validate,
+            onChange: (prefix, spec, state, key, oldVal, newVal) => {
+                if (spec.taskRef) {
+                    const taskFormId = this.getParamFormId(prefix, spec.taskRef);
+                    if (key === taskFormId && oldVal !== newVal) {
+                        const formId = this.getParamFormId(prefix, spec.id);
+                        state.setIn([formId, 'value'], null);
+                        this.taskParams[formId] = null;
+                    }
+                }
+            },
+            render: (self, prefix, spec) => {
+                let taskId = spec.task;
+                if (spec.taskRef) {
+                    const taskFormId = this.getParamFormId(prefix, spec.taskRef);
+                    taskId = self.getFormValue(taskFormId);
+                }
+
+                const formId = this.getParamFormId(prefix, spec.id);
+                return (
+                    <ParamsLoader taskId={taskId} paramTypesRef={paramTypes => this.taskParamTypesMap[formId] = paramTypes}/>
+                );
+            },
+            upcast: this.paramTypes.signalSet.upcast
+        };
 
         /*
           The form data has the following structure depending on cardinality:
@@ -618,7 +691,8 @@ export default class ParamTypes {
                     }
                 }
 
-                return <Fieldset key={spec.id} id={formId} label={spec.label} help={spec.help} flat={spec.flat}>{fields}</Fieldset>;
+                return <Fieldset key={spec.id} id={formId} label={spec.label} help={spec.help}
+                                 flat={spec.flat}>{fields}</Fieldset>;
             },
             upcast: (spec, value) => {
                 const upcastChild = (childConfig) => {
@@ -802,7 +876,7 @@ export default class ParamTypes {
 
     getParamFormId(prefix, paramId) {
         const abs = paramId ? resolveAbs(prefix, paramId) : prefix;
-        const formId = 'param_' + abs;
-        return formId;
+        const idPrefix = this.prefix ? this.prefix + '_' : '';
+        return idPrefix + 'param_' + abs;
     }
 }

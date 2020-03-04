@@ -14,10 +14,11 @@ import {
     filterData,
     Form,
     ListCreator,
+    ParamsLoader,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm, withFormErrorHandlers, TableSelect
+    withForm, withFormErrorHandlers, TableSelect, Fieldset
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {
@@ -33,6 +34,8 @@ import em
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {SignalSetType} from "../../../../shared/signal-sets"
+import ParamTypes from "../workspaces/panels/ParamTypes";
+import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
@@ -47,6 +50,8 @@ export default class CUD extends Component {
         const t = props.t;
 
         this.state = {};
+
+        this.paramTypes = new ParamTypes(props.t);
 
         this.initForm({
             serverValidation: {
@@ -90,12 +95,13 @@ export default class CUD extends Component {
             }
         } else {
             this.populateFormValues({
-                cid: '',
-                name: '',
-                description: '',
-                record_id_template: '',
-                namespace: ivisConfig.user.namespace
-            });
+                    cid: '',
+                    name: '',
+                    description: '',
+                    record_id_template: '',
+                    namespace: ivisConfig.user.namespace,
+                }
+            );
         }
     }
 
@@ -104,6 +110,7 @@ export default class CUD extends Component {
             data.record_id_template = '';
         }
     }
+
 
     localValidateFormValues(state) {
         const t = this.props.t;
@@ -193,17 +200,32 @@ export default class CUD extends Component {
         }
     }
 
+
+    /*
+    return <>
+        <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
+                     columns={taskColumns} selectionLabelIndex={0} disabled={isEdit}/>
+        selectionLabelIndex = {1}
+        />
+        <ParamsLoader taskId={this.owner.getFormValue()}/>
+    </>
+     */
+
     render() {
         const t = this.props.t;
         const labels = this.labels;
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
-        const setsColumns = [
-            {data: 1, title: t('#')},
-            {data: 2, title: t('Name')},
-            {data: 3, title: t('Description')},
+        const configSpec = this.getFormValue('taskParams');
+        const params = configSpec ? this.paramTypes.render(configSpec, this) : null;
+
+        const taskColumns = [
+            {data: 1, title: t('Name')},
+            {data: 2, title: t('Description')},
+            {data: 4, title: t('Created'), render: data => moment(data).fromNow()}
         ];
+
 
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
@@ -228,11 +250,13 @@ export default class CUD extends Component {
 
                     <NamespaceSelect/>
 
-                    <ListCreator id="multi" label={t('Multi')} entryElement={
-                        <TableSelect  label={t('Trigger on')} withHeader dropdown
-                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
-                                     selectionLabelIndex={2}/>
-                    }/>
+                    <ListCreator id={'adjacentJobs'} label={t('Adjacent jobs')} entryElement={
+                        <Element/>
+                    } initValues={[]}/>
+
+                    <Fieldset label={t('Test parameters')}>
+                        {params}
+                    </Fieldset>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
@@ -245,4 +269,12 @@ export default class CUD extends Component {
             </Panel>
         );
     }
+}
+
+function Element(props) {
+    return (
+        <>
+            <InputField id={props.id}/>
+        </>
+    )
 }

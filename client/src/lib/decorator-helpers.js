@@ -64,8 +64,7 @@ export function withComponentMixins(mixins, delegateFuns) {
 
         function addStaticMethods(clazz) {
             // This dynamically gets all properties in a new class, as we want just target class specific
-            const newClassPropNames = Object.getOwnPropertyNames(class _ {
-            });
+            const newClassPropNames = Object.getOwnPropertyNames(class _{});
             const propNames = Object.getOwnPropertyNames(TargetClass)
                 .filter(name => !newClassPropNames.includes(name) && typeof TargetClass[name] === 'function');
             for (const name of propNames) {
