@@ -15,7 +15,7 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
 import {Icon} from "../../lib/bootstrap-components";
-import {brushHandlesLeftRight, brushHandlesTopBottom, getColorScale} from "../common";
+import {brushHandlesLeftRight, brushHandlesTopBottom, getColorScale, WheelDelta} from "../common";
 import styles from "./CorrelationCharts.scss";
 import {PropType_d3Color} from "../../lib/CustomPropTypes";
 import * as d3Brush from "d3-brush";
@@ -412,11 +412,12 @@ export class HeatmapChart extends Component {
             }
 
             let newSelection = null;
-            for (const innerBucket of newSelectionColumn.buckets) {
-                if (innerBucket.key <= yKey)
-                    newSelection = innerBucket;
-                else break;
-            }
+            if (newSelectionColumn)
+                for (const innerBucket of newSelectionColumn.buckets) {
+                    if (innerBucket.key <= yKey)
+                        newSelection = innerBucket;
+                    else break;
+                }
 
             if (selection !== newSelection) {
                 self.highlightSelection
@@ -495,44 +496,69 @@ export class HeatmapChart extends Component {
 
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
-            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+            let newTransform = d3Event.transform;
+            let newZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
+
+            // noinspection JSUnresolvedVariable
+            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                const [newBrushBottom, newBrushLeft, updated] = self.getBrushValuesFromZoomValues(newTransform, self.state.zoomYScaleMultiplier);
+                if (updated) {
+                    [newTransform, newZoomYScaleMultiplier] = self.getZoomValuesFromBrushValues(newBrushBottom, newBrushLeft);
+                }
+
+                if (self.props.withTransition) {
                 const prevTransform = self.state.zoomTransform;
-                const newTransform = d3Event.transform;
                 const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
                 const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
                 const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
+                const prevZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
+                const mInterpolate = updated ? d3Interpolate.interpolate(prevZoomYScaleMultiplier, newZoomYScaleMultiplier) : (_) => undefined;
 
                 select(self).transition().duration(150)
                     .tween("zoom", () => function (t) {
-                        setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)));
+                        const transform = d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t));
+                        const zoomYScaleMultiplier = mInterpolate(t);
+                        setZoomTransform(transform, zoomYScaleMultiplier);
+                        moveBrush(transform, zoomYScaleMultiplier || newZoomYScaleMultiplier);
                     })
                     .on("end", () => {
                         self.deselectPoints();
+                        setZoomTransform(newTransform, newZoomYScaleMultiplier);
+                        moveBrush(newTransform, newZoomYScaleMultiplier);
                     });
+                }
+                else {
+                    setZoomTransform(newTransform, newZoomYScaleMultiplier);
+                    // noinspection JSUnresolvedVariable
+                    if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "brush" && d3Event.sourceEvent.type !== "zoom")
+                        moveBrush(newTransform, newZoomYScaleMultiplier);
+                }
             } else {
+                setZoomTransform(newTransform);
                 // noinspection JSUnresolvedVariable
-                const sourceEventIsBrush = d3Event.sourceEvent && d3Event.sourceEvent.type === "brush";
-                // noinspection JSUnresolvedVariable
-                setZoomTransform(d3Event.transform, !sourceEventIsBrush);
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "brush" && d3Event.sourceEvent.type !== "zoom")
+                    moveBrush(newTransform, newZoomYScaleMultiplier);
             }
         };
 
-        const setZoomTransform = function (transform, updateBrush = true) {
-            self.setState({
-                zoomTransform: transform
-            });
-            if (updateBrush)
-                moveBrush(transform);
+        const setZoomTransform = function (transform, newZoomYScaleMultiplier) {
+            if (newZoomYScaleMultiplier)
+                self.setState({
+                    zoomTransform: transform,
+                    zoomYScaleMultiplier: newZoomYScaleMultiplier
+                });
+            else
+                self.setState({
+                    zoomTransform: transform
+                });
         };
 
-        const moveBrush = function (transform) {
-            if (self.brushBottom)
-                self.overviewBottomBrushSelection.call(self.brushBottom.move, self.defaultBrushBottom.map(transform.invertX, transform));
-            if (self.brushLeft) {
-                const yTransform = transform.scale(self.state.zoomYScaleMultiplier);
-                const newBrushLeft = self.defaultBrushLeft.map(yTransform.invertY, yTransform);
+        const moveBrush = function (transform, zoomYScaleMultiplier) {
+            const [newBrushBottom, newBrushLeft, _] = self.getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier);
+            if (newBrushBottom)
+                self.overviewBottomBrushSelection.call(self.brushBottom.move, newBrushBottom);
+            if (newBrushLeft)
                 self.overviewLeftBrushSelection.call(self.brushLeft.move, newBrushLeft);
-            }
         };
 
         const handleZoomEnd = function () {
@@ -549,9 +575,10 @@ export class HeatmapChart extends Component {
 
         const zoomExtent = [[0, 0], [xSize, ySize]];
         const translateExtent = [[0, 0], [xSize, ySize * this.state.zoomYScaleMultiplier]];
+        const minZoom = Math.min(this.props.zoomLevelMin, this.props.zoomLevelMin / this.state.zoomYScaleMultiplier);
         // noinspection DuplicatedCode
         this.zoom = d3Zoom.zoom()
-            .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
+            .scaleExtent([minZoom, this.props.zoomLevelMax])
             .translateExtent(translateExtent)
             .extent(zoomExtent)
             .filter(() => {
@@ -561,9 +588,41 @@ export class HeatmapChart extends Component {
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
-            .interpolate(d3Interpolate.interpolate);
+            .interpolate(d3Interpolate.interpolate)
+            .wheelDelta(WheelDelta(2));
         this.svgContainerSelection.call(this.zoom);
+        if (d3Zoom.zoomTransform(this.svgContainerSelection.node()).k < minZoom)
+            this.svgContainerSelection.call(this.zoom.scaleTo, this.props.zoomLevelMin);
         //moveBrush(this.state.zoomTransform);
+    }
+
+    getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier) {
+        let updated = false;
+        let newBrushBottom, newBrushLeft;
+        if (this.brushBottom) {
+            newBrushBottom = this.defaultBrushBottom.map(transform.invertX, transform);
+            if (newBrushBottom[0] < this.defaultBrushBottom[0]) {
+                newBrushBottom[0] = this.defaultBrushBottom[0];
+                updated = true;
+            }
+            if (newBrushBottom[1] > this.defaultBrushBottom[1]) {
+                newBrushBottom[1] = this.defaultBrushBottom[1];
+                updated = true;
+            }
+        }
+        if (this.brushLeft) {
+            const yTransform = transform.scale(zoomYScaleMultiplier);
+            newBrushLeft = this.defaultBrushLeft.map(yTransform.invertY, yTransform);
+            if (newBrushLeft[0] < this.defaultBrushLeft[0]) {
+                newBrushLeft[0] = this.defaultBrushLeft[0];
+                updated = true;
+            }
+            if (newBrushLeft[1] > this.defaultBrushLeft[1]) {
+                newBrushLeft[1] = this.defaultBrushLeft[1];
+                updated = true;
+            }
+        }
+        return [newBrushBottom, newBrushLeft, updated];
     }
 
     createChartOverviewLeft(rowProbs, yExtent, barColor) {
@@ -624,7 +683,7 @@ export class HeatmapChart extends Component {
                 self.brushLeftValues = d3Event.selection;
 
                 // noinspection JSUnresolvedVariable
-                if (!d3Event.sourceEvent || d3Event.sourceEvent.type !== "zoom") // ignore brush by zoom
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "zoom" && d3Event.sourceEvent.type !== "brush") // ignore brush by zoom
                     self.updateZoomFromBrush();
             });
 
@@ -655,7 +714,7 @@ export class HeatmapChart extends Component {
                 self.brushBottomValues = d3Event.selection;
 
                 // noinspection JSUnresolvedVariable
-                if (!d3Event.sourceEvent || d3Event.sourceEvent.type !== "zoom") // ignore brush by zoom
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "zoom" && d3Event.sourceEvent.type !== "brush") // ignore brush by zoom
                     self.updateZoomFromBrush();
             });
 
@@ -670,19 +729,23 @@ export class HeatmapChart extends Component {
             .attr('pointer-events', 'none');
     }
 
+    getZoomValuesFromBrushValues(bottom, left) {
+        const newXSize = bottom[1] - bottom[0];
+        const newYSize = left[1] - left[0];
+        const newXScaling = this.xSize / newXSize;
+        const newYScaling = this.ySize / newYSize;
+        const newZoomYScaleMultiplier = newYScaling / newXScaling;
+        const transform = d3Zoom.zoomIdentity.scale(newXScaling).translate(-bottom[0], -left[0] * newZoomYScaleMultiplier);
+        return [transform, newZoomYScaleMultiplier];
+    }
+
     updateZoomFromBrush() {
         if (!this.brushBottomValues)
             this.brushBottomValues = this.defaultBrushBottom;
         if (!this.brushLeftValues)
             this.brushLeftValues = this.defaultBrushLeft;
 
-        const newXSize = this.brushBottomValues[1] - this.brushBottomValues[0];
-        const newYSize = this.brushLeftValues[1] - this.brushLeftValues[0];
-        const newXScaling = this.xSize / newXSize;
-        const newYScaling = this.ySize / newYSize;
-        const newZoomYScaleMultiplier = newYScaling / newXScaling;
-
-        const transform = d3Zoom.zoomIdentity.scale(newXScaling).translate(-this.brushBottomValues[0], -this.brushLeftValues[0] * newZoomYScaleMultiplier);
+        const [transform, newZoomYScaleMultiplier] = this.getZoomValuesFromBrushValues(this.brushBottomValues, this.brushLeftValues);
 
         this.svgContainerSelection.call(this.zoom.transform, transform);
         this.setState({
