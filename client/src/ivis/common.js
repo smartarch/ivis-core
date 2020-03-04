@@ -3,6 +3,7 @@
 import * as d3Array from "d3-array";
 import * as d3Scale from "d3-scale";
 import * as d3Color from "d3-color";
+import * as d3Selection from "d3-selection";
 
 /**
  * Adds margin to extent in format of d3.extent()
@@ -102,4 +103,9 @@ export function brushHandlesTopBottom(group, selection, xSize) {
         )
         .attr("display", selection === null ? "none" : null)
         .attr("transform", selection === null ? null : (d, i) => `translate(0, ${selection[i]})`);
+}
+
+/** https://github.com/d3/d3-zoom#zoom_wheelDelta with multiplied values */
+export function WheelDelta(multiplier = 2) {
+    return () => -d3Selection.event.deltaY * multiplier * (d3Selection.event.deltaMode === 1 ? 0.05 : d3Selection.event.deltaMode ? 1 : 0.002);
 }

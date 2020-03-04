@@ -31,7 +31,7 @@ import {
     isInExtent,
     isSignalVisible,
     ModifyColorCopy,
-    roundTo
+    roundTo, WheelDelta
 } from "../common";
 import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "../dot_shapes";
@@ -465,7 +465,7 @@ export class ScatterPlotBase extends Component {
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || prevState.globalSignalSetsData !== this.state.globalSignalSetsData
                 || prevState.brushInProgress !== this.state.brushInProgress
-                || prevState.zoomYScaleMultiplier !== this.state.zoomYScaleMultiplier
+                || prevState.zoomYScaleMultiplier !== this.state.zoomYScaleMultiplier // update zoom extent
                 || configDiff !== ConfigDifference.NONE;
 
             const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
@@ -1378,7 +1378,8 @@ export class ScatterPlotBase extends Component {
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
-            .interpolate(d3Interpolate.interpolate);
+            .interpolate(d3Interpolate.interpolate)
+            .wheelDelta(WheelDelta(3));
         this.svgContainerSelection.call(this.zoom);
         if (!zoomExisted)
             this.setLimitsToCurrentZoom(); // initialize limits

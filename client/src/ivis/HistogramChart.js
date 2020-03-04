@@ -19,7 +19,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
-import {brushHandlesLeftRight, isInExtent} from "./common";
+import {brushHandlesLeftRight, isInExtent, WheelDelta} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
@@ -99,7 +99,7 @@ export class HistogramChart extends Component {
         this.brush = null;
 
         this.resizeListener = () => {
-            this.createChart(this.state.signalSetData);
+            this.createChart(true);
         };
     }
 
@@ -125,7 +125,10 @@ export class HistogramChart extends Component {
         maxBucketCount: PropTypes.number,
         topPaddingWhenZoomed: PropType_NumberInRange(0, 1), // determines whether bars will be stretched up when zooming
         xMin: PropTypes.number,
-        xMax: PropTypes.number
+        xMax: PropTypes.number,
+
+        zoomLevelMin: PropTypes.number,
+        zoomLevelMax: PropTypes.number,
     };
 
     static defaultProps = {
@@ -139,6 +142,9 @@ export class HistogramChart extends Component {
         withTooltip: true,
         withOverview: true,
         withTransition: true,
+
+        zoomLevelMin: 1,
+        zoomLevelMax: 4,
 
         overviewHeight: 100,
         overviewMargin: { top: 20, bottom: 20 }
@@ -520,9 +526,9 @@ export class HistogramChart extends Component {
     }
 
     createChartZoom(xSize, ySize) {
+        // noinspection DuplicatedCode
         const self = this;
 
-        // zoom
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
@@ -549,6 +555,10 @@ export class HistogramChart extends Component {
             self.setState({
                 zoomTransform: transform
             });
+            moveBrush(transform);
+        };
+
+        const moveBrush = function (transform) {
             if (self.brush)
                 self.overviewBrushSelection.call(self.brush.move, self.defaultBrush.map(transform.invertX, transform));
         };
@@ -567,13 +577,15 @@ export class HistogramChart extends Component {
 
         const zoomExtent = [[0,0], [xSize, ySize]];
         this.zoom = d3Zoom.zoom()
-            .scaleExtent([1, 4])
+            .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(zoomExtent)
             .extent(zoomExtent)
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
-            .on("start", handleZoomStart);
+            .on("start", handleZoomStart)
+            .wheelDelta(WheelDelta(2));
         this.svgContainerSelection.call(this.zoom);
+        moveBrush(this.state.zoomTransform);
     }
 
     createChartOverview(signalSetData) {
