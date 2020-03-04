@@ -555,9 +555,9 @@ export class HeatmapChart extends Component {
 
         const moveBrush = function (transform, zoomYScaleMultiplier) {
             const [newBrushBottom, newBrushLeft, _] = self.getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier);
-            if (newBrushBottom)
+            if (newBrushBottom && self.brushBottom)
                 self.overviewBottomBrushSelection.call(self.brushBottom.move, newBrushBottom);
-            if (newBrushLeft)
+            if (newBrushLeft && self.brushLeft)
                 self.overviewLeftBrushSelection.call(self.brushLeft.move, newBrushLeft);
         };
 
@@ -610,6 +610,10 @@ export class HeatmapChart extends Component {
                 updated = true;
             }
         }
+        else {
+            newBrushBottom = this.defaultBrushBottom;
+            updated = true;
+        }
         if (this.brushLeft) {
             const yTransform = transform.scale(zoomYScaleMultiplier);
             newBrushLeft = this.defaultBrushLeft.map(yTransform.invertY, yTransform);
@@ -621,6 +625,10 @@ export class HeatmapChart extends Component {
                 newBrushLeft[1] = this.defaultBrushLeft[1];
                 updated = true;
             }
+        }
+        else {
+            newBrushLeft = this.defaultBrushLeft;
+            updated = true;
         }
         return [newBrushBottom, newBrushLeft, updated];
     }
@@ -730,6 +738,8 @@ export class HeatmapChart extends Component {
     }
 
     getZoomValuesFromBrushValues(bottom, left) {
+        if (!bottom) bottom = this.defaultBrushBottom;
+        if (!left) left = this.defaultBrushLeft;
         const newXSize = bottom[1] - bottom[0];
         const newYSize = left[1] - left[0];
         const newXScaling = this.xSize / newXSize;
@@ -740,11 +750,6 @@ export class HeatmapChart extends Component {
     }
 
     updateZoomFromBrush() {
-        if (!this.brushBottomValues)
-            this.brushBottomValues = this.defaultBrushBottom;
-        if (!this.brushLeftValues)
-            this.brushLeftValues = this.defaultBrushLeft;
-
         const [transform, newZoomYScaleMultiplier] = this.getZoomValuesFromBrushValues(this.brushBottomValues, this.brushLeftValues);
 
         this.svgContainerSelection.call(this.zoom.transform, transform);
