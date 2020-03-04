@@ -238,6 +238,8 @@ class QueryProcessor {
             if (!field) {
                 throw new Error(`Unknown signal ${agg.sigCid}`);
             }
+            if (field.type === SignalType.KEYWORD) // min and max don't make sense for keyword
+                return { min: undefined, max: undefined };
 
             const minMaxQry = {
                 query: this.createElsFilter(query.filter),
@@ -302,6 +304,8 @@ class QueryProcessor {
                 throw new Error('Not implemented');
             } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
+            } else if (fieldType === SignalType.KEYWORD) {
+                return { step: undefined, offset: undefined, maxBucketCount: maxBucketCount };
             } else {
                 throw new Error(`Field type ${fieldType} is not supported in aggregations`);
             }
@@ -342,6 +346,8 @@ class QueryProcessor {
                     offset = bucketGroup.offset;
                     min = bucketGroup.min;
                     max = bucketGroup.max;
+                    if (bucketGroup.maxBucketCount)
+                        agg.maxBucketCount = bucketGroup.maxBucketCount;
                 } else if (agg.agg_type) {
                     // no step and offset for some types of aggregations (e.g. 'terms')
                     step = undefined;
@@ -378,6 +384,8 @@ class QueryProcessor {
             const stepAndOffset = _computeStepAndOffset(bucketGroup.type, bucketGroupSpec.maxBucketCount, bucketGroupSpec.minStep, bucketGroup.min, bucketGroup.max);
             bucketGroup.step = stepAndOffset.step;
             bucketGroup.offset = stepAndOffset.offset;
+            if (stepAndOffset.maxBucketCount)
+                bucketGroup.maxBucketCount = stepAndOffset.maxBucketCount;
         }
 
         await _setStepAndOffset(query.aggs)
@@ -430,7 +438,10 @@ class QueryProcessor {
                             max: agg.computedMax
                         }
                     }
-
+                } else if (field.type === SignalType.KEYWORD) {
+                    elsAgg.terms = { ...this.getField(field) };
+                    if (agg.maxBucketCount)
+                        elsAgg.terms.size = agg.maxBucketCount;
                 } else {
                     throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
                 }
@@ -493,25 +504,27 @@ class QueryProcessor {
         const signalMap = this.signalMap;
         const result = [];
 
+        const _processTermsAgg = (aggResp, buckets, additionalResponses) => {
+            for (const elsBucket of aggResp.buckets) {
+                buckets.push({
+                    key: elsBucket.key,
+                    count: elsBucket.doc_count
+                });
+            }
+            additionalResponses.doc_count_error_upper_bound = aggResp.doc_count_error_upper_bound;
+            additionalResponses.sum_other_doc_count = aggResp.sum_other_doc_count;
+        };
+
         let aggNo = 0;
         for (const agg of aggs) {
             const elsAggResp = elsAggsResp['agg_' + aggNo];
 
             const buckets = [];
-            let additionalResponses = undefined;
+            let additionalResponses = {};
 
             if (agg.agg_type) {
                 if (agg.agg_type === "terms") {
-                    for (const elsBucket of elsAggResp.buckets) {
-                        buckets.push({
-                            key: elsBucket.key,
-                            count: elsBucket.doc_count
-                        });
-                    }
-                    additionalResponses = {
-                        doc_count_error_upper_bound: elsAggResp.doc_count_error_upper_bound,
-                        sum_other_doc_count: elsAggResp.sum_other_doc_count
-                    };
+                    _processTermsAgg(elsAggResp, buckets, additionalResponses);
                 }
                 else {
                     throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
@@ -536,7 +549,8 @@ class QueryProcessor {
                             count: elsBucket.doc_count
                         });
                     }
-
+                } else if (field.type === SignalType.KEYWORD) {
+                    _processTermsAgg(elsAggResp, buckets, additionalResponses);
                 } else {
                     throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
                 }
