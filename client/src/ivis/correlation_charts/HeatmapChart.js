@@ -137,6 +137,12 @@ export class HeatmapChart extends Component {
         minStep: PropTypes.number,
         minRectWidth: PropTypes.number,
         minRectHeight: PropTypes.number,
+        maxBucketCountX: PropTypes.number,
+        maxBucketCountY: PropTypes.number,
+        xMin: PropTypes.number,
+        xMax: PropTypes.number,
+        yMin: PropTypes.number,
+        yMax: PropTypes.number,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
@@ -220,20 +226,58 @@ export class HeatmapChart extends Component {
         const t = this.props.t;
         const config = this.props.config;
 
-        if (this.state.maxBucketCountX > 0 && this.state.maxBucketCountY > 0) {
+        let maxBucketCountX = this.props.maxBucketCountX || this.state.maxBucketCountX;
+        let maxBucketCountY = this.props.maxBucketCountY || this.state.maxBucketCountY;
+        let minStep = this.props.minStep;
+        if (maxBucketCountX > 0 && maxBucketCountY > 0) {
             try {
-                let filter;
+                let filter = {
+                    type: 'and',
+                    children: []
+                };
                 if (config.tsSigCid) {
                     const abs = this.getIntervalAbsolute();
-                    filter = {
+                    filter.children.push({
                         type: 'range',
                         sigCid: config.tsSigCid,
                         gte: abs.from.toISOString(),
                         lt: abs.to.toISOString()
-                    };
+                    });
+                }
+                if (!isNaN(this.props.xMin))
+                    filter.children.push({
+                        type: "range",
+                        sigCid: config.X_sigCid,
+                        gte: this.props.xMin
+                    });
+                if (!isNaN(this.props.xMax))
+                    filter.children.push({
+                        type: "range",
+                        sigCid: config.X_sigCid,
+                        lte: this.props.xMax
+                    });
+                if (!isNaN(this.props.yMin))
+                    filter.children.push({
+                        type: "range",
+                        sigCid: config.Y_sigCid,
+                        gte: this.props.yMin
+                    });
+                if (!isNaN(this.props.yMax))
+                    filter.children.push({
+                        type: "range",
+                        sigCid: config.Y_sigCid,
+                        lte: this.props.yMax
+                    });
+
+                // filter by current zoom
+                if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.zoomYScaleMultiplier !== 1) {
+                    const scaleX = this.state.zoomTransform.k;
+                    maxBucketCountX = Math.ceil(maxBucketCountX * scaleX);
+                    const scaleY = this.state.zoomTransform.k * this.state.zoomYScaleMultiplier;
+                    maxBucketCountY = Math.ceil(maxBucketCountY * scaleY);
                 }
 
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.X_sigCid, config.Y_sigCid], [this.state.maxBucketCountX, this.state.maxBucketCountY], this.props.minStep, filter);
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.X_sigCid, config.Y_sigCid], [maxBucketCountX, maxBucketCountY], this.props.minStep, filter);
 
                 if (results) { // Results is null if the results returned are not the latest ones
                     this.setState({
@@ -253,10 +297,12 @@ export class HeatmapChart extends Component {
 
         const t = this.props.t;
 
-        const width = this.containerNode.getClientRects()[0].width;
+        let width = this.containerNode.getClientRects()[0].width;
         const height = this.props.height;
 
         if (this.state.width !== width || this.state.height !== height) {
+            if (this.props.withOverviewLeft && this.state.signalSetData === null)
+                width -= this.props.overviewLeftWidth;
             const maxBucketCountX = Math.ceil(width / this.props.minRectWidth);
             const maxBucketCountY = Math.ceil(height / this.props.minRectHeight);
 
