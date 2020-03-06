@@ -20,7 +20,7 @@ class TestHeatmapChart extends Component {
         const cnf = {
             sigSetCid: "top:bubble",
             X_sigCid: "x",
-            Y_sigCid: "y",
+            Y_sigCid: "a",
             tsSigCid: "ts",
             colors: [rgb(255, 255, 255), rgb(0, 87, 219)]
         };

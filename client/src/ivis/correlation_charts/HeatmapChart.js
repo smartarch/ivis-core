@@ -59,14 +59,28 @@ class TooltipContent extends Component {
             const yStep = this.props.signalSetsData.buckets[0].step;
             const bucket = this.props.selection;
 
-            const xKeyF = d3Format.format("." + d3Format.precisionFixed(xStep) + "f");
-            const yKeyF = d3Format.format("." + d3Format.precisionFixed(yStep) + "f");
+            let xDescription;
+            if (xStep !== undefined) { // NUMBER
+                const xKeyF = d3Format.format("." + d3Format.precisionFixed(xStep) + "f");
+                xDescription = <div>X axis range: <Icon icon="chevron-left"/>{xKeyF(bucket.xKey)} <Icon icon="ellipsis-h"/> {xKeyF(bucket.xKey + xStep)}<Icon icon="chevron-right"/></div>
+            }
+            else // KEYWORD
+                xDescription = <div>X axis: {bucket.xKey}</div>;
+
+            let yDescription;
+            if (yStep !== undefined) { // NUMBER
+                const yKeyF = d3Format.format("." + d3Format.precisionFixed(yStep) + "f");
+                yDescription = <div>Y axis range: <Icon icon="chevron-left"/>{yKeyF(bucket.key)} <Icon icon="ellipsis-h"/> {yKeyF(bucket.key + yStep)}<Icon icon="chevron-right"/></div>
+            }
+            else // KEYWORD
+                yDescription = <div>Y axis: {bucket.key}</div>;
+
             const probF = d3Format.format(".2f");
 
             return (
                 <div>
-                    <div>X axis range: <Icon icon="chevron-left"/>{xKeyF(bucket.xKey)} <Icon icon="ellipsis-h"/> {xKeyF(bucket.xKey + xStep)}<Icon icon="chevron-right"/></div>
-                    <div>Y axis range: <Icon icon="chevron-left"/>{yKeyF(bucket.key)} <Icon icon="ellipsis-h"/> {yKeyF(bucket.key + yStep)}<Icon icon="chevron-right"/></div>
+                    {xDescription}
+                    {yDescription}
                     <div>Count: {bucket.count}</div>
                     <div>Frequency: {probF(bucket.prob * 100)}%</div>
                 </div>
@@ -78,6 +92,10 @@ class TooltipContent extends Component {
     }
 }
 
+const DataType = {
+    NUMBER: 0,
+    KEYWORD: 1
+};
 
 @withComponentMixins([
     withTranslation,
@@ -280,16 +298,134 @@ export class HeatmapChart extends Component {
                 const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.X_sigCid, config.Y_sigCid], [maxBucketCountX, maxBucketCountY], this.props.minStep, filter);
 
                 if (results) { // Results is null if the results returned are not the latest ones
-                    this.setState({
-                        signalSetData: results,
-                        xBucketsCount: results.buckets.length,
-                        yBucketsCount: results.buckets.length > 0 ? results.buckets[0].buckets.length : 0
-                    });
+                    this.setState(this.processData(results));
                 }
             } catch (err) {
                 throw err;
             }
         }
+    }
+
+    processData(data) {
+        this.xType = data.step !== undefined ? DataType.NUMBER : DataType.KEYWORD;
+        const xBucketsCount = data.buckets.length;
+        this.xExtent = null; this.yExtent = null;
+
+        if (xBucketsCount === 0)
+            return {
+                signalSetData: data,
+                xBucketsCount: 0,
+                yBucketsCount: 0
+            };
+
+        this.yType = data.buckets[0].step !== undefined ? DataType.NUMBER : DataType.KEYWORD;
+
+        let yBucketsCount;
+        if (this.xType === DataType.NUMBER) {
+            const xMin = data.buckets[0].key;
+            const xMax = data.buckets[xBucketsCount - 1].key + data.step;
+            this.xExtent = [xMin, xMax];
+        } else { // xType === DataType.KEYWORD
+            this.xExtent = this.getKeys(data.buckets);
+        }
+
+        if (this.yType === DataType.NUMBER) {
+            yBucketsCount = data.buckets[0].buckets.length;
+            if (yBucketsCount === 0)
+                return {
+                    signalSetData: data,
+                    xBucketsCount: 0,
+                    yBucketsCount: 0,
+                };
+
+            const yMin = data.buckets[0].buckets[0].key;
+            const yMax = data.buckets[0].buckets[yBucketsCount - 1].key + data.buckets[0].step;
+            this.yExtent = [yMin, yMax];
+        }
+        else { // yType === DataType.KEYWORD
+            this.yExtent = this.getKeywordExtent(data.buckets);
+            this.yExtent.sort((a, b) => a.localeCompare(b));
+            // add missing inner buckets
+            for (const bucket of data.buckets) {
+                const innerKeys = this.getKeys(bucket.buckets);
+                for (const key of this.yExtent)
+                    if (innerKeys.indexOf(key) === -1)
+                        bucket.buckets.push({ key: key, count: 0 });
+                // sort inner buckets so they are in same order in all outer buckets
+                bucket.buckets.sort((a, b) => a.key.localeCompare(b.key));
+            }
+        }
+
+        // calculate probabilities of buckets
+        let totalCount = d3Array.sum(data.buckets, d => d.count);
+        for (const bucket of data.buckets)
+            bucket.prob = bucket.count / totalCount;
+        const rowProbs = data.buckets[0].buckets.map((b, i) => { return {key: b.key, prob: 0, index: i}; });
+
+        let maxProb = 0;
+        for (const bucket of data.buckets) {
+            let columnCount = d3Array.sum(bucket.buckets, d => d.count);
+            for (const [i, innerBucket] of bucket.buckets.entries()) {
+                innerBucket.prob = bucket.prob * innerBucket.count / columnCount || 0;
+                innerBucket.xKey = bucket.key;
+                if (innerBucket.prob > maxProb)
+                    maxProb = innerBucket.prob;
+                rowProbs[i].prob += innerBucket.prob;
+            }
+        }
+
+        if (this.yType === DataType.KEYWORD) {
+            // sort inner buckets by rowProbs
+            rowProbs.sort((a,b) => b.prob - a.prob); // smallest to biggest prob
+            const permuteKeys = rowProbs.map(d => d.index);
+            this.yExtent = d3Array.permute(this.yExtent, permuteKeys);
+            for (const bucket of data.buckets)
+                bucket.buckets = d3Array.permute(bucket.buckets, permuteKeys);
+        }
+
+        return{
+            signalSetData: data,
+            xBucketsCount, yBucketsCount,
+            maxProb,
+            rowProbs // colProbs are in signalSetData.buckets (outer buckets)
+        };
+    }
+
+    getKeywordExtent(buckets_of_buckets) {
+        const keys = new Set();
+        for (const bucket of buckets_of_buckets)
+            for (const inner_bucket of bucket.buckets)
+                keys.add(inner_bucket.key);
+        return [...keys];
+    }
+
+    getKeys(buckets) {
+        return buckets.map(bucket => bucket.key);
+    }
+
+    getXScale() {
+        if (this.xType === DataType.NUMBER)
+            return this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
+                .domain(this.xExtent)
+                .range([0, this.xSize])
+            );
+        else // this.xType === DataType.KEYWORD
+            return d3Scale.scaleBand()
+                .domain(this.xExtent)
+                .range([0, this.xSize].map(d => this.state.zoomTransform.applyX(d)));
+    }
+
+    getYScale() {
+        const zoomTransformY = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier);
+        if (this.yType === DataType.NUMBER)
+            return zoomTransformY.rescaleY(d3Scale.scaleLinear()
+                .domain(this.yExtent)
+                .range([this.ySize, 0])
+            );
+        else // this.yType === DataType.KEYWORD
+            return d3Scale.scaleBand()
+                .domain(this.yExtent)
+                .range([this.ySize, 0].map(d => zoomTransformY.applyY(d)));
     }
 
     createChart(forceRefresh, updateZoom) {
@@ -324,7 +460,7 @@ export class HeatmapChart extends Component {
             return;
         }
 
-        const noData = signalSetData.buckets.length === 0 || signalSetData.buckets[0].buckets.length === 0;
+        const noData = this.state.xBucketsCount === 0 || this.state.yBucketsCount === 0;
 
         if (noData) {
             this.statusMsgSelection.text(t('No data.'));
@@ -339,67 +475,38 @@ export class HeatmapChart extends Component {
             this.zoom = null;
 
         } else {
-            //<editor-fold desc="Data processing">
-            const xMin = signalSetData.buckets[0].key;
-            const xMax = signalSetData.buckets[this.state.xBucketsCount - 1].key + signalSetData.step;
-            const yMin = signalSetData.buckets[0].buckets[0].key;
-            const yMax = signalSetData.buckets[0].buckets[this.state.yBucketsCount - 1].key + signalSetData.buckets[0].step;
-
-            // calculate probabilities of buckets
-            let totalCount = d3Array.sum(signalSetData.buckets, d => d.count);
-            for (const bucket of signalSetData.buckets)
-                bucket.prob = bucket.count / totalCount;
-            const rowProbs = signalSetData.buckets[0].buckets.map(b => { return {key: b.key, prob: 0}; });
-
-            let maxProb = 0;
-            for (const bucket of signalSetData.buckets) {
-                let columnCount = d3Array.sum(bucket.buckets, d => d.count);
-                for (const [i, innerBucket] of bucket.buckets.entries()) {
-                    innerBucket.prob = bucket.prob * innerBucket.count / columnCount || 0;
-                    innerBucket.xKey = bucket.key;
-                    if (innerBucket.prob > maxProb)
-                        maxProb = innerBucket.prob;
-                    rowProbs[i].prob += innerBucket.prob;
-                }
-            }
-            //</editor-fold>
-
             //<editor-fold desc="Scales">
             // x axis
             const xSize = width - this.props.margin.left - this.props.margin.right;
             this.xSize = xSize;
-            const xScale = this.state.zoomTransform.rescaleX(
-                d3Scale.scaleLinear()
-                    .domain([xMin, xMax])
-                    .range([0, xSize])
-            );
+            const xScale = this.getXScale();
             this.xScale = xScale;
             const xAxis = d3Axis.axisBottom(xScale)
                 .tickSizeOuter(0);
             this.xAxisSelection.call(xAxis);
             const xStep = signalSetData.step;
             const xOffset = signalSetData.offset;
-            const rectWidth = xScale(xStep) - xScale(0);
+            const rectWidth = this.xType === DataType.NUMBER ?
+                xScale(xStep) - xScale(0) :
+                xScale.bandwidth();
 
             // y axis
             const ySize = height - this.props.margin.left - this.props.margin.right;
             this.ySize = ySize;
-            const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(
-                d3Scale.scaleLinear()
-                    .domain([yMin, yMax])
-                    .range([ySize, 0])
-            );
+            const yScale = this.getYScale();
             this.yScale = yScale;
             const yAxis = d3Axis.axisLeft(yScale)
                 .tickSizeOuter(0);
             this.yAxisSelection.call(yAxis);
             const yStep = signalSetData.buckets[0].step;
             const yOffset = signalSetData.buckets[0].offset;
-            const rectHeight = yScale(0) - yScale(yStep);
+            const rectHeight = this.yType === DataType.NUMBER ?
+                yScale(0) - yScale(yStep) :
+                yScale.bandwidth();
 
             // color scale
             const colors = this.props.config.colors && this.props.config.colors.length >= 2 ? this.props.config.colors : HeatmapChart.defaultColors;
-            const colorScale = getColorScale([0, maxProb], colors);
+            const colorScale = getColorScale([0, this.state.maxProb], colors);
             //</editor-fold>
 
             this.createChartRectangles(signalSetData, xScale, yScale, rectHeight, rectWidth, colorScale);
@@ -417,9 +524,9 @@ export class HeatmapChart extends Component {
             this.defaultBrushLeft = [0, this.ySize];
             this.defaultBrushBottom = [0, this.xSize];
             if (this.props.withOverviewLeft)
-                this.createChartOverviewLeft(rowProbs, [yMin, yMax], this.props.overviewLeftColor || colors[colors.length - 1]);
+                this.createChartOverviewLeft(this.state.rowProbs, this.yExtent, this.props.overviewLeftColor || colors[colors.length - 1]);
             if (this.props.withOverviewBottom)
-                this.createChartOverviewBottom(signalSetData.buckets, [xMin, xMax], this.props.overviewBottomColor || colors[colors.length - 1]);
+                this.createChartOverviewBottom(signalSetData.buckets, this.xExtent, this.props.overviewBottomColor || colors[colors.length - 1]);
         }
     }
 
@@ -447,20 +554,19 @@ export class HeatmapChart extends Component {
             const containerPos = d3Selection.mouse(self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
-            const xKey = xScale.invert(x);
-            const yKey = yScale.invert(y);
 
             let newSelectionColumn = null;
             for (const bucket of signalSetData.buckets) {
-                if (bucket.key <= xKey)
+                if (xScale(bucket.key) <= x)
                     newSelectionColumn = bucket;
                 else break;
             }
 
             let newSelection = null;
+            const yCompensate = this.yType === DataType.NUMBER ? rectHeight : 0;
             if (newSelectionColumn)
                 for (const innerBucket of newSelectionColumn.buckets) {
-                    if (innerBucket.key <= yKey)
+                    if (yScale(innerBucket.key) + rectHeight - yCompensate >= y)
                         newSelection = innerBucket;
                     else break;
                 }
@@ -474,7 +580,7 @@ export class HeatmapChart extends Component {
                     self.highlightSelection
                         .append('rect')
                         .attr('x', xScale(newSelection.xKey))
-                        .attr('y', yScale(newSelection.key) - rectHeight)
+                        .attr('y', yScale(newSelection.key) - yCompensate)
                         .attr("width", rectWidth)
                         .attr("height", rectHeight)
                         .attr("fill", "none")
@@ -510,6 +616,8 @@ export class HeatmapChart extends Component {
     };
 
     createChartRectangles(signalSetData, xScale, yScale, rectHeight, rectWidth, colorScale) {
+        const yCompensate = this.yType === DataType.NUMBER ? rectHeight : 0;
+
         const columns = this.columnsSelection
             .selectAll('g')
             .data(signalSetData.buckets);
@@ -524,8 +632,9 @@ export class HeatmapChart extends Component {
         rects.enter()
             .append('rect')
             .merge(rects)
+            .attr('key', d => d.key)
             .attr('x', d => xScale(d.xKey))
-            .attr('y', d => yScale(d.key) - rectHeight)
+            .attr('y', d => yScale(d.key) - yCompensate)
             .attr("width", rectWidth)
             .attr("height", rectHeight)
             .attr("fill", d => colorScale(d.prob));
@@ -684,13 +793,13 @@ export class HeatmapChart extends Component {
         const xSize = this.props.overviewLeftWidth - this.props.overviewLeftMargin.left - this.props.overviewLeftMargin.right;
         const maxProb = d3Array.max(rowProbs, d => d.prob);
 
-        const xScale = d3Scale.scaleLinear()
+        const xScale = d3Scale.scaleLinear() // probabilities
             .domain([0, maxProb])
             .range([0, xSize]);
 
-        const yScale = d3Scale.scaleLinear()
-            .domain(yExtent)
-            .range([this.ySize, 0]);
+        const yScale = this.yType === DataType.NUMBER ? // keys
+            d3Scale.scaleLinear().domain(yExtent).range([this.ySize, 0]) :
+            d3Scale.scaleBand().domain(yExtent).range([this.ySize, 0]);
         const yAxis = d3Axis.axisLeft(yScale)
             .tickSizeOuter(0);
         this.overviewLeftYAxisSelection.call(yAxis);
@@ -709,9 +818,9 @@ export class HeatmapChart extends Component {
             .domain([0, maxProb])
             .range([ySize, 0]);
 
-        const xScale = d3Scale.scaleLinear() // keys
-            .domain(xExtent)
-            .range([0, this.xSize]);
+        const xScale = this.xType === DataType.NUMBER ? // keys
+            d3Scale.scaleLinear().domain(xExtent).range([0, this.xSize]) :
+            d3Scale.scaleBand().domain(xExtent).range([0, this.xSize]);
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
         this.overviewBottomXAxisSelection.call(xAxis);
@@ -829,12 +938,13 @@ export class HeatmapChart extends Component {
             .selectAll('rect')
             .data(data, d => d.key);
         const barHeight = (keyScale.range()[0] - keyScale.range()[1]) / data.length;
+        const yCompensate = this.yType === DataType.NUMBER ? barHeight : 0;
 
         bars.enter()
             .append('rect')
             .merge(bars)
             .attr('x', 0)
-            .attr('y', d => keyScale(d.key) - barHeight)
+            .attr('y', d => keyScale(d.key) - yCompensate)
             .attr("width", d => probScale(d.prob))
             .attr("height", barHeight)
             .attr("fill", barColor);
@@ -845,8 +955,6 @@ export class HeatmapChart extends Component {
 
 
     render() {
-        const config = this.props.config;
-
         if (!this.state.signalSetData) {
             return (
                 <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
@@ -880,6 +988,12 @@ export class HeatmapChart extends Component {
                                 <clipPath id="plotRect">
                                     <rect x="0" y="0" width={this.state.width} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                                 </clipPath>
+                                <clipPath id="leftAxis">
+                                    <rect x={-this.props.margin.left + 1} y={0} width={this.props.margin.left} height={this.props.height - this.props.margin.top - this.props.margin.bottom + 6} /* 6 is default size of axis ticks, so we can add extra space in the bottom left corner for this axis and still don't collide with the other axis. Thanks to this, the first tick text should not be cut in half. */ />
+                                </clipPath>
+                                <clipPath id="bottomAxis">
+                                    <rect x={-6} y={0} width={this.state.width + 6} height={this.props.margin.bottom} /* same reason for 6 as above */ />
+                                </clipPath>
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
                                 <g ref={node => this.columnsSelection = select(node)}/>
@@ -887,9 +1001,11 @@ export class HeatmapChart extends Component {
                                     <g ref={node => this.highlightSelection = select(node)}/>}
                             </g>
                             <g ref={node => this.xAxisSelection = select(node)}
-                               transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                               transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}
+                               clipPath="url(#bottomAxis)" />
                             <g ref={node => this.yAxisSelection = select(node)}
-                               transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                               transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
+                               clipPath="url(#leftAxis)"/>
                             <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%"
                                   fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
                             {this.props.withTooltip && !this.state.zoomInProgress &&
