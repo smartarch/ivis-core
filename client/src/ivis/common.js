@@ -4,6 +4,8 @@ import * as d3Array from "d3-array";
 import * as d3Scale from "d3-scale";
 import * as d3Color from "d3-color";
 import * as d3Selection from "d3-selection";
+import * as d3Interpolate from "d3-interpolate";
+import * as d3Zoom from "d3-zoom";
 
 /**
  * Adds margin to extent in format of d3.extent()
@@ -108,4 +110,16 @@ export function brushHandlesTopBottom(group, selection, xSize) {
 /** https://github.com/d3/d3-zoom#zoom_wheelDelta with multiplied values */
 export function WheelDelta(multiplier = 2) {
     return () => -d3Selection.event.deltaY * multiplier * (d3Selection.event.deltaMode === 1 ? 0.05 : d3Selection.event.deltaMode ? 1 : 0.002);
+}
+
+export function smoothWheelZoom(selection, prevTransform, newTransform, setZoomTransform, endCallback) {
+    const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
+    const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
+    const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
+
+    selection.transition().duration(150)
+        .tween("zoom", () => function (t) {
+            setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)));
+        })
+        .on("end", endCallback);
 }
