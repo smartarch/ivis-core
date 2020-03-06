@@ -166,7 +166,8 @@ export class StaticBarChart extends Component {
             .range([ySize, 0]);
         const yAxis = d3Axis.axisLeft(yScale)
             .tickSizeOuter(0);
-        this.yAxisSelection.call(yAxis);
+        (this.props.withTransition ? this.yAxisSelection.transition() : this.yAxisSelection)
+            .call(yAxis);
         //</editor-fold>
 
         this.drawVerticalBars(this.props.config.bars, this.barsSelection, xScale, yScale);
@@ -258,17 +259,20 @@ export class StaticBarChart extends Component {
             });
         };
 
-        bars.enter()
+        const allBars = bars.enter()
             .append('rect')
+            .attr('y', ySize)
+            .attr("height", 0)
             .merge(bars)
             .attr('x', d => xScale(d.label))
-            .attr('y', d => yScale(d.value))
             .attr("width", barWidth)
-            .attr("height", d => ySize - yScale(d.value))
             .attr("fill", (d, i) => d.color || this.getColor(i))
             .on("mouseover", selectBar)
             .on("mousemove", selectBar)
             .on("mouseout", ::this.deselectBars);
+        (this.props.withTransition ?  allBars.transition() : allBars)
+            .attr('y', d => yScale(d.value))
+            .attr("height", d => ySize - yScale(d.value));
 
         bars.exit()
             .remove();
