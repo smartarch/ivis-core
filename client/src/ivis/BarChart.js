@@ -72,9 +72,8 @@ export class StaticBarChart extends Component {
         }).isRequired,
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
-        padding: PropTypes.number,
+        padding: PropType_NumberInRange(0, 1),
         colors: PropTypes.arrayOf(PropType_d3Color_Required()),
-        topPaddingWhenZoomed: PropType_NumberInRange(0, 1), // determines whether bars will be stretched up when zooming
 
         minValue: PropTypes.number,
         maxValue: PropTypes.number,
@@ -87,10 +86,10 @@ export class StaticBarChart extends Component {
     };
 
     static defaultProps = {
+        margin: { left: 40, right: 5, top: 5, bottom: 20 },
         padding: 0.2,
         minValue: 0,
         colors: d3Scheme.schemeCategory10,
-        topPaddingWhenZoomed: 0,
 
         withTooltip: true,
         withTransition: true,

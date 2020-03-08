@@ -5,6 +5,7 @@ import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {FrequencyPieChart} from "../ivis/FrequencyPieChart";
 import {LegendPosition} from "../ivis/PieChart";
+import {FrequencyBarChart} from "../ivis/FrequencyBarChart";
 
 class TestFrequencyChart extends Component {
     constructor(props) {
@@ -18,12 +19,18 @@ class TestFrequencyChart extends Component {
         };
 
         return (
+            <div>
                 <FrequencyPieChart
                     config={cnf}
                     height={400}
                     legendPosition={LegendPosition.BOTTOM}
                     legendRowClass="col-12 col-md-6 col-lg-4 col-xl-2"
                 />
+                <FrequencyBarChart
+                    config={cnf}
+                    height={400}
+                />
+            </div>
         );
     }
 }

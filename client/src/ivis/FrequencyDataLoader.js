@@ -92,10 +92,7 @@ export class FrequencyDataLoader extends Component {
             const results = await this.dataAccessSession.getLatestMixed([query]);
 
             if (results) { // Results is null if the results returned are not the latest ones
-                const res = results[0].aggs[0];
-                delete res.offset;
-                delete res.step;
-                console.log("results", res);
+                const res = results[0][0];
                 this.props.processData(res);
             }
         } catch (err) {

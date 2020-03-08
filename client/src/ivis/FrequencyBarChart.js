@@ -6,15 +6,15 @@ import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
-import {StaticPieChart} from "./PieChart";
+import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
+import {StaticBarChart} from "./BarChart";
 import {FrequencyDataLoader} from "./FrequencyDataLoader";
 
 @withComponentMixins([
     withTranslation,
     withErrorHandling
 ])
-export class FrequencyPieChart extends Component {
+export class FrequencyBarChart extends Component {
     constructor(props){
         super(props);
 
@@ -34,13 +34,10 @@ export class FrequencyPieChart extends Component {
         colors: PropTypes.arrayOf(PropType_d3Color_Required()),
         getLabel: PropTypes.func, // (key, count) => label
         getColor: PropTypes.func, // chooses color from index: (props.color, index) => color
-        // for Pie chart
+        // for Bar chart
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
-        getArcColor: PropTypes.func, // color transformation in PieChart (color => color)
-        legendWidth: PropTypes.number,
-        legendPosition: PropTypes.number,
-        legendRowClass: PropTypes.string,
+        padding: PropTypes.number
     };
 
     static defaultProps = {
@@ -65,7 +62,7 @@ export class FrequencyPieChart extends Component {
             });
         }
         else {
-            let arcs = data.buckets.map((b, i) => {
+            let bars = data.buckets.map((b, i) => {
                 return {
                     label: this.props.getLabel(b.key, b.count),
                     color: this.props.getColor(this.props.colors, i),
@@ -73,7 +70,7 @@ export class FrequencyPieChart extends Component {
                 }
             });
             this.setState({
-                data: { arcs }
+                data: { bars }
             });
         }
     }
@@ -91,14 +88,11 @@ export class FrequencyPieChart extends Component {
 
         } else {
             chart = (
-                <StaticPieChart
+                <StaticBarChart
                     height={this.props.height}
                     config={this.state.data}
                     margin={this.props.margin}
-                    getArcColor={this.props.getArcColor}
-                    legendWidth={this.props.legendWidth}
-                    legendPosition={this.props.legendPosition}
-                    legendRowClass={this.props.legendRowClass}
+                    padding={this.props.padding}
                 />
             );
 
