@@ -31,7 +31,7 @@ import {
     isInExtent,
     isSignalVisible,
     ModifyColorCopy,
-    roundTo, WheelDelta
+    roundTo, smoothWheelZoom, WheelDelta
 } from "../common";
 import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "../dot_shapes";
@@ -1327,27 +1327,21 @@ export class ScatterPlotBase extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                const prevTransform = self.state.zoomTransform;
-                const newTransform = d3Event.transform;
-                const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
-                const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
-                const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
-
-                select(self).transition().duration(150)
-                    .tween("yZoom", () => function (t) {
-                        self.setState({
-                            zoomTransform: d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t))
-                        });
-                    })
-                    .on("end", () => {
-                        self.deselectPoints();
-                    });
+                smoothWheelZoom(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                    self.deselectPoints();
+                });
             } else {
                 // noinspection JSUnresolvedVariable
                 self.setState({
                     zoomTransform: d3Event.transform
                 });
             }
+        };
+
+        const setZoomTransform = function (transform) {
+            self.setState({
+                zoomTransform: transform
+            });
         };
 
         const handleZoomEnd = function () {

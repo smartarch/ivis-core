@@ -19,7 +19,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
-import {brushHandlesLeftRight, isInExtent, WheelDelta} from "./common";
+import {brushHandlesLeftRight, isInExtent, smoothWheelZoom, WheelDelta} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
@@ -532,19 +532,9 @@ export class HistogramChart extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                const prevTransform = self.state.zoomTransform;
-                const newTransform = d3Event.transform;
-                const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
-                const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
-                const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
-
-                select(self).transition().duration(150)
-                    .tween("zoom", () => function (t) {
-                        setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)));
-                    })
-                    .on("end", () => {
-                        self.deselectPoints();
-                    });
+                smoothWheelZoom(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                    self.deselectPoints();
+                });
             } else {
                 // noinspection JSUnresolvedVariable
                 setZoomTransform(d3Event.transform);
