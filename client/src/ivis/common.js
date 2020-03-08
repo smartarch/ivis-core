@@ -112,12 +112,12 @@ export function WheelDelta(multiplier = 2) {
     return () => -d3Selection.event.deltaY * multiplier * (d3Selection.event.deltaMode === 1 ? 0.05 : d3Selection.event.deltaMode ? 1 : 0.002);
 }
 
-export function smoothWheelZoom(selection, prevTransform, newTransform, setZoomTransform, endCallback) {
+export function transitionInterpolate(selection, prevTransform, newTransform, setZoomTransform, endCallback, duration = 150) {
     const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
     const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
     const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
 
-    selection.transition().duration(150)
+    return selection.transition().duration(duration)
         .tween("zoom", () => function (t) {
             setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)));
         })

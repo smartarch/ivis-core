@@ -66,6 +66,7 @@ export class BubblePlot extends Component {
         withBrush: PropTypes.bool,
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool, // prop will get copied to state in constructor, changing it later will not update it, use setWithTooltip method to update it
+        withZoom: PropTypes.bool,
         withTransition: PropTypes.bool,
         withToolbar: PropTypes.bool,
         withSettings: PropTypes.bool,

@@ -31,7 +31,7 @@ import {
     isInExtent,
     isSignalVisible,
     ModifyColorCopy,
-    roundTo, smoothWheelZoom, WheelDelta
+    roundTo, transitionInterpolate, WheelDelta
 } from "../common";
 import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "../dot_shapes";
@@ -148,8 +148,8 @@ class ScatterPlotToolbar extends Component {
 
     static propTypes = {
         resetZoomClick: PropTypes.func.isRequired,
-        zoomOutClick: PropTypes.func.isRequired,
-        zoomInClick: PropTypes.func.isRequired,
+        zoomOutClick: PropTypes.func,
+        zoomInClick: PropTypes.func,
         reloadDataClick: PropTypes.func.isRequired,
         brushClick: PropTypes.func,
         setSettings: PropTypes.func,
@@ -157,6 +157,10 @@ class ScatterPlotToolbar extends Component {
         withSettings: PropTypes.bool.isRequired,
         settings: PropTypes.object,
         brushInProgress: PropTypes.bool
+    };
+
+    static defaultProps = {
+        withSettings: false
     };
 
     componentDidMount() {
@@ -235,8 +239,8 @@ class ScatterPlotToolbar extends Component {
             <div className="card">
                 <div className="card-header" /*onClick={() => this.setState({opened: !this.state.opened})}*/>
                     <div className={styles.headingButtons}>
-                        <ActionLink onClickAsync={async () => this.props.zoomOutClick()}><Icon icon="search-minus" title={t('Zoom out')}/></ActionLink>
-                        <ActionLink onClickAsync={async () => this.props.zoomInClick()}><Icon icon="search-plus" title={t('Zoom in')}/></ActionLink>
+                        {this.props.zoomOutClick && <ActionLink onClickAsync={async () => this.props.zoomOutClick()}><Icon icon="search-minus" title={t('Zoom out')}/></ActionLink>}
+                        {this.props.zoomInClick && <ActionLink onClickAsync={async () => this.props.zoomInClick()}><Icon icon="search-plus" title={t('Zoom in')}/></ActionLink>}
                         <ActionLink onClickAsync={async () => this.props.reloadDataClick()}><Icon icon="redo" title={t('Reload data')}/></ActionLink>
                         {this.props.brushClick &&
                         <ActionLink onClickAsync={async () => this.props.brushClick()}
@@ -361,6 +365,7 @@ export class ScatterPlotBase extends Component {
         withBrush: PropTypes.bool,
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool, // prop will get copied to state in constructor, changing it later will not update it, use setSettings to update it
+        withZoom: PropTypes.bool,
         withTransition: PropTypes.bool,
         withRegressionCoefficients: PropTypes.bool,
         withToolbar: PropTypes.bool,
@@ -381,6 +386,7 @@ export class ScatterPlotBase extends Component {
         withBrush: true,
         withCursor: true,
         withTooltip: true,
+        withZoom: true,
         withTransition: true,
         withRegressionCoefficients: true,
         withToolbar: true,
@@ -848,7 +854,8 @@ export class ScatterPlotBase extends Component {
         // we don't want to change brush and zoom when updating only zoom (it breaks touch drag)
         if (forceRefresh || widthChanged) {
             this.createChartBrush();
-            this.createChartZoom(xSize, ySize);
+            if (this.props.withZoom)
+                this.createChartZoom(xSize, ySize);
         }
     }
 
@@ -1269,9 +1276,10 @@ export class ScatterPlotBase extends Component {
                     });
                 })
                 .on("end", function () {
-                    self.setState({
-                        zoomInProgress: false
-                    });
+                    if (this.withZoom)
+                        self.setState({
+                            zoomInProgress: false
+                        });
                     // noinspection JSUnresolvedVariable
                     const sel = d3Event.selection;
 
@@ -1327,7 +1335,7 @@ export class ScatterPlotBase extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                smoothWheelZoom(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
                     self.deselectPoints();
                 });
             } else {
@@ -1453,21 +1461,43 @@ export class ScatterPlotBase extends Component {
     }
 
     setZoom(transform, yScaleMultiplier) {
-        if (this.props.withTransition) {
-            const self = this;
-            const transition = this.svgContainerSelection.transition().duration(500)
-                .tween("yZoom", () => function (t) {
-                    self.setState({ // zoomYScaleMultiplier = 1
-                        zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1-t) + yScaleMultiplier * t
+        const self = this;
+        if (this.withZoom) {
+            if (this.props.withTransition) {
+                const transition = this.svgContainerSelection.transition().duration(500)
+                    .tween("yZoom", () => function (t) {
+                        self.setState({
+                            zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1 - t) + yScaleMultiplier * t
+                        });
                     });
+                transition.call(this.zoom.transform, transform);
+            } else {
+                this.svgContainerSelection.call(this.zoom.transform, transform);
+                this.setState({
+                    zoomYScaleMultiplier: yScaleMultiplier
                 });
-            transition.call(this.zoom.transform, transform);
+            }
         }
         else {
-            this.svgContainerSelection.call(this.zoom.transform, transform);
-            this.setState({
-                zoomYScaleMultiplier: yScaleMultiplier
-            });
+            if (this.props.withTransition) {
+                self.setState({ zoomInProgress: true }, () => {
+                transitionInterpolate(this.svgContainerSelection, this.state.zoomTransform, transform,
+                    (newTransform) => this.setState({ zoomTransform: newTransform}),
+                    () => { self.setState({ zoomInProgress: false }); self.deselectPoints()},500)
+                    .tween("yZoom", () => function (t) {
+                        self.setState({
+                            zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1-t) + yScaleMultiplier * t
+                        });
+                    });
+                });
+            }
+            else {
+                this.setState({
+                    zoomTransform: transform,
+                    zoomYScaleMultiplier: yScaleMultiplier
+                });
+                self.deselectPoints();
+            }
         }
     }
 
@@ -1520,8 +1550,8 @@ export class ScatterPlotBase extends Component {
                 <div>
                     {this.props.withToolbar && !this.state.noData &&
                     <ScatterPlotToolbar resetZoomClick={::this.resetZoom}
-                                        zoomInClick={::this.zoomIn}
-                                        zoomOutClick={::this.zoomOut}
+                                        zoomInClick={this.props.withZoom ? ::this.zoomIn : undefined}
+                                        zoomOutClick={this.props.withZoom ? ::this.zoomOut : undefined}
                                         reloadDataClick={::this.reloadData}
                                         brushClick={this.props.withBrush ? ::this.brushButtonClick : undefined}
                                         brushInProgress={this.state.brushInProgress}

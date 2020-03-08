@@ -14,7 +14,7 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color, PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {Tooltip} from "./Tooltip";
-import {extentWithMargin, smoothWheelZoom, WheelDelta} from "./common";
+import {extentWithMargin, transitionInterpolate, WheelDelta} from "./common";
 import styles from "./correlation_charts/CorrelationCharts.scss";
 
 class TooltipContent extends Component {
@@ -80,6 +80,7 @@ export class StaticBarChart extends Component {
 
         withTooltip: PropTypes.bool,
         withTransition: PropTypes.bool,
+        withZoom: PropTypes.bool,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
@@ -93,6 +94,7 @@ export class StaticBarChart extends Component {
 
         withTooltip: true,
         withTransition: true,
+        withZoom: true,
 
         zoomLevelMin: 1,
         zoomLevelMax: 4,
@@ -172,7 +174,7 @@ export class StaticBarChart extends Component {
         this.drawVerticalBars(this.props.config.bars, this.barsSelection, xScale, yScale);
 
         // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
-        if (forceRefresh || widthChanged) {
+        if ((forceRefresh || widthChanged) && this.props.withZoom) {
             this.createChartZoom(xSize, ySize);
         }
     }
@@ -183,7 +185,7 @@ export class StaticBarChart extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                smoothWheelZoom(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
                     self.deselectBars();
                 });
             } else {

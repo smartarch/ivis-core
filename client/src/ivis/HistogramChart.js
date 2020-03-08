@@ -19,7 +19,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
 import styles from "./correlation_charts/CorrelationCharts.scss";
-import {brushHandlesLeftRight, isInExtent, smoothWheelZoom, WheelDelta} from "./common";
+import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
@@ -119,6 +119,7 @@ export class HistogramChart extends Component {
         withTooltip: PropTypes.bool,
         withOverview: PropTypes.bool,
         withTransition: PropTypes.bool,
+        withZoom: PropTypes.bool,
 
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
@@ -142,6 +143,7 @@ export class HistogramChart extends Component {
         withTooltip: true,
         withOverview: true,
         withTransition: true,
+        withZoom: true,
 
         zoomLevelMin: 1,
         zoomLevelMax: 4,
@@ -400,7 +402,8 @@ export class HistogramChart extends Component {
             // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
             if (forceRefresh || widthChanged) {
                 this.createChartCursorArea();
-                this.createChartZoom(xSize, ySize);
+                if (this.props.withZoom)
+                    this.createChartZoom(xSize, ySize);
             }
 
             this.createChartCursor(signalSetData, xScale, yScale, ySize);
@@ -532,7 +535,7 @@ export class HistogramChart extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                smoothWheelZoom(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
                     self.deselectPoints();
                 });
             } else {
@@ -617,7 +620,10 @@ export class HistogramChart extends Component {
                 // noinspection JSUnresolvedVariable
                 if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
                 const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
-                self.svgContainerSelection.call(self.zoom.transform, newTransform);
+                if (self.zoom)
+                    self.svgContainerSelection.call(self.zoom.transform, newTransform);
+                else
+                    self.setState({ zoomTransform: newTransform });
             });
 
         this.overviewBrushSelection

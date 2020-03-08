@@ -37,13 +37,17 @@ export class FrequencyBarChart extends Component {
         // for Bar chart
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
-        padding: PropTypes.number
+        padding: PropTypes.number,
+        withTooltip: PropTypes.bool,
+        withTransition: PropTypes.bool,
+        withZoom: PropTypes.bool
     };
 
     static defaultProps = {
         getLabel: (key, count) => key,
         getColor: (colors, index) => colors[index % colors.length], // colors = this.props.colors
-        colors: d3Scheme.schemeCategory10
+        colors: d3Scheme.schemeCategory10,
+        withZoom: false
     };
 
     componentDidUpdate(prevProps, prevState) {
@@ -93,6 +97,10 @@ export class FrequencyBarChart extends Component {
                     config={this.state.data}
                     margin={this.props.margin}
                     padding={this.props.padding}
+                    withTooltip={this.props.withTooltip}
+                    withTransition={this.props.withTransition}
+                    withZoom={this.props.withZoom}
+                    minValue={0}
                 />
             );
 
