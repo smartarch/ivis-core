@@ -15,7 +15,13 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Tooltip} from "../Tooltip";
 import {Icon} from "../../lib/bootstrap-components";
-import {brushHandlesLeftRight, brushHandlesTopBottom, getColorScale, WheelDelta} from "../common";
+import {
+    brushHandlesLeftRight,
+    brushHandlesTopBottom,
+    getColorScale, setZoomTransform,
+    transitionInterpolate,
+    WheelDelta
+} from "../common";
 import styles from "./CorrelationCharts.scss";
 import {PropType_d3Color} from "../../lib/CustomPropTypes";
 import * as d3Brush from "d3-brush";
@@ -113,7 +119,7 @@ export class HeatmapChart extends Component {
         this.state = {
             signalSetData: null,
             statusMsg: t('Loading...'),
-            width: 0,
+            width: undefined,
             height: 0,
             maxBucketCountX: 0,
             maxBucketCountY: 0,
@@ -150,7 +156,11 @@ export class HeatmapChart extends Component {
         withTooltip: PropTypes.bool,
         withOverviewBottom: PropTypes.bool,
         withOverviewLeft: PropTypes.bool,
+        withOverviewLeftBrush: PropTypes.bool,
+        withOverviewBottomBrush: PropTypes.bool,
         withTransition: PropTypes.bool,
+        withZoomX: PropTypes.bool,
+        withZoomY: PropTypes.bool,
 
         minStep: PropTypes.number,
         minRectWidth: PropTypes.number,
@@ -172,7 +182,11 @@ export class HeatmapChart extends Component {
         withTooltip: true,
         withOverviewBottom: true,
         withOverviewLeft: true,
+        withOverviewLeftBrush: true,
+        withOverviewBottomBrush: true,
         withTransition: true,
+        withZoomX: true,
+        withZoomY: true,
 
         zoomLevelMin: 1,
         zoomLevelMax: 4,
@@ -437,7 +451,7 @@ export class HeatmapChart extends Component {
         const height = this.props.height;
 
         if (this.state.width !== width || this.state.height !== height) {
-            if (this.props.withOverviewLeft && this.state.signalSetData === null)
+            if (this.props.withOverviewLeft && this.state.width === undefined)
                 width -= this.props.overviewLeftWidth;
             const maxBucketCountX = Math.ceil(width / this.props.minRectWidth);
             const maxBucketCountY = Math.ceil(height / this.props.minRectHeight);
@@ -491,7 +505,7 @@ export class HeatmapChart extends Component {
                 xScale.bandwidth();
 
             // y axis
-            const ySize = height - this.props.margin.left - this.props.margin.right;
+            const ySize = height - this.props.margin.top - this.props.margin.bottom;
             this.ySize = ySize;
             const yScale = this.getYScale();
             this.yScale = yScale;
@@ -511,12 +525,6 @@ export class HeatmapChart extends Component {
 
             this.createChartRectangles(signalSetData, xScale, yScale, rectHeight, rectWidth, colorScale);
 
-            // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
-            if (forceRefresh || widthChanged) {
-                this.createChartCursorArea(width, height);
-                this.createChartZoom(xSize, ySize);
-            }
-
             if (this.props.withTooltip) {
                 this.createChartCursor(signalSetData, xScale, yScale, rectHeight, rectWidth);
             }
@@ -527,6 +535,13 @@ export class HeatmapChart extends Component {
                 this.createChartOverviewLeft(this.state.rowProbs, this.yExtent, this.props.overviewLeftColor || colors[colors.length - 1]);
             if (this.props.withOverviewBottom)
                 this.createChartOverviewBottom(signalSetData.buckets, this.xExtent, this.props.overviewBottomColor || colors[colors.length - 1]);
+
+            // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
+            if (forceRefresh || widthChanged) {
+                this.createChartCursorArea(width, height);
+                if (this.props.withZoomX || this.props.withZoomY)
+                    this.createChartZoom(xSize, ySize);
+            }
         }
     }
 
@@ -653,67 +668,39 @@ export class HeatmapChart extends Component {
             // noinspection JSUnresolvedVariable
             let newTransform = d3Event.transform;
             let newZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
+            // check brush extents
+            const [newBrushBottom, newBrushLeft, updated] = self.getBrushValuesFromZoomValues(newTransform, newZoomYScaleMultiplier);
+            if (updated)
+                [newTransform, newZoomYScaleMultiplier] = self.getZoomValuesFromBrushValues(newBrushBottom, newBrushLeft);
 
             // noinspection JSUnresolvedVariable
-            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                const [newBrushBottom, newBrushLeft, updated] = self.getBrushValuesFromZoomValues(newTransform, self.state.zoomYScaleMultiplier);
-                if (updated) {
-                    [newTransform, newZoomYScaleMultiplier] = self.getZoomValuesFromBrushValues(newBrushBottom, newBrushLeft);
-                }
-
-                if (self.props.withTransition) {
-                const prevTransform = self.state.zoomTransform;
-                const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
-                const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
-                const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
-                const prevZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
-                const mInterpolate = updated ? d3Interpolate.interpolate(prevZoomYScaleMultiplier, newZoomYScaleMultiplier) : (_) => undefined;
-
-                select(self).transition().duration(150)
-                    .tween("zoom", () => function (t) {
-                        const transform = d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t));
-                        const zoomYScaleMultiplier = mInterpolate(t);
-                        setZoomTransform(transform, zoomYScaleMultiplier);
-                        moveBrush(transform, zoomYScaleMultiplier || newZoomYScaleMultiplier);
-                    })
-                    .on("end", () => {
-                        self.deselectPoints();
-                        setZoomTransform(newTransform, newZoomYScaleMultiplier);
-                        moveBrush(newTransform, newZoomYScaleMultiplier);
-                    });
-                }
-                else {
-                    setZoomTransform(newTransform, newZoomYScaleMultiplier);
-                    // noinspection JSUnresolvedVariable
-                    if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "brush" && d3Event.sourceEvent.type !== "zoom")
-                        moveBrush(newTransform, newZoomYScaleMultiplier);
-                }
+            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel" && self.props.withTransition) {
+                transitionInterpolate(select(self), self.state.zoomTransform, newTransform, (t, y) => {
+                    setZoomTransform(self)(t, y);
+                    moveBrush(t, y || newZoomYScaleMultiplier); // sourceEvent is "wheel"
+                }, () => {
+                    self.deselectPoints();
+                    setZoomTransform(self)(newTransform, newZoomYScaleMultiplier);
+                    moveBrush(newTransform, newZoomYScaleMultiplier);
+                }, 150, self.state.zoomYScaleMultiplier, newZoomYScaleMultiplier);
             } else {
-                setZoomTransform(newTransform);
+                setZoomTransform(self)(newTransform, newZoomYScaleMultiplier);
                 // noinspection JSUnresolvedVariable
                 if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "brush" && d3Event.sourceEvent.type !== "zoom")
                     moveBrush(newTransform, newZoomYScaleMultiplier);
             }
         };
 
-        const setZoomTransform = function (transform, newZoomYScaleMultiplier) {
-            if (newZoomYScaleMultiplier)
-                self.setState({
-                    zoomTransform: transform,
-                    zoomYScaleMultiplier: newZoomYScaleMultiplier
-                });
-            else
-                self.setState({
-                    zoomTransform: transform
-                });
-        };
-
         const moveBrush = function (transform, zoomYScaleMultiplier) {
             const [newBrushBottom, newBrushLeft, _] = self.getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier);
             if (newBrushBottom && self.brushBottom)
                 self.overviewBottomBrushSelection.call(self.brushBottom.move, newBrushBottom);
+            else
+                self.brushBottomValues = newBrushBottom;
             if (newBrushLeft && self.brushLeft)
                 self.overviewLeftBrushSelection.call(self.brushLeft.move, newBrushLeft);
+            else
+                self.brushLeftValues = newBrushLeft;
         };
 
         const handleZoomEnd = function () {
@@ -730,7 +717,12 @@ export class HeatmapChart extends Component {
 
         const zoomExtent = [[0, 0], [xSize, ySize]];
         const translateExtent = [[0, 0], [xSize, ySize * this.state.zoomYScaleMultiplier]];
-        const minZoom = Math.min(this.props.zoomLevelMin, this.props.zoomLevelMin / this.state.zoomYScaleMultiplier);
+        let minZoom = Math.min(this.props.zoomLevelMin, this.props.zoomLevelMin / this.state.zoomYScaleMultiplier);
+        if (this.props.withZoomY && !this.props.withZoomX)
+            minZoom = this.props.zoomLevelMin / this.state.zoomYScaleMultiplier;
+        else if (!this.props.withZoomY && this.props.withZoomX)
+            minZoom = this.props.zoomLevelMin;
+
         // noinspection DuplicatedCode
         this.zoom = d3Zoom.zoom()
             .scaleExtent([minZoom, this.props.zoomLevelMax])
@@ -749,13 +741,16 @@ export class HeatmapChart extends Component {
         if (d3Zoom.zoomTransform(this.svgContainerSelection.node()).k < minZoom)
             this.svgContainerSelection.call(this.zoom.scaleTo, this.props.zoomLevelMin);
         //moveBrush(this.state.zoomTransform);
+        this.svgContainerSelection.call(this.zoom.transform, this.state.zoomTransform);
     }
 
     getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier) {
         let updated = false;
-        let newBrushBottom, newBrushLeft;
-        if (this.brushBottom) {
-            newBrushBottom = this.defaultBrushBottom.map(transform.invertX, transform);
+        let newBrushBottom = this.defaultBrushBottom.map(transform.invertX, transform);
+        const yTransform = transform.scale(zoomYScaleMultiplier);
+        let newBrushLeft = this.defaultBrushLeft.map(yTransform.invertY, yTransform);
+
+        if (this.props.withZoomX && this.props.withZoomY) {
             if (newBrushBottom[0] < this.defaultBrushBottom[0]) {
                 newBrushBottom[0] = this.defaultBrushBottom[0];
                 updated = true;
@@ -764,14 +759,7 @@ export class HeatmapChart extends Component {
                 newBrushBottom[1] = this.defaultBrushBottom[1];
                 updated = true;
             }
-        }
-        else {
-            newBrushBottom = this.defaultBrushBottom;
-            updated = true;
-        }
-        if (this.brushLeft) {
-            const yTransform = transform.scale(zoomYScaleMultiplier);
-            newBrushLeft = this.defaultBrushLeft.map(yTransform.invertY, yTransform);
+
             if (newBrushLeft[0] < this.defaultBrushLeft[0]) {
                 newBrushLeft[0] = this.defaultBrushLeft[0];
                 updated = true;
@@ -782,8 +770,13 @@ export class HeatmapChart extends Component {
             }
         }
         else {
-            newBrushLeft = this.defaultBrushLeft;
             updated = true;
+            if (!this.props.withZoomX) {
+                newBrushBottom = this.brushBottomValues || this.defaultBrushBottom;
+            }
+            if (!this.props.withZoomY) {
+                newBrushLeft = this.brushLeftValues || this.defaultBrushLeft;
+            }
         }
         return [newBrushBottom, newBrushLeft, updated];
     }
@@ -806,7 +799,8 @@ export class HeatmapChart extends Component {
         //</editor-fold>
 
         this.drawHorizontalBars(rowProbs, this.overviewLeftBarsSelection, yScale, xScale, barColor);
-        this.createChartOverviewLeftBrush();
+        if (this.props.withOverviewLeftBrush)
+            this.createChartOverviewLeftBrush();
     }
 
     createChartOverviewBottom(colProbs, xExtent, barColor) {
@@ -827,7 +821,8 @@ export class HeatmapChart extends Component {
         //</editor-fold>
 
         this.drawVerticalBars(colProbs, this.overviewBottomBarsSelection, xScale, yScale, barColor);
-        this.createChartOverviewBottomBrush();
+        if (this.props.withOverviewBottomBrush)
+            this.createChartOverviewBottomBrush();
     }
 
     createChartOverviewLeftBrush() {
@@ -907,7 +902,10 @@ export class HeatmapChart extends Component {
     updateZoomFromBrush() {
         const [transform, newZoomYScaleMultiplier] = this.getZoomValuesFromBrushValues(this.brushBottomValues, this.brushLeftValues);
 
-        this.svgContainerSelection.call(this.zoom.transform, transform);
+        if (this.props.withZoomX || this.props.withZoomY)
+            this.svgContainerSelection.call(this.zoom.transform, transform);
+        else
+            this.setState({ zoomTransform: transform });
         this.setState({
             zoomYScaleMultiplier: newZoomYScaleMultiplier
         });
