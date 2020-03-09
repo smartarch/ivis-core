@@ -112,14 +112,29 @@ export function WheelDelta(multiplier = 2) {
     return () => -d3Selection.event.deltaY * multiplier * (d3Selection.event.deltaMode === 1 ? 0.05 : d3Selection.event.deltaMode ? 1 : 0.002);
 }
 
-export function transitionInterpolate(selection, prevTransform, newTransform, setZoomTransform, endCallback, duration = 150) {
+export function transitionInterpolate(selection, prevTransform, newTransform, setZoomTransform, endCallback, duration = 150, prevZoomYScaleMultiplier, newZoomYScaleMultiplier) {
     const xInterpolate = d3Interpolate.interpolate(prevTransform.x, newTransform.x);
     const yInterpolate = d3Interpolate.interpolate(prevTransform.y, newTransform.y);
     const kInterpolate = d3Interpolate.interpolate(prevTransform.k, newTransform.k);
+    const mInterpolate = d3Interpolate.interpolate(prevZoomYScaleMultiplier, newZoomYScaleMultiplier);
 
     return selection.transition().duration(duration)
         .tween("zoom", () => function (t) {
-            setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)));
+            setZoomTransform(d3Zoom.zoomIdentity.translate(xInterpolate(t), yInterpolate(t)).scale(kInterpolate(t)), mInterpolate(t));
         })
         .on("end", endCallback);
+}
+
+export function setZoomTransform(self) {
+    return function (transform, zoomYScaleMultiplier) {
+        if (zoomYScaleMultiplier)
+            self.setState({
+                zoomTransform: transform,
+                zoomYScaleMultiplier: zoomYScaleMultiplier
+            });
+        else
+            self.setState({
+                zoomTransform: transform
+            });
+    }
 }

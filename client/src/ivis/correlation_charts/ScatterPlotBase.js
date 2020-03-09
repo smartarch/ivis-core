@@ -31,7 +31,7 @@ import {
     isInExtent,
     isSignalVisible,
     ModifyColorCopy,
-    roundTo, transitionInterpolate, WheelDelta
+    roundTo, setZoomTransform, transitionInterpolate, WheelDelta
 } from "../common";
 import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "../dot_shapes";
@@ -1335,7 +1335,7 @@ export class ScatterPlotBase extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform(self), () => {
                     self.deselectPoints();
                 });
             } else {
@@ -1344,12 +1344,6 @@ export class ScatterPlotBase extends Component {
                     zoomTransform: d3Event.transform
                 });
             }
-        };
-
-        const setZoomTransform = function (transform) {
-            self.setState({
-                zoomTransform: transform
-            });
         };
 
         const handleZoomEnd = function () {
@@ -1480,15 +1474,12 @@ export class ScatterPlotBase extends Component {
         }
         else {
             if (this.props.withTransition) {
-                self.setState({ zoomInProgress: true }, () => {
+                this.setState({ zoomInProgress: true }, () => {
                 transitionInterpolate(this.svgContainerSelection, this.state.zoomTransform, transform,
-                    (newTransform) => this.setState({ zoomTransform: newTransform}),
-                    () => { self.setState({ zoomInProgress: false }); self.deselectPoints()},500)
-                    .tween("yZoom", () => function (t) {
-                        self.setState({
-                            zoomYScaleMultiplier: self.state.zoomYScaleMultiplier * (1-t) + yScaleMultiplier * t
-                        });
-                    });
+                    setZoomTransform(this),() => {
+                        self.setState({zoomInProgress: false});
+                        self.deselectPoints()
+                    },500, self.state.zoomYScaleMultiplier, yScaleMultiplier);
                 });
             }
             else {
@@ -1496,7 +1487,7 @@ export class ScatterPlotBase extends Component {
                     zoomTransform: transform,
                     zoomYScaleMultiplier: yScaleMultiplier
                 });
-                self.deselectPoints();
+                this.deselectPoints();
             }
         }
     }
