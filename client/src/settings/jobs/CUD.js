@@ -28,7 +28,7 @@ import ivisConfig from "ivisConfig";
 import {getJobStates} from './states';
 import {JobState} from "../../../../shared/jobs";
 import moment from "moment";
-import ParamTypes from "../workspaces/panels/ParamTypes"
+import ParamTypes from "../ParamTypes"
 import axios from "axios";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";

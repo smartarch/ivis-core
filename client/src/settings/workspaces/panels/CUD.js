@@ -42,7 +42,7 @@ import ivisConfig
     from "ivisConfig";
 import {getUrl} from "../../../lib/urls";
 import ParamTypes
-    from "./ParamTypes"
+    from "../../ParamTypes"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {ModalDialog} from "../../../lib/bootstrap-components";

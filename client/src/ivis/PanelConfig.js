@@ -18,7 +18,7 @@ import {
 import "brace/mode/html";
 import "brace/mode/json";
 import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} from "../lib/error-handling";
-import ParamTypes from "../settings/workspaces/panels/ParamTypes"
+import ParamTypes from "../../../shared/param-types-helpers"
 import {checkPermissions} from "../lib/permissions";
 import styles from "./PanelConfig.scss";
 import {panelMenuMixin} from "./PanelMenu";

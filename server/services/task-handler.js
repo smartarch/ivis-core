@@ -13,7 +13,7 @@ const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputD
 const {getAdminContext} = require('../lib/context-helpers');
 const createSigSet = require('../models/signal-sets').createTx;
 const createSignal = require('../models/signals').createTx;
-const {resolveAbs, getFieldsetPrefix} = require('../../shared/templates');
+const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helpers');
 
 const es = require('../lib/elasticsearch');
 const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;

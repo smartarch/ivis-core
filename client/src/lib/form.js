@@ -35,7 +35,7 @@ import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
 import cudStyles from "../settings/jobs/CUD.scss";
-import ParamTypes from "../settings/workspaces/panels/ParamTypes";
+import ParamTypes from "../settings/ParamTypes";
 
 
 const FormState = {
@@ -825,15 +825,17 @@ class ButtonRow extends Component {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslation,
+    withFormStateOwner
 ])
 class ParamsLoader extends Component {
 
     static propTypes = {
         id: PropTypes.string,
         label: PropTypes.string,
-        taskId: PropTypes.string,
-        taskParams: PropTypes.string,
+        prefix: PropTypes.string,
+        taskId: PropTypes.number,
+        taskParams: PropTypes.oneOfType([PropTypes.object, PropTypes.arrayOf(PropTypes.object)]),
         paramTypesRef: PropTypes.func,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         format: PropTypes.string
@@ -841,7 +843,7 @@ class ParamsLoader extends Component {
 
     constructor(props) {
         super(props);
-        this.paramTypes = new ParamTypes(props.t, props.prefix);
+        this.paramTypes = new ParamTypes(props.t, '', props.prefix);
 
         if (props.paramTypesRef) {
             props.paramTypesRef(this.paramTypes);
@@ -881,14 +883,19 @@ class ParamsLoader extends Component {
     @withAsyncErrorHandler
     async fetchTaskParams(taskId) {
         const result = await axios.get(getUrl(`rest/task-params/${taskId}`));
-        this.getFormStateOwner().updateForm((mutData) => {
-            this.paramTypes.adopt(result.data, mutData);
-        });
-        this.setState({params: result.data});
+        if (this.props.taskId === taskId) {
+            const taskParams = result.data;
+            this.getFormStateOwner().updateForm(mutData => {
+                mutData.setIn([this.props.prefix, 'value'], taskParams);
+                this.paramTypes.adopt(taskParams, mutData);
+            });
+            this.setState({params: result.data});
+        }
     }
 
     render() {
         const props = this.props;
+        const t = props.t;
         const htmlId = 'form_' + this.props.id;
         const owner = this.getFormStateOwner();
 
@@ -1740,7 +1747,7 @@ const withForm = createComponentMixin({
                         }
                     }
                 } else if (data1 !== data2) {
-                    // console.log(prefix);
+                    // console.log(idPrefix);
                     return true;
                 }
                 return false;

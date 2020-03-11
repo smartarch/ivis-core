@@ -34,7 +34,7 @@ import em
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {SignalSetType} from "../../../../shared/signal-sets"
-import ParamTypes from "../workspaces/panels/ParamTypes";
+import ParamTypes from "../ParamTypes";
 import moment from "moment";
 
 @withComponentMixins([
@@ -53,7 +53,29 @@ export default class CUD extends Component {
 
         this.paramTypes = new ParamTypes(props.t);
 
+
+        this.adjacentTasksConfig = {
+            "id": "jobs",
+            "label": "Jobs",
+            "type": "fieldset",
+            "cardinality": "1..n",
+            "children": [
+                {
+                    "id": "task",
+                    "label": "Task",
+                    "type": "task"
+                },
+                {
+                    "id": "taskParams",
+                    "type": "taskParams",
+                    "taskRef": "task"
+                }
+            ]
+        };
+
+
         this.initForm({
+            onChangeBeforeValidation: ::this.onChangeBeforeValidation,
             serverValidation: {
                 url: 'rest/signal-sets-validate',
                 changed: ['cid'],
@@ -87,6 +109,10 @@ export default class CUD extends Component {
         entity: PropTypes.object
     }
 
+    onChangeBeforeValidation(mutStateData, key, oldVal, newVal) {
+        this.paramTypes.onChange(this.adjacentTasksConfig, mutStateData, key, oldVal, newVal)
+    }
+
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
@@ -103,12 +129,19 @@ export default class CUD extends Component {
                 }
             );
         }
+
+        this.updateForm((mutStateData) => {
+            this.paramTypes.adopt(this.adjacentTasksConfig, mutStateData);
+        });
+        this.loaded = true;
     }
 
     getFormValuesMutator(data) {
         if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
             data.record_id_template = '';
         }
+
+        this.paramTypes.setFields(this.adjacentTasksConfig, data.adjacentTasks, data);
     }
 
 
@@ -142,6 +175,8 @@ export default class CUD extends Component {
         }
 
         ListCreator.submitFormValuesMutator('multi', data);
+
+        data.params = this.paramTypes.getParams(this.adjacentTasksConfig, data);
 
         const allowedKeys = [
             'name',
@@ -201,24 +236,14 @@ export default class CUD extends Component {
     }
 
 
-    /*
-    return <>
-        <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
-                     columns={taskColumns} selectionLabelIndex={0} disabled={isEdit}/>
-        selectionLabelIndex = {1}
-        />
-        <ParamsLoader taskId={this.owner.getFormValue()}/>
-    </>
-     */
-
     render() {
         const t = this.props.t;
         const labels = this.labels;
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
-        const configSpec = this.getFormValue('taskParams');
-        const params = configSpec ? this.paramTypes.render(configSpec, this) : null;
+
+        const params = this.loaded ? this.paramTypes.render(this.adjacentTasksConfig, this) : null;
 
         const taskColumns = [
             {data: 1, title: t('Name')},
@@ -249,6 +274,7 @@ export default class CUD extends Component {
                                 help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
+
 
                     <ListCreator id={'adjacentJobs'} label={t('Adjacent jobs')} entryElement={
                         <Element/>

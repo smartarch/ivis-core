@@ -11,20 +11,24 @@ import {
     InputField, ParamsLoader,
     TableSelect,
     TextArea
-} from "../../../lib/form";
+} from "../lib/form";
 import "brace/mode/html";
 import "brace/mode/json";
 import moment from "moment";
-import {TableSelectMode} from "../../../lib/table";
+import {TableSelectMode} from "../lib/table";
 import styles from "./ParamTypes.scss";
-import {getFieldsetPrefix, parseCardinality, resolveAbs} from "../../../../../shared/templates";
-import {getSignalTypes} from "../../signal-sets/signals/signal-types";
+import {getSignalTypes} from "../settings/signal-sets/signals/signal-types";
 import {rgb} from "d3-color";
+import {getFieldsetPrefix, parseCardinality, resolveAbs} from "../../../shared/param-types-helpers";
 
 export default class ParamTypes {
-    constructor(t, prefix) {
+    constructor(t, prefix, formPrefix) {
         this.paramTypes = {};
-        this.prefix = prefix;
+        this.idPrefix = prefix != null ? prefix : 'param_';
+        this.rootFormPrefix = formPrefix;
+        if (formPrefix && formPrefix.charAt(formPrefix.length - 1) === '/') {
+            this.rootFormPrefix = formPrefix.slice(0, -1);
+        }
         this.taskParamTypesMap = {};
         // ---------------------------------------------------------------------
         // Helpers
@@ -344,30 +348,44 @@ export default class ParamTypes {
 
         this.paramTypes.taskParams = {
             adopt: (prefix, spec, state) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                this.taskParams[formId] = new ParamTypes(t, formId);
-                state.setIn([formId, 'value'], null);
+                /*
+                const formId = this.getParamFormId(idPrefix, spec.id);
+                const paramTypes = this.taskParamTypesMap[formId];
+                 */
             },
             setFields: (prefix, spec, param, data) => {
-                const paramTypes = new ParamTypes(t, spec.id);
-                data[this.getParamFormId(prefix, spec.id)] = paramTypes;
-                this.getSanitizedParamType(spec.type).setFields('/', spec, config[spec.id], data);
-
-                if (spec.taskRef) {
-                    const taskFormId = this.getParamFormId(prefix, spec.taskRef);
+                const formId = this.getParamFormId(prefix, spec.id);
+                const paramTypes = this.taskParamTypesMap[formId];
+                const taskParams = data[formId];
+                if (paramTypes && taskParams) {
+                    paramTypes.setFields(taskParams, param, data);
                 }
-                paramTypes.setFields(data.taskParams, data.params, data);
+
             },
-            getParams: getParamsFromField,
-            validate: this.paramTypes.signalSet.validate,
+            getParams: (prefix, spec, data) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                const paramTypes = this.taskParamTypesMap[formId];
+                const taskParams = data[formId];
+                if (paramTypes && taskParams) {
+                    return paramTypes.getParams(taskParams, data);
+                } else {
+                    return null;
+                }
+            },
+            validate: (prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                const paramTypes = this.taskParamTypesMap[formId];
+                const taskParams = state.getIn([formId,'value']);
+                if (paramTypes && taskParams) {
+                    return paramTypes.validate(taskParams, state);
+                }
+            },
             onChange: (prefix, spec, state, key, oldVal, newVal) => {
-                if (spec.taskRef) {
-                    const taskFormId = this.getParamFormId(prefix, spec.taskRef);
-                    if (key === taskFormId && oldVal !== newVal) {
-                        const formId = this.getParamFormId(prefix, spec.id);
-                        state.setIn([formId, 'value'], null);
-                        this.taskParams[formId] = null;
-                    }
+                const formId = this.getParamFormId(prefix, spec.id);
+                const paramTypes = this.taskParamTypesMap[formId];
+                const taskParams = state.getIn([formId,'value']);
+                if (paramTypes && taskParams) {
+                    return paramTypes.onChange(taskParams, state, key, oldVal, newVal);
                 }
             },
             render: (self, prefix, spec) => {
@@ -379,10 +397,13 @@ export default class ParamTypes {
 
                 const formId = this.getParamFormId(prefix, spec.id);
                 return (
-                    <ParamsLoader taskId={taskId} paramTypesRef={paramTypes => this.taskParamTypesMap[formId] = paramTypes}/>
+                    <ParamsLoader taskId={taskId} prefix={formId}
+                                  paramTypesRef={paramTypes => this.taskParamTypesMap[formId] = paramTypes}/>
                 );
             },
-            upcast: this.paramTypes.signalSet.upcast
+            upcast: (configSpec, spec) => {
+                // Need to get lodead config somehow, but there is no way to get that in upcast right now
+            }
         };
 
         /*
@@ -491,8 +512,10 @@ export default class ParamTypes {
                         }
                     } else {
                         params = [];
-                        for (const entryId of childEntries) {
-                            params.push(getChildParams(entryId));
+                        if (childEntries) {
+                            for (const entryId of childEntries) {
+                                params.push(getChildParams(entryId));
+                            }
                         }
                     }
                 }
@@ -875,8 +898,9 @@ export default class ParamTypes {
     }
 
     getParamFormId(prefix, paramId) {
-        const abs = paramId ? resolveAbs(prefix, paramId) : prefix;
-        const idPrefix = this.prefix ? this.prefix + '_' : '';
-        return idPrefix + 'param_' + abs;
+        const rootPrefix = this.rootFormPrefix ? this.rootFormPrefix : '';
+        const paramPrefix = rootPrefix + prefix;
+        const abs = paramId ? resolveAbs(paramPrefix, paramId) : paramPrefix;
+        return this.idPrefix + abs;
     }
 }
