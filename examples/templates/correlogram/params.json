@@ -1,0 +1,26 @@
+[
+  {
+    "id": "sigSet",
+    "label": "Signal Set",
+    "type": "signalSet"
+  },
+  {
+    "id": "signals",
+    "label": "Signals",
+    "cardinality": "2..n",
+    "type": "fieldset",
+    "children": [
+      {
+        "id": "label",
+        "label": "Label",
+        "type": "string"
+      },
+      {
+        "id": "sigCid",
+        "label": "Signal",
+        "type": "signal",
+        "signalSetRef": "/sigSet"
+      }
+    ]
+  }
+]
