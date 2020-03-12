@@ -13,16 +13,16 @@ import * as d3Interpolate from "d3-interpolate";
 import * as d3Color from "d3-color";
 import * as d3Scheme from "d3-scale-chromatic";
 import {event as d3Event, select} from "d3-selection";
-import {intervalAccessMixin} from "../TimeContext";
-import {DataAccessSession} from "../DataAccess";
-import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
+import {intervalAccessMixin} from "./TimeContext";
+import {DataAccessSession} from "./DataAccess";
+import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
-import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
-import {Tooltip} from "../Tooltip";
-import {Button, CheckBox, Form, InputField, withForm} from "../../lib/form";
+import {withComponentMixins} from "../lib/decorator-helpers";
+import {withTranslation} from "../lib/i18n";
+import {Tooltip} from "./Tooltip";
+import {Button, CheckBox, Form, InputField, withForm} from "../lib/form";
 import styles from "./CorrelationCharts.scss";
-import {ActionLink, Icon} from "../../lib/bootstrap-components";
+import {ActionLink, Icon} from "../lib/bootstrap-components";
 import {
     distance,
     extentWithMargin,
@@ -32,9 +32,9 @@ import {
     isSignalVisible,
     ModifyColorCopy,
     roundTo, setZoomTransform, transitionInterpolate, WheelDelta
-} from "../common";
-import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
-import {dotShapes, dotShapeNames} from "../dot_shapes";
+} from "./common";
+import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
+import {dotShapes, dotShapeNames} from "./dot_shapes";
 
 const ConfigDifference = {
     NONE: 0,

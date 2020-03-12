@@ -15,7 +15,7 @@ import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color, PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {Tooltip} from "./Tooltip";
 import {extentWithMargin, transitionInterpolate, WheelDelta} from "./common";
-import styles from "./correlation_charts/CorrelationCharts.scss";
+import styles from "./CorrelationCharts.scss";
 
 class TooltipContent extends Component {
     constructor(props) {

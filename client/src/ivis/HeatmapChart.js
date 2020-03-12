@@ -7,23 +7,23 @@ import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import {select} from "d3-selection";
-import {intervalAccessMixin} from "../TimeContext";
-import {DataAccessSession} from "../DataAccess";
-import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
+import {intervalAccessMixin} from "./TimeContext";
+import {DataAccessSession} from "./DataAccess";
+import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
-import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
-import {Tooltip} from "../Tooltip";
-import {Icon} from "../../lib/bootstrap-components";
+import {withComponentMixins} from "../lib/decorator-helpers";
+import {withTranslation} from "../lib/i18n";
+import {Tooltip} from "./Tooltip";
+import {Icon} from "../lib/bootstrap-components";
 import {
     brushHandlesLeftRight,
     brushHandlesTopBottom,
     getColorScale, setZoomTransform,
     transitionInterpolate,
     WheelDelta
-} from "../common";
+} from "./common";
 import styles from "./CorrelationCharts.scss";
-import {PropType_d3Color} from "../../lib/CustomPropTypes";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 import * as d3Brush from "d3-brush";
 import {event as d3Event} from "d3-selection";
 import * as d3Zoom from "d3-zoom";

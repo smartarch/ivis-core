@@ -18,7 +18,7 @@ import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
-import styles from "./correlation_charts/CorrelationCharts.scss";
+import styles from "./CorrelationCharts.scss";
 import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 

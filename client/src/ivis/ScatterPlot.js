@@ -1,13 +1,13 @@
 'use strict';
 
 import React, {Component} from "react";
-import {withErrorHandling} from "../../lib/error-handling";
+import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
-import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withComponentMixins} from "../lib/decorator-helpers";
+import {withTranslation} from "../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
-import {PropType_d3Color_Required} from "../../lib/CustomPropTypes";
-import {dotShapeNames} from "../dot_shapes";
+import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
+import {dotShapeNames} from "./dot_shapes";
 
 @withComponentMixins([
     withTranslation,
