@@ -10,7 +10,7 @@ import {
 } from "../ivis/ivis";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
-import {ScatterPlot} from "../ivis/correlation_charts/ScatterPlot";
+import {ScatterPlot} from "../ivis/ScatterPlot";
 
 const sensorsStructure = [
     {
@@ -41,13 +41,13 @@ const sensorsConfigSpec = {
             "type": "signalSet"
         },
         {
-            "id": "X_sigCid",
+            "id": "x_sigCid",
             "label": "Signal X",
             "type": "signal",
             "signalSetRef": "signalSet"
         },
         {
-            "id": "Y_sigCid",
+            "id": "y_sigCid",
             "label": "Signal Y",
             "type": "signal",
             "signalSetRef": "signalSet"
@@ -59,12 +59,12 @@ const sensorsConfigSpec = {
             "default": true
         },
         {
-            "id": "X_label",
+            "id": "x_label",
             "label": "X Label",
             "type": "string"
         },
         {
-            "id": "Y_label",
+            "id": "y_label",
             "label": "Y Label",
             "type": "string"
         }
@@ -120,24 +120,24 @@ export default class SamplePanel_ScatterPlot extends Component {
             sensors: [
                 {
                     signalSet: "top:random",
-                    X_sigCid: "x_val",
-                    Y_sigCid: "y_val",
+                    x_sigCid: "x_val",
+                    y_sigCid: "y_val",
                     color: rgb(219, 0, 0),
                     label: "Random",
                     enabled: true,
-                    X_label: "X value",
-                    Y_label: "Y value",
+                    x_label: "X value",
+                    y_label: "Y value",
                     tsSigCid: "ts"
                 },
                 {
                     signalSet: "top:random_correlated",
-                    X_sigCid: "x_val",
-                    Y_sigCid: "y_val",
+                    x_sigCid: "x_val",
+                    y_sigCid: "y_val",
                     color: rgb(0, 0, 219),
                     label: "Correlated",
                     enabled: true,
-                    X_label: "X value",
-                    Y_label: "Y value",
+                    x_label: "X value",
+                    y_label: "Y value",
                     regressions: [{
                         type: "linear",
                         color: rgb(0, 0, 169)

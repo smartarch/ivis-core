@@ -62,8 +62,8 @@ function compareSignalSetConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
 
     if (conf1.cid !== conf2.cid ||
-        conf1.X_sigCid !== conf2.X_sigCid ||
-        conf1.Y_sigCid !== conf2.Y_sigCid ||
+        conf1.x_sigCid !== conf2.x_sigCid ||
+        conf1.y_sigCid !== conf2.y_sigCid ||
         conf1.dotSize_sigCid !== conf2.dotSize_sigCid ||
         conf1.colorContinuous_sigCid !== conf2.colorContinuous_sigCid ||
         conf1.colorDiscrete_sigCid !== conf2.colorDiscrete_sigCid ||
@@ -72,10 +72,10 @@ function compareSignalSetConfigs(conf1, conf2) {
     } else if (conf1.color !== conf2.color ||
                conf1.enabled !== conf2.enabled ||
                conf1.label !== conf2.label ||
-               conf1.X_label !== conf2.X_label ||
-               conf1.Y_label !== conf2.Y_label ||
-               conf1.Size_label !== conf2.Size_label ||
-               conf1.Color_label !== conf2.Color_label ||
+               conf1.x_label !== conf2.x_label ||
+               conf1.y_label !== conf2.y_label ||
+               conf1.dotSize_label !== conf2.dotSize_label ||
+               conf1.color_label !== conf2.color_label ||
                conf1.regressions !== conf2.regressions) {
         diffResult = ConfigDifference.RENDER;
     }
@@ -90,8 +90,15 @@ class TooltipContent extends Component {
 
     static propTypes = {
         config: PropTypes.object.isRequired,
-        selection: PropTypes.object
+        selection: PropTypes.object,
+        labels: PropTypes.object
     };
+
+    hasLabel(cid, label) {
+        if (this.props.labels && this.props.labels[cid] && this.props.labels[cid][label] === null)
+            return false;
+        return true;
+    }
 
     getLabel(cid, label, defaultLabel) {
         if (this.props.labels && this.props.labels[cid] && this.props.labels[cid][label])
@@ -109,16 +116,16 @@ class TooltipContent extends Component {
                     tooltipHTML.push((
                         <div key={cid}>
                             <div><b>{this.getLabel(cid, "label", cid)}</b></div>
-                            <div>{this.getLabel(cid, "X_label", "x")}: {dot.x}</div>
-                            <div>{this.getLabel(cid, "Y_label", "y")}: {dot.y}</div>
-                            {dot.s && (
-                                <div>{this.getLabel(cid, "Size_label", "size")}: {dot.s}</div>
+                            {this.hasLabel(cid, "x_label") && <div>{this.getLabel(cid, "x_label", "x")}: {dot.x}</div>}
+                            {this.hasLabel(cid, "y_label") && <div>{this.getLabel(cid, "y_label", "y")}: {dot.y}</div>}
+                            {dot.s && this.hasLabel(cid, "dotSize_label") && (
+                                <div>{this.getLabel(cid, "dotSize_label", "size")}: {dot.s}</div>
                             )}
-                            {dot.c && (
-                                <div>{this.getLabel(cid, "Color_label", "color")}: {dot.c}</div>
+                            {dot.c && this.hasLabel(cid, "color_label") && (
+                                <div>{this.getLabel(cid, "color_label", "color")}: {dot.c}</div>
                             )}
-                            {dot.d && (
-                                <div>{this.getLabel(cid, "Color_label", "category")}: {dot.d}</div>
+                            {dot.d && this.hasLabel(cid, "color_label") && (
+                                <div>{this.getLabel(cid, "color_label", "category")}: {dot.d}</div>
                             )}
                         </div>
                     ));
@@ -318,22 +325,23 @@ export class ScatterPlotBase extends Component {
         config: PropTypes.shape({
             signalSets: PropTypes.arrayOf(PropTypes.shape({
                 cid: PropTypes.string.isRequired,
-                X_sigCid: PropTypes.string.isRequired,
-                Y_sigCid: PropTypes.string.isRequired,
+                x_sigCid: PropTypes.string.isRequired,
+                y_sigCid: PropTypes.string.isRequired,
                 dotSize_sigCid: PropTypes.string, // used for BubblePlot
                 colorContinuous_sigCid: PropTypes.string,
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
+                label_sigCid: PropTypes.string,
                 color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
                 dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
                 dotSize: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
-                X_label: PropTypes.string,
-                Y_label: PropTypes.string,
-                Size_label: PropTypes.string, // for BubblePlot
-                Color_label: PropTypes.string,
+                x_label: PropTypes.string,
+                y_label: PropTypes.string,
+                dotSize_label: PropTypes.string, // for BubblePlot
+                color_label: PropTypes.string,
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
@@ -353,6 +361,7 @@ export class ScatterPlotBase extends Component {
         colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
+        colorValues: PropTypes.array,
         highlightDotSize: PropTypes.number, // radius multiplier
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
@@ -442,7 +451,7 @@ export class ScatterPlotBase extends Component {
             const prevSpec = this.getIntervalSpec(prevProps);
 
             if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
+                configDiff = Math.max(configDiff, ConfigDifference.DATA);
             } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
                 configDiff = Math.max(configDiff, ConfigDifference.DATA);
             }
@@ -548,25 +557,25 @@ export class ScatterPlotBase extends Component {
             if (!isNaN(xMin))
                 filter.children.push({
                     type: "range",
-                    sigCid: signalSet.X_sigCid,
+                    sigCid: signalSet.x_sigCid,
                     gte: xMin
                 });
             if (!isNaN(xMax))
                 filter.children.push({
                     type: "range",
-                    sigCid: signalSet.X_sigCid,
+                    sigCid: signalSet.x_sigCid,
                     lte: xMax
                 });
             if (!isNaN(yMin))
                 filter.children.push({
                     type: "range",
-                    sigCid: signalSet.Y_sigCid,
+                    sigCid: signalSet.y_sigCid,
                     gte: yMin
                 });
             if (!isNaN(yMax))
                 filter.children.push({
                     type: "range",
-                    sigCid: signalSet.Y_sigCid,
+                    sigCid: signalSet.y_sigCid,
                     lte: yMax
                 });
 
@@ -575,14 +584,13 @@ export class ScatterPlotBase extends Component {
                 limit = this.state.maxDotCount;
             }
 
-            let signals = [signalSet.X_sigCid, signalSet.Y_sigCid];
+            let signals = [signalSet.x_sigCid, signalSet.y_sigCid];
             if (signalSet.dotSize_sigCid)
                 signals.push(signalSet.dotSize_sigCid);
             if (signalSet.colorContinuous_sigCid)
                 signals.push(signalSet.colorContinuous_sigCid);
             if (signalSet.colorDiscrete_sigCid) {
                 signals.push(signalSet.colorDiscrete_sigCid);
-
                 if (!queryWithRangeFilter) {
                     const aggs = [{
                         sigCid: signalSet.colorDiscrete_sigCid,
@@ -595,6 +603,8 @@ export class ScatterPlotBase extends Component {
                     aggsQueriesSignalSetIndices.push(i);
                 }
             }
+            if (signalSet.label_sigCid)
+                signals.push(signalSet.label_sigCid);
 
             queries.push({
                 type: "docs",
@@ -605,8 +615,8 @@ export class ScatterPlotBase extends Component {
                 const summary = {
                     signals: {}
                 };
-                summary.signals[signalSet.X_sigCid] = ["min", "max"];
-                summary.signals[signalSet.Y_sigCid] = ["min", "max"];
+                summary.signals[signalSet.x_sigCid] = ["min", "max"];
+                summary.signals[signalSet.y_sigCid] = ["min", "max"];
                 if (signalSet.dotSize_sigCid)
                     summary.signals[signalSet.dotSize_sigCid] = ["min", "max"];
                 if (signalSet.colorContinuous_sigCid)
@@ -623,6 +633,7 @@ export class ScatterPlotBase extends Component {
 
     @withAsyncErrorHandler
     async fetchData(xMin, xMax, yMin, yMax) {
+        this.setState({statusMsg: this.props.t('Loading...')});
         try {
             const [queries, queryWithRangeFilter, aggsQueriesSignalSetIndices] = this.getQueries(xMin, xMax, yMin, yMax);
             const results = await this.dataAccessSession.getLatestMixed(queries);
@@ -638,10 +649,10 @@ export class ScatterPlotBase extends Component {
                         this.yExtent = getExtent(processedResults, function (d) {  return d.y });
                     else {
                         const yMin = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
-                            return summary[this.props.config.signalSets[i].Y_sigCid].min;
+                            return summary[this.props.config.signalSets[i].y_sigCid].min;
                         });
                         const yMax = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
-                            return summary[this.props.config.signalSets[i].Y_sigCid].max;
+                            return summary[this.props.config.signalSets[i].y_sigCid].max;
                         });
                         this.yExtent = [yMin, yMax];
                     }
@@ -654,10 +665,10 @@ export class ScatterPlotBase extends Component {
                         this.xExtent = getExtent(processedResults, function (d) {  return d.x });
                     else {
                         const xMin = d3Array.min(summaries, (summary, i) => {
-                            return summary[this.props.config.signalSets[i].X_sigCid].min;
+                            return summary[this.props.config.signalSets[i].x_sigCid].min;
                         });
                         const xMax = d3Array.min(summaries, (summary, i) => {
-                            return summary[this.props.config.signalSets[i].X_sigCid].max;
+                            return summary[this.props.config.signalSets[i].x_sigCid].max;
                         });
                         this.xExtent = [xMin, xMax];
                     }
@@ -692,14 +703,18 @@ export class ScatterPlotBase extends Component {
                     for (const [j, res] of results.filter((_, i) => queries[i].type === "aggs").entries()) {
                         const buckets = res[0].buckets;
                         const i = aggsQueriesSignalSetIndices[j];
-                        this.dExtents[i] = buckets.map(b => b.key);
+                        if (this.props.colorValues && this.props.colorValues.length)
+                            this.dExtents[i] = this.props.colorValues;
+                        else
+                            this.dExtents[i] = buckets.map(b => b.key);
                     }
                     this.dExtent = [...new Set(this.dExtents.flat())]; // get all keys in extents and then keeps only unique values
                     //</editor-fold>
                 }
 
                 this.setState({
-                    signalSetsData: processedResults
+                    signalSetsData: processedResults,
+                    statusMsg: "",
                 });
 
                 if (!queryWithRangeFilter) { // zoomed completely out
@@ -738,125 +753,127 @@ export class ScatterPlotBase extends Component {
         }
 
         const noData = !signalSetsData.some(d => d.length > 0);
-        this.setState({noData});
-        if (noData) {
-            this.statusMsgSelection.text(this.props.t('No data.'));
-
-            this.brushParentSelection
-                .on('mouseenter', null)
-                .on('mousemove', null)
-                .on('mouseleave', null);
-
-            this.brush = null;
-            this.zoom = null;
-
-            return;
-        }
-
-        this.statusMsgSelection.text("");
-        this.updateLabels();
-
-        const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
-        const xSize = width - this.props.margin.left - this.props.margin.right;
-        const SignalSetsConfigs = this.props.config.signalSets;
-
-        //<editor-fold desc="X and Y Scales">
-        // y Scale
-        const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
-            .domain(this.yExtent)
-            .range([ySize, 0]));
-        this.yScale = yScale;
-        const yAxis = d3Axis.axisLeft(yScale);
-        this.yAxisSelection.call(yAxis);
-
-        // x Scale
-        const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
-            .domain(this.xExtent)
-            .range([0, xSize]));
-        this.xScale = xScale;
-        const xAxis = d3Axis.axisBottom(xScale);
-        this.xAxisSelection.call(xAxis);
-        //</editor-fold>
-
-        // data filtering
-        const filteredData = this.filterData(signalSetsData, xScale.domain(), yScale.domain());
-        const filteredGlobalData = this.filterData(globalSignalSetsData, xScale.domain(), yScale.domain());
-
-        //<editor-fold desc="Size and Color Scales">
-        // s Scale (dot size)
-        let sScale = undefined;
-        if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
-            let sExtent = this.sExtent;
-            if (this.props.updateSizeOnZoom) {
-                const allFilteredData = filteredData.concat(filteredGlobalData);
-                if (allFilteredData.length > 1) {
-                    sExtent = this.getSExtent_notFlat(allFilteredData);
-                }
+        const newState = noData ? { noData, statusMsg: this.props.t('No data.') } : { noData };
+        this.setState(newState, () => {
+            if (noData) {
+                this.clearChart();
+                return;
             }
 
-            sScale = d3Scale.scaleSqrt()
-                .domain(sExtent)
-                .range([this.props.minDotSize, this.props.maxDotSize]);
-        }
+            this.updateLabels();
 
-        // c Scale (color)
-        let cScales = [];
-        let cExtents = this.cExtents, cExtent = this.cExtent;
-        if (this.props.updateColorOnZoom && SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid"))) {
-            // recompute extents on filtered data
+            const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
+            const xSize = width - this.props.margin.left - this.props.margin.right;
+            const SignalSetsConfigs = this.props.config.signalSets;
+
+            //<editor-fold desc="X and Y Scales">
+            // y Scale
+            const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
+                .domain(this.yExtent)
+                .range([ySize, 0]));
+            this.yScale = yScale;
+            const yAxis = d3Axis.axisLeft(yScale);
+            this.yAxisSelection.call(yAxis);
+
+            // x Scale
+            const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
+                .domain(this.xExtent)
+                .range([0, xSize]));
+            this.xScale = xScale;
+            const xAxis = d3Axis.axisBottom(xScale);
+            this.xAxisSelection.call(xAxis);
+            //</editor-fold>
+
+            // data filtering
+            const filteredData = this.filterData(signalSetsData, xScale.domain(), yScale.domain());
+            const filteredGlobalData = this.filterData(globalSignalSetsData, xScale.domain(), yScale.domain());
+
+            //<editor-fold desc="Size and Color Scales">
+            // s Scale (dot size)
+            let sScale = undefined;
+            if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
+                let sExtent = this.sExtent;
+                if (this.props.updateSizeOnZoom) {
+                    const allFilteredData = filteredData.concat(filteredGlobalData);
+                    if (allFilteredData.length > 1) {
+                        sExtent = this.getSExtent_notFlat(allFilteredData);
+                    }
+                }
+
+                sScale = d3Scale.scaleSqrt()
+                    .domain(sExtent)
+                    .range([this.props.minDotSize, this.props.maxDotSize]);
+            }
+
+            // c Scale (color)
+            let cScales = [];
+            let cExtents = this.cExtents, cExtent = this.cExtent;
+            if (this.props.updateColorOnZoom && SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid"))) {
+                // recompute extents on filtered data
+                for (let i = 0; i < filteredData.length; i++) {
+                    if (SignalSetsConfigs[i].hasOwnProperty("colorContinuous_sigCid")) {
+                        const allFilteredData = filteredData[i].concat(filteredGlobalData[i]);
+                        if (allFilteredData.length > 1)
+                            cExtents[i] = this.getCExtent(allFilteredData);
+                    }
+                }
+                cExtent = [d3Array.min(cExtents, ex => ex[0]), d3Array.max(cExtents, ex => ex[1])];
+            }
             for (let i = 0; i < filteredData.length; i++) {
-                if (SignalSetsConfigs[i].hasOwnProperty("colorContinuous_sigCid")) {
-                    const allFilteredData = filteredData[i].concat(filteredGlobalData[i]);
-                    if (allFilteredData.length > 1)
-                        cExtents[i] = this.getCExtent(allFilteredData);
+                const signalSetConfig = SignalSetsConfigs[i];
+                if (signalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
+                    if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
+                        cScales.push(getColorScale(cExtents[i], signalSetConfig.color));
+                    else
+                        cScales.push(getColorScale(cExtent, this.props.colors));
+                } else if (signalSetConfig.hasOwnProperty("colorDiscrete_sigCid")) {
+                    if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0) {
+                        const dExtent = this.dExtents[i];
+                        if (dExtent.length > signalSetConfig.color.length)
+                            console.warn("More values than colors in signal set config " + i + ". Colors will be repeated."); // TODO better warning
+                        cScales.push(d3Scale.scaleOrdinal(dExtent, signalSetConfig.color));
+                    } else {
+                        if (this.dExtent.length > this.props.colors.length)
+                            console.warn("More values than colors in props. Colors will be repeated."); // TODO better warning
+                        cScales.push(d3Scale.scaleOrdinal(this.dExtent, this.props.colors));
+                    }
+                } else {
+                    let color = this.getColor(i);
+                    cScales.push(_ => color);
                 }
             }
-            cExtent = [ d3Array.min(cExtents, ex => ex[0]), d3Array.max(cExtents, ex => ex[1]) ];
-        }
-        for (let i = 0; i < filteredData.length; i++) {
-            const signalSetConfig = SignalSetsConfigs[i];
-            if (signalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
-                if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
-                    cScales.push(getColorScale(cExtents[i], signalSetConfig.color));
-                else
-                    cScales.push(getColorScale(cExtent, this.props.colors));
-            }
-            else if (signalSetConfig.hasOwnProperty("colorDiscrete_sigCid")) {
-                if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0) {
-                    const dExtent = this.dExtents[i];
-                    if (dExtent.length > signalSetConfig.color.length)
-                        console.warn("More values than colors in signal set config " + i + ". Colors will be repeated."); // TODO better warning
-                    cScales.push(d3Scale.scaleOrdinal(dExtent, signalSetConfig.color));
-                }
-                else {
-                    if (this.dExtent.length > this.props.colors.length)
-                        console.warn("More values than colors in props. Colors will be repeated."); // TODO better warning
-                    cScales.push(d3Scale.scaleOrdinal(this.dExtent, this.props.colors));
-                }
-            }
-            else {
-                let color = this.getColor(i);
-                cScales.push(_ => color);
-            }
-        }
-        //</editor-fold>
+            //</editor-fold>
 
-        // draw data
-        for (let i = 0; i < filteredData.length; i++) {
-            const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
-            this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
-            this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotGlobalShape || ScatterPlotBase.defaultDotGlobalShape, c => ModifyColorCopy(c, 0.5));
-        }
-        this.drawRegressions(xScale, yScale, cScales);
+            // draw data
+            for (let i = 0; i < filteredData.length; i++) {
+                const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
+                this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
+                this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotGlobalShape || ScatterPlotBase.defaultDotGlobalShape, c => ModifyColorCopy(c, 0.5));
+            }
+            this.drawRegressions(xScale, yScale, cScales);
 
-        this.createChartCursor(xScale, yScale, sScale, cScales, filteredData);
+            this.createChartCursor(xScale, yScale, sScale, cScales, filteredData);
 
-        // we don't want to change brush and zoom when updating only zoom (it breaks touch drag)
-        if (forceRefresh || widthChanged) {
-            this.createChartBrush();
-            if (this.props.withZoom)
-                this.createChartZoom(xSize, ySize);
-        }
+            // we don't want to change brush and zoom when updating only zoom (it breaks touch drag)
+            if (forceRefresh || widthChanged) {
+                this.createChartBrush();
+                if (this.props.withZoom)
+                    this.createChartZoom(xSize, ySize);
+            }
+        });
+    }
+
+    clearChart() {
+
+
+        this.brushParentSelection
+            .on('mouseenter', null)
+            .on('mousemove', null)
+            .on('mouseleave', null);
+
+        this.brush = null;
+        this.zoom = null;
+
     }
 
     //<editor-fold desc="Data processing">
@@ -872,8 +889,8 @@ export class ScatterPlotBase extends Component {
             let data = [];
             for (const d of signalSetsData[i]) {
                 let d1 = {
-                    x: d[signalSetConfig.X_sigCid],
-                    y: d[signalSetConfig.Y_sigCid]
+                    x: d[signalSetConfig.x_sigCid],
+                    y: d[signalSetConfig.y_sigCid]
                 };
                 if (signalSetConfig.dotSize_sigCid)
                     d1.s = d[signalSetConfig.dotSize_sigCid];
@@ -881,6 +898,8 @@ export class ScatterPlotBase extends Component {
                     d1.c = d[signalSetConfig.colorContinuous_sigCid];
                 if (signalSetConfig.colorDiscrete_sigCid)
                     d1.d = d[signalSetConfig.colorDiscrete_sigCid];
+                if (signalSetConfig.label_sigCid)
+                    d1.label = d[signalSetConfig.label_sigCid];
                 data.push(d1);
             }
             ret.push(data);
@@ -920,16 +939,16 @@ export class ScatterPlotBase extends Component {
         for (let i = 0; i < this.props.config.signalSets.length; i++) {
             const signalSetConfig = this.props.config.signalSets[i];
             this.labels[signalSetConfig.cid + "-" + i] = {};
-            if (signalSetConfig.label)
+            if (signalSetConfig.label !== undefined)
                 this.labels[signalSetConfig.cid + "-" + i].label = signalSetConfig.label;
-            if (signalSetConfig.X_label)
-                this.labels[signalSetConfig.cid + "-" + i].X_label = signalSetConfig.X_label;
-            if (signalSetConfig.Y_label)
-                this.labels[signalSetConfig.cid + "-" + i].Y_label = signalSetConfig.Y_label;
-            if (signalSetConfig.Size_label)
-                this.labels[signalSetConfig.cid + "-" + i].Size_label = signalSetConfig.Size_label;
-            if (signalSetConfig.Color_label)
-                this.labels[signalSetConfig.cid + "-" + i].Color_label = signalSetConfig.Color_label;
+            if (signalSetConfig.x_label !== undefined)
+                this.labels[signalSetConfig.cid + "-" + i].x_label = signalSetConfig.x_label;
+            if (signalSetConfig.y_label !== undefined)
+                this.labels[signalSetConfig.cid + "-" + i].y_label = signalSetConfig.y_label;
+            if (signalSetConfig.dotSize_label !== undefined)
+                this.labels[signalSetConfig.cid + "-" + i].dotSize_label = signalSetConfig.dotSize_label;
+            if (signalSetConfig.color_label !== undefined)
+                this.labels[signalSetConfig.cid + "-" + i].color_label = signalSetConfig.color_label;
         }
     }
 
@@ -1205,6 +1224,13 @@ export class ScatterPlotBase extends Component {
                     /*self.dotHighlightSelections[signalSetCidIndex]
                         .attr('stroke', "black")
                         .attr("stroke-width", "1px");*/
+
+                    // noinspection JSUnresolvedVariable
+                    if (newSelection.label)
+                        if (signalSetConfig.label)
+                            self.labels[signalSetCidIndex].label = signalSetConfig.label + ": " + newSelection.label;
+                        else
+                            self.labels[signalSetCidIndex].label = newSelection.label;
                 }
 
                 newSelections[signalSetCidIndex] = newSelection;
@@ -1508,7 +1534,7 @@ export class ScatterPlotBase extends Component {
     //</editor-fold>
 
     render() {
-        if (!this.state.signalSetsData) {
+        if (this.state.noData) {
             return (
                 <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
                     <text textAnchor="middle" x="50%" y="50%"
@@ -1539,7 +1565,7 @@ export class ScatterPlotBase extends Component {
 
             return (
                 <div>
-                    {this.props.withToolbar && !this.state.noData &&
+                    {this.props.withToolbar &&
                     <ScatterPlotToolbar resetZoomClick={::this.resetZoom}
                                         zoomInClick={this.props.withZoom ? ::this.zoomIn : undefined}
                                         zoomOutClick={this.props.withZoom ? ::this.zoomOut : undefined}
@@ -1593,9 +1619,10 @@ export class ScatterPlotBase extends Component {
                                   visibility="hidden"/> }
 
                             {/* status message */}
-                            <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%"
-                                  y="50%"
-                                  fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
+                            <text textAnchor="middle" x="50%" y="50%"
+                                  fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                                {this.state.statusMsg}
+                            </text>
 
                             {/* tooltip */}
                             {this.state.withTooltip && !this.state.zoomInProgress &&

@@ -6,7 +6,7 @@ import {TimeContext} from "../ivis/TimeContext";
 import {rgb} from "d3-color";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
-import {HeatmapChart} from "../ivis/correlation_charts/HeatmapChart";
+import {HeatmapChart} from "../ivis/HeatmapChart";
 import {IntervalSpec} from "../ivis/TimeInterval";
 
 class TestHeatmapChart extends Component {
@@ -19,8 +19,8 @@ class TestHeatmapChart extends Component {
 
         const cnf = {
             sigSetCid: "top:bubble",
-            X_sigCid: "x",
-            Y_sigCid: "a",
+            x_sigCid: "x",
+            y_sigCid: "a",
             tsSigCid: "ts",
             colors: [rgb(255, 255, 255), rgb(0, 87, 219)]
         };
@@ -34,6 +34,7 @@ class TestHeatmapChart extends Component {
                         margin={{left: 30, right: 5, top: 5, bottom: 30}}
                         overviewLeftMargin={{left: 0, right: 0}}
                         overviewBottomMargin={{top: 0, bottom: 0}}
+                        withOverviewLeftBrush={false}
                     />
             </TimeContext>
         );

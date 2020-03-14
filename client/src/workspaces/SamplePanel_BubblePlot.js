@@ -4,12 +4,11 @@ import React, {Component} from "react";
 import {Panel} from "../lib/panel";
 import {rgb} from "d3-color";
 import {
-    Legend,
-    LegendPosition, withPanelConfig,
+    Legend, withPanelConfig,
 } from "../ivis/ivis";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
-import {BubblePlot} from "../ivis/correlation_charts/BubblePlot";
+import {BubblePlot} from "../ivis/BubblePlot";
 
 const sensorsStructure = [
     {
@@ -40,13 +39,13 @@ const sensorsConfigSpec = {
             "type": "signalSet"
         },
         {
-            "id": "X_sigCid",
+            "id": "x_sigCid",
             "label": "Signal X",
             "type": "signal",
             "signalSetRef": "signalSet"
         },
         {
-            "id": "Y_sigCid",
+            "id": "y_sigCid",
             "label": "Signal Y",
             "type": "signal",
             "signalSetRef": "signalSet"
@@ -64,17 +63,17 @@ const sensorsConfigSpec = {
             "default": true
         },
         {
-            "id": "X_label",
+            "id": "x_label",
             "label": "X Label",
             "type": "string"
         },
         {
-            "id": "Y_label",
+            "id": "y_label",
             "label": "Y Label",
             "type": "string"
         },
         {
-            "id": "Size_label",
+            "id": "dotSize_label",
             "label": "Size Label",
             "type": "string"
         }
@@ -105,10 +104,13 @@ class TestBubblePlot extends Component {
             <div>
                 <Legend label="Sensors" configPath={['sensors']} withSelector structure={sensorsStructure} withConfigurator configSpec={sensorsConfigSpec}/>
                 <BubblePlot config={cnf}
-                            height={400} width={400}
+                            height={400}
                             margin={{ left: 40, right: 5, top: 5, bottom: 20 }}
                             maxDotCount={10}
                             highlightDotRadius={1}
+                            //updateSizeOnZoom={true}
+                            updateColorOnZoom={true}
+                            yAxisExtentFromSampledData={true}
                              />
             </div>
         );
@@ -126,13 +128,27 @@ export default class SamplePanel_BubblePlot extends Component {
             sensors: [
                 {
                     signalSet: "top:bubble",
-                    X_sigCid: "x",
-                    Y_sigCid: "y",
-                    color: [rgb(200, 12, 0), rgb(200, 12, 0), rgb(0, 0, 219)],
+                    x_sigCid: "x",
+                    y_sigCid: "y",
+                    color: [rgb(100, 150, 255), rgb(0, 0, 219)],
                     label: "Bubble",
                     enabled: true,
                     dotSize_sigCid: "z",
-                    color_sigCid: "w"
+                    colorContinuous_sigCid: "w",
+                    dotShape: "cross_fat",
+                    dotGlobalShape: "cross_fat"
+                },
+                {
+                    signalSet: "top:bubble",
+                    x_sigCid: "y",
+                    y_sigCid: "x",
+                    color: [rgb(255, 150, 100), rgb(200, 0, 29)],
+                    label: "Bubble",
+                    enabled: true,
+                    dotSize_sigCid: "w",
+                    colorContinuous_sigCid: "z",
+                    dotShape: "square",
+                    dotGlobalShape: "square_empty"
                 }
             ],
         };

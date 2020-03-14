@@ -39,7 +39,7 @@ const ConfigDifference = {
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
 
-    if (conf1.sigSetCid !== conf2.sigSetCid || conf1.X_sigCid !== conf2.X_sigCid || conf1.Y_sigCid !== conf2.Y_sigCid || conf1.tsSigCid !== conf2.tsSigCid) {
+    if (conf1.sigSetCid !== conf2.sigSetCid || conf1.x_sigCid !== conf2.x_sigCid || conf1.y_sigCid !== conf2.y_sigCid || conf1.tsSigCid !== conf2.tsSigCid) {
         diffResult = ConfigDifference.DATA_WITH_CLEAR;
     } else if (conf1.colors !== conf2.colors) {
         diffResult = ConfigDifference.RENDER;
@@ -139,8 +139,8 @@ export class HeatmapChart extends Component {
     static propTypes = {
         config: PropTypes.shape({
             sigSetCid: PropTypes.string.isRequired,
-            X_sigCid: PropTypes.string.isRequired,
-            Y_sigCid: PropTypes.string.isRequired,
+            x_sigCid: PropTypes.string.isRequired,
+            y_sigCid: PropTypes.string.isRequired,
             colors: PropTypes.arrayOf(PropType_d3Color()),
             tsSigCid: PropTypes.string
         }).isRequired,
@@ -279,25 +279,25 @@ export class HeatmapChart extends Component {
                 if (!isNaN(this.props.xMin))
                     filter.children.push({
                         type: "range",
-                        sigCid: config.X_sigCid,
+                        sigCid: config.x_sigCid,
                         gte: this.props.xMin
                     });
                 if (!isNaN(this.props.xMax))
                     filter.children.push({
                         type: "range",
-                        sigCid: config.X_sigCid,
+                        sigCid: config.x_sigCid,
                         lte: this.props.xMax
                     });
                 if (!isNaN(this.props.yMin))
                     filter.children.push({
                         type: "range",
-                        sigCid: config.Y_sigCid,
+                        sigCid: config.y_sigCid,
                         gte: this.props.yMin
                     });
                 if (!isNaN(this.props.yMax))
                     filter.children.push({
                         type: "range",
-                        sigCid: config.Y_sigCid,
+                        sigCid: config.y_sigCid,
                         lte: this.props.yMax
                     });
 
@@ -309,10 +309,11 @@ export class HeatmapChart extends Component {
                     maxBucketCountY = Math.ceil(maxBucketCountY * scaleY);
                 }
 
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.X_sigCid, config.Y_sigCid], [maxBucketCountX, maxBucketCountY], this.props.minStep, filter);
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.x_sigCid, config.y_sigCid], [maxBucketCountX, maxBucketCountY], this.props.minStep, filter);
 
                 if (results) { // Results is null if the results returned are not the latest ones
                     this.setState(this.processData(results));
+                    this.setState({statusMsg: ""});
                 }
             } catch (err) {
                 throw err;
@@ -477,7 +478,9 @@ export class HeatmapChart extends Component {
         const noData = this.state.xBucketsCount === 0 || this.state.yBucketsCount === 0;
 
         if (noData) {
-            this.statusMsgSelection.text(t('No data.'));
+            this.setState({
+                statusMsg: t('No data.')
+            });
 
             this.cursorAreaSelection
                 .on('mouseenter', null)
@@ -1004,8 +1007,10 @@ export class HeatmapChart extends Component {
                             <g ref={node => this.yAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
                                clipPath="url(#leftAxis)"/>
-                            <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%"
-                                  fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
+                            <text textAnchor="middle" x="50%" y="50%"
+                                  fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                                {this.state.statusMsg}
+                            </text>
                             {this.props.withTooltip && !this.state.zoomInProgress &&
                             <Tooltip
                                 config={this.props.config}

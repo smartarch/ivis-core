@@ -349,7 +349,8 @@ export class HistogramChart extends Component {
 
         const noData = signalSetData.buckets.length === 0;
         if (noData) {
-            this.statusMsgSelection.text(t('No data.'));
+            this.setState({statusMsg: t('No data.')});
+
             this.cursorSelection.attr('visibility', 'hidden');
 
             this.cursorAreaSelection
@@ -666,7 +667,9 @@ export class HistogramChart extends Component {
                         <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                         {!this.state.zoomInProgress &&
                         <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>}
-                        <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
+                        <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                            {this.state.statusMsg}
+                        </text>
                         {this.props.withTooltip && !this.state.zoomInProgress &&
                         <Tooltip
                             config={this.props.config}

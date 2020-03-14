@@ -22,8 +22,8 @@ export class ScatterPlot extends Component {
         config: PropTypes.shape({
             signalSets: PropTypes.arrayOf(PropTypes.shape({
                 cid: PropTypes.string.isRequired,
-                X_sigCid: PropTypes.string.isRequired,
-                Y_sigCid: PropTypes.string.isRequired,
+                x_sigCid: PropTypes.string.isRequired,
+                y_sigCid: PropTypes.string.isRequired,
                 colorContinuous_sigCid: PropTypes.string,
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
@@ -33,9 +33,9 @@ export class ScatterPlot extends Component {
                 dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
-                X_label: PropTypes.string,
-                Y_label: PropTypes.string,
-                Color_label: PropTypes.string,
+                x_label: PropTypes.string,
+                y_label: PropTypes.string,
+                color_label: PropTypes.string,
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
@@ -50,6 +50,7 @@ export class ScatterPlot extends Component {
         colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
+        colorValues: PropTypes.array,
         highlightDotSize: PropTypes.number, // radius multiplier
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,

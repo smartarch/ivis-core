@@ -7,7 +7,7 @@ import {
 } from "../ivis/ivis";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
-import {ScatterPlot} from "../ivis/correlation_charts/ScatterPlot";
+import {ScatterPlot} from "../ivis/ScatterPlot";
 
 const sensorsStructure = [
     {
@@ -38,13 +38,13 @@ const sensorsConfigSpec = {
             "type": "signalSet"
         },
         {
-            "id": "X_sigCid",
+            "id": "x_sigCid",
             "label": "Signal X",
             "type": "signal",
             "signalSetRef": "signalSet"
         },
         {
-            "id": "Y_sigCid",
+            "id": "y_sigCid",
             "label": "Signal Y",
             "type": "signal",
             "signalSetRef": "signalSet"
@@ -56,12 +56,12 @@ const sensorsConfigSpec = {
             "default": true
         },
         {
-            "id": "X_label",
+            "id": "x_label",
             "label": "X Label",
             "type": "string"
         },
         {
-            "id": "Y_label",
+            "id": "y_label",
             "label": "Y Label",
             "type": "string"
         }
@@ -114,13 +114,13 @@ export default class SamplePanel_ScatterPlotColor extends Component {
             sensors: [
                 {
                     signalSet: "top:bubble",
-                    X_sigCid: "x",
-                    Y_sigCid: "y",
+                    x_sigCid: "x",
+                    y_sigCid: "y",
                     color: d3Scheme.schemeDark2,
                     label: "Color Test",
                     enabled: true,
-                    X_label: "X",
-                    Y_label: "Y",
+                    x_label: "X",
+                    y_label: "Y",
                     colorDiscrete_sigCid: "a",
                     regressions: [{
                         type: "linear",

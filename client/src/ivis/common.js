@@ -31,6 +31,7 @@ export function isInExtent(value, extent) {
 }
 
 export function isSignalVisible(sigConf) {
+    if (!sigConf) return false;
     return (!('enabled' in sigConf) || sigConf.enabled);
 }
 
