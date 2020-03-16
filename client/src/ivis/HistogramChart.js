@@ -180,6 +180,8 @@ export class HistogramChart extends Component {
 
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
             if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
+                this.brush = null;
+                this.zoom = null;
                 this.setState({
                     signalSetData: null,
                     globalSignalSetData: null,
@@ -259,6 +261,22 @@ export class HistogramChart extends Component {
 
                 if (results) { // Results is null if the results returned are not the latest ones
                     const processedResults = this.processData(results);
+                    if (processedResults.buckets.length === 0) {
+                        this.setState({
+                            signalSetData: null,
+                            statusMsg: "No data."
+                        });
+                        this.brush = null;
+                        this.zoom = null;
+                        return;
+                    }
+                    if (isNaN(processedResults.step)) { // not a numeric signal
+                        this.setState({
+                            signalSetData: null,
+                            statusMsg: "Histogram not available for this type of signal."
+                        });
+                        return;
+                    }
 
                     if (!queryWithRangeFilter) { // zoomed completely out
                         // update extent of x axis
@@ -275,7 +293,8 @@ export class HistogramChart extends Component {
                     }
 
                     this.setState({
-                        signalSetData: processedResults
+                        signalSetData: processedResults,
+                        statusMsg: ""
                     });
                 }
             } catch (err) {
@@ -347,71 +366,55 @@ export class HistogramChart extends Component {
             return;
         }
 
-        const noData = signalSetData.buckets.length === 0;
-        if (noData) {
-            this.setState({statusMsg: t('No data.')});
+        //<editor-fold desc="Scales">
+        const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
+        const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
+        
+        let xScale = d3Scale.scaleLinear()
+            .domain(this.xExtent)
+            .range([0, width - this.props.margin.left - this.props.margin.right]);
+        xScale = this.state.zoomTransform.rescaleX(xScale);
+        const xAxis = d3Axis.axisBottom(xScale)
+            .tickSizeOuter(0);
+        this.xAxisSelection.call(xAxis);
 
-            this.cursorSelection.attr('visibility', 'hidden');
-
-            this.cursorAreaSelection
-                .on('mouseenter', null)
-                .on('mousemove', null)
-                .on('mouseleave', null);
-
-            this.brush = null;
-            this.zoom = null;
-
-        } else {
-             //<editor-fold desc="Scales">
-            const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
-            const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
-
-            let xScale = d3Scale.scaleLinear()
-                .domain(this.xExtent)
-                .range([0, width - this.props.margin.left - this.props.margin.right]);
-            xScale = this.state.zoomTransform.rescaleX(xScale);
-            const xAxis = d3Axis.axisBottom(xScale)
-                .tickSizeOuter(0);
-            this.xAxisSelection.call(xAxis);
-
-            let maxProb = signalSetData.maxProb;
-            let maxProbInZoom;
-            const [xDomainMin, xDomainMax] = xScale.domain();
-            if (this.state.zoomTransform.k > 1 && this.props.topPaddingWhenZoomed !== 1) {
-                maxProbInZoom = d3Array.max(signalSetData.buckets, b => {
-                    if (b.key + signalSetData.step >= xDomainMin &&
-                        b.key <= xDomainMax)
-                        return b.prob;
-                });
-            }
-            if (maxProbInZoom !== undefined && maxProbInZoom !== 0){
-                if (maxProbInZoom / maxProb < 1 - this.props.topPaddingWhenZoomed)
-                    maxProb = maxProbInZoom / (1 - this.props.topPaddingWhenZoomed);
-            }
-
-            const yScale = d3Scale.scaleLinear()
-                .domain([0, maxProb])
-                .range([ySize, 0]);
-            const yAxis = d3Axis.axisLeft(yScale)
-                .tickFormat(yScale.tickFormat(10, "-%"));
-            (this.props.withTransition ? this.yAxisSelection.transition() : this.yAxisSelection)
-                .call(yAxis);
-            //</editor-fold>
-
-            this.drawBars(signalSetData, this.barsSelection, xScale, yScale, ySize, this.props.config.color, false);
-
-            // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
-            if (forceRefresh || widthChanged) {
-                this.createChartCursorArea();
-                if (this.props.withZoom)
-                    this.createChartZoom(xSize, ySize);
-            }
-
-            this.createChartCursor(signalSetData, xScale, yScale, ySize);
-
-            if (this.props.withOverview)
-                this.createChartOverview(globalSignalSetData);
+        let maxProb = signalSetData.maxProb;
+        let maxProbInZoom;
+        const [xDomainMin, xDomainMax] = xScale.domain();
+        if (this.state.zoomTransform.k > 1 && this.props.topPaddingWhenZoomed !== 1) {
+            maxProbInZoom = d3Array.max(signalSetData.buckets, b => {
+                if (b.key + signalSetData.step >= xDomainMin &&
+                    b.key <= xDomainMax)
+                    return b.prob;
+            });
         }
+        if (maxProbInZoom !== undefined && maxProbInZoom !== 0) {
+            if (maxProbInZoom / maxProb < 1 - this.props.topPaddingWhenZoomed)
+                maxProb = maxProbInZoom / (1 - this.props.topPaddingWhenZoomed);
+        }
+
+        const yScale = d3Scale.scaleLinear()
+            .domain([0, maxProb])
+            .range([ySize, 0]);
+        const yAxis = d3Axis.axisLeft(yScale)
+            .tickFormat(yScale.tickFormat(10, "-%"));
+        (this.props.withTransition ? this.yAxisSelection.transition() : this.yAxisSelection)
+            .call(yAxis);
+        //</editor-fold>
+
+        this.drawBars(signalSetData, this.barsSelection, xScale, yScale, ySize, this.props.config.color, false);
+
+        // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
+        if (forceRefresh || widthChanged) {
+            this.createChartCursorArea();
+            if (this.props.withZoom)
+                this.createChartZoom(xSize, ySize);
+        }
+
+        this.createChartCursor(signalSetData, xScale, yScale, ySize);
+
+        if (this.props.withOverview)
+            this.createChartOverview(globalSignalSetData);
     }
 
     drawBars(signalSetsData, barsSelection, xScale, yScale, ySize, barColor, disableTransitions = true) {
