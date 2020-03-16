@@ -22,7 +22,8 @@ export default class HansRoslingBubblePlot extends Component {
                 x_label: null,
                 y_label: null,
                 color_label: null,
-                dotSize_label: "Population"
+                dotSize_label: "Population",
+                dotGlobalShape: "none"
             }]
         };
 

@@ -1,7 +1,7 @@
 'use strict';
 
 import React, {Component} from "react";
-import {ScatterPlot, withPanelConfig} from "ivis";
+import {ScatterPlot, withPanelConfig, TimeContext, IntervalSpec, TimeRangeSelector} from "ivis";
 import styles from './styles.scss';
 
 class Correlogram extends Component {
@@ -18,20 +18,36 @@ class Correlogram extends Component {
             withBrush: false,
             height: this.props.height / this.props.config.sigCids.length,
             margin: {
-                left: 20, right: 5, top: 5, bottom: 20
+                left: 55, right: 3, top: 5, bottom: 20
             },
-            dotSize: 4,
-            maxDotCount: 25
+            dotSize: 3,
+            maxDotCount: 200,
+            xAxisTicksCount: 8
         };
 
         const rows = [];
         for (const [index, sig1] of this.props.config.sigCids.entries()) {
             const row = [];
             for (const sig2 of this.props.config.sigCids) {
-                if (sig1 !== sig2)
-                    row.push(<ScatterPlot config={{signalSets: [{cid: this.props.config.sigSetCid, X_sigCid: sig1, Y_sigCid: sig2}]}}  {...scatterPlotProps} />);
+                if (sig1 !== sig2) {
+                    const cnf = {
+                        signalSets: [{
+                            cid: this.props.config.sigSetCid,
+                            x_sigCid: sig2,
+                            y_sigCid: sig1,
+                            dotGlobalShape: "none"
+                        }]
+                    };
+                    if (this.props.config.color_sigCid)
+                        cnf.signalSets[0].colorDiscrete_sigCid = this.props.config.color_sigCid;
+                    if (this.props.config.ts_signal)
+                        cnf.signalSets[0].tsSigCid = this.props.config.ts_signal;
+                    row.push(<ScatterPlot config={cnf}  {...scatterPlotProps} />);
+                }
                 else
-                    row.push(<div className={styles.label}>{this.props.config.labels[index]}</div>);
+                    row.push(<div className={styles.label} style={{marginLeft: scatterPlotProps.margin.left, marginRight: scatterPlotProps.margin.right, marginTop: scatterPlotProps.margin.top, marginBottom: scatterPlotProps.margin.bottom}}>
+                        {this.props.config.labels[index]}
+                    </div>);
             }
             rows.push(row);
         }
@@ -57,13 +73,19 @@ export default class TestCorrelogram extends Component {
         const cnf = {
             sigSetCid: config.sigSet,
             sigCids: config.signals.map(x => x.sigCid),
-            labels: config.signals.map(x => x.label)
+            labels: config.signals.map(x => x.label),
+            color_sigCid: config.color_signal,
+            ts_signal: config.ts_signal
         };
 
-        return (<Correlogram
-            config={cnf}
-            height={400}
-            margin={{left: 0, right: 0, top: 0, bottom: 0}}
-        />);
+        return (
+            <TimeContext initialIntervalSpec={new IntervalSpec("2003-10-30", "2016-04-01", null, null)}>
+                <Correlogram
+                    config={cnf}
+                    height={700}
+                    margin={{left: 0, right: 0, top: 0, bottom: 0}}
+                />
+                {config.ts_signal && <TimeRangeSelector/>}
+            </TimeContext>);
     }
 }
