@@ -27,6 +27,7 @@ export class ScatterPlot extends Component {
                 colorContinuous_sigCid: PropTypes.string,
                 colorDiscrete_sigCid: PropTypes.string,
                 tsSigCid: PropTypes.string, // for use of TimeContext
+                label_sigCid: PropTypes.string,
                 color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
                 dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
                 dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
@@ -55,6 +56,10 @@ export class ScatterPlot extends Component {
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
+        xAxisTicksCount: PropTypes.number,
+        xAxisTicksFormat: PropTypes.func,
+        yAxisTicksCount: PropTypes.number,
+        yAxisTicksFormat: PropTypes.func,
 
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,

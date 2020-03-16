@@ -367,6 +367,10 @@ export class ScatterPlotBase extends Component {
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
         updateSizeOnZoom: PropTypes.bool, // for BubblePlot
+        xAxisTicksCount: PropTypes.number,
+        xAxisTicksFormat: PropTypes.func,
+        yAxisTicksCount: PropTypes.number,
+        yAxisTicksFormat: PropTypes.func,
 
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
@@ -462,7 +466,6 @@ export class ScatterPlotBase extends Component {
             this.setState({
                 signalSetsData: null,
                 globalSignalSetsData: null,
-                statusMsg: t('Loading...'),
                 xMin: this.props.xMin,
                 xMax: this.props.xMax,
                 yMin: this.props.yMin,
@@ -773,6 +776,8 @@ export class ScatterPlotBase extends Component {
                 .range([ySize, 0]));
             this.yScale = yScale;
             const yAxis = d3Axis.axisLeft(yScale);
+            if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
+            if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
             this.yAxisSelection.call(yAxis);
 
             // x Scale
@@ -781,6 +786,8 @@ export class ScatterPlotBase extends Component {
                 .range([0, xSize]));
             this.xScale = xScale;
             const xAxis = d3Axis.axisBottom(xScale);
+            if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+            if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
             this.xAxisSelection.call(xAxis);
             //</editor-fold>
 
