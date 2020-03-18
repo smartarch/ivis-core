@@ -507,18 +507,18 @@ async function queryTx(tx, context, queries) {
                 for (const fltChild of flt.children) {
                     checkFilter(fltChild);
                 }
-
             } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
                     shares.throwPermissionDenied();
                 }
                 signalsToCheck.add(sig.id);
-
             } else  if (flt.type === 'ids'){
                // empty
-            }
-            else {
+            } else if (flt.type === 'function_score') {
+                if (!flt.function)
+                    throw new Error('Function not specified for function_score query');
+            } else {
                 throw new Error(`Unknown filter type "${flt.type}"`);
             }
         };

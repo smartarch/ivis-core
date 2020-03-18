@@ -238,6 +238,8 @@ class QueryProcessor {
             if (!field) {
                 throw new Error(`Unknown signal ${agg.sigCid}`);
             }
+            if (field.type === SignalType.KEYWORD) // min and max don't make sense for keyword
+                return { min: undefined, max: undefined };
 
             const minMaxQry = {
                 query: this.createElsFilter(query.filter),
@@ -302,6 +304,8 @@ class QueryProcessor {
                 throw new Error('Not implemented');
             } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
+            } else if (fieldType === SignalType.KEYWORD) {
+                return { step: undefined, offset: undefined, maxBucketCount: maxBucketCount };
             } else {
                 throw new Error(`Field type ${fieldType} is not supported in aggregations`);
             }
@@ -317,6 +321,12 @@ class QueryProcessor {
 
                 let step;
                 let offset;
+                let min, max;
+
+                if (agg.hasOwnProperty("min"))
+                    min = agg.min;
+                if (agg.hasOwnProperty("max"))
+                    max = agg.max;
 
                 if (agg.step) {
                     step = agg.step;
@@ -327,18 +337,34 @@ class QueryProcessor {
                     const stepAndOffset = _computeStepAndOffset(field.type, agg.maxBucketCount, agg.minStep, minMax.min, minMax.max);
                     step = stepAndOffset.step;
                     offset = stepAndOffset.offset;
+                    min = minMax.min;
+                    max = minMax.max;
 
                 } else if (agg.bucketGroup) {
                     const bucketGroup = bucketGroups.get(agg.bucketGroup);
                     step = bucketGroup.step;
                     offset = bucketGroup.offset;
-
+                    min = bucketGroup.min;
+                    max = bucketGroup.max;
+                    if (bucketGroup.maxBucketCount)
+                        agg.maxBucketCount = bucketGroup.maxBucketCount;
+                } else if (agg.agg_type) {
+                    // no step and offset for some types of aggregations (e.g. 'terms')
+                    step = undefined;
+                    offset = undefined;
                 } else {
-                    throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or buckteGroup have to be specified.');
+                    throw new Error('Invalid agg specification for ' + agg.sigCid + ' (' + field.type + '). Either maxBucketCount & minStep or step & offset or bucketGroup or agg_type (and its arguments) have to be specified.');
                 }
 
-                agg.computedStep = step;
-                agg.computedOffset = offset;
+                if (step !== undefined)
+                    agg.computedStep = step;
+                if (offset !== undefined)
+                    agg.computedOffset = offset;
+
+                if (min !== undefined)
+                    agg.computedMin = min;
+                if (max !== undefined)
+                    agg.computedMax = max;
 
                 if (agg.aggs) {
                     await _setStepAndOffset(agg.aggs);
@@ -358,6 +384,8 @@ class QueryProcessor {
             const stepAndOffset = _computeStepAndOffset(bucketGroup.type, bucketGroupSpec.maxBucketCount, bucketGroupSpec.minStep, bucketGroup.min, bucketGroup.max);
             bucketGroup.step = stepAndOffset.step;
             bucketGroup.offset = stepAndOffset.offset;
+            if (stepAndOffset.maxBucketCount)
+                bucketGroup.maxBucketCount = stepAndOffset.maxBucketCount;
         }
 
         await _setStepAndOffset(query.aggs)
@@ -375,26 +403,48 @@ class QueryProcessor {
 
             const elsAgg = {};
 
-            if (field.type === SignalType.DATE_TIME) {
-                // TODO: add processing of range buckets
+            if (agg.agg_type) {
+                if (agg.agg_type === "terms") {
+                    elsAgg.terms = { ...this.getField(field) };
+                }
+                else {
+                    throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
+                }
+            }
+            else {
+                if (field.type === SignalType.DATE_TIME) {
+                    // TODO: add processing of range buckets
 
-                elsAgg.date_histogram = {
-                    ...this.getField(field),
-                    interval: getElsInterval(moment.duration(agg.computedStep || 'PT0.001S' /* FIXME - this is  a hack, find better way to handle situations when there is no interval */)),
-                    offset: getElsInterval(moment.duration(agg.computedOffset)),
-                    min_doc_count: agg.minDocCount
-                };
+                    elsAgg.date_histogram = {
+                        ...this.getField(field),
+                        interval: getElsInterval(moment.duration(agg.computedStep || 'PT0.001S' /* FIXME - this is  a hack, find better way to handle situations when there is no interval */)),
+                        offset: getElsInterval(moment.duration(agg.computedOffset)),
+                        min_doc_count: agg.minDocCount
+                    };
 
-            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE ) {
-                elsAgg.histogram = {
-                    ...this.getField(field),
-                    interval: agg.computedStep || 1e-16 /* FIXME - this is  a hack, find better way to handle situations when there is no interval */,
-                    offset: agg.computedOffset,
-                    min_doc_count: agg.minDocCount
-                };
+                } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE) {
+                    elsAgg.histogram = {
+                        ...this.getField(field),
+                        interval: agg.computedStep || 1e-16 /* FIXME - this is  a hack, find better way to handle situations when there is no interval */,
+                        offset: agg.computedOffset,
+                        min_doc_count: agg.minDocCount
+                    };
 
-            } else {
-                throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
+                    if (agg.hasOwnProperty("computedMin") && Number.isFinite(agg.computedMin) &&
+                        agg.hasOwnProperty("computedMax") && Number.isFinite(agg.computedMax))
+                    {
+                        elsAgg.histogram.extended_bounds = {
+                            min: agg.computedMin,
+                            max: agg.computedMax
+                        }
+                    }
+                } else if (field.type === SignalType.KEYWORD) {
+                    elsAgg.terms = { ...this.getField(field) };
+                    if (agg.maxBucketCount)
+                        elsAgg.terms.size = agg.maxBucketCount;
+                } else {
+                    throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
+                }
             }
 
             if (agg.signals) {
@@ -454,33 +504,56 @@ class QueryProcessor {
         const signalMap = this.signalMap;
         const result = [];
 
+        const _processTermsAgg = (aggResp, buckets, additionalResponses) => {
+            for (const elsBucket of aggResp.buckets) {
+                buckets.push({
+                    key: elsBucket.key,
+                    count: elsBucket.doc_count
+                });
+            }
+            additionalResponses.doc_count_error_upper_bound = aggResp.doc_count_error_upper_bound;
+            additionalResponses.sum_other_doc_count = aggResp.sum_other_doc_count;
+        };
+
         let aggNo = 0;
         for (const agg of aggs) {
             const elsAggResp = elsAggsResp['agg_' + aggNo];
 
             const buckets = [];
+            let additionalResponses = {};
 
-            const field = signalMap[agg.sigCid];
-            if (field.type === SignalType.DATE_TIME) {
-                // TODO: add processing of range buckets
-
-                for (const elsBucket of elsAggResp.buckets) {
-                    buckets.push({
-                        key: moment.utc(elsBucket.key).toISOString(),
-                        count: elsBucket.doc_count
-                    });
+            if (agg.agg_type) {
+                if (agg.agg_type === "terms") {
+                    _processTermsAgg(elsAggResp, buckets, additionalResponses);
                 }
-
-            } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE ) {
-                for (const elsBucket of elsAggResp.buckets) {
-                    buckets.push({
-                        key: elsBucket.key,
-                        count: elsBucket.doc_count
-                    });
+                else {
+                    throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
                 }
+            }
+            else {
+                const field = signalMap[agg.sigCid];
+                if (field.type === SignalType.DATE_TIME) {
+                    // TODO: add processing of range buckets
 
-            } else {
-                throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
+                    for (const elsBucket of elsAggResp.buckets) {
+                        buckets.push({
+                            key: moment.utc(elsBucket.key).toISOString(),
+                            count: elsBucket.doc_count
+                        });
+                    }
+
+                } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE) {
+                    for (const elsBucket of elsAggResp.buckets) {
+                        buckets.push({
+                            key: elsBucket.key,
+                            count: elsBucket.doc_count
+                        });
+                    }
+                } else if (field.type === SignalType.KEYWORD) {
+                    _processTermsAgg(elsAggResp, buckets, additionalResponses);
+                } else {
+                    throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
+                }
             }
 
             if (agg.signals) {
@@ -498,12 +571,15 @@ class QueryProcessor {
                 }
             }
 
-            result.push({
-                step: agg.computedStep,
-                offset: agg.computedOffset,
-                buckets
-            });
+            const res = {
+                buckets,
+                ...additionalResponses
+            };
 
+            if (agg.computedStep) res.step = agg.computedStep;
+            if (agg.computedOffset) res.offset = agg.computedOffset;
+
+            result.push(res);
             aggNo += 1;
         }
 
@@ -547,7 +623,7 @@ class QueryProcessor {
             const rng = {};
             const rngAttrs = ['gte', 'gt', 'lte', 'lt'];
             for (const rngAttr of rngAttrs) {
-                if (flt[rngAttr]) {
+                if (flt.hasOwnProperty(rngAttr)) {
                     rng[rngAttr] = flt[rngAttr];
                 }
             }
@@ -625,7 +701,6 @@ class QueryProcessor {
                     }
                 };
             }
-
         } else if (flt.type === 'wildcard') {
             const field = signalMap[flt.sigCid];
             const elsFld = this.getField(field);
@@ -640,6 +715,13 @@ class QueryProcessor {
                     'values': flt.values
                 }
             }
+        } else if (flt.type === 'function_score') {
+            if (!flt.function)
+                throw new Error('Function not specified for function_score query');
+
+            return {
+                function_score: flt.function
+            };
         } else {
             throw new Error(`Unknown filter type "${flt.type}"`);
         }
