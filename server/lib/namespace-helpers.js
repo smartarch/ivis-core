@@ -3,10 +3,11 @@
 const { enforce } = require('./helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const shares = require('../models/shares');
+const {getVirtualNamespaceId} = require('../../shared/namespaces');
 
 async function validateEntity(tx, entity) {
     enforce(entity.namespace, 'Entity namespace not set');
-    if (!await tx('namespaces').where('id', entity.namespace).first()) {
+    if (entity.namespace === getVirtualNamespaceId() || !await tx('namespaces').where('id', entity.namespace).first()) {
         throw new interoperableErrors.NamespaceNotFoundError();
     }
 }

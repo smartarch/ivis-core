@@ -2,18 +2,15 @@
 const path = require('path');
 const fs = require('fs-extra-promise');
 const spawn = require('child_process').spawn;
-const {TaskType} = require('../../../shared/tasks');
+const {TaskType, taskSubtypeSpecs, subtypesByType} = require('../../../shared/tasks');
 const readline = require('readline');
-const config = require('../../lib/config');
+const ivisConfig = require('../../lib/config');
 
 // File name of every build output
 const JOB_FILE_NAME = 'job.py';
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
-
-const packagesForType = new Map();
-packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy', 'dtw']);
-packagesForType.set(TaskType.ENERGY_PLUS, ['elasticsearch', 'eppy','requests']);
+const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'dist');
 
 const runningProc = new Map();
 
@@ -40,8 +37,8 @@ async function run(id, runId, params, entities, state, taskDir, onRequest, onSuc
         dataInput.entities = entities;
         dataInput.state = state;
         dataInput.es = {
-            host: `${config.elasticsearch.host}`,
-            port: `${config.elasticsearch.port}`
+            host: `${ivisConfig.elasticsearch.host}`,
+            port: `${ivisConfig.elasticsearch.port}`
         };
 
         const pythonExec = path.join(taskDir, ENV_NAME, 'bin', 'python');
@@ -120,27 +117,20 @@ async function remove(id) {
     // Nothing
 }
 
-function getPackages(type) {
-    const packages = [];
-    const pckgs = packagesForType.get(type);
-    if (pckgs) {
-        packages.push(...pckgs);
-    } else {
-        packages.push('elasticsearch', 'requests');
-    }
-    return packages;
+function getPackages(subtype) {
+    const spec = taskSubtypeSpecs[TaskType.PYTHON];
+    return subtype ? spec[subtype].libs : spec.libs;
 }
 
 /**
  * Build task
- * @param id Task id
- * @param code Code to build
- * @param destDir Output dir
+ * @param config
  * @param onSuccess Callback on success
  * @param onFail Callback on failed build
  * @returns {Promise<void>}
  */
-async function build(id, code, destDir, onSuccess, onFail) {
+async function build(config, onSuccess, onFail) {
+    const {id, code, destDir} = config;
     let buildDir;
     try {
         buildDir = path.join(destDir, '..', 'build');
@@ -158,24 +148,17 @@ async function build(id, code, destDir, onSuccess, onFail) {
     }
 }
 
-async function init(id, code, destDir, onSuccess, onFail) {
-    await initType(null, id, code, destDir, onSuccess, onFail);
-}
-
 /**
  * Initialize and build task.
- * @param type type of task being init
- * @param id Task id
- * @param code Code to build after init
- * @param destDir Output dir
+ * @param config
  * @param onSuccess Callback on success
  * @param onFail Callback on failed attempt
  * @returns {Promise<void>}
  */
-async function initType(type, id, code, destDir, onSuccess, onFail) {
-
+async function init(config, onSuccess, onFail) {
+    const {id,subtype, code, destDir} = config;
     try {
-        const packages = getPackages(type);
+        const packages = getPackages(subtype);
         const buildDir = path.join(destDir, '..', 'build');
         await fs.emptyDirAsync(buildDir);
 
@@ -186,7 +169,7 @@ async function initType(type, id, code, destDir, onSuccess, onFail) {
 
         const virtDir = path.join(envDir, 'bin', 'activate');
         const virtEnv = spawn(
-            `${config.tasks.python.venvCmd} ${envDir} && source ${virtDir} && pip install ${packages.join(' ')} && deactivate`,
+            `${ivisConfig.tasks.python.venvCmd} ${envDir} && source ${virtDir} && pip install ${packages.join(' ')} && pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis && deactivate`,
             {
                 shell: '/bin/bash'
             }
@@ -245,7 +228,6 @@ module.exports = {
     remove,
     build,
     init,
-    initType,
     stop
 };
 

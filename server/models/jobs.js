@@ -88,7 +88,10 @@ async function listDTAjax(context, params) {
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
-        builder => builder.from('jobs').innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
+        builder => builder
+            .from('jobs')
+            .innerJoin('tasks', 'tasks.id', 'jobs.task')
+            .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
         ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name']
     );
 }
@@ -201,7 +204,7 @@ function parseTriggerStr(triggerStr) {
  * @returns {Promise<void>}
  */
 async function updateSetTriggersTx(tx, id, sets) {
-
+    sets = sets.filter(s => s != null);
     await tx('job_triggers').where('job', id).whereNotIn('signal_set', sets).del();
 
     for (let i = 0; i < sets.length; i++) {
@@ -292,6 +295,13 @@ async function removeRun(context, jobId, runId) {
     });
 }
 
+async function removeAllRuns(context, jobId) {
+    await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'delete');
+        await tx('job_runs').where({job: jobId}).del();
+    });
+}
+
 /**
  * Run job.
  * @param context
@@ -344,6 +354,7 @@ module.exports.create = create;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.remove = remove;
 module.exports.removeRun = removeRun;
+module.exports.removeAllRuns = removeAllRuns;
 module.exports.run = run;
 module.exports.stop = stop;
 
