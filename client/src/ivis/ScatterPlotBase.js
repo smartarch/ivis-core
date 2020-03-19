@@ -5,6 +5,7 @@ import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Array from "d3-array";
 import * as d3Selection from "d3-selection";
+import {event as d3Event, select} from "d3-selection";
 import * as d3Brush from "d3-brush";
 import * as d3Regression from "d3-regression";
 import * as d3Shape from "d3-shape";
@@ -12,7 +13,6 @@ import * as d3Zoom from "d3-zoom";
 import * as d3Interpolate from "d3-interpolate";
 import * as d3Color from "d3-color";
 import * as d3Scheme from "d3-scale-chromatic";
-import {event as d3Event, select} from "d3-selection";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
@@ -23,16 +23,7 @@ import {Tooltip} from "./Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../lib/bootstrap-components";
-import {
-    distance,
-    extentWithMargin,
-    getColorScale,
-    getExtent,
-    isInExtent,
-    isSignalVisible,
-    ModifyColorCopy,
-    roundTo, setZoomTransform, transitionInterpolate, WheelDelta
-} from "./common";
+import {distance, extentWithMargin, getColorScale, getExtent, isInExtent, isSignalVisible, ModifyColorCopy, roundTo, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
 
@@ -228,7 +219,7 @@ class ScatterPlotToolbar extends Component {
             yMax = parseFloat(yMax);
 
             this.props.setSettings(maxDotCount, withTooltip);
-            this.props.setLimits(xMin, xMax, yMin, yMax);
+            this.props.setLimits(xMin, xMax, yMin, yMax, this, true, true); // last two args: causedByUser, withTransition
 
             this.setState({
                 opened: false
@@ -283,7 +274,7 @@ class ScatterPlotToolbar extends Component {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-], ["setMaxDotCount", "setWithTooltip", "getLimits", "setLimits"])
+], ["setMaxDotCount", "setWithTooltip", "getView", "setView"])
 export class ScatterPlotBase extends Component {
     //<editor-fold desc="React methods, constructor">
     constructor(props) {
@@ -297,6 +288,7 @@ export class ScatterPlotBase extends Component {
         this.labels = {};
         this.globalRegressions = [];
         this.regressions = [];
+        this.lastZoomCausedByUser = false;
 
         this.brush = null;
         this.zoom = null;
@@ -311,10 +303,10 @@ export class ScatterPlotBase extends Component {
             zoomYScaleMultiplier: 1,
             zoomInProgress: false,
             brushInProgress: false,
-            xMin: props.xMin,
-            xMax: props.xMax,
-            yMin: props.yMin,
-            yMax: props.yMax,
+            xMin: props.xMinValue,
+            xMax: props.xMaxValue,
+            yMin: props.yMinValue,
+            yMax: props.yMaxValue,
             withTooltip: props.withTooltip,
             maxDotCount: props.maxDotCount,
             noData: true
@@ -354,6 +346,10 @@ export class ScatterPlotBase extends Component {
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
+        xMinValue: PropTypes.number,
+        xMaxValue: PropTypes.number,
+        yMinValue: PropTypes.number,
+        yMaxValue: PropTypes.number,
         minDotSize: PropTypes.number, // for BubblePlot
         maxDotSize: PropTypes.number, // for BubblePlot
         minDotSizeValue: PropTypes.number, // for BubblePlot
@@ -385,10 +381,7 @@ export class ScatterPlotBase extends Component {
         withSettings: PropTypes.bool,
         withAutoRefreshOnBrush: PropTypes.bool,
 
-        xMin: PropTypes.number, // these will get copied to state in constructor, changing them later will not update them, use setLimits to update them
-        xMax: PropTypes.number,
-        yMin: PropTypes.number,
-        yMax: PropTypes.number,
+        viewChangeCallback: PropTypes.func,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
@@ -466,10 +459,10 @@ export class ScatterPlotBase extends Component {
             this.setState({
                 signalSetsData: null,
                 globalSignalSetsData: null,
-                xMin: this.props.xMin,
-                xMax: this.props.xMax,
-                yMin: this.props.yMin,
-                yMax: this.props.yMax,
+                xMin: this.props.xMinValue,
+                xMax: this.props.xMaxValue,
+                yMin: this.props.yMinValue,
+                yMax: this.props.yMaxValue,
                 zoomTransform: d3Zoom.zoomIdentity,
                 zoomYScaleMultiplier: 1
             }, () => this.fetchData());
@@ -490,6 +483,8 @@ export class ScatterPlotBase extends Component {
 
             this.createChart(forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
+            if (updateZoom)
+                this.callViewChangeCallback();
         }
     }
 
@@ -547,14 +542,14 @@ export class ScatterPlotBase extends Component {
             }
 
             // set limits to props (if not set yet)
-            if (xMin === undefined && !isNaN(this.props.xMin))
-                xMin = this.props.xMin;
-            if (xMax === undefined && !isNaN(this.props.xMax))
-                xMax = this.props.xMax;
-            if (yMin === undefined && !isNaN(this.props.yMin))
-                yMin = this.props.yMin;
-            if (yMax === undefined && !isNaN(this.props.yMax))
-                yMax = this.props.yMax;
+            if (xMin === undefined && !isNaN(this.props.xMinValue))
+                xMin = this.props.xMinValue;
+            if (xMax === undefined && !isNaN(this.props.xMaxValue))
+                xMax = this.props.xMaxValue;
+            if (yMin === undefined && !isNaN(this.props.yMinValue))
+                yMin = this.props.yMinValue;
+            if (yMax === undefined && !isNaN(this.props.yMaxValue))
+                yMax = this.props.yMaxValue;
 
             // add x and y filters
             if (!isNaN(xMin))
@@ -644,6 +639,16 @@ export class ScatterPlotBase extends Component {
             if (results) { // Results is null if the results returned are not the latest ones
                 const processedResults = this.processData(results.filter((_, i) => queries[i].type === "docs"));
 
+                if (!processedResults.some(d => d.length > 0)) {
+                    this.clearChart();
+                    this.setState({
+                        signalSetData: null,
+                        noData: true,
+                        statusMsg: "No data."
+                    });
+                    return;
+                }
+
                 if (!queryWithRangeFilter) { // zoomed completely out
                     // update extents of axes
                     const summaries = results.filter((_, i) => queries[i].type === "summary");
@@ -676,8 +681,8 @@ export class ScatterPlotBase extends Component {
                         this.xExtent = [xMin, xMax];
                     }
                     this.xExtent = extentWithMargin(this.xExtent, 0.05);
-                    if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
-                    if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
+                    if (!isNaN(this.props.xMinValue)) this.xExtent[0] = this.props.xMinValue;
+                    if (!isNaN(this.props.xMaxValue)) this.xExtent[1] = this.props.xMaxValue;
                     //</editor-fold>
                     //<editor-fold desc="Size extent">
                     const sMin = d3Array.min(summaries, (summary, i) => {
@@ -715,15 +720,21 @@ export class ScatterPlotBase extends Component {
                     //</editor-fold>
                 }
 
-                this.setState({
+                const newState = {
                     signalSetsData: processedResults,
                     statusMsg: "",
+                    noData: false
+                };
+                if (!queryWithRangeFilter)
+                    newState.globalSignalSetsData = processedResults;
+
+                this.setState(newState, () => {
+                    if (!queryWithRangeFilter)
+                        // call callViewChangeCallback when data new data without range filter are loaded as the xExtent might got updated (even though this.state.zoomTransform is the same)
+                        this.callViewChangeCallback();
                 });
 
                 if (!queryWithRangeFilter) { // zoomed completely out
-                    this.setState({
-                        globalSignalSetsData: processedResults
-                    });
                     this.globalRegressions = await this.createRegressions(processedResults);
                 }
 
@@ -755,124 +766,113 @@ export class ScatterPlotBase extends Component {
             return;
         }
 
-        const noData = !signalSetsData.some(d => d.length > 0);
-        const newState = noData ? { noData, statusMsg: this.props.t('No data.') } : { noData };
-        this.setState(newState, () => {
-            if (noData) {
-                this.clearChart();
-                return;
-            }
+        this.updateLabels();
 
-            this.updateLabels();
+        const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
+        const xSize = width - this.props.margin.left - this.props.margin.right;
+        const SignalSetsConfigs = this.props.config.signalSets;
 
-            const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
-            const xSize = width - this.props.margin.left - this.props.margin.right;
-            const SignalSetsConfigs = this.props.config.signalSets;
+        //<editor-fold desc="X and Y Scales">
+        // y Scale
+        const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
+            .domain(this.yExtent)
+            .range([ySize, 0]));
+        this.yScale = yScale;
+        const yAxis = d3Axis.axisLeft(yScale);
+        if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
+        if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
+        this.yAxisSelection.call(yAxis);
 
-            //<editor-fold desc="X and Y Scales">
-            // y Scale
-            const yScale = this.state.zoomTransform.scale(this.state.zoomYScaleMultiplier).rescaleY(d3Scale.scaleLinear()
-                .domain(this.yExtent)
-                .range([ySize, 0]));
-            this.yScale = yScale;
-            const yAxis = d3Axis.axisLeft(yScale);
-            if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
-            if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
-            this.yAxisSelection.call(yAxis);
+        // x Scale
+        const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
+            .domain(this.xExtent)
+            .range([0, xSize]));
+        this.xScale = xScale;
+        const xAxis = d3Axis.axisBottom(xScale);
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
+        this.xAxisSelection.call(xAxis);
+        //</editor-fold>
 
-            // x Scale
-            const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
-                .domain(this.xExtent)
-                .range([0, xSize]));
-            this.xScale = xScale;
-            const xAxis = d3Axis.axisBottom(xScale);
-            if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
-            if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
-            this.xAxisSelection.call(xAxis);
-            //</editor-fold>
+        // data filtering
+        const filteredData = this.filterData(signalSetsData, xScale.domain(), yScale.domain());
+        const filteredGlobalData = this.filterData(globalSignalSetsData, xScale.domain(), yScale.domain());
 
-            // data filtering
-            const filteredData = this.filterData(signalSetsData, xScale.domain(), yScale.domain());
-            const filteredGlobalData = this.filterData(globalSignalSetsData, xScale.domain(), yScale.domain());
-
-            //<editor-fold desc="Size and Color Scales">
-            // s Scale (dot size)
-            let sScale = undefined;
-            if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
-                let sExtent = this.sExtent;
-                if (this.props.updateSizeOnZoom) {
-                    const allFilteredData = filteredData.concat(filteredGlobalData);
-                    if (allFilteredData.length > 1) {
-                        sExtent = this.getSExtent_notFlat(allFilteredData);
-                    }
+        //<editor-fold desc="Size and Color Scales">
+        // s Scale (dot size)
+        let sScale = undefined;
+        if (SignalSetsConfigs.some((cfg) => cfg.hasOwnProperty("dotSize_sigCid"))) {
+            let sExtent = this.sExtent;
+            if (this.props.updateSizeOnZoom) {
+                const allFilteredData = filteredData.concat(filteredGlobalData);
+                if (allFilteredData.length > 1) {
+                    sExtent = this.getSExtent_notFlat(allFilteredData);
                 }
-
-                sScale = d3Scale.scaleSqrt()
-                    .domain(sExtent)
-                    .range([this.props.minDotSize, this.props.maxDotSize]);
             }
 
-            // c Scale (color)
-            let cScales = [];
-            let cExtents = this.cExtents, cExtent = this.cExtent;
-            if (this.props.updateColorOnZoom && SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid"))) {
-                // recompute extents on filtered data
-                for (let i = 0; i < filteredData.length; i++) {
-                    if (SignalSetsConfigs[i].hasOwnProperty("colorContinuous_sigCid")) {
-                        const allFilteredData = filteredData[i].concat(filteredGlobalData[i]);
-                        if (allFilteredData.length > 1)
-                            cExtents[i] = this.getCExtent(allFilteredData);
-                    }
-                }
-                cExtent = [d3Array.min(cExtents, ex => ex[0]), d3Array.max(cExtents, ex => ex[1])];
-            }
+            sScale = d3Scale.scaleSqrt()
+                .domain(sExtent)
+                .range([this.props.minDotSize, this.props.maxDotSize]);
+        }
+
+        // c Scale (color)
+        let cScales = [];
+        let cExtents = this.cExtents, cExtent = this.cExtent;
+        if (this.props.updateColorOnZoom && SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid"))) {
+            // recompute extents on filtered data
             for (let i = 0; i < filteredData.length; i++) {
-                const signalSetConfig = SignalSetsConfigs[i];
-                if (signalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
-                    if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
-                        cScales.push(getColorScale(cExtents[i], signalSetConfig.color));
-                    else
-                        cScales.push(getColorScale(cExtent, this.props.colors));
-                } else if (signalSetConfig.hasOwnProperty("colorDiscrete_sigCid")) {
-                    if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0) {
-                        const dExtent = this.dExtents[i];
-                        if (dExtent.length > signalSetConfig.color.length)
-                            console.warn("More values than colors in signal set config " + i + ". Colors will be repeated."); // TODO better warning
-                        cScales.push(d3Scale.scaleOrdinal(dExtent, signalSetConfig.color));
-                    } else {
-                        if (this.dExtent.length > this.props.colors.length)
-                            console.warn("More values than colors in props. Colors will be repeated."); // TODO better warning
-                        cScales.push(d3Scale.scaleOrdinal(this.dExtent, this.props.colors));
-                    }
+                if (SignalSetsConfigs[i].hasOwnProperty("colorContinuous_sigCid")) {
+                    const allFilteredData = filteredData[i].concat(filteredGlobalData[i]);
+                    if (allFilteredData.length > 1)
+                        cExtents[i] = this.getCExtent(allFilteredData);
+                }
+            }
+            cExtent = [d3Array.min(cExtents, ex => ex[0]), d3Array.max(cExtents, ex => ex[1])];
+        }
+        for (let i = 0; i < filteredData.length; i++) {
+            const signalSetConfig = SignalSetsConfigs[i];
+            if (signalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
+                if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
+                    cScales.push(getColorScale(cExtents[i], signalSetConfig.color));
+                else
+                    cScales.push(getColorScale(cExtent, this.props.colors));
+            } else if (signalSetConfig.hasOwnProperty("colorDiscrete_sigCid")) {
+                if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0) {
+                    const dExtent = this.dExtents[i];
+                    if (dExtent.length > signalSetConfig.color.length)
+                        console.warn("More values than colors in signal set config " + i + ". Colors will be repeated."); // TODO better warning
+                    cScales.push(d3Scale.scaleOrdinal(dExtent, signalSetConfig.color));
                 } else {
-                    let color = this.getColor(i);
-                    cScales.push(_ => color);
+                    if (this.dExtent.length > this.props.colors.length)
+                        console.warn("More values than colors in props. Colors will be repeated."); // TODO better warning
+                    cScales.push(d3Scale.scaleOrdinal(this.dExtent, this.props.colors));
                 }
+            } else {
+                let color = this.getColor(i);
+                cScales.push(_ => color);
             }
-            //</editor-fold>
+        }
+        //</editor-fold>
 
-            // draw data
-            for (let i = 0; i < filteredData.length; i++) {
-                const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
-                this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
-                this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotGlobalShape || ScatterPlotBase.defaultDotGlobalShape, c => ModifyColorCopy(c, 0.5));
-            }
-            this.drawRegressions(xScale, yScale, cScales);
+        // draw data
+        for (let i = 0; i < filteredData.length; i++) {
+            const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
+            this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
+            this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotGlobalShape || ScatterPlotBase.defaultDotGlobalShape, c => ModifyColorCopy(c, 0.5));
+        }
+        this.drawRegressions(xScale, yScale, cScales);
 
-            this.createChartCursor(xScale, yScale, sScale, cScales, filteredData);
+        this.createChartCursor(xScale, yScale, sScale, cScales, filteredData);
 
-            // we don't want to change brush and zoom when updating only zoom (it breaks touch drag)
-            if (forceRefresh || widthChanged) {
-                this.createChartBrush();
-                if (this.props.withZoom)
-                    this.createChartZoom(xSize, ySize);
-            }
-        });
+        // we don't want to change brush and zoom when updating only zoom (it breaks touch drag)
+        if (forceRefresh || widthChanged) {
+            this.createChartBrush();
+            if (this.props.withZoom)
+                this.createChartZoom(xSize, ySize);
+        }
     }
 
     clearChart() {
-
-
         this.brushParentSelection
             .on('mouseenter', null)
             .on('mousemove', null)
@@ -970,11 +970,11 @@ export class ScatterPlotBase extends Component {
 
     //<editor-fold desc="Data drawing">
     getColor(index) {
-        let color = this.props.config.signalSets[index].color || this.props.colors[index] || d3Color.color("black");
+        let color = this.props.config.signalSets[index].color || this.props.colors[index] || "black";
         if (Array.isArray(color))
-            return color[0];
+            return d3Color.color(color[0]);
         else
-            return color;
+            return d3Color.color(color);
     }
 
     /** data = [{ x, y, s?, c?, d? }], dotShape = id (excl. '#') */
@@ -1105,13 +1105,13 @@ export class ScatterPlotBase extends Component {
         if (Array.isArray(regression.config.color) && regression.config.color.length > 0) {
             if (regression.filter) {
                 const i = this.dExtents[regression.signalSetIndex].indexOf(regression.filter) % regression.config.color.length;
-                return regression.config.color[i];
+                return d3Color.color(regression.config.color[i]);
             }
             else
-                return regression.config.color[0];
+                return d3Color.color(regression.config.color[0]);
         }
         else if (regression.config.color)
-            return regression.config.color;
+            return d3Color.color(regression.config.color);
         else {
             if (regression.filter)
                 return cScales[regression.signalSetIndex](regression.filter);
@@ -1309,7 +1309,7 @@ export class ScatterPlotBase extends Component {
                     });
                 })
                 .on("end", function () {
-                    if (this.withZoom)
+                    if (self.props.withZoom)
                         self.setState({
                             zoomInProgress: false
                         });
@@ -1321,6 +1321,7 @@ export class ScatterPlotBase extends Component {
                         const xMax = self.xScale.invert(sel[1][0]);
                         const yMin = self.yScale.invert(sel[1][1]);
                         const yMax = self.yScale.invert(sel[0][1]);
+                        self.lastZoomCausedByUser = true;
                         self.setZoomToLimits(xMin, xMax, yMin, yMax);
 
                         if (self.props.withAutoRefreshOnBrush) {
@@ -1361,17 +1362,21 @@ export class ScatterPlotBase extends Component {
     }
     //</editor-fold>
 
-    //<editor-fold desc="Zoom">
+    //<editor-fold desc="Zoom (current view)">
     createChartZoom(xSize, ySize) {
         const self = this;
 
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                self.lastZoomCausedByUser = true;
                 transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform(self), () => {
                     self.deselectPoints();
                 });
             } else {
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                    self.lastZoomCausedByUser = true;
                 // noinspection JSUnresolvedVariable
                 self.setState({
                     zoomTransform: d3Event.transform
@@ -1413,65 +1418,34 @@ export class ScatterPlotBase extends Component {
         if (!zoomExisted)
             this.setLimitsToCurrentZoom(); // initialize limits
     }
-    //</editor-fold>
 
-    //<editor-fold desc="Toolbar">
-    setLimits(xMin, xMax, yMin, yMax) {
-        if (isNaN(xMin) || isNaN(xMax) ||isNaN(yMin) || isNaN(yMax))
+    setView(xMin, xMax, yMin, yMax, source, causedByUser = false, withTransition = false) {
+        if (source === this || this.state.noData)
+            return;
+
+        if (xMin === undefined) xMin = this.xScale.domain()[0];
+        if (xMax === undefined) xMax = this.xScale.domain()[1];
+        if (yMin === undefined) yMin = this.yScale.domain()[0];
+        if (yMax === undefined) yMax = this.yScale.domain()[1];
+
+        if (isNaN(xMin) || isNaN(xMax) || isNaN(yMin) || isNaN(yMax))
             throw new Error("Parameters must be numbers.");
-        this.setZoomToLimits(xMin, xMax, yMin, yMax);
-        // zoom.end event saves limits to state
-    }
-    getLimits() {
-        return {
-            xMin: this.state.xMin,
-            xMax: this.state.xMax,
-            yMin: this.state.yMin,
-            yMax: this.state.yMax
-        };
+
+        this.lastZoomCausedByUser = causedByUser;
+        this.setZoomToLimits(xMin, xMax, yMin, yMax, withTransition);
     }
 
-    setSettings(maxDotCount, withTooltip) {
-        this.setWithTooltip(withTooltip);
-        this.setMaxDotCount(maxDotCount)
-    }
-
-    setWithTooltip(newValue) {
-        if (typeof newValue !== "boolean")
-            newValue = ScatterPlotBase.defaultProps.withTooltip;
-        this.setState({
-            withTooltip: newValue
-        });
-    }
-
-    /** set to negative number for unlimited */
-    setMaxDotCount(newValue) {
-        if (isNaN(newValue))
-            newValue = ScatterPlotBase.defaultProps.maxDotCount;
-        this.setState({
-            maxDotCount: newValue
-        });
-    }
-
-    zoomIn() {
-        this.svgContainerSelection.transition().call(this.zoom.scaleBy, this.props.zoomLevelStepFactor);
-    };
-
-    zoomOut() {
-        this.svgContainerSelection.transition().call(this.zoom.scaleBy, 1.0 / this.props.zoomLevelStepFactor);
-    };
-
-    resetZoom() {
-        this.setZoom(d3Zoom.zoomIdentity, 1);
+    getView() {
+        const [xMin, xMax] = this.xScale.domain();
+        const [yMin, yMax] = this.yScale.domain();
+        return {xMin, xMax, yMin, yMax};
     }
 
     setLimitsToCurrentZoom() {
-        const [xMin, xMax] = this.xScale.domain();
-        const [yMin, yMax] = this.yScale.domain();
-        this.setState({xMin, xMax, yMin, yMax});
+        this.setState(this.getView());
     }
 
-    setZoomToLimits(xMin, xMax, yMin, yMax) {
+    setZoomToLimits(xMin, xMax, yMin, yMax, withTransition) {
         const newXSize = xMax - xMin;
         const newYSize = yMax - yMin;
         const oldXSize = this.xScale.domain()[1] - this.xScale.domain()[0];
@@ -1484,13 +1458,13 @@ export class ScatterPlotBase extends Component {
         const selTopLeftInverted = this.state.zoomTransform.invert([this.xScale(xMin), this.yScale(yMax)]);
         const transform = d3Zoom.zoomIdentity.scale(this.state.zoomTransform.k * oldXSize / newXSize).translate(-selTopLeftInverted[0], -selTopLeftInverted[1] * scaleFactor);
 
-        this.setZoom(transform, newZoomYScaleMultiplier);
+        this.setZoom(transform, newZoomYScaleMultiplier, withTransition);
     }
 
-    setZoom(transform, yScaleMultiplier) {
+    setZoom(transform, yScaleMultiplier, withTransition = true) {
         const self = this;
-        if (this.withZoom) {
-            if (this.props.withTransition) {
+        if (this.props.withZoom) {
+            if (this.props.withTransition && withTransition) {
                 const transition = this.svgContainerSelection.transition().duration(500)
                     .tween("yZoom", () => function (t) {
                         self.setState({
@@ -1506,13 +1480,13 @@ export class ScatterPlotBase extends Component {
             }
         }
         else {
-            if (this.props.withTransition) {
-                this.setState({ zoomInProgress: true }, () => {
-                transitionInterpolate(this.svgContainerSelection, this.state.zoomTransform, transform,
-                    setZoomTransform(this),() => {
-                        self.setState({zoomInProgress: false});
-                        self.deselectPoints()
-                    },500, self.state.zoomYScaleMultiplier, yScaleMultiplier);
+            if (this.props.withTransition && withTransition) {
+                this.setState({zoomInProgress: true}, () => {
+                    transitionInterpolate(this.svgContainerSelection, this.state.zoomTransform, transform,
+                        setZoomTransform(this), () => {
+                            self.setState({zoomInProgress: false});
+                            self.deselectPoints();
+                        }, 500, self.state.zoomYScaleMultiplier, yScaleMultiplier);
                 });
             }
             else {
@@ -1523,6 +1497,51 @@ export class ScatterPlotBase extends Component {
                 this.deselectPoints();
             }
         }
+    }
+
+    callViewChangeCallback() {
+        if (typeof(this.props.viewChangeCallback) !== "function")
+            return;
+
+        this.props.viewChangeCallback(this, this.getView(), this.lastZoomCausedByUser);
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Toolbar">
+    setSettings(maxDotCount, withTooltip) {
+        this.setWithTooltip(withTooltip);
+        this.setMaxDotCount(maxDotCount)
+    }
+
+    setWithTooltip(newValue) {
+        if (typeof newValue !== "boolean")
+            newValue = ScatterPlotBase.defaultProps.withTooltip;
+        this.setState({
+            withTooltip: newValue
+        });
+    }
+
+    setMaxDotCount(newValue) {
+        if (isNaN(newValue))
+            newValue = ScatterPlotBase.defaultProps.maxDotCount;
+        this.setState({
+            maxDotCount: newValue
+        });
+    }
+
+    zoomIn(causedByUser = true) {
+        this.lastZoomCausedByUser = causedByUser;
+        this.svgContainerSelection.transition().call(this.zoom.scaleBy, this.props.zoomLevelStepFactor);
+    };
+
+    zoomOut(causedByUser = true) {
+        this.lastZoomCausedByUser = causedByUser;
+        this.svgContainerSelection.transition().call(this.zoom.scaleBy, 1.0 / this.props.zoomLevelStepFactor);
+    };
+
+    resetZoom(causedByUser = true) {
+        this.lastZoomCausedByUser = causedByUser;
+        this.setZoom(d3Zoom.zoomIdentity, 1);
     }
 
     reloadData(xMin, xMax, yMin, yMax) {
@@ -1589,7 +1608,7 @@ export class ScatterPlotBase extends Component {
                                             withTooltip: this.state.withTooltip,
                                             maxDotCount: this.state.maxDotCount
                                         }}
-                                        setLimits={::this.setLimits}
+                                        setLimits={::this.setView}
                                         setSettings={::this.setSettings}
                     />}
 

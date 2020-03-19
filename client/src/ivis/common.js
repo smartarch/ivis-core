@@ -139,3 +139,5 @@ export function setZoomTransform(self) {
             });
     }
 }
+
+export const ZoomEventSources = ["mousemove", "dblclick", "wheel", "touchstart", "touchmove" ]; // source: https://github.com/d3/d3-zoom#api-reference (table with events - causing "zoom" event)

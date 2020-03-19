@@ -12,7 +12,7 @@ import {dotShapeNames} from "./dot_shapes";
 @withComponentMixins([
     withTranslation,
     withErrorHandling
-], ["setMaxDotCount", "setWithTooltip", "getLimits", "setLimits"])
+], ["setMaxDotCount", "setWithTooltip", "getView", "setView"])
 export class BubblePlot extends Component {
     constructor(props) {
         super(props);
@@ -90,10 +90,10 @@ export class BubblePlot extends Component {
 
     static defaultProps = { }; // defaults set in ScatterPlotBase
 
-    setLimits(xMin, xMax, yMin, yMax) {
-        this.scatterPlotBase.setLimits(xMin, xMax, yMin, yMax);
+    setView(...args) {
+        this.scatterPlotBase.setView(...args);
     }
-    getLimits() { return this.scatterPlotBase.getLimits(); }
+    getView() { return this.scatterPlotBase.getView(); }
     setMaxDotCount(newValue) {
         this.scatterPlotBase.setMaxDotCount(newValue);
     }

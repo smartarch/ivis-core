@@ -18,8 +18,9 @@ import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
 import * as d3Zoom from "d3-zoom";
 import * as d3Brush from "d3-brush";
+import * as d3Color from "d3-color";
 import styles from "./CorrelationCharts.scss";
-import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta} from "./common";
+import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
@@ -78,7 +79,7 @@ class TooltipContent extends Component {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-])
+], ["getView", "setView"])
 export class HistogramChart extends Component {
     constructor(props){
         super(props);
@@ -97,6 +98,7 @@ export class HistogramChart extends Component {
 
         this.zoom = null;
         this.brush = null;
+        this.lastZoomCausedByUser = false;
 
         this.resizeListener = () => {
             this.createChart(true);
@@ -125,8 +127,9 @@ export class HistogramChart extends Component {
         minBarWidth: PropTypes.number,
         maxBucketCount: PropTypes.number,
         topPaddingWhenZoomed: PropType_NumberInRange(0, 1), // determines whether bars will be stretched up when zooming
-        xMin: PropTypes.number,
-        xMax: PropTypes.number,
+        xMinValue: PropTypes.number,
+        xMaxValue: PropTypes.number,
+        viewChangeCallback: PropTypes.func,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
@@ -135,8 +138,8 @@ export class HistogramChart extends Component {
     static defaultProps = {
         minBarWidth: 20,
         maxBucketCount: undefined,
-        xMin: NaN,
-        xMax: NaN,
+        xMinValue: NaN,
+        xMaxValue: NaN,
         topPaddingWhenZoomed: 0,
 
         withCursor: true,
@@ -206,6 +209,8 @@ export class HistogramChart extends Component {
 
             this.createChart(forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
+            if (updateZoom)
+                this.callViewChangeCallback();
         }
     }
 
@@ -235,17 +240,17 @@ export class HistogramChart extends Component {
                         lt: abs.to.toISOString()
                     });
                 }
-                if (!isNaN(this.props.xMin))
+                if (!isNaN(this.props.xMinValue))
                     filter.children.push({
                         type: "range",
                         sigCid: config.sigCid,
-                        gte: this.props.xMin
+                        gte: this.props.xMinValue
                     });
-                if (!isNaN(this.props.xMax))
+                if (!isNaN(this.props.xMaxValue))
                     filter.children.push({
                         type: "range",
                         sigCid: config.sigCid,
-                        lte: this.props.xMax
+                        lte: this.props.xMaxValue
                     });
 
                 // filter by current zoom
@@ -281,20 +286,23 @@ export class HistogramChart extends Component {
                     if (!queryWithRangeFilter) { // zoomed completely out
                         // update extent of x axis
                         this.xExtent = [processedResults.min, processedResults.max];
-                        if (!isNaN(this.props.xMin)) this.xExtent[0] = this.props.xMin;
-                        if (!isNaN(this.props.xMax)) this.xExtent[1] = this.props.xMax;
+                        if (!isNaN(this.props.xMinValue)) this.xExtent[0] = this.props.xMinValue;
+                        if (!isNaN(this.props.xMaxValue)) this.xExtent[1] = this.props.xMaxValue;
 
-                        this.setState({
-                            globalSignalSetData: processedResults
-                        });
-
-                        if (this.zoom)
-                            this.svgContainerSelection.call(this.zoom.transform, d3Zoom.zoomIdentity); // reset zoom
+                        this.setZoom(d3Zoom.zoomIdentity); // reset zoom
                     }
 
-                    this.setState({
+                    const newState = {
                         signalSetData: processedResults,
                         statusMsg: ""
+                    };
+                    if (!queryWithRangeFilter)
+                        newState.globalSignalSetData = processedResults;
+
+                    this.setState(newState, () => {
+                        if (!queryWithRangeFilter)
+                            // call callViewChangeCallback when data new data without range filter are loaded as the xExtent might got updated (even though this.state.zoomTransform is the same)
+                            this.callViewChangeCallback();
                     });
                 }
             } catch (err) {
@@ -369,11 +377,12 @@ export class HistogramChart extends Component {
         //<editor-fold desc="Scales">
         const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
         const xSize = this.renderedWidth - this.props.margin.left - this.props.margin.right;
-        
+
         let xScale = d3Scale.scaleLinear()
             .domain(this.xExtent)
             .range([0, width - this.props.margin.left - this.props.margin.right]);
         xScale = this.state.zoomTransform.rescaleX(xScale);
+        this.xScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
         this.xAxisSelection.call(xAxis);
@@ -402,7 +411,7 @@ export class HistogramChart extends Component {
             .call(yAxis);
         //</editor-fold>
 
-        this.drawBars(signalSetData, this.barsSelection, xScale, yScale, ySize, this.props.config.color, false);
+        this.drawBars(signalSetData, this.barsSelection, xScale, yScale, ySize, d3Color.color(this.props.config.color), false);
 
         // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
         if (forceRefresh || widthChanged) {
@@ -460,7 +469,7 @@ export class HistogramChart extends Component {
 
     createChartCursor(signalSetData, xScale, yScale, ySize) {
         const self = this;
-        const pointColor = this.props.config.color.darker();
+        const pointColor = d3Color.color(this.props.config.color).darker();
 
         this.barsHighlightSelection
             .selectAll('rect')
@@ -539,10 +548,14 @@ export class HistogramChart extends Component {
         const handleZoom = function () {
             // noinspection JSUnresolvedVariable
             if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                self.lastZoomCausedByUser = true;
                 transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
                     self.deselectPoints();
                 });
             } else {
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                    self.lastZoomCausedByUser = true;
                 // noinspection JSUnresolvedVariable
                 setZoomTransform(d3Event.transform);
             }
@@ -585,6 +598,56 @@ export class HistogramChart extends Component {
         moveBrush(this.state.zoomTransform);
     }
 
+    getView() {
+        const [xMin, xMax] = this.xScale.domain();
+        return {xMin, xMax};
+    }
+
+    setView(xMin, xMax, source, causedByUser = false) {
+        if (source === this || this.state.signalSetData === null)
+            return;
+
+        if (xMin === undefined) xMin = this.xScale.domain()[0];
+        if (xMax === undefined) xMax = this.xScale.domain()[1];
+
+        if (isNaN(xMin) || isNaN(xMax))
+            throw new Error("Parameters must be numbers.");
+
+        this.lastZoomCausedByUser = causedByUser;
+        // noinspection JSUnresolvedVariable
+        this.setZoomToLimits(xMin, xMax);
+    }
+
+    setZoomToLimits(xMin, xMax) {
+        if (this.brush) {
+            this.overviewBrushSelection.call(this.brush.move, [this.overviewXScale(xMin), this.overviewXScale(xMax)]);
+            // brush will also adjust zoom if sourceEvent is not "zoom" caused by this.zoom which is true when this method is called from this.setView
+        }
+        else {
+            const newXSize = xMax - xMin;
+            const oldXSize = this.xScale.domain()[1] - this.xScale.domain()[0];
+
+            const leftInverted = this.state.zoomTransform.invertX(this.xScale(xMin));
+            const transform = d3Zoom.zoomIdentity.scale(this.state.zoomTransform.k * oldXSize / newXSize).translate(-leftInverted, 0);
+
+            this.setZoom(transform);
+        }
+    }
+
+    setZoom(transform) {
+        if (this.zoom)
+            this.svgContainerSelection.call(this.zoom.transform, transform);
+        else
+            this.setState({ zoomTransform: transform });
+    }
+
+    callViewChangeCallback() {
+        if (typeof(this.props.viewChangeCallback) !== "function")
+            return;
+
+        this.props.viewChangeCallback(this, this.getView(), this.lastZoomCausedByUser);
+    }
+
     createChartOverview(signalSetData) {
         //<editor-fold desc="Scales">
         const ySize = this.props.overviewHeight - this.props.overviewMargin.top - this.props.overviewMargin.bottom;
@@ -596,12 +659,13 @@ export class HistogramChart extends Component {
         let xScale = d3Scale.scaleLinear()
             .domain(this.xExtent)
             .range([0, this.renderedWidth - this.props.margin.left - this.props.margin.right]);
+        this.overviewXScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
         this.overviewXAxisSelection.call(xAxis);
         //</editor-fold>
 
-        this.drawBars(signalSetData, this.overviewBarsSelection, xScale, yScale, ySize, this.props.config.color);
+        this.drawBars(signalSetData, this.overviewBarsSelection, xScale, yScale, ySize, d3Color.color(this.props.config.color));
 
         this.createChartOverviewBrush();
     }
@@ -622,12 +686,14 @@ export class HistogramChart extends Component {
                 self.overviewBrushSelection.call(brushHandlesLeftRight, sel, ySize);
 
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom" && d3Event.sourceEvent.target === self.zoom) return; // ignore brush-by-zoom
+
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                    self.lastZoomCausedByUser = true;
+
                 const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
-                if (self.zoom)
-                    self.svgContainerSelection.call(self.zoom.transform, newTransform);
-                else
-                    self.setState({ zoomTransform: newTransform });
+                self.setZoom(newTransform);
             });
 
         this.overviewBrushSelection

@@ -12,7 +12,7 @@ import {dotShapeNames} from "./dot_shapes";
 @withComponentMixins([
     withTranslation,
     withErrorHandling
-], ["setMaxDotCount", "setWithTooltip", "getLimits", "setLimits"])
+], ["setMaxDotCount", "setWithTooltip", "getView", "setView"])
 export class ScatterPlot extends Component {
     constructor(props) {
         super(props);
@@ -84,10 +84,10 @@ export class ScatterPlot extends Component {
         zoomLevelStepFactor: PropTypes.number
     };
 
-    setLimits(xMin, xMax, yMin, yMax) {
-        this.scatterPlotBase.setLimits(xMin, xMax, yMin, yMax);
+    setView(...args) {
+        this.scatterPlotBase.setView(...args);
     }
-    getLimits() { return this.scatterPlotBase.getLimits(); }
+    getView() { return this.scatterPlotBase.getView(); }
     setMaxDotCount(newValue) {
         this.scatterPlotBase.setMaxDotCount(newValue);
     }
