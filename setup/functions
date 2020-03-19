@@ -237,6 +237,8 @@ www:
 
 
 mysql:
+  user: "$productId"
+  database: "$productId"
   password: "$mysqlPassword"
 
 redis:
