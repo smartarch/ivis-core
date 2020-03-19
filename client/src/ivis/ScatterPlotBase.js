@@ -665,8 +665,8 @@ export class ScatterPlotBase extends Component {
                         this.yExtent = [yMin, yMax];
                     }
                     this.yExtent = extentWithMargin(this.yExtent, 0.05);
-                    if (!isNaN(this.props.yMin)) this.yExtent[0] = this.props.yMin;
-                    if (!isNaN(this.props.yMax)) this.yExtent[1] = this.props.yMax;
+                    if (!isNaN(this.props.yMinValue)) this.yExtent[0] = this.props.yMinValue;
+                    if (!isNaN(this.props.yMaxValue)) this.yExtent[1] = this.props.yMaxValue;
                     //</editor-fold>
                     //<editor-fold desc="X extent">
                     if (this.props.xAxisExtentFromSampledData)

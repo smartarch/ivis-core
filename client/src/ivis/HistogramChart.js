@@ -7,7 +7,6 @@ import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
 import {event as d3Event, select} from "d3-selection";
 import * as d3Array from "d3-array";
-import * as d3Interpolate from "d3-interpolate";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
@@ -680,7 +679,7 @@ export class HistogramChart extends Component {
         this.brush = d3Brush.brushX()
             .extent([[0, 0], [xSize, ySize]])
             .handleSize(20)
-            .on("brush end", function () {
+            .on("brush", function () {
                 // noinspection JSUnresolvedVariable
                 const sel = d3Event.selection;
                 self.overviewBrushSelection.call(brushHandlesLeftRight, sel, ySize);
