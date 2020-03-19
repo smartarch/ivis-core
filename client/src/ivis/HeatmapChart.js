@@ -562,6 +562,10 @@ export class HeatmapChart extends Component {
             this.createChartCursorArea(width, height);
             if (this.props.withZoomX || this.props.withZoomY)
                 this.createChartZoom(xSize, ySize);
+            if (this.props.withOverviewLeft && this.props.withOverviewLeftBrush)
+                this.createChartOverviewLeftBrush();
+            if (this.props.withOverviewBottom && this.props.withOverviewBottomBrush)
+                this.createChartOverviewBottomBrush();
         }
     }
 
@@ -710,7 +714,9 @@ export class HeatmapChart extends Component {
                     self.lastZoomCausedByUser = true;
 
                 setZoomTransform(self)(newTransform, newZoomYScaleMultiplier);
+
                 // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "brush" && (d3Event.sourceEvent.target === self.brushLeft || d3Event.sourceEvent.target === self.brushBottom)) return;
                 self.moveBrush(newTransform, newZoomYScaleMultiplier);
             }
         };
@@ -859,8 +865,6 @@ export class HeatmapChart extends Component {
         //</editor-fold>
 
         this.drawHorizontalBars(rowProbs, this.overviewLeftBarsSelection, yScale, xScale, barColor);
-        if (this.props.withOverviewLeftBrush)
-            this.createChartOverviewLeftBrush();
     }
 
     createChartOverviewBottom(colProbs, xScale, barColor) {
@@ -878,8 +882,6 @@ export class HeatmapChart extends Component {
         //</editor-fold>
 
         this.drawVerticalBars(colProbs, this.overviewBottomBarsSelection, xScale, yScale, barColor);
-        if (this.props.withOverviewBottomBrush)
-            this.createChartOverviewBottomBrush();
     }
 
     createChartOverviewLeftBrush() {
@@ -887,7 +889,8 @@ export class HeatmapChart extends Component {
 
         const xSize = this.props.overviewLeftWidth - this.props.overviewLeftMargin.left - this.props.overviewLeftMargin.right;
         const brushExisted = this.brushLeft !== null;
-        this.brushLeft = d3Brush.brushY()
+        this.brushLeft = brushExisted ? this.brushLeft : d3Brush.brushY();
+        this.brushLeft
             .extent([[0, 0], [xSize, this.ySize]])
             .handleSize(20)
             .on("brush", function () {
@@ -921,7 +924,8 @@ export class HeatmapChart extends Component {
 
         const ySize = this.props.overviewBottomHeight - this.props.overviewBottomMargin.top - this.props.overviewBottomMargin.bottom;
         const brushExisted = this.brushBottom !== null;
-        this.brushBottom = d3Brush.brushX()
+        this.brushBottom = brushExisted ? this.brushBottom : d3Brush.brushX();
+        this.brushBottom
             .extent([[0, 0], [this.xSize, ySize]])
             .handleSize(20)
             .on("brush", function () {
@@ -965,14 +969,15 @@ export class HeatmapChart extends Component {
     updateZoomFromBrush() {
         const [transform, newZoomYScaleMultiplier] = this.getZoomValuesFromBrushValues(this.brushBottomValues, this.brushLeftValues);
 
-        if (this.zoom)
-            this.svgContainerSelection.call(this.zoom.transform, transform);
-        else {
-            this.setState({ zoomTransform: transform });
-            this.moveBrush(transform, newZoomYScaleMultiplier);
-        }
         this.setState({
             zoomYScaleMultiplier: newZoomYScaleMultiplier
+        }, () => {
+            if (this.zoom)
+                this.svgContainerSelection.call(this.zoom.transform, transform);
+            else {
+                this.setState({zoomTransform: transform});
+                this.moveBrush(transform, newZoomYScaleMultiplier);
+            }
         });
     }
 
