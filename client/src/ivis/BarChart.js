@@ -105,6 +105,7 @@ export class StaticBarChart extends Component {
         this.createChart(false, false);
     }
 
+    /** Update and redraw the chart based on changes in React props and state */
     componentDidUpdate(prevProps, prevState) {
         const forceRefresh = this.prevContainerNode !== this.containerNode
             || !Object.is(prevProps.config, this.props.config);
@@ -119,6 +120,9 @@ export class StaticBarChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
+    /** Creates (or updates) the chart with current data.
+     * This method is called from componentDidUpdate automatically when state or config is updated.
+     * All the 'createChart*' methods are called from here. */
     createChart(forceRefresh, updateZoom) {
         const width = this.containerNode.getClientRects()[0].width;
 
@@ -179,6 +183,8 @@ export class StaticBarChart extends Component {
         }
     }
 
+    /** Handles zoom of the chart by user using d3-zoom.
+     *  Called from this.createChart(). */
     createChartZoom(xSize, ySize) {
         const self = this;
 
@@ -213,7 +219,9 @@ export class StaticBarChart extends Component {
         };
 
         const zoomExtent = [[0, 0], [xSize, ySize]];
-        this.zoom = d3Zoom.zoom()
+        const zoomExisted = this.zoom !== null;
+        this.zoom = zoomExisted ? this.zoom : d3Zoom.zoom();
+        this.zoom
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(zoomExtent)
             .extent(zoomExtent)
@@ -224,6 +232,11 @@ export class StaticBarChart extends Component {
         this.svgContainerSelection.call(this.zoom);
     }
 
+    // noinspection JSCommentMatchesSignature
+    /** Draws the bars and also assigns them mouseover event handler to select them
+     * @param data          data in format of props.config.bars
+     * @param barsSelection d3 selection to which the data will get assigned and drawn
+     */
     drawVerticalBars(data, barsSelection, xScale, yScale) {
         const self = this;
         const bars = barsSelection

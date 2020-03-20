@@ -126,17 +126,17 @@ export function transitionInterpolate(selection, prevTransform, newTransform, se
         .on("end", endCallback);
 }
 
-export function setZoomTransform(self) {
+export function setZoomTransform(self, setStateCallback) {
     return function (transform, zoomYScaleMultiplier) {
         if (zoomYScaleMultiplier)
             self.setState({
                 zoomTransform: transform,
                 zoomYScaleMultiplier: zoomYScaleMultiplier
-            });
+            }, setStateCallback);
         else
             self.setState({
                 zoomTransform: transform
-            });
+            }, setStateCallback);
     }
 }
 

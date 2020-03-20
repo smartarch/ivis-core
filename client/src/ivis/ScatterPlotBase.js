@@ -86,6 +86,7 @@ class TooltipContent extends Component {
     };
 
     hasLabel(cid, label) {
+        // noinspection RedundantIfStatementJS
         if (this.props.labels && this.props.labels[cid] && this.props.labels[cid][label] === null)
             return false;
         return true;
@@ -234,7 +235,7 @@ class ScatterPlotToolbar extends Component {
         const t = this.props.t;
 
         return (
-            <div className="card">
+            <div className={`card ${this.state.opened ? styles.scatterPlotToolbarOpened : styles.scatterPlotToolbar}`}>
                 <div className="card-header" /*onClick={() => this.setState({opened: !this.state.opened})}*/>
                     <div className={styles.headingButtons}>
                         {this.props.zoomOutClick && <ActionLink onClickAsync={async () => this.props.zoomOutClick()}><Icon icon="search-minus" title={t('Zoom out')}/></ActionLink>}
@@ -254,8 +255,7 @@ class ScatterPlotToolbar extends Component {
                 {this.state.opened && this.props.withSettings &&
                 <div className="card-body">
                     <Form stateOwner={this} onSubmitAsync={::this.submitForm} format="wide">
-                        <InputField id="maxDotCount" label={t('Maximum number of dots')}
-                                    help={"Keep empty for unlimited."}/>
+                        <InputField id="maxDotCount" label={t('Maximum number of dots')}/>
                         <CheckBox id={"withTooltip"} label={t("Show tooltip")}/>
                         <InputField id="xMin" label={t('X axis minimum')}/>
                         <InputField id="xMax" label={t('X axis maximum')}/>
@@ -270,6 +270,9 @@ class ScatterPlotToolbar extends Component {
     }
 }
 
+/**
+ * Common class for ScatterPlot, BubblePlot (and possibly other) components
+ */
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
@@ -285,12 +288,12 @@ export class ScatterPlotBase extends Component {
         this.resizeListener = () => {
             this.createChart();
         };
+        /** labels used for Tooltip */
         this.labels = {};
         this.globalRegressions = [];
         this.regressions = [];
         this.lastZoomCausedByUser = false;
 
-        this.brush = null;
         this.zoom = null;
 
         this.state = {
@@ -429,9 +432,8 @@ export class ScatterPlotBase extends Component {
         this.fetchData();
     }
 
+    /** Update and redraw the chart based on changes in React props and state */
     componentDidUpdate(prevProps, prevState) {
-        const t = this.props.t;
-
         let configDiff = compareConfigs(this.props.config, prevProps.config);
 
         if (this.state.maxDotCount !== prevState.maxDotCount)
@@ -442,6 +444,7 @@ export class ScatterPlotBase extends Component {
         if (this.props.colors.length === 0)
             throw new Error("ScatterPlotBase: 'colors' prop must contain at least one element. You may omit it completely for default value.");
 
+        // test if time interval changed
         const considerTs =  this.props.config.signalSets.some(setConf => !!setConf.tsSigCid);
         if (considerTs) {
             const prevAbs = this.getIntervalAbsolute(prevProps);
@@ -493,10 +496,12 @@ export class ScatterPlotBase extends Component {
     }
     //</editor-fold>
 
+    /** Creates the queries for this.fetchData method
+     * @returns {[[query], boolean, [integer]]} { tupple: queries, isZoomedIn, indices of signalSet configs for aggs queries } */
     getQueries(xMin, xMax, yMin, yMax) {
         const config = this.props.config;
         const queries = [];
-        let queryWithRangeFilter = !isNaN(xMin) || !isNaN(xMax) || !isNaN(yMin) || !isNaN(yMax);
+        let isZoomedIn = !isNaN(xMin) || !isNaN(xMax) || !isNaN(yMin) || !isNaN(yMax);
         const aggsQueriesSignalSetIndices = [];
 
         for (const [i, signalSet] of config.signalSets.entries()) {
@@ -527,7 +532,7 @@ export class ScatterPlotBase extends Component {
                 Math.abs(this.state.zoomTransform.x) > 3 ||
                 Math.abs(this.state.zoomTransform.y) > 3) {
 
-                queryWithRangeFilter = true;
+                isZoomedIn = true;
 
                 // update limits with current zoom (if not set yet)
                 if (xMin === undefined && !isNaN(this.state.xMin))
@@ -589,7 +594,7 @@ export class ScatterPlotBase extends Component {
                 signals.push(signalSet.colorContinuous_sigCid);
             if (signalSet.colorDiscrete_sigCid) {
                 signals.push(signalSet.colorDiscrete_sigCid);
-                if (!queryWithRangeFilter) {
+                if (!isZoomedIn) {
                     const aggs = [{
                         sigCid: signalSet.colorDiscrete_sigCid,
                         agg_type: "terms"
@@ -609,7 +614,7 @@ export class ScatterPlotBase extends Component {
                 args: [ signalSet.cid, signals, filter, undefined, limit ]
             });
 
-            if (!queryWithRangeFilter) {
+            if (!isZoomedIn) {
                 const summary = {
                     signals: {}
                 };
@@ -626,30 +631,32 @@ export class ScatterPlotBase extends Component {
             }
         }
 
-        return [ queries, queryWithRangeFilter, aggsQueriesSignalSetIndices ];
+        return [ queries, isZoomedIn, aggsQueriesSignalSetIndices ];
     }
 
+    /** Fetches new data for the chart and processes the results (updates the chart accordingly) */
     @withAsyncErrorHandler
     async fetchData(xMin, xMax, yMin, yMax) {
         this.setState({statusMsg: this.props.t('Loading...')});
         try {
-            const [queries, queryWithRangeFilter, aggsQueriesSignalSetIndices] = this.getQueries(xMin, xMax, yMin, yMax);
+            const [queries, isZoomedIn, aggsQueriesSignalSetIndices] = this.getQueries(xMin, xMax, yMin, yMax);
             const results = await this.dataAccessSession.getLatestMixed(queries);
 
             if (results) { // Results is null if the results returned are not the latest ones
                 const processedResults = this.processData(results.filter((_, i) => queries[i].type === "docs"));
 
-                if (!processedResults.some(d => d.length > 0)) {
-                    this.clearChart();
-                    this.setState({
-                        signalSetData: null,
-                        noData: true,
-                        statusMsg: "No data."
-                    });
-                    return;
-                }
+                if (!isZoomedIn) { // zoomed completely out
+                    if (!processedResults.some(d => d.length > 0)) {
+                        this.clearChart();
+                        this.setState({
+                            signalSetsData: null,
+                            globalSignalSetsData: null,
+                            noData: true,
+                            statusMsg: "No data."
+                        });
+                        return;
+                    }
 
-                if (!queryWithRangeFilter) { // zoomed completely out
                     // update extents of axes
                     const summaries = results.filter((_, i) => queries[i].type === "summary");
                     //<editor-fold desc="Y extent">
@@ -725,16 +732,16 @@ export class ScatterPlotBase extends Component {
                     statusMsg: "",
                     noData: false
                 };
-                if (!queryWithRangeFilter)
+                if (!isZoomedIn)
                     newState.globalSignalSetsData = processedResults;
 
                 this.setState(newState, () => {
-                    if (!queryWithRangeFilter)
+                    if (!isZoomedIn)
                         // call callViewChangeCallback when data new data without range filter are loaded as the xExtent might got updated (even though this.state.zoomTransform is the same)
                         this.callViewChangeCallback();
                 });
 
-                if (!queryWithRangeFilter) { // zoomed completely out
+                if (!isZoomedIn) { // zoomed completely out
                     this.globalRegressions = await this.createRegressions(processedResults);
                 }
 
@@ -746,8 +753,13 @@ export class ScatterPlotBase extends Component {
         }
     }
 
+    /** Creates (or updates) the chart with current data.
+     * This method is called from componentDidUpdate automatically when state or config is updated.
+     * All the 'createChart*' methods are called from here. */
     createChart(forceRefresh, updateZoom) {
+        /** @description last data loaded by fetchData */
         const signalSetsData = this.state.signalSetsData;
+        /** @description data loaded when chart was completely zoomed out */
         const globalSignalSetsData = this.state.globalSignalSetsData;
 
         const width = this.containerNode.getClientRects()[0].width;
@@ -815,7 +827,7 @@ export class ScatterPlotBase extends Component {
                 .range([this.props.minDotSize, this.props.maxDotSize]);
         }
 
-        // c Scale (color)
+        // c Scales (color) - separate for each signalSet
         let cScales = [];
         let cExtents = this.cExtents, cExtent = this.cExtent;
         if (this.props.updateColorOnZoom && SignalSetsConfigs.some(cfg => cfg.hasOwnProperty("colorContinuous_sigCid"))) {
@@ -872,21 +884,19 @@ export class ScatterPlotBase extends Component {
         }
     }
 
+    /** Resets chart's zoom, brush, etc.
+     * Should only be called when setting state to noData or similar situation, i.e. no data are rendered */
     clearChart() {
         this.brushParentSelection
             .on('mouseenter', null)
             .on('mousemove', null)
             .on('mouseleave', null);
 
-        this.brush = null;
         this.zoom = null;
-
     }
 
     //<editor-fold desc="Data processing">
-    /**
-     * renames data from all signalSets to be in format [{x,y}]
-     */
+    /** Renames data from all signalSets to be in format [{ x, y, s?, c?, d?, label? }] ('?' marks optional property). */
     processData(signalSetsData) {
         const config = this.props.config;
         let ret = [];
@@ -941,7 +951,6 @@ export class ScatterPlotBase extends Component {
     }
 
     updateLabels() {
-        // used for Tooltip
         this.labels = {};
         for (let i = 0; i < this.props.config.signalSets.length; i++) {
             const signalSetConfig = this.props.config.signalSets[i];
@@ -969,6 +978,8 @@ export class ScatterPlotBase extends Component {
     //</editor-fold>
 
     //<editor-fold desc="Data drawing">
+    /** Gets color for signalSet
+     * @param index     signalSet index in this.props.config */
     getColor(index) {
         let color = this.props.config.signalSets[index].color || this.props.colors[index] || "black";
         if (Array.isArray(color))
@@ -977,7 +988,13 @@ export class ScatterPlotBase extends Component {
             return d3Color.color(color);
     }
 
-    /** data = [{ x, y, s?, c?, d? }], dotShape = id (excl. '#') */
+    // noinspection JSCommentMatchesSignature
+    /**
+     * @param data          data in format [{ x, y, s?, c?, d? }] (as produces by this.processData)
+     * @param selection     d3 selection to which the data will get assigned and drawn
+     * @param dotShape      svg id (excl. '#')
+     * @param modifyColor   function to modify dot color after getting it from cScale
+     */
     drawDots(data, selection, xScale, yScale, sScale, cScale, signalSetConfig, dotShape, modifyColor) {
         const size = (signalSetConfig.dotSize ? signalSetConfig.dotSize : this.props.dotSize);
         const constantSize = !signalSetConfig.hasOwnProperty("dotSize_sigCid");
@@ -991,18 +1008,17 @@ export class ScatterPlotBase extends Component {
         }
         dotShape = "#" + dotShape;
 
-        // create global dots on chart
+        // create dots on chart
+        const keyFunc = d => (signalSetConfig.label_sigCid ? d => d.label + " " : "") + d.x + " " + d.y;
         const dots = selection
             .selectAll('use')
-            .data(data, (d) => {
-                return d.x + " " + d.y;
-            });
+            .data(data, keyFunc);
 
         // enter
         const allDots = dots.enter()
             .append('use')
             .attr('href', dotShape)
-            .attr('transform', "scale(0)")
+            .attr('transform', d => `scale(${s(d)})`)
             .merge(dots)
             .attr('x', d => xScale(d.x))
             .attr('y', d => yScale(d.y))
@@ -1128,6 +1144,7 @@ export class ScatterPlotBase extends Component {
             this.regressions[i].color = this.getRegressionColor(this.regressions[i], cScales);
         }
 
+        // noinspection JSUnresolvedVariable
         const regressions = this.regressionsSelection
             .selectAll("path")
             .data(d3Array.merge([this.globalRegressions, this.regressions])
@@ -1177,7 +1194,9 @@ export class ScatterPlotBase extends Component {
     //</editor-fold>
 
     //<editor-fold desc="Cursor and Brush">
-    createChartCursor(xScale, yScale, sScale, cScales, setsData) {
+    /** Handles mouse movement to select the closest dot (for displaying its details in Tooltip, etc.).
+     *  Called from this.createChart(). */
+    createChartCursor(xScale, yScale, sScale, cScales, signalSetsData) {
         const self = this;
 
         let selections = this.state.selections;
@@ -1190,10 +1209,10 @@ export class ScatterPlotBase extends Component {
 
             let newSelections = {};
 
-            for (let i = 0; i < setsData.length && i <self.props.config.signalSets.length; i++) {
+            for (let i = 0; i < signalSetsData.length && i <self.props.config.signalSets.length; i++) {
                 const signalSetCidIndex = self.props.config.signalSets[i].cid + "-" + i;
 
-                const data = setsData[i];
+                const data = signalSetsData[i];
                 let newSelection = null;
                 let minDist = Number.MAX_VALUE;
                 for (const point of data) {
@@ -1216,6 +1235,7 @@ export class ScatterPlotBase extends Component {
                     if (signalSetConfig.dotSize)
                         size = signalSetConfig.dotSize;
                     if (signalSetConfig.hasOwnProperty("dotSize_sigCid"))
+                        // noinspection JSUnresolvedVariable
                         size = sScale(newSelection.s);
 
                     // noinspection JSUnresolvedVariable
@@ -1295,6 +1315,8 @@ export class ScatterPlotBase extends Component {
         });
     }
 
+    /** Prepares the d3 brush for region selection.
+     *  Called from this.createChart(). */
     createChartBrush() {
         const self = this;
 
@@ -1363,6 +1385,8 @@ export class ScatterPlotBase extends Component {
     //</editor-fold>
 
     //<editor-fold desc="Zoom (current view)">
+    /** Handles zoom of the chart by user using d3-zoom.
+     *  Called from this.createChart(). */
     createChartZoom(xSize, ySize) {
         const self = this;
 
@@ -1401,7 +1425,8 @@ export class ScatterPlotBase extends Component {
         const zoomExtent = [[0, 0], [xSize, ySize]];
         const translateExtent = [[0, 0], [xSize, ySize * this.state.zoomYScaleMultiplier]];
         const zoomExisted = this.zoom !== null;
-        this.zoom = d3Zoom.zoom()
+        this.zoom = zoomExisted ? this.zoom : d3Zoom.zoom();
+        this.zoom
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(translateExtent)
             .extent(zoomExtent)
@@ -1419,6 +1444,16 @@ export class ScatterPlotBase extends Component {
             this.setLimitsToCurrentZoom(); // initialize limits
     }
 
+    /**
+     * Set the visible region of the chart to defined limits (in units of the data, not in pixels)
+     * @param xMin              left boundary of the visible region (in units of data on x-axis)
+     * @param xMax              right boundary of the visible region (in units of data on x-axis)
+     * @param yMin              bottom boundary of the visible region (in units of data on y-axis)
+     * @param yMax              top boundary of the visible region (in units of data on y-axis)
+     * @param source            the element which caused the view change (if source === this, the update is ignored)
+     * @param causedByUser      tells whether the view update was caused by user (this propagates to props.viewChangeCallback call), default = false
+     * @param withTransition    set to true if view change should be animated (props.withTransition must be also true), default = false
+     */
     setView(xMin, xMax, yMin, yMax, source, causedByUser = false, withTransition = false) {
         if (source === this || this.state.noData)
             return;
@@ -1435,16 +1470,21 @@ export class ScatterPlotBase extends Component {
         this.setZoomToLimits(xMin, xMax, yMin, yMax, withTransition);
     }
 
+    /** Returns the current view (boundaries of visible region)
+     * @return {{xMin: number, xMax: number, yMin: number, yMax: number }} left, right, bottom, top boundary
+     */
     getView() {
         const [xMin, xMax] = this.xScale.domain();
         const [yMin, yMax] = this.yScale.domain();
         return {xMin, xMax, yMin, yMax};
     }
 
+    /** updates state with current limits */
     setLimitsToCurrentZoom() {
         this.setState(this.getView());
     }
 
+    /** sets zoom object (transform) to desired view boundaries */
     setZoomToLimits(xMin, xMax, yMin, yMax, withTransition) {
         const newXSize = xMax - xMin;
         const newYSize = yMax - yMin;
@@ -1461,6 +1501,7 @@ export class ScatterPlotBase extends Component {
         this.setZoom(transform, newZoomYScaleMultiplier, withTransition);
     }
 
+    /** helper method to update zoom transform in state and zoom object */
     setZoom(transform, yScaleMultiplier, withTransition = true) {
         const self = this;
         if (this.props.withZoom) {
@@ -1549,7 +1590,7 @@ export class ScatterPlotBase extends Component {
         this.fetchData(xMin, xMax, yMin, yMax);
     }
 
-    // toggle between brush and zoom, returns true if brush is enabled after call
+    /** toggle between brush and zoom, returns true if brush is enabled after call */
     brushButtonClick() {
         const brushEnabled = !this.state.brushInProgress;
         this.setState({
@@ -1612,7 +1653,7 @@ export class ScatterPlotBase extends Component {
                                         setSettings={::this.setSettings}
                     />}
 
-                    <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionNone}>
+                    <div ref={node => this.svgContainerSelection = select(node)} className={`${styles.touchActionNone} ${styles.clearBoth}`}>
                         <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                             <defs>
                                 <clipPath id="plotRect">

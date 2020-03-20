@@ -1,5 +1,15 @@
 @import "../scss/variables";
 
+.scatterPlotToolbar {
+  max-width: 300px;
+  float: right;
+}
+
+.scatterPlotToolbarOpened {
+  width: 100%;
+  float: right;
+}
+
 .headingButtons {
   float: right;
 
@@ -20,10 +30,14 @@ a.active {
   stroke: #434343;
 }
 
-.touch-action-none {
+.touchActionNone {
   touch-action: none;
 }
 
-.touch-action-pan-y {
+.touchActionPanY {
   touch-action: pan-y;
+}
+
+.clearBoth {
+  clear: both;
 }
