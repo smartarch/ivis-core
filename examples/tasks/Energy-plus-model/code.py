@@ -8,13 +8,13 @@ import subprocess
 import pathlib
 from elasticsearch import Elasticsearch, helpers
     
+    
 from eppy import modeleditor
 from eppy.modeleditor import IDF
 idd_file = "/usr/local/Energy+.idd"
 IDF.setiddname(idd_file)
 
 from io import StringIO
-import time
     
 # Get parameters and set up elasticsearch
 data = json.loads(sys.stdin.readline())
@@ -35,8 +35,8 @@ api_url_file = f'{api_url_base}/meteo-file'
 occ = params['occ']
 mod = params['mod']
 
-username = ''
-password = ''
+username = 'sieglp'
+password = 'jEkZTwB9l5oE033VoX2E'
  
 current_date = datetime.now()
  
@@ -59,7 +59,6 @@ os.makedirs(f'{model_dir}', exist_ok=True)
 with open(f'{model_dir}/weather.epw', 'wb') as f:
   f.write(epw_result.content)
 
-start = time.time()
 if state is None or state.get('index') is None:
   ns = 1
 
@@ -143,22 +142,40 @@ if idf_result.status_code != 200 :
 idf = IDF(StringIO(idf_result.text))
 period =  idf.idfobjects["RunPeriod"][0]
 
-last =  state.get('last_run') or {}
+from_date = current_date - timedelta(days=3)
+period.Begin_Day_of_Month =   from_date.day
+period.Begin_Month =   from_date.month
+period.Begin_Year =   from_date.year
+
+print(current_date)
+
+# for debug
+#period.Begin_Day_of_Month =   7
+#period.Begin_Month =   10
+#period.Begin_Year =   2019
+
+#last =  state.get('last_run') or {}
 # Part of incremental update
 #period.Begin_Day_of_Month = last.get('day') or 1
 #period.Begin_Month = last.get('month') or 1
 #period.Begin_Year = last.get('year') or current_date.year
 
-period.Begin_Day_of_Month =   1
-period.Begin_Month =   11
-period.Begin_Year =   current_date.year
-
 # last run will be used in possible incremental implementation, next start will be -1 day?
-state['last_run']= {}
+#state['last_run']= {}
+#to_date = current_date + timedelta(days=1)
+#tate['last_run']['day'] = period.End_Day_of_Month =  to_date.day
+#state['last_run']['month'] = period.End_Month =  to_date.month
+#state['last_run']['year'] = period.End_Year = to_date.year
+
 to_date = current_date + timedelta(days=1)
-state['last_run']['day'] = period.End_Day_of_Month =  to_date.day
-state['last_run']['month'] = period.End_Month =  to_date.month
-state['last_run']['year'] = period.End_Year = to_date.year
+period.End_Day_of_Month =  to_date.day
+period.End_Month =  to_date.month
+period.End_Year = to_date.year
+
+#for debug
+#period.End_Day_of_Month = 11
+#period.End_Month =  10
+#period.End_Year = 2019
 
 # Save to file
 idf.saveas(f'{model_dir}/input.idf')
@@ -186,6 +203,7 @@ def iterResults():
     # Get values
     doc_source=None
     date=None
+    time_zone = 0
     while True:
       line = f.readline()
       
@@ -197,7 +215,10 @@ def iterResults():
         break;
       
       line_data = line.split(',')
-      if line_data[0]=='2':
+      if line_data[0]=='1':
+        time_zone = float(line_data[4].strip())
+        
+      elif line_data[0]=='2':
          # new data block
 
         if doc_source is not None:
@@ -213,7 +234,7 @@ def iterResults():
         #Day of Simulation[]
         month= '{:02d}'.format(int(line_data[2]))#Month[]
         day = '{:02d}'.format(int(line_data[3])) #Day of Month[]
-        #DST Indicator[1=yes 0=no]
+        tz_dst = time_zone + int(line_data[4]) #DST Indicator[1=yes 0=no]
         hour='{:02d}'.format(int(line_data[5])-1)#Hour[]  #-1 is here because for some reason (DST?) hours start on 1 not 0 
         start_min=line_data[6]#StartMinute[]
         end_min=line_data[7]#EndMinute[]
@@ -221,8 +242,12 @@ def iterResults():
         
         #custom values
         min = '{:02d}'.format(int((float(start_min) + float(end_min)) / 2)) # TODO separate seconds
+        # FIXME this should take the value somewhere from input, don't know where currently
         year = current_date.year
-        date=f'{year}-{month}-{day}T{hour}:{min}:00.000Z'
+        
+        sign = "+" if tz_dst >= 0 else "-"
+        tz = '{:02d}'.format(int(tz_dst))
+        date=f'{year}-{month}-{day}T{hour}:{min}:00.000{sign}{tz}:00'
         doc_source = {
           state['fields']['date']: date
         }

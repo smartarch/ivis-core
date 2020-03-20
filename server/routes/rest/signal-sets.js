@@ -4,12 +4,27 @@ const passport = require('../../lib/passport');
 const moment = require('moment');
 const signalSets = require('../../models/signal-sets');
 const panels = require('../../models/panels');
+const templates = require('../../models/templates');
 const users = require('../../models/users');
 const contextHelpers = require('../../lib/context-helpers');
 const base64url = require('base64-url');
 
 const router = require('../../lib/router-async').create();
 const {castToInteger} = require('../../lib/helpers');
+
+function getSignalsPermissions(allowedSignalsMap){
+    const signalSetsPermissions = {};
+    const signalsPermissions = {};
+
+    for (const setEntry of allowedSignalsMap.values()) {
+        signalSetsPermissions[setEntry.id] = new Set(['query']);
+        for (const sigId of setEntry.sigs.values()) {
+            signalsPermissions[sigId] = new Set(['query']);
+        }
+    }
+
+    return {signalSetsPermissions, signalsPermissions};
+}
 
 users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
     const panel = await panels.getByIdWithTemplateParams(contextHelpers.getAdminContext(), panelId, false);
@@ -40,15 +55,7 @@ users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
 
         const allowedSignalsMap = await signalSets.getAllowedSignals(panel.templateParams, panel.params);
 
-        const signalSetsPermissions = {};
-        const signalsPermissions = {};
-
-        for (const setEntry of allowedSignalsMap.values()) {
-            signalSetsPermissions[setEntry.id] = new Set(['query']);
-            for (const sigId of setEntry.sigs.values()) {
-                signalsPermissions[sigId] = new Set(['query']);
-            }
-        }
+        const {signalSetsPermissions, signalsPermissions} = getSignalsPermissions(allowedSignalsMap);
 
         ret.permissions.signalSet = signalSetsPermissions;
         ret.permissions.signal = signalsPermissions;
@@ -57,6 +64,35 @@ users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
     return ret;
 });
 
+users.registerRestrictedAccessTokenMethod('template', async ({templateId, params}) => {
+    const template = await templates.getById(contextHelpers.getAdminContext(), templateId, false);
+
+    const ret = {
+        permissions: {
+            template: {
+                [template.id]: new Set(['view','execute', 'viewFiles'])
+            }
+        }
+    };
+
+    if (template.elevated_access) {
+        ret.permissions.signalSet = new Set(['view', 'query']);
+        ret.permissions.signal = new Set(['view', 'query']);
+
+        ret.permissions.workspace = new Set(['view', 'createPanel']);
+        ret.permissions.namespace = new Set(['view', 'createPanel']);
+
+    } else {
+        const allowedSignalsMap = await signalSets.getAllowedSignals(template.settings.params, params);
+
+        const {signalSetsPermissions, signalsPermissions} = getSignalsPermissions(allowedSignalsMap);
+
+        ret.permissions.signalSet = signalSetsPermissions;
+        ret.permissions.signal = signalsPermissions;
+    }
+
+    return ret;
+});
 
 router.getAsync('/signal-sets/:signalSetId', passport.loggedIn, async (req, res) => {
     const signalSet = await signalSets.getById(req.context, castToInteger(req.params.signalSetId));

@@ -11,8 +11,8 @@ const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-comm
 const moment = require('moment');
 const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputDir;
 const {getAdminContext} = require('../lib/context-helpers');
-const createSigSet = require('../models/signal-sets').create;
-const createSignal = require('../models/signals').create;
+const createSigSet = require('../models/signal-sets').createTx;
+const createSignal = require('../models/signals').createTx;
 const {resolveAbs, getFieldsetPrefix} = require('../../shared/templates');
 
 const es = require('../lib/elasticsearch');
@@ -39,19 +39,6 @@ const checkInterval = config.tasks.checkInterval * 1000;
 
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
-
-const numpyHandler = {
-    ...pythonHandler,
-    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail)
-};
-
-const energyHandler= {
-    ...pythonHandler,
-    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.ENERGY_PLUS, id, code, destDir, onSuccess, onFail)
-};
-
-handlers.set(TaskType.NUMPY, numpyHandler);
-handlers.set(TaskType.ENERGY_PLUS, energyHandler);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
@@ -637,9 +624,11 @@ async function handleBuild(workEntry) {
             await setState(id, BuildState.PROCESSING);
 
             await handler.build(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onBuildFail(id, warnings, errors));
         } catch (err) {
@@ -679,10 +668,15 @@ async function handleInit(workEntry) {
     } else {
         try {
             await setState(id, BuildState.INITIALIZING);
+            const task = await knex.table('tasks').where('id', id).first();
+            const subtype = JSON.parse(task.settings).subtype;
             await handler.init(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id: id,
+                    subtype: subtype,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onInitFail(id, warnings, errors));
         } catch (err) {
@@ -775,26 +769,43 @@ async function onRunRequest(jobId, request) {
         let req = {};
         try {
             req = parseRequest(request);
+
+            if (req.id) {
+                response.id = req.id;
+            }
+
         } catch (err) {
             response.error = `Request parsing failed: ${err.message}`;
             return response;
         }
 
         if (req.type) {
-            switch (req.type) {
-                case JobMsgType.CREATE_SIGNALS:
-                    if (req.sigSet) {
-                        return await processSetReq(jobId, req.sigSet);
-                    }
-                    break;
-                case  JobMsgType.STORE_STATE:
-                    if (req[STATE_FIELD]) {
-                        await storeRunState(jobId, req[STATE_FIELD]);
-                    }
-                    break;
-                default:
-                    break;
+            try {
+                switch (req.type) {
+                    case JobMsgType.CREATE_SIGNALS:
+                        if (req.signalSets || req.signals) {
+                            return await processCreateRequest(jobId, req.signalSets, req.signals);
+                        } else {
+                            response.error = `Either signalSets or signals have to be specified`;
+                        }
+                        break;
+                    case  JobMsgType.STORE_STATE:
+                        if (req[STATE_FIELD]) {
+                            await storeRunState(jobId, req[STATE_FIELD]);
+                        } else {
+                            response.error(`${STATE_FIELD} not specified`)
+                        }
+                        break;
+                    default:
+                        response.error = "Type not recognized";
+                        break;
+                }
+            } catch (error) {
+                log.warn(LOG_ID, error);
+                response.error = error.message;
             }
+        } else {
+            response.error = "Type not specified";
         }
     }
     return response;
@@ -813,42 +824,93 @@ async function onRunRequest(jobId, request) {
  * Signals are specified in sigSet.signals
  * Uses same data format as web creation
  * @param jobId
- * @param sigSet
+ * @param signalSets
  * @returns {Promise<IndexInfo>} Created indices and mapping
  */
-async function processSetReq(jobId, sigSet) {
-    const indexInfo = {};
+async function processCreateRequest(jobId, signalSets, signalsSpec) {
+    const esInfo = {};
 
-    const signals = sigSet.signals;
-    delete sigSet.signals;
+    async function createSignalSetWithSignals(tx, signalSet) {
 
-    sigSet.type = SignalSetType.COMPUTED;
+        const esSetInfo = {};
+
+        const signals = signalSet.signals;
+        delete signalSet.signals;
+
+        signalSet.type = SignalSetType.COMPUTED;
+
+        signalSet.id = await createSigSet(tx, getAdminContext(), signalSet);
+        esSetInfo.index = getIndexName(signalSet);
+        esSetInfo.type = TYPE_JOBS;
+
+        esSetInfo.fields = {};
+        if (signals) {
+            for (const signal of signals) {
+                // Here are possible overwrites of input form job
+                signal.weight_list = 0;
+                signal.weight_edit = null;
+                signal.source = SignalSource.JOB;
+                const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
+                esSetInfo.fields[signal.cid] = getFieldName(sigId);
+            }
+        }
+
+        await tx('signal_sets_owners').insert({job: jobId, set: signalSet.id});
+        return esSetInfo;
+    }
+
+    async function createComputedSignal(tx, signalSetId, signal) {
+        // Here are possible overwrites of input form job
+        signal.weight_list = 0;
+        signal.weight_edit = null;
+        signal.source = SignalSource.JOB;
+        const sigId = await createSignal(tx, getAdminContext(), signalSetId, signal);
+
+        // TODO should add something like signal_sets_owners for signals probably
+        return getFieldName(sigId);
+    }
 
     try {
         await knex.transaction(async (tx) => {
-                sigSet.id = await createSigSet(getAdminContext(), sigSet);
-                indexInfo.index = getIndexName(sigSet);
-                indexInfo.type = '_doc';
-
-                indexInfo.fields = {};
-                for (const signal of signals) {
-                    // Here are possible overwrites of input form job
-                    signal.weight_list = 0;
-                    signal.weight_edit = null;
-                    signal.source = SignalSource.JOB;
-                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal);
-                    indexInfo.fields[signal.cid] = getFieldName(sigId);
+            if (signalSets) {
+                if (Array.isArray(signalSets)) {
+                    for (let signalSet of signalSets) {
+                        esInfo[signalSet.cid] = await createSignalSetWithSignals(tx, signalSet);
+                    }
+                } else {
+                    esInfo[signalSets.cid] = await createSignalSetWithSignals(tx, signalSets);
                 }
-
-                await tx('signal_sets_owners').insert({job: jobId, set: sigSet.id});
             }
-        );
+
+            if (signalsSpec) {
+                for (let [sigSetCid, signals] of Object.entries(signalsSpec)) {
+                    const sigSet = await tx('signal_sets').where('cid', sigSetCid).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${sigSetCid} not found`);
+                    }
+
+                    esInfo[sigSetCid] = {};
+                    esInfo[sigSetCid]['index'] = getIndexName(sigSet);
+                    esInfo[sigSetCid]['type'] = TYPE_JOBS;
+                    esInfo[sigSetCid]['fields'] = {};
+
+                    if (Array.isArray(signals)) {
+                        for (let signal of signals) {
+                            esInfo[sigSetCid]['fields'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
+                        }
+                    } else {
+                        esInfo[sigSetCid]['fields'][signals.cid] = await createComputedSignal(tx, sigSet.id, signals);
+                    }
+
+                }
+            }
+        });
     } catch (error) {
         log.warn(LOG_ID, error);
-        indexInfo.error = error.message;
+        esInfo.error = error.message;
     }
 
-    return indexInfo;
+    return esInfo;
 }
 
 /**
@@ -857,7 +919,6 @@ async function processSetReq(jobId, sigSet) {
  * @returns {Promise<void>} config field retrieved from ES
  */
 async function loadJobState(id) {
-    let jobState = null;
     try {
         const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
 
@@ -883,11 +944,7 @@ async function loadJobState(id) {
 async function storeRunState(id, state) {
     const jobBody = {};
     jobBody[STATE_FIELD] = state;
-    try {
-        await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
-    } catch (error) {
-        log.warn(LOG_ID, error);
-    }
+    await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
 }
 
 /**

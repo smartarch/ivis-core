@@ -159,7 +159,7 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
 }
 
 
-async function _createTx(tx, context, entity) {
+async function createTx(tx, context, entity) {
     shares.enforceGlobalPermission(context, 'allocateSignalSet');
     await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createSignalSet');
 
@@ -193,7 +193,7 @@ async function _createTx(tx, context, entity) {
 
 async function create(context, entity) {
     return await knex.transaction(async tx => {
-        return await _createTx(tx, context, entity);
+        return await createTx(tx, context, entity);
     });
 }
 
@@ -251,7 +251,7 @@ async function _ensure(context, cid, schema, defaultName, defaultDescription, de
                 namespace: defaultNamespace
             };
 
-            const id = await _createTx(tx, context, signalSet);
+            const id = await createTx(tx, context, signalSet);
             signalSet.id = id;
         }
 
@@ -726,6 +726,7 @@ module.exports.getByCid = getByCid;
 module.exports.listDTAjax = listDTAjax;
 module.exports.list = list;
 module.exports.create = create;
+module.exports.createTx = createTx;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.remove = remove;
 module.exports.serverValidate = serverValidate;

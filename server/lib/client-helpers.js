@@ -3,6 +3,7 @@
 const config = require('./config');
 const shares = require('../models/shares');
 const builtinTemplates = require('../models/builtin-templates');
+const builtinTasks = require('../models/builtin-tasks');
 const urls = require('./urls');
 
 async function getAnonymousConfig(context, appType) {
@@ -31,7 +32,8 @@ async function getAuthenticatedConfig(context) {
             namespace: context.user.namespace
         },
         globalPermissions,
-        builtinTemplates: builtinTemplates.list()
+        builtinTemplates: builtinTemplates.list(),
+        builtinTasks: await builtinTasks.list()
     }
 }
 
