@@ -34,10 +34,13 @@ export class BubblePlot extends Component {
                 dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
-                x_label: PropTypes.string,
-                y_label: PropTypes.string,
-                dotSize_label: PropTypes.string,
-                color_label: PropTypes.string,
+                tooltipLabels: PropTypes.shape({
+                    label_format: PropTypes.func,
+                    x_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    y_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    dotSize_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    color_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                }),
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
@@ -50,21 +53,30 @@ export class BubblePlot extends Component {
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         minDotSize: PropTypes.number,
         maxDotSize: PropTypes.number,
+        highlightDotSize: PropTypes.number, // radius multiplier
+        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
+
+        xMinValue: PropTypes.number,
+        xMaxValue: PropTypes.number,
+        yMinValue: PropTypes.number,
+        yMaxValue: PropTypes.number,
         minDotSizeValue: PropTypes.number,
         maxDotSizeValue: PropTypes.number,
-        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         colorValues: PropTypes.array,
-        highlightDotSize: PropTypes.number, // radius multiplier
+
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
         updateSizeOnZoom: PropTypes.bool,
+
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
+        xAxisLabel: PropTypes.string,
         yAxisTicksCount: PropTypes.number,
         yAxisTicksFormat: PropTypes.func,
+        yAxisLabel: PropTypes.string,
 
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
@@ -77,11 +89,6 @@ export class BubblePlot extends Component {
         withToolbar: PropTypes.bool,
         withSettings: PropTypes.bool,
         withAutoRefreshOnBrush: PropTypes.bool,
-
-        xMin: PropTypes.number, // props (limits) will get copied to state in constructor, changing it later will not update it, use setLimits method to update it (and combine it with getLimits if you need to update just one of them)
-        xMax: PropTypes.number,
-        yMin: PropTypes.number,
-        yMax: PropTypes.number,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,

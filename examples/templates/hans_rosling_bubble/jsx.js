@@ -2,6 +2,7 @@
 
 import React, {Component} from "react";
 import {BubblePlot, TimeContext, TimeRangeSelector, IntervalSpec} from "ivis";
+import * as d3Format from "d3-format";
 
 export default class HansRoslingBubblePlot extends Component {
     constructor(props) {
@@ -18,11 +19,12 @@ export default class HansRoslingBubblePlot extends Component {
                 dotSize_sigCid: "population",
                 tsSigCid: "year",
                 label_sigCid: "country",
-                label: null,
-                x_label: null,
-                y_label: null,
-                color_label: null,
-                dotSize_label: "Population",
+                tooltipLabels: {
+                    x_label: null,
+                    y_label: null,
+                    color_label: null,
+                    dotSize_label: p => "Population: " + d3Format.format(",")(p)
+                },
                 dotGlobalShape: "none"
             }]
         };
@@ -33,15 +35,17 @@ export default class HansRoslingBubblePlot extends Component {
                 <BubblePlot
                     config={cnf}
                     height={600}
-                    margin={{ left: 25, right: 5, top: 5, bottom: 20 }}
+                    margin={{ left: 45, right: 5, top: 5, bottom: 40 }}
                     maxDotCount={200}
                     maxDotSize={30}
                     minDotSizeValue={0}
                     colorValues={["europe", "americas", "africa", "asia"]}
-                    xMin={0.5}
-                    xMax={8.7}
-                    yMin={20}
-                    yMax={87}
+                    xMinValue={0.5}
+                    xMaxValue={8.7}
+                    yMinValue={20}
+                    yMaxValue={87}
+                    xAxisLabel={"Fertility rate"}
+                    yAxisLabel={"Life expectancy"}
                     withToolbar={false}
                     zoomLevelMax={3}
                     highlightDotSize={1}

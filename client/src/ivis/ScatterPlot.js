@@ -34,9 +34,12 @@ export class ScatterPlot extends Component {
                 dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
-                x_label: PropTypes.string,
-                y_label: PropTypes.string,
-                color_label: PropTypes.string,
+                tooltipLabels: PropTypes.shape({
+                    label_format: PropTypes.func,
+                    x_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    y_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    color_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                }),
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
@@ -48,18 +51,23 @@ export class ScatterPlot extends Component {
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
+        highlightDotSize: PropTypes.number, // radius multiplier
         colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
+
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         colorValues: PropTypes.array,
-        highlightDotSize: PropTypes.number, // radius multiplier
+
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
+
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
+        xAxisLabel: PropTypes.string,
         yAxisTicksCount: PropTypes.number,
         yAxisTicksFormat: PropTypes.func,
+        yAxisLabel: PropTypes.string,
 
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,

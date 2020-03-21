@@ -82,43 +82,72 @@ class TooltipContent extends Component {
     static propTypes = {
         config: PropTypes.object.isRequired,
         selection: PropTypes.object,
-        labels: PropTypes.object
+        labels: PropTypes.object.isRequired
     };
 
-    hasLabel(cid, label) {
-        // noinspection RedundantIfStatementJS
-        if (this.props.labels && this.props.labels[cid] && this.props.labels[cid][label] === null)
-            return false;
-        return true;
-    }
+    static defaultLabels = {
+        label_format: (label, value) => {
+            if (value !== undefined)
+                return value;
+            if (label !== undefined)
+                return label;
+            return null;
+        },
+        x_label: "x",
+        y_label: "y",
+        dotSize_label: "size",
+        color_label: "color",
+    };
 
-    getLabel(cid, label, defaultLabel) {
-        if (this.props.labels && this.props.labels[cid] && this.props.labels[cid][label])
-            return this.props.labels[cid][label];
-        else
-            return defaultLabel;
+    static labelPropNames = ["x_label", "y_label", "dotSize_label", "color_label"];
+
+    getLabels(cid) {
+        const datum = this.props.selection[cid];
+        const labels = this.props.labels[cid];
+        const defaultLabels = TooltipContent.defaultLabels;
+
+        // use default labels for those not specified in props
+        for (const l of [...TooltipContent.labelPropNames, "label_format"])
+            if (labels[l] === undefined)
+                labels[l] = defaultLabels[l];
+
+        // convert each label to a function which takes data value and returns label string
+        for (const l of [...TooltipContent.labelPropNames, "label_format"]) {
+            if (labels[l] === null) // if label is specified to null, don't render it
+                labels[l] = () => null;
+            else if (typeof labels[l] === "string") { // if label is specified as string, convert it to function
+                const label_string = labels[l];
+                labels[l] = (val) => {
+                    if (val === undefined) // if the value doesn't exist, return null (-> don't render the label)
+                        return null;
+                    else
+                        return label_string + ": " + val;
+                };
+            }
+        }
+
+        return {
+            label: labels.label_format(labels.label !== undefined ? labels.label : cid, datum.label),
+            x_label: labels.x_label(datum.x),
+            y_label: labels.y_label(datum.y),
+            dotSize_label: labels.dotSize_label(datum.s),
+            color_label: labels.color_label(datum.d || datum.c),
+        }
     }
 
     render() {
         if (this.props.selection) {
             let tooltipHTML = [];
             for (let cid in this.props.selection) {
-                const dot = this.props.selection[cid];
-                if (dot) {
+                if (this.props.selection[cid]) {
+                    const labels = this.getLabels(cid);
                     tooltipHTML.push((
                         <div key={cid}>
-                            <div><b>{this.getLabel(cid, "label", cid)}</b></div>
-                            {this.hasLabel(cid, "x_label") && <div>{this.getLabel(cid, "x_label", "x")}: {dot.x}</div>}
-                            {this.hasLabel(cid, "y_label") && <div>{this.getLabel(cid, "y_label", "y")}: {dot.y}</div>}
-                            {dot.s && this.hasLabel(cid, "dotSize_label") && (
-                                <div>{this.getLabel(cid, "dotSize_label", "size")}: {dot.s}</div>
-                            )}
-                            {dot.c && this.hasLabel(cid, "color_label") && (
-                                <div>{this.getLabel(cid, "color_label", "color")}: {dot.c}</div>
-                            )}
-                            {dot.d && this.hasLabel(cid, "color_label") && (
-                                <div>{this.getLabel(cid, "color_label", "category")}: {dot.d}</div>
-                            )}
+                            <div><b>{labels.label}</b></div>
+                            {TooltipContent.labelPropNames.map(l => {
+                                if (labels[l] !== null)
+                                    return <div key={l}>{labels[l]}</div>;
+                            })}
                         </div>
                     ));
                 }
@@ -332,11 +361,14 @@ export class ScatterPlotBase extends Component {
                 enabled: PropTypes.bool,
                 dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
                 dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
-                dotSize: PropTypes.number, // default = props.dotRadius; used when dotSize_sigCid is not specified
-                x_label: PropTypes.string,
-                y_label: PropTypes.string,
-                dotSize_label: PropTypes.string, // for BubblePlot
-                color_label: PropTypes.string,
+                dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
+                tooltipLabels: PropTypes.shape({
+                    label_format: PropTypes.func,
+                    x_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    y_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    dotSize_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                    color_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+                }),
                 regressions: PropTypes.arrayOf(PropTypes.shape({
                     type: PropTypes.string.isRequired,
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
@@ -349,27 +381,32 @@ export class ScatterPlotBase extends Component {
 
         maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
+        minDotSize: PropTypes.number, // for BubblePlot
+        maxDotSize: PropTypes.number, // for BubblePlot
+        highlightDotSize: PropTypes.number, // radius multiplier
+        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
+
         xMinValue: PropTypes.number,
         xMaxValue: PropTypes.number,
         yMinValue: PropTypes.number,
         yMaxValue: PropTypes.number,
-        minDotSize: PropTypes.number, // for BubblePlot
-        maxDotSize: PropTypes.number, // for BubblePlot
         minDotSizeValue: PropTypes.number, // for BubblePlot
         maxDotSizeValue: PropTypes.number, // for BubblePlot
-        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         colorValues: PropTypes.array,
-        highlightDotSize: PropTypes.number, // radius multiplier
+
         xAxisExtentFromSampledData: PropTypes.bool, // whether xExtent should be [min, max] of the whole signal or only of the returned docs
         yAxisExtentFromSampledData: PropTypes.bool,
         updateColorOnZoom: PropTypes.bool,
         updateSizeOnZoom: PropTypes.bool, // for BubblePlot
+
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
+        xAxisLabel: PropTypes.string,
         yAxisTicksCount: PropTypes.number,
         yAxisTicksFormat: PropTypes.func,
+        yAxisLabel: PropTypes.string,
 
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
@@ -666,7 +703,7 @@ export class ScatterPlotBase extends Component {
                         const yMin = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
                             return summary[this.props.config.signalSets[i].y_sigCid].min;
                         });
-                        const yMax = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
+                        const yMax = d3Array.max(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
                             return summary[this.props.config.signalSets[i].y_sigCid].max;
                         });
                         this.yExtent = [yMin, yMax];
@@ -682,7 +719,7 @@ export class ScatterPlotBase extends Component {
                         const xMin = d3Array.min(summaries, (summary, i) => {
                             return summary[this.props.config.signalSets[i].x_sigCid].min;
                         });
-                        const xMax = d3Array.min(summaries, (summary, i) => {
+                        const xMax = d3Array.max(summaries, (summary, i) => {
                             return summary[this.props.config.signalSets[i].x_sigCid].max;
                         });
                         this.xExtent = [xMin, xMax];
@@ -696,7 +733,7 @@ export class ScatterPlotBase extends Component {
                         if (this.props.config.signalSets[i].hasOwnProperty("dotSize_sigCid"))
                             return summary[this.props.config.signalSets[i].dotSize_sigCid].min;
                     });
-                    const sMax = d3Array.min(summaries, (summary, i) => {
+                    const sMax = d3Array.max(summaries, (summary, i) => {
                         if (this.props.config.signalSets[i].hasOwnProperty("dotSize_sigCid"))
                             return summary[this.props.config.signalSets[i].dotSize_sigCid].max;
                     });
@@ -794,6 +831,7 @@ export class ScatterPlotBase extends Component {
         if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
         if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
         this.yAxisSelection.call(yAxis);
+        this.yAxisLabelSelection.text(this.props.yAxisLabel).style("text-anchor", "middle");
 
         // x Scale
         const xScale = this.state.zoomTransform.rescaleX(d3Scale.scaleLinear()
@@ -804,6 +842,7 @@ export class ScatterPlotBase extends Component {
         if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
         if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.xAxisSelection.call(xAxis);
+        this.xAxisLabelSelection.text(this.props.xAxisLabel).style("text-anchor", "middle");
         //</editor-fold>
 
         // data filtering
@@ -954,17 +993,9 @@ export class ScatterPlotBase extends Component {
         this.labels = {};
         for (let i = 0; i < this.props.config.signalSets.length; i++) {
             const signalSetConfig = this.props.config.signalSets[i];
-            this.labels[signalSetConfig.cid + "-" + i] = {};
+            this.labels[signalSetConfig.cid + "-" + i] = signalSetConfig.tooltipLabels || {};
             if (signalSetConfig.label !== undefined)
                 this.labels[signalSetConfig.cid + "-" + i].label = signalSetConfig.label;
-            if (signalSetConfig.x_label !== undefined)
-                this.labels[signalSetConfig.cid + "-" + i].x_label = signalSetConfig.x_label;
-            if (signalSetConfig.y_label !== undefined)
-                this.labels[signalSetConfig.cid + "-" + i].y_label = signalSetConfig.y_label;
-            if (signalSetConfig.dotSize_label !== undefined)
-                this.labels[signalSetConfig.cid + "-" + i].dotSize_label = signalSetConfig.dotSize_label;
-            if (signalSetConfig.color_label !== undefined)
-                this.labels[signalSetConfig.cid + "-" + i].color_label = signalSetConfig.color_label;
         }
     }
 
@@ -1251,13 +1282,6 @@ export class ScatterPlotBase extends Component {
                     /*self.dotHighlightSelections[signalSetCidIndex]
                         .attr('stroke', "black")
                         .attr("stroke-width", "1px");*/
-
-                    // noinspection JSUnresolvedVariable
-                    if (newSelection.label)
-                        if (signalSetConfig.label)
-                            self.labels[signalSetCidIndex].label = signalSetConfig.label + ": " + newSelection.label;
-                        else
-                            self.labels[signalSetCidIndex].label = newSelection.label;
                 }
 
                 newSelections[signalSetCidIndex] = newSelection;
@@ -1672,8 +1696,12 @@ export class ScatterPlotBase extends Component {
                             {/* axes */}
                             <g ref={node => this.xAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                            <text ref={node => this.xAxisLabelSelection = select(node)}
+                                  transform={`translate(${this.props.margin.left + (this.state.width - this.props.margin.left - this.props.margin.right) / 2}, ${this.props.height - 5})`} />
                             <g ref={node => this.yAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                            <text ref={node => this.yAxisLabelSelection = select(node)}
+                                  transform={`translate(${15}, ${this.props.margin.top + (this.props.height - this.props.margin.top - this.props.margin.bottom) / 2}) rotate(-90)`} />
 
                             {/* cursor lines */}
                             {!this.state.zoomInProgress &&
