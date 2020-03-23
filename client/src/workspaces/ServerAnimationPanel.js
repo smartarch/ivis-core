@@ -1,30 +1,61 @@
 "use strict";
 
 import React, {Component} from "react";
-import {ServerAnimationContext, AnimationKeyframeContext} from "../ivis/ServerAnimationContext";
+import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
-import {AnimatedBase} from "../ivis/AnimatedBase";
 import {linear} from "../lib/animation-interpolations";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, SpeedSlider, SliderBase, Timeline} from "../lib/media-controls";
+
 
 class SampleAnimation extends Component {
-    constructor(props) {
-        super(props);
-    }
-
     render() {
         return (
             <>
-                <ServerAnimationContext>
-                    <AnimationKeyframeContext.Consumer>
-                        {value =>
-                            <AnimatedBase
-                                interpolationFunc={linear}
-                                fromPanel={this.props}
-                                keyframeContext={value}
-                            />
-                        }
-                    </AnimationKeyframeContext.Consumer>
+                <ServerAnimationContext interpolFunc={linear} >
+                    <div>
+                        <PlayPauseButton
+                            width={"40"}
+                            height={"40"}
+                            isJoinedLeft={false}
+                            isJoinedRight={true}
+                        />
+                        <StopButton
+                            width={"40"}
+                            height={"40"}
+                            isJoinedLeft={true}
+                            isJoinedRight={true}
+                        />
+                        <JumpBackwardButton
+                            width={"40"}
+                            height={"40"}
+                            isJoinedLeft={true}
+                            isJoinedRight={true}
+                            jump={200}
+                        />
+                        <JumpForwardButton
+                            width={"40"}
+                            height={"40"}
+                            isJoinedLeft={true}
+                            isJoinedRight={false}
+                            jump={200}
+                        />
+                        <SpeedSlider
+                            width={"125"}
+                            height={"50"}
+                            minFactor={0.25}
+                            maxFactor={2}
+                        />
+
+                        <Timeline
+                            length={2.5*60*60*1000}
+                            width={"100%"}
+                            bigTickMargin={100}
+                            smallTickMargin={15}
+                            labelFontSize={"89px"}
+                            begin={Date.now()}
+                        />
+                    </div>
                 </ServerAnimationContext>
             </>
         );
