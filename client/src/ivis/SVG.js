@@ -25,7 +25,6 @@ export class SVG extends Component {
     static propTypes = {
         url: PropTypes.string,
         source: PropTypes.string,
-        update: PropTypes.object,
         width: PropTypes.string,
         height: PropTypes.string,
         maxWidth: PropTypes.string,
@@ -55,6 +54,8 @@ export class SVG extends Component {
         if (this.props.url) {
             // noinspection JSIgnoredPromiseFromCall
             this.fetchSvg();
+        } else {
+            this.renderSvg();
         }
     }
 
@@ -91,16 +92,6 @@ export class SVG extends Component {
                         this.props.init(elem);
                     }
                 }
-            }
-        }
-
-        for (const id in this.props.update) {
-            const node = select(this.svgNode).select("#" + id);
-
-            for (const attr in this.props.update[id]) {
-                const value = this.props.update[id][attr];
-
-                node.attr(attr, value);
             }
         }
 
