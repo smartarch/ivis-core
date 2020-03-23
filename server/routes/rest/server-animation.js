@@ -5,63 +5,39 @@ const log = require('../../lib/log');
 
 class AnimationTest {
     constructor() {
+        this.refreshRate = 1000/6;
+        this.jump = 3;
+        this.maxIteration = 24 * 4;
+
         this._animationReset();
     }
 
     _refresh() {
-        this.status.position += 1;
-
-        if (this.status.position % this.status.numOfFrames === 0) {
-            this._updateData();
-        }
-
-        this.lastUpdateTS = Date.now();
+        this.iteration += this.status.speedFactor;
+        this._updateData();
     }
 
     _updateData() {
-        const jump = 6;
-
-        const nextKeyframeNum = Math.floor(this.status.position / this.status.numOfFrames);
-        if (nextKeyframeNum === this.status.numOfKeyframes) {
-            log.info("Debug...", this.data.currKeyframeData.circle.cx);
-            this.reset();
-            return;
-        }
-
-        this.data.currKeyframeNum = nextKeyframeNum;
-
-        this.data.currKeyframeData = {
-            circle: { cx: (this.data.currKeyframeNum * jump) + 10 }
-        };
-        this.data.nextKeyframeData = {
-            circle: { cx: ((this.data.currKeyframeNum + 1) * jump) + 10 }
-        };
-
-        log.info("Debug", "Data update....Current keyframe:" + this.data.currKeyframeNum, (this.lastKeyframeChangeTS - Date.now()) / 1000);
-        this.lastKeyframeChangeTS = Date.now();
-        this.newDataIn = this.status.refreshRate * this.status.numOfFrames;
+        this.status.position = this.iteration * this.refreshRate;
+        this.status.data.mutables["0"] = this.iteration * this.jump;
     }
 
     _animationReset() {
-        this.lastUpdateTS = null;
-        this.status = {
-            ver: 0,
-            refreshRate: 1000/24,
-            numOfFrames: 120,
-            numOfKeyframes: 30,
-            isPlaying: false,
-            didSeekOn: 0,
-            position: 0,
-        };
+        this.iteration = 0;
 
-        this.data = {
-            currKeyframeNum: 0,
-            currKeyframeData: {
-                circle: { cx: 10 }
-            },
-            nextKeyframeData: {
-                circle: { cx: 16 }
-            },
+        this.status = {
+            isPlaying: false,
+            position: 0,
+            length: this.refreshRate * this.maxIteration,
+            speedFactor: 1,
+            data: {
+                base: {
+                    circle: { cx: {valueId: "0"} }
+                },
+                mutables: {
+                    "0": 0
+                }
+            }
         };
     }
 
@@ -69,35 +45,23 @@ class AnimationTest {
         return this.status;
     }
 
-    getData () {
-        return {data: this.data, newDataIn: this.status.isPlaying ? this.newDataIn : -1};
-    }
-
     play() {
-        log.info("Animation", "Started play sequence");
-        log.info("Debug", this.status.playStatus);
-
         if (!this.status.isPlaying) {
             this.refreshInterval = setInterval(
                 this._refresh.bind(this),
-                this.status.refreshRate
+                this.refreshRate
             );
 
-            this.newDataIn = this.status.refreshRate * (this.status.numOfFrames - (this.status.position % this.status.numOfFrames));
             this.status.isPlaying = true;
-            this.status.ver += 1;
         }
-
-        log.info("Animation", "Play sequence ended");
     }
 
     pause() {
         if (this.status.isPlaying) {
             clearInterval(this.refreshInterval);
-            log.info("Animation", "Interval cleared, paused at frame num" + this.status.position);
+            log.info("Debug", "Interval cleared, paused at " + this.status.position);
 
             this.status.isPlaying = false;
-            this.status.ver += 1;
         }
     }
 
@@ -106,18 +70,18 @@ class AnimationTest {
         this._animationReset();
     }
 
-    seek(toFrameNum) {
+    seek(toMs) {
         const wasPlaying = this.status.isPlaying;
         if (wasPlaying) {
             clearInterval(this.refreshInterval);
         }
 
-        const toFrameNumLimited = Math.max(
-            0, Math.min((this.status.numOfFrames * this.status.numOfKeyframes) - 1, toFrameNum)
+        const toMsLimited = Math.max(
+            0, Math.min(this.status.length, toMs)
         );
 
-        log.info("Seek intended to:", toFrameNum, "limited to:", toFrameNumLimited);
-        this.status.position = toFrameNumLimited;
+        log.info("Debug", "Seek intended to:", toMs, "limited to:", toMsLimited);
+        this.iteration = toMsLimited / this.refreshRate;
 
         this._updateData();
 
@@ -126,11 +90,11 @@ class AnimationTest {
                 this._refresh.bind(this),
                 this.status.refreshRate
             );
-            this.newDataIn = this.status.refreshRate * (this.status.numOfFrames - (this.status.position % this.status.numOfFrames));
         }
+    }
 
-        this.status.didSeekOn = this.status.ver + 1;
-        this.status.ver += 1;
+    changeSpeed(factor) {
+        this.status.speedFactor = factor;
     }
 }
 
@@ -139,11 +103,6 @@ let currentAnimation = new AnimationTest();
 router.get('/animation/server/status', (req, res) => {
     res.status(200).json(currentAnimation.getStatus());
 });
-
-router.get('/animation/server/data', (req, res) => {
-    res.status(200).json(currentAnimation.getData());
-});
-
 
 router.post('/animation/server/play', (req, res) => {
     currentAnimation.play();
@@ -161,19 +120,16 @@ router.post('/animation/server/reset', (req, res) => {
 });
 
 router.post('/animation/server/changeSpeed', (req, res) => {
-    log.info("Animation", `Change of speed to ${JSON.stringigfy(req.body)}`);
+    log.info("Debug", `Change of speed to ${JSON.stringify(req.body)}`);
+    currentAnimation.changeSpeed(req.body.to);
     res.sendStatus(200);
 });
 
 router.post('/animation/server/seek', (req, res) => {
-    log.info("Animation", `Seek to ${JSON.stringify(req.body)}`);
+    log.info("Debug", `Seek to ${JSON.stringify(req.body)}`);
     currentAnimation.seek(req.body.to);
     res.sendStatus(200);
 });
-
-
-log.info("Animation", `Animation routes mounted.`);
-
 
 
 module.exports = router;
