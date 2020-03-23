@@ -1,3 +1,3 @@
 export function linear(left, right, ratio) {
-    return left * (1 - ratio) + right * ratio;
+    return left * ratio + right * (1 - ratio);
 }
