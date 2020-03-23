@@ -1,84 +1,82 @@
 import React, {Component} from "react";
 import {Debug} from "./Debug";
 import PropTypes from "prop-types";
-import {SVG} from "./SVG";
 
-const svgImage = `<svg viewBox="0 0 200 100" version="1.1" xmlns="http://www.w3.org/2000/svg">
-  <line x1="10" y1="50" x2="190"  y2="50" stroke="purple" stroke-width="1"/>
-  <circle id="circle" cx="10" cy="50" r="5" stroke="black" fill="transparent" stroke-width="1"/>
-</svg>`;
+const AnimationDataContext = React.createContext(null);
 
-export class AnimatedBase extends Component {
+class AnimatedBase extends Component {
     static propTypes = {
-        interpolationFunc: PropTypes.func,
-        keyframeContext: PropTypes.object
+        interpolFunc: PropTypes.func,
+        status: PropTypes.object,
+        keyframes: PropTypes.object,
+        children: PropTypes.node,
     };
 
     constructor(props) {
         super(props);
-
         this.state = {
+            animData: {},
         };
     }
-
     interpolate(left, right, f, ratio) {
-        if (right === undefined) {
-            return left;
+        const currValues = {};
+
+        for (let mutableId of Object.keys(left.mutables)) {
+            const leftValue = left.mutables[mutableId];
+            const rightValue = right.mutables[mutableId];
+
+            if (rightValue === undefined ||
+                typeof leftValue !== "number" || typeof rightValue !== "number") {
+                currValues[mutableId] = leftValue;
+            } else {
+                currValues[mutableId] = f(leftValue, rightValue, ratio);
+            }
         }
 
-        const interpolatedAttrs = {};
-        for (const attrName in left) {
-            const leftVal = left[attrName];
-            const rightVal = right[attrName];
-
-            interpolatedAttrs[attrName] = rightVal === undefined ? leftVal : f(leftVal, rightVal, ratio);
-        }
-
-
-        return interpolatedAttrs;
+        return currValues;
     }
 
-    paint() {
-        const visDataCurr = this.props.keyframeContext.currKeyframeData;
-        const visDataNext = this.props.keyframeContext.nextKeyframeData;
+    refresh() {
+        const kfCurr = this.props.keyframes.curr;
+        const kfNext = this.props.keyframes.next;
 
-        const ratio = (this.props.keyframeContext.status.position % this.props.keyframeContext.status.numOfFrames) / this.props.keyframeContext.status.numOfFrames;
+        const ratio = 1 - ((this.props.status.position - kfCurr.ts) / (kfNext.ts - kfCurr.ts));
+        console.log("Refreshing", {ratio});
 
-        const visualizationData = {};
-        for (const id in visDataCurr) {
-            const attrsCurr = visDataCurr[id];
-            const attrsNext = visDataNext[id];
+        const newData = this.interpolate(
+            kfCurr.data,
+            kfNext.data,
+            this.props.interpolFunc,
+            ratio
+        );
 
-            visualizationData[id] = this.interpolate(attrsCurr, attrsNext, this.props.interpolationFunc, ratio);
-        }
-
-        this.lastVisualizationData = this.state.visualizationData;
-        this.setState({visualizationData});
+        this.setState({animData: newData});
     }
 
     componentDidUpdate(prevProps) {
-        const c = this.props.keyframeContext;
-        const prevC = prevProps.keyframeContext;
-        if (c.status.position != prevC.status.position) {
-            this.repaintNeeded = true;
-        }
-
-        if (this.repaintNeeded && c.currKeyframeNum !== undefined
-            && Math.floor(c.status.position / c.status.numOfFrames) === c.currKeyframeNum) {
-            this.repaintNeeded = false;
-            this.paint();
+        if (prevProps.status.position != this.props.status.position) {
+            if (this.props.status.isPlaying)
+                this.refresh();
+            else
+                this.setState({animData: this.props.keyframes.curr.data.mutables});
         }
     }
 
     render() {
         return (
             <>
+                <AnimationDataContext.Provider value={this.state.animData}>
+                    {this.props.children}
+                </AnimationDataContext.Provider>
+
                 <Debug
-                    visData={this.state.visualizationData}
+                    status={this.props.status}
+                    keyframes={this.props.keyframes}
+                    animationData={this.state.animData}
                 />
-                <SVG source={svgImage} update={this.state.visualizationData} />
             </>
         );
     }
 }
 
+export {AnimationDataContext, AnimatedBase};
