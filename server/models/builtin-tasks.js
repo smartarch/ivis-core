@@ -4,14 +4,18 @@ const knex = require('../lib/knex');
 const {getVirtualNamespaceId} = require("../../shared/namespaces");
 const {TaskSource, BuildState, TaskType} = require("../../shared/tasks");
 const em = require('../lib/extension-manager');
-const taskHandler = require('../lib/task-handler');
 
 const aggregationTask = {
     name: 'aggregation',
     description: '',
     type: TaskType.PYTHON,
     settings: {
-        params: [],
+        params: [  {
+            "id": "sigSet",
+            "help": "Signal set for the sensors",
+            "type": "signalSet",
+            "label": "Signal Set"
+        }],
         code: `print('aggs')`
     },
 };
@@ -23,13 +27,6 @@ const builtinTasks = [
     aggregationTask
 ];
 
-/*
-Sample builtin task:
-'id': {
-    name: 'XXX',
-    params: []
-}
- */
 
 em.on('builtinTasks.add', addTasks);
 

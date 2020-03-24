@@ -843,7 +843,7 @@ class ParamsLoader extends Component {
 
     constructor(props) {
         super(props);
-        this.paramTypes = new ParamTypes(props.t, '', props.prefix);
+        this.paramTypes = new ParamTypes(props.t);
 
         if (props.paramTypesRef) {
             props.paramTypesRef(this.paramTypes);
@@ -920,7 +920,7 @@ class ParamsLoader extends Component {
 @withComponentMixins([
     withTranslation,
     withFormStateOwner
-])
+], null, ['submitFormValuesMutator', 'getFormValueIdForPicker'])
 class ListCreator extends Component {
     static propTypes = {
         id: PropTypes.string.isRequired,

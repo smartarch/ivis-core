@@ -5,7 +5,8 @@ function getGlobalNamespaceId() {
 }
 
 function getVirtualNamespaceId() {
-    return 2;
+    // Max sql int value;
+    return 4294967295;
 }
 
 module.exports = {

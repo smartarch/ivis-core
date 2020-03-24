@@ -8,7 +8,7 @@ import {
     CheckBox,
     ColorPicker,
     Fieldset,
-    InputField, ParamsLoader,
+    InputField,
     TableSelect,
     TextArea
 } from "../lib/form";
@@ -22,14 +22,9 @@ import {rgb} from "d3-color";
 import {getFieldsetPrefix, parseCardinality, resolveAbs} from "../../../shared/param-types-helpers";
 
 export default class ParamTypes {
-    constructor(t, prefix, formPrefix) {
+    constructor(t) {
         this.paramTypes = {};
-        this.idPrefix = prefix != null ? prefix : 'param_';
-        this.rootFormPrefix = formPrefix;
-        if (formPrefix && formPrefix.charAt(formPrefix.length - 1) === '/') {
-            this.rootFormPrefix = formPrefix.slice(0, -1);
-        }
-        this.taskParamTypesMap = {};
+
         // ---------------------------------------------------------------------
         // Helpers
 
@@ -313,96 +308,6 @@ export default class ParamTypes {
             upcast: (spec, value) => {
                 const card = parseCardinality(spec.cardinality);
                 return ensureSelection(card, value);
-            }
-        };
-
-        this.paramTypes.task = {
-            adopt: this.paramTypes.signalSet.adopt,
-            setFields: this.paramTypes.signalSet.setFields,
-            getParams: getParamsFromField,
-            validate: this.paramTypes.signalSet.validate,
-            render: (self, prefix, spec) => {
-                const taskColumns = [
-                    {data: 1, title: t('Name')},
-                    {data: 2, title: t('Description')},
-                    {data: 4, title: t('Created'), render: data => moment(data).fromNow()},
-                    {data: 6, title: t('Namespace')}
-                ];
-
-                return <TableSelect
-                    key={spec.id}
-                    id={this.getParamFormId(prefix, spec.id)}
-                    label={spec.label}
-                    help={spec.help}
-                    columns={taskColumns}
-                    withHeader
-                    dropdown
-                    selectMode={TableSelectMode.SINGLE}
-                    selectionLabelIndex={1}
-                    selectionKeyIndex={0}
-                    dataUrl="rest/tasks-table"
-                />;
-            },
-            upcast: this.paramTypes.signalSet.upcast
-        };
-
-        this.paramTypes.taskParams = {
-            adopt: (prefix, spec, state) => {
-                /*
-                const formId = this.getParamFormId(idPrefix, spec.id);
-                const paramTypes = this.taskParamTypesMap[formId];
-                 */
-            },
-            setFields: (prefix, spec, param, data) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                const paramTypes = this.taskParamTypesMap[formId];
-                const taskParams = data[formId];
-                if (paramTypes && taskParams) {
-                    paramTypes.setFields(taskParams, param, data);
-                }
-
-            },
-            getParams: (prefix, spec, data) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                const paramTypes = this.taskParamTypesMap[formId];
-                const taskParams = data[formId];
-                if (paramTypes && taskParams) {
-                    return paramTypes.getParams(taskParams, data);
-                } else {
-                    return null;
-                }
-            },
-            validate: (prefix, spec, state) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                const paramTypes = this.taskParamTypesMap[formId];
-                const taskParams = state.getIn([formId,'value']);
-                if (paramTypes && taskParams) {
-                    return paramTypes.validate(taskParams, state);
-                }
-            },
-            onChange: (prefix, spec, state, key, oldVal, newVal) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                const paramTypes = this.taskParamTypesMap[formId];
-                const taskParams = state.getIn([formId,'value']);
-                if (paramTypes && taskParams) {
-                    return paramTypes.onChange(taskParams, state, key, oldVal, newVal);
-                }
-            },
-            render: (self, prefix, spec) => {
-                let taskId = spec.task;
-                if (spec.taskRef) {
-                    const taskFormId = this.getParamFormId(prefix, spec.taskRef);
-                    taskId = self.getFormValue(taskFormId);
-                }
-
-                const formId = this.getParamFormId(prefix, spec.id);
-                return (
-                    <ParamsLoader taskId={taskId} prefix={formId}
-                                  paramTypesRef={paramTypes => this.taskParamTypesMap[formId] = paramTypes}/>
-                );
-            },
-            upcast: (configSpec, spec) => {
-                // Need to get lodead config somehow, but there is no way to get that in upcast right now
             }
         };
 
@@ -898,9 +803,7 @@ export default class ParamTypes {
     }
 
     getParamFormId(prefix, paramId) {
-        const rootPrefix = this.rootFormPrefix ? this.rootFormPrefix : '';
-        const paramPrefix = rootPrefix + prefix;
-        const abs = paramId ? resolveAbs(paramPrefix, paramId) : paramPrefix;
-        return this.idPrefix + abs;
+        const abs = paramId ? resolveAbs(prefix, paramId) : prefix;
+        return 'param_' + abs;
     }
 }
