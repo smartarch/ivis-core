@@ -147,6 +147,9 @@ router.postAsync('/signal-set-records-table/:signalSetId', passport.loggedIn, as
     return res.json(await signalSets.listRecordsDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
+
+
+
 router.getAsync('/signal-set-records/:signalSetId/:recordIdBase64', passport.loggedIn, async (req, res) => {
     const sigSetWithSigMap = await signalSets.getById(req.context, castToInteger(req.params.signalSetId), false, true);
     const record = await signalSets.getRecord(req.context, sigSetWithSigMap, base64Decode(req.params.recordIdBase64));
@@ -177,6 +180,28 @@ router.deleteAsync('/signal-set-records/:signalSetId/:recordIdBase64', passport.
 
 router.postAsync('/signal-set-records-validate/:signalSetId', passport.loggedIn, async (req, res) => {
     return res.json(await signalSets.serverValidateRecord(req.context, castToInteger(req.params.signalSetId), req.body));
+});
+
+
+router.putAsync('/signal-set/:signalSetId/aggregations/:aggregationSetId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    const signalSet = req.body;
+    signalSet.id = castToInteger(req.params.signalSetId);
+
+    await signalSets.updateWithConsistencyCheck(req.context, signalSet, aggregationSetId);
+    return res.json();
+});
+
+router.deleteAsync('/signal-sets/:signalSetId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    await signalSets.remove(req.context, castToInteger(req.params.signalSetId));
+    return res.json();
+});
+
+router.postAsync('/signal-sets-table', passport.loggedIn, async (req, res) => {
+    return res.json(await signalSets.listDTAjax(req.context, req.body));
+});
+
+router.postAsync('signal-set-aggregations-table/:signalSetId', passport.loggedIn, async (req, res) => {
+    return res.json(await signalSets.listAggregationsDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
 /* This is for testing. Kept here as long as we are still making bigger changes to ELS query processor

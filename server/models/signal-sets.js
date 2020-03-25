@@ -119,7 +119,6 @@ async function listRecordsESAjax(tx, context, sigSet, params, signals) {
     );
 }
 
-
 async function list() {
     return await knex('signal_sets');
 }
@@ -171,7 +170,7 @@ async function createTx(tx, context, entity) {
         status: IndexingStatus.READY
     });
 
-    if (entity.type){
+    if (entity.type) {
         enforce(!(entity.type in Object.values(SignalSetType)), `${entity.type} is not valid signal set type.`)
     }
 
@@ -400,7 +399,6 @@ async function serverValidateRecord(context, sigSetId, data) {
     return result;
 }
 
-
 async function getLastId(context, sigSet) {
     await shares.enforceEntityPermission(context, 'signalSet', sigSet.id, 'query');
 
@@ -515,10 +513,9 @@ async function queryTx(tx, context, queries) {
                 }
                 signalsToCheck.add(sig.id);
 
-            } else  if (flt.type === 'ids'){
-               // empty
-            }
-            else {
+            } else if (flt.type === 'ids') {
+                // empty
+            } else {
                 throw new Error(`Unknown filter type "${flt.type}"`);
             }
         };
@@ -743,3 +740,6 @@ module.exports.getLastId = getLastId;
 module.exports.getSignalByCidMapTx = getSignalByCidMapTx;
 module.exports.getRecordIdTemplate = getRecordIdTemplate;
 module.exports.listRecordsDTAjax = listRecordsDTAjax;
+module.exports.listAggregationsDTAjax = listAggregationsDTAjax;
+
+

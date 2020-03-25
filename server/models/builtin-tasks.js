@@ -1,5 +1,7 @@
 'use strict';
 
+import {getBuiltinTasks} from "../../client/src/lib/builtin-tasks";
+
 const knex = require('../lib/knex');
 const {getVirtualNamespaceId} = require("../../shared/namespaces");
 const {TaskSource, BuildState, TaskType} = require("../../shared/tasks");
@@ -10,11 +12,16 @@ const aggregationTask = {
     description: '',
     type: TaskType.PYTHON,
     settings: {
-        params: [  {
-            "id": "sigSet",
-            "help": "Signal set for the sensors",
+        params: [{
+            "id": "signalSet",
+            "help": "Signal set to aggregate",
             "type": "signalSet",
             "label": "Signal Set"
+        },{
+            "id": "interval",
+            "help": "Bucket interval in seconds",
+            "type": "number",
+            "label": "Interval"
         }],
         code: `print('aggs')`
     },
@@ -29,6 +36,12 @@ const builtinTasks = [
 
 
 em.on('builtinTasks.add', addTasks);
+
+async function getBuiltinTask(name) {
+    return await knex.transaction(async tx => {
+        return await checkExistence(tx, name)
+    });
+};
 
 /**
  * Check if builtin in task with fiven name alredy exists
@@ -54,7 +67,7 @@ async function addBuiltinTask(tx, builtinTask) {
     task.source = TaskSource.BUILTIN;
     task.namespace = getVirtualNamespaceId();
     task.settings = JSON.stringify(task.settings);
-    task.build_state= BuildState.UNINITIALIZED;
+    task.build_state = BuildState.UNINITIALIZED;
     await tx('tasks').insert(task);
 }
 
@@ -115,3 +128,4 @@ async function list() {
 
 module.exports.list = list;
 module.exports.storeBuiltinTasks = storeBuiltinTasks;
+module.exports.getBuiltinTask = getBuiltinTask;

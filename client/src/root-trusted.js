@@ -49,6 +49,7 @@ import PanelsCUD from './settings/workspaces/panels/CUD';
 
 import SignalSetsList from './settings/signal-sets/List';
 import SignalSetsCUD from './settings/signal-sets/CUD';
+import SignalSetAggregations from './settings/signal-sets/Aggregations';
 import RecordsList from './settings/signal-sets/RecordsList';
 import RecordsCUD from './settings/signal-sets/RecordsCUD';
 
@@ -447,6 +448,12 @@ const getStructure = t => {
                                         link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
                                         visible: resolved => resolved.signalSet.permissions.includes('edit'),
                                         panelRender: props => <SignalSetsCUD action={props.match.params.action} entity={props.resolved.signalSet} />
+                                    },
+                                    'aggregations': {
+                                        title: t('Aggregations'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
+                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                        panelRender: props => <SignalSetAggregations action={props.match.params.action} signalSet={props.resolved.signalSet} />
                                     },
                                     ':action(signals|reindex)': {
                                         title: t('Signals'),
