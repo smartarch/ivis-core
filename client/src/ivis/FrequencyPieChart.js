@@ -41,6 +41,9 @@ export class FrequencyPieChart extends Component {
         legendWidth: PropTypes.number,
         legendPosition: PropTypes.number,
         legendRowClass: PropTypes.string,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
@@ -104,7 +107,7 @@ export class FrequencyPieChart extends Component {
 
         }
         return (
-            <div>
+            <div className={this.props.className} style={this.props.style}>
                 <FrequencyDataLoader ref={(node) => this.dataLoader = node} config={this.props.config} processData={::this.processData} />
                 {chart}
             </div>

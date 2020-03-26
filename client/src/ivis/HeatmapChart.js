@@ -147,7 +147,7 @@ export class HeatmapChart extends Component {
             tsSigCid: PropTypes.string
         }).isRequired,
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
         overviewBottomHeight: PropTypes.number,
         overviewBottomMargin: PropTypes.object,
         overviewBottomColor: PropType_d3Color(),
@@ -164,7 +164,8 @@ export class HeatmapChart extends Component {
         withZoomX: PropTypes.bool,
         withZoomY: PropTypes.bool,
 
-        minStep: PropTypes.number,
+        minStepX: PropTypes.number,
+        minStepY: PropTypes.number,
         minRectWidth: PropTypes.number,
         minRectHeight: PropTypes.number,
         maxBucketCountX: PropTypes.number,
@@ -178,9 +179,13 @@ export class HeatmapChart extends Component {
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
+        margin: { left: 40, right: 5, top: 5, bottom: 20 },
         minRectWidth: 40,
         minRectHeight: 40,
         withTooltip: true,
@@ -320,7 +325,7 @@ export class HeatmapChart extends Component {
                     maxBucketCountY = Math.ceil(maxBucketCountY * scaleY);
                 }
 
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.x_sigCid, config.y_sigCid], [maxBucketCountX, maxBucketCountY], this.props.minStep, filter);
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.x_sigCid, config.y_sigCid], [maxBucketCountX, maxBucketCountY], [this.props.minStepX, this.props.minStepY], filter);
 
                 if (results) { // Results is null if the results returned are not the latest ones
                     const processedResults = this.processData(results); // also sets this.xExtent and this.yExtent
@@ -1060,7 +1065,8 @@ export class HeatmapChart extends Component {
     render() {
         if (!this.state.signalSetData) {
             return (
-                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%"
+                     className={this.props.className} style={this.props.style} >
                     <text textAnchor="middle" x="50%" y="50%"
                           fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
                         {this.state.statusMsg}
@@ -1071,7 +1077,7 @@ export class HeatmapChart extends Component {
         } else {
 
             return (
-                <div>
+                <div className={this.props.className} style={this.props.style} >
                     {this.props.withOverviewLeft &&
                     <svg id="overview_left"
                          height={this.props.height}

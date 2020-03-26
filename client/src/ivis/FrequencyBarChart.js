@@ -40,7 +40,10 @@ export class FrequencyBarChart extends Component {
         padding: PropTypes.number,
         withTooltip: PropTypes.bool,
         withTransition: PropTypes.bool,
-        withZoom: PropTypes.bool
+        withZoom: PropTypes.bool,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
@@ -106,7 +109,7 @@ export class FrequencyBarChart extends Component {
 
         }
         return (
-            <div>
+            <div className={this.props.className} style={this.props.style}>
                 <FrequencyDataLoader ref={(node) => this.dataLoader = node} config={this.props.config} processData={::this.processData} />
                 {chart}
             </div>

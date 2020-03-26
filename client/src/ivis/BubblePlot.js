@@ -79,20 +79,26 @@ export class BubblePlot extends Component {
         yAxisLabel: PropTypes.string,
 
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
 
         withBrush: PropTypes.bool,
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool, // prop will get copied to state in constructor, changing it later will not update it, use setWithTooltip method to update it
         withZoom: PropTypes.bool,
         withTransition: PropTypes.bool,
+        withRegressionCoefficients: PropTypes.bool,
         withToolbar: PropTypes.bool,
         withSettings: PropTypes.bool,
         withAutoRefreshOnBrush: PropTypes.bool,
 
+        viewChangeCallback: PropTypes.func,
+
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
-        zoomLevelStepFactor: PropTypes.number
+        zoomLevelStepFactor: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = { }; // defaults set in ScatterPlotBase

@@ -71,7 +71,7 @@ export class StaticBarChart extends Component {
             })).isRequired
         }).isRequired,
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
         padding: PropType_NumberInRange(0, 1),
         colors: PropTypes.arrayOf(PropType_d3Color_Required()),
 
@@ -84,6 +84,9 @@ export class StaticBarChart extends Component {
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
@@ -309,7 +312,9 @@ export class StaticBarChart extends Component {
 
     render() {
         return (
-            <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionNone}>
+            <div ref={node => this.svgContainerSelection = select(node)}
+                 className={this.props.className ? `${styles.touchActionNone} ${this.props.className}` : styles.touchActionNone}
+                 style={this.props.style} >
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width={"100%"}>
                     <defs>
                         <clipPath id="plotRect">

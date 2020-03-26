@@ -13,6 +13,7 @@ import * as d3Zoom from "d3-zoom";
 import * as d3Interpolate from "d3-interpolate";
 import * as d3Color from "d3-color";
 import * as d3Scheme from "d3-scale-chromatic";
+import * as d3Format from "d3-format";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
@@ -23,7 +24,7 @@ import {Tooltip} from "./Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../lib/bootstrap-components";
-import {distance, extentWithMargin, getColorScale, getExtent, isInExtent, isSignalVisible, ModifyColorCopy, roundTo, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
+import {distance, extentWithMargin, getColorScale, getExtent, isInExtent, isSignalVisible, ModifyColorCopy, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
 
@@ -276,7 +277,7 @@ class ScatterPlotToolbar extends Component {
                             <Icon icon="edit"
                                   title={this.props.brushInProgress ? t('Cancel selection') : t('Select area')}/>
                         </ActionLink>}
-                        <ActionLink onClickAsync={async () => this.props.resetZoomClick()}><Icon icon="backspace" title={t('Reset zoom')}/></ActionLink>
+                        <ActionLink onClickAsync={async () => this.props.resetZoomClick()}><Icon icon="expand" title={t('Reset zoom')}/></ActionLink>
                         {this.props.withSettings &&
                         <ActionLink onClickAsync={async () => this.setState({opened: !this.state.opened})}><Icon icon="sliders-h" title={t('Open settings')}/></ActionLink>}
                     </div>
@@ -409,7 +410,7 @@ export class ScatterPlotBase extends Component {
         yAxisLabel: PropTypes.string,
 
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
 
         withBrush: PropTypes.bool,
         withCursor: PropTypes.bool,
@@ -425,10 +426,14 @@ export class ScatterPlotBase extends Component {
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
-        zoomLevelStepFactor: PropTypes.number
+        zoomLevelStepFactor: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
+        margin: { left: 40, right: 5, top: 5, bottom: 20 },
         withBrush: true,
         withCursor: true,
         withTooltip: true,
@@ -439,10 +444,10 @@ export class ScatterPlotBase extends Component {
         withSettings: true,
         withAutoRefreshOnBrush: true,
 
-        xMin: NaN,
-        xMax: NaN,
-        yMin: NaN,
-        yMax: NaN,
+        xMinValue: NaN,
+        xMaxValue: NaN,
+        yMinValue: NaN,
+        yMaxValue: NaN,
 
         dotSize: 5,
         minDotSize: 2,
@@ -496,6 +501,7 @@ export class ScatterPlotBase extends Component {
 
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR)
         {
+            this.clearChart();
             this.setState({
                 signalSetsData: null,
                 globalSignalSetsData: null,
@@ -504,7 +510,9 @@ export class ScatterPlotBase extends Component {
                 yMin: this.props.yMinValue,
                 yMax: this.props.yMaxValue,
                 zoomTransform: d3Zoom.zoomIdentity,
-                zoomYScaleMultiplier: 1
+                zoomYScaleMultiplier: 1,
+                noData: true,
+                statusMsg: "Loading..."
             }, () => this.fetchData());
         }
         else if (configDiff === ConfigDifference.DATA) {
@@ -932,6 +940,8 @@ export class ScatterPlotBase extends Component {
             .on('mouseleave', null);
 
         this.zoom = null;
+        this.globalRegressions = [];
+        this.regressions = [];
     }
 
     //<editor-fold desc="Data processing">
@@ -1219,7 +1229,7 @@ export class ScatterPlotBase extends Component {
             .merge(coeffs)
             .html(d => {
             if (d.data.hasOwnProperty("a"))
-                return `<b>${d.label}</b>: <i>slope:</i> ${roundTo(d.data.a, 3)}; <i>intercept:</i> ${roundTo(d.data.b, 3)}`;
+                return `<b>${d.label}</b>: <i>slope:</i> ${d3Format.format(".3r")(d.data.a)}; <i>intercept:</i> ${d3Format.format(".3r")(d.data.b)}`;
         });
     }
     //</editor-fold>
@@ -1627,7 +1637,8 @@ export class ScatterPlotBase extends Component {
     render() {
         if (this.state.noData) {
             return (
-                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%"
+                     className={this.props.className} style={this.props.style} >
                     <text textAnchor="middle" x="50%" y="50%"
                           fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
                         {this.state.statusMsg}
@@ -1655,7 +1666,7 @@ export class ScatterPlotBase extends Component {
             );
 
             return (
-                <div>
+                <div className={this.props.className} style={this.props.style} >
                     {this.props.withToolbar &&
                     <ScatterPlotToolbar resetZoomClick={::this.resetZoom}
                                         zoomInClick={this.props.withZoom ? ::this.zoomIn : undefined}

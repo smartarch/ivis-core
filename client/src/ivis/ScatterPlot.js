@@ -54,6 +54,10 @@ export class ScatterPlot extends Component {
         highlightDotSize: PropTypes.number, // radius multiplier
         colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
 
+        xMinValue: PropTypes.number,
+        xMaxValue: PropTypes.number,
+        yMinValue: PropTypes.number,
+        yMaxValue: PropTypes.number,
         minColorValue: PropTypes.number,
         maxColorValue: PropTypes.number,
         colorValues: PropTypes.array,
@@ -70,7 +74,7 @@ export class ScatterPlot extends Component {
         yAxisLabel: PropTypes.string,
 
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
 
         withBrush: PropTypes.bool,
         withCursor: PropTypes.bool,
@@ -82,14 +86,14 @@ export class ScatterPlot extends Component {
         withSettings: PropTypes.bool,
         withAutoRefreshOnBrush: PropTypes.bool,
 
-        xMin: PropTypes.number, // props (limits) will get copied to state in constructor, changing it later will not update it, use setLimits method to update it (and combine it with getLimits if you need to update just one of them)
-        xMax: PropTypes.number,
-        yMin: PropTypes.number,
-        yMax: PropTypes.number,
+        viewChangeCallback: PropTypes.func,
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
-        zoomLevelStepFactor: PropTypes.number
+        zoomLevelStepFactor: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     setView(...args) {

@@ -112,7 +112,7 @@ export class HistogramChart extends Component {
             tsSigCid: PropTypes.string
         }).isRequired,
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
         overviewHeight: PropTypes.number,
         overviewMargin: PropTypes.object,
 
@@ -132,9 +132,13 @@ export class HistogramChart extends Component {
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
+        margin: { left: 40, right: 5, top: 5, bottom: 20 },
         minBarWidth: 20,
         maxBucketCount: undefined,
         xMinValue: NaN,
@@ -748,7 +752,8 @@ export class HistogramChart extends Component {
     render() {
         if (!this.state.signalSetData) {
             return (
-                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                <svg ref={node => this.containerNode = node} height={this.props.height} width="100%"
+                     className={this.props.className} style={this.props.style} >
                     <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
                         {this.state.statusMsg}
                     </text>
@@ -758,7 +763,7 @@ export class HistogramChart extends Component {
         } else {
 
             return (
-                <div>
+                <div className={this.props.className} style={this.props.style} >
                     <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionPanY}>
                     <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                         <defs>
