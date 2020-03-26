@@ -65,11 +65,11 @@ export default class AggregationsList extends Component {
             {data: 1, title: t('Id'), render: data => <code>{data}</code>},
             {
                 data: 2,
-                title: t('Name'),
+                title: t('Name'), render,
                 actions: data => {
                     const id = data[0];
                     const label = data[2];
-                    const perms = data[7];
+                    const perms = data[8];
 
                     if (perms.includes('query')) {
                         return [
@@ -88,9 +88,9 @@ export default class AggregationsList extends Component {
                 }
             },
             {data: 3, title: t('Description')},
-            {data: 4, title: t('Status'), render: data => this.indexingStates[data.status]},
-            {data: 5, title: t('Created'), render: data => moment(data).fromNow()},
-            {data: 7, title: t('Interval'), render: data => `${data} s`},
+            {data: 4, title: t('Status'), render: data => data? this.indexingStates[data.status]: ''},
+            {data: 5, title: t('Created'), render: data => data ? moment(data).fromNow(): ''},
+            {data: 7, title: t('Interval'), render: data => `${data.interval} s`},
             {
                 actions: data => {
                     const actions = [];
@@ -99,24 +99,11 @@ export default class AggregationsList extends Component {
                     if (perms.includes('edit')) {
                         actions.push({
                             label: <Icon icon="edit" title={t('Edit')}/>,
-                            link: `/settings/signal-sets/${data[0]}/edit`
+                            link: `/settings/signal-sets/${this.props.signalSet.id}/aggregations/${data[6]}/edit`
                         });
                     }
 
-                    actions.push({
-                        label: <Icon icon="th-list" title={t('Signals')}/>,
-                        link: `/settings/signal-sets/${data[0]}/signals`
-                    });
-
-
-                    if (perms.includes('query')) {
-                        actions.push({
-                            label: <Icon icon="database" title={t('Records')}/>,
-                            link: `/settings/signal-sets/${data[0]}/records`
-                        });
-                    }
-
-                    tableAddDeleteButton(actions, this, perms, `rest/jobs/${data[6]}`, data[2], t('Deleting aggregation...'), t('Aggregation'));
+                    tableAddDeleteButton(actions, this, perms, `rest/jobs/${data[6]}`, `Interval ${data[7].interval}`, t('Deleting aggregation...'), t('Aggregation'));
                     return actions;
                 }
             }

@@ -648,16 +648,16 @@ function aggregationFn(data) {
 import sys
 import os
 import json
-from elasticsearch import Elasticsearch, helpers
 
-# Get parameters and set up elasticsearch
-data = json.loads(sys.stdin.readline())
-es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
+from ivis import init
 
-state = data.get('state')
+ivis = init()
 
-params= data['params']
-entities= data['entities']
+es = ivis.elasticsearch
+state = ivis.state
+
+params= ivis.parameters
+entities= ivis.entities
 
 sig_set = entities['signalSets'][params['sigSet']]
 ts = entities['signals'][params['sigSet']][params['ts']]

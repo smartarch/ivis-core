@@ -1,7 +1,7 @@
 'use strict';
 
-const {JobState} ="../../shared/jobs";
-const {getBuiltinTask} ="../../client/src/lib/builtin-tasks";
+const {JobState} = require("../../shared/jobs");
+const {getBuiltinTask} = require("./builtin-tasks");
 
 const knex = require('../lib/knex');
 const {enforce} = require('../lib/helpers');
@@ -13,14 +13,14 @@ async function listDTAjax(context, sigSetId, params) {
     //return
     const res = await dtHelpers.ajaxListWithPermissions(
         context,
-        [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
+        [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
         builder => builder.from('adjacent_jobs')
-            .innerJoin('signal_sets_owners', function () {
-                this.on('signal_sets_owners.job', '=', 'adjacent_jobs.job').andOn('adjacent_jobs.set', '=', sigSetId);
+            .innerJoin('jobs',function () {
+                this.on('adjacent_jobs.job', '=', 'jobs.id').andOn('adjacent_jobs.set', '=', sigSetId);
             })
-            .innerJoin('jobs', 'jobs.id', 'signal_sets_owners.job')
-            .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set'),
+            .leftJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
+            .leftJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set'),
         ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.indexing', 'signal_sets.created', 'jobs.id', 'jobs.params'],
         {
             mapFun: data => {
@@ -34,9 +34,9 @@ async function listDTAjax(context, sigSetId, params) {
 
 async function createTx(tx, context, sigSetId, params) {
     const intervalInSecs = params.interval;
-    const signalSet = tx('signal_sets').where('id', sigSetId).first();
+    const signalSet = await tx('signal_sets').where('id', sigSetId).first();
     enforce(signalSet, `Signal set ${sigSetId} not found`);
-    const task = getBuiltinTask('aggregation');
+    const task = await getBuiltinTask('aggregation');
     enforce(task, `Aggregation task not found`);
 
     function getJobName() {
@@ -50,7 +50,7 @@ async function createTx(tx, context, sigSetId, params) {
 
     // TODO ambiguous, name can be shared should inner join on adjecent jobs, after testing, or param check
     //const exists = tx('jobs').where('params', JSON.stringify(jobParams)).first();
-    const exists = tx('jobs').where('name', getJobName()).first();
+    const exists = await tx('jobs').where('name', getJobName()).first();
     enforce(!exists, `Aggregation for bucket interval ${intervalInSecs} exists`);
 
     const job = {
@@ -65,7 +65,7 @@ async function createTx(tx, context, sigSetId, params) {
         min_gap: null,
         delay: null
     };
-    const jobId = jobs.create(context, job);
+    const jobId = await jobs.create(context, job);
 
     await tx('adjacent_jobs').insert({job: jobId, set: signalSet.id});
 

@@ -453,9 +453,27 @@ const getStructure = t => {
                                     'aggregations': {
                                         title: t('Aggregations'),
                                         link: params => `/settings/signal-sets/${params.signalSetId}/aggregations`,
-                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                        visible: resolved => resolved.signalSet.permissions.includes('view'),
                                         panelRender: props => <SignalSetAggregations action={props.match.params.action} signalSet={props.resolved.signalSet} />,
                                         children: {
+                                            ":jobId([0-9]+)": {
+                                                title: resolved => t('Aggregation "{{name}}"', {name: resolved.job.name}),
+                                                resolve: {
+                                                    job: params => `rest/jobss/${params.jobId}`
+                                                },
+                                                link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                children: {
+                                                    ':action(edit|delete)': {
+                                                        title: t('Edit'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                                        panelRender: props => <AggregationsCUD
+                                                            signalSet={props.resolved.signalSet}
+                                                            job={props.resolved.job}
+                                                            action={props.match.params.action}/>
+                                                    }
+                                                }
+                                            },
                                             create: {
                                                 title: t('Create'),
                                                 panelRender: props => <AggregationsCUD signalSet={props.resolved.signalSet} action="create" />
