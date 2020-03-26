@@ -1,34 +1,17 @@
 'use strict';
 
-import {TaskSource} from "../../shared/tasks";
-import {JobState} from "../../shared/jobs";
-import {getBuiltinTask} from "../../client/src/lib/builtin-tasks";
+const {JobState} ="../../shared/jobs";
+const {getBuiltinTask} ="../../client/src/lib/builtin-tasks";
 
-const config = require('../lib/config');
-const signalStorage = require('./signal-storage');
-const indexer = require('../lib/indexers/' + config.indexer);
 const knex = require('../lib/knex');
-const hasher = require('node-object-hash')();
-const {enforce, filterObject} = require('../lib/helpers');
+const {enforce} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
-const interoperableErrors = require('../../shared/interoperable-errors');
-const namespaceHelpers = require('../lib/namespace-helpers');
-const shares = require('./shares');
-const {IndexingStatus, IndexMethod} = require('../../shared/signals');
-const signals = require('./signals');
-const signalSets = require('./signal-sets');
 const jobs = require('./jobs');
-const {SignalSetType} = require('../../shared/signal-sets');
-const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
-const log = require('../lib/log');
-const synchronized = require('../lib/synchronized');
-const {SignalType, SignalSource} = require('../../shared/signals');
-const moment = require('moment');
 
-const handlebars = require('handlebars');
 
 async function listDTAjax(context, sigSetId, params) {
-    return await dtHelpers.ajaxListWithPermissions(
+    //return
+    const res = await dtHelpers.ajaxListWithPermissions(
         context,
         [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
         params,
@@ -38,7 +21,7 @@ async function listDTAjax(context, sigSetId, params) {
             })
             .innerJoin('jobs', 'jobs.id', 'signal_sets_owners.job')
             .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set'),
-        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.indexing', 'signal_sets.created', 'jobs.id', 'job.params'],
+        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.indexing', 'signal_sets.created', 'jobs.id', 'jobs.params'],
         {
             mapFun: data => {
                 data[4] = JSON.parse(data[4]);
@@ -46,6 +29,7 @@ async function listDTAjax(context, sigSetId, params) {
             }
         }
     );
+    return res;
 }
 
 async function createTx(tx, context, sigSetId, params) {
@@ -54,23 +38,33 @@ async function createTx(tx, context, sigSetId, params) {
     enforce(signalSet, `Signal set ${sigSetId} not found`);
     const task = getBuiltinTask('aggregation');
     enforce(task, `Aggregation task not found`);
+
+    function getJobName() {
+        return `aggregation_${intervalInSecs}s_${signalSet.cid}`;
+    }
+
+    const jobParams = {
+        signalSet: sigSetId,
+        interval: intervalInSecs
+    };
+
+    // TODO ambiguous, name can be shared should inner join on adjecent jobs, after testing, or param check
+    //const exists = tx('jobs').where('params', JSON.stringify(jobParams)).first();
+    const exists = tx('jobs').where('name', getJobName()).first();
+    enforce(!exists, `Aggregation for bucket interval ${intervalInSecs} exists`);
+
     const job = {
-        name: `aggregation_${intervalInSecs}s_${signalSet.cid}`,
-        description: `Aggregation for signal set ${signalSet.name} with window ${intervalInSecs} s`,
+        name: getJobName(),
+        description: `Aggregation for signal set ${signalSet.name} with bucket interval ${intervalInSecs} s`,
         namespace: signalSet.namespace,
         task: task.id,
-        taskSource: TaskSource.USER,
         state: JobState.ENABLED,
-        params: {
-            signalSet: sigSetId,
-            interval: intervalInSecs
-        },
+        params: jobParams,
         signal_sets_triggers: [sigSetId],
         trigger: null,
         min_gap: null,
         delay: null
     };
-
     const jobId = jobs.create(context, job);
 
     await tx('adjacent_jobs').insert({job: jobId, set: signalSet.id});
@@ -78,23 +72,14 @@ async function createTx(tx, context, sigSetId, params) {
     return jobId;
 }
 
-async function create(context, entity) {
+async function create(context, sigSetId, params) {
     return await knex.transaction(async tx => {
-        return await createTx(tx, context, entity);
+        return await createTx(tx, context, sigSetId, params);
     });
 }
 
-async function remove(context, jobId) {
-    await knex.transaction(async tx => {
-        await jobs.remove(context, jobId);
-    });
-}
-
-module.exports.hash = hash;
-module.exports.listDTAjax = listDTAjax;
 module.exports.create = create;
 module.exports.createTx = createTx;
-module.exports.remove = remove;
 module.exports.listDTAjax = listDTAjax;
 
 

@@ -1,7 +1,5 @@
 'use strict';
 
-import {getBuiltinTasks} from "../../client/src/lib/builtin-tasks";
-
 const knex = require('../lib/knex');
 const {getVirtualNamespaceId} = require("../../shared/namespaces");
 const {TaskSource, BuildState, TaskType} = require("../../shared/tasks");

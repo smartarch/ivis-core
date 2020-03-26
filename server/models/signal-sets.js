@@ -20,6 +20,8 @@ const {SignalType, SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
 
+const dependencyHelpers = require('../lib/dependency-helpers');
+
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
 
@@ -224,6 +226,11 @@ async function updateWithConsistencyCheck(context, entity) {
 async function remove(context, id) {
     await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', id, 'delete');
+
+        // TODO cant use ensure dependecies here as job doesn't have foreign key to signal-sets, but this
+        // probably should be handled better, as there may be other extensions
+        const exists = tx('adjacent_jobs').where('set', id).first();
+        enforce(!exists,`Signal set has aggregation ${exists ? exists.id: ''} delete it first.`);
 
         const existing = await tx('signal_sets').where('id', id).first();
 
@@ -740,6 +747,5 @@ module.exports.getLastId = getLastId;
 module.exports.getSignalByCidMapTx = getSignalByCidMapTx;
 module.exports.getRecordIdTemplate = getRecordIdTemplate;
 module.exports.listRecordsDTAjax = listRecordsDTAjax;
-module.exports.listAggregationsDTAjax = listAggregationsDTAjax;
 
 

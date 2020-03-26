@@ -3,6 +3,7 @@
 const passport = require('../../lib/passport');
 const moment = require('moment');
 const signalSets = require('../../models/signal-sets');
+const signalSetsAggregations = require('../../models/signal-set-aggregations');
 const panels = require('../../models/panels');
 const templates = require('../../models/templates');
 const users = require('../../models/users');
@@ -182,17 +183,8 @@ router.postAsync('/signal-set-records-validate/:signalSetId', passport.loggedIn,
     return res.json(await signalSets.serverValidateRecord(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
-
-router.putAsync('/signal-set/:signalSetId/aggregations/:aggregationSetId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    const signalSet = req.body;
-    signalSet.id = castToInteger(req.params.signalSetId);
-
-    await signalSets.updateWithConsistencyCheck(req.context, signalSet, aggregationSetId);
-    return res.json();
-});
-
-router.deleteAsync('/signal-sets/:signalSetId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    await signalSets.remove(req.context, castToInteger(req.params.signalSetId));
+router.deleteAsync('/signal-sets/:signalSetId/aggregations', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    await signalSetsAggregations.create(req.context, castToInteger(req.params.signalSetId), req.body);
     return res.json();
 });
 
@@ -200,8 +192,8 @@ router.postAsync('/signal-sets-table', passport.loggedIn, async (req, res) => {
     return res.json(await signalSets.listDTAjax(req.context, req.body));
 });
 
-router.postAsync('signal-set-aggregations-table/:signalSetId', passport.loggedIn, async (req, res) => {
-    return res.json(await signalSets.listAggregationsDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
+router.postAsync('/signal-set-aggregations-table/:signalSetId', passport.loggedIn, async (req, res) => {
+    return res.json(await signalSetsAggregations.listDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
 /* This is for testing. Kept here as long as we are still making bigger changes to ELS query processor

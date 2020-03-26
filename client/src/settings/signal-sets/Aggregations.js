@@ -38,17 +38,6 @@ export default class AggregationsList extends Component {
             [IndexingStatus.RUNNING]: t('Indexing')
         }
 
-        if (!em.get('settings.signalSetsAsSensors', false)) {
-            this.labels = {
-                'Create Signal Set': t('Create Signal Set'),
-                'Signal Sets': t('Signal Sets')
-            };
-        } else {
-            this.labels = {
-                'Create Signal Set': t('Create Sensor'),
-                'Signal Sets': t('Sensors')
-            };
-        }
     }
 
     @withAsyncErrorHandler
@@ -74,7 +63,7 @@ export default class AggregationsList extends Component {
         const labels = this.labels;
 
         const columns = [
-            { data: 1, title: t('Id'), render: data => <code>{data}</code> },
+            {data: 1, title: t('Id'), render: data => <code>{data}</code>},
             {
                 data: 2,
                 title: t('Name'),
@@ -99,11 +88,10 @@ export default class AggregationsList extends Component {
                     }
                 }
             },
-            { data: 3, title: t('Description') },
-            {data: 4, title: t('Type')},
-            { data: 5, title: t('Status'), render: data => this.indexingStates[data.status] },
-            { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
-            { data: 7, title: t('Namespace') },
+            {data: 3, title: t('Description')},
+            {data: 4, title: t('Status'), render: data => this.indexingStates[data.status]},
+            {data: 5, title: t('Created'), render: data => moment(data).fromNow()},
+            {data: 7, title: t('Interval'), render: data => `${data} s`},
             {
                 actions: data => {
                     const actions = [];
@@ -129,16 +117,7 @@ export default class AggregationsList extends Component {
                         });
                     }
 
-                    if (perms.includes('share')) {
-                        actions.push({
-                            label: <Icon icon="share" title={t('Share')}/>,
-                            link: `/settings/signal-sets/${data[0]}/share`
-                        });
-                    }
-
-                    if (data[4] !== SignalSetType.COMPUTED) {
-                        tableAddDeleteButton(actions, this, perms, `rest/signal-sets/${data[0]}`, data[2], t('Deleting signal set ...'), t('Signal set deleted'));
-                    }
+                    tableAddDeleteButton(actions, this, perms, `rest/jobs/${data[6]}`, data[2], t('Deleting aggregation...'), t('Aggregation'));
                     return actions;
                 }
             }
@@ -150,10 +129,11 @@ export default class AggregationsList extends Component {
                 {this.state.createPermitted &&
                 <Toolbar>
                     <LinkButton to="/settings/signal-sets/create" className="btn-primary" icon="plus"
-                                label={labels['Create Signal Set']}/>
+                                label={t('Create aggregation')}/>
                 </Toolbar>
                 }
-                <Table ref={node => this.table = node} withHeader dataUrl={`rest/signal-set-aggregations-table/${this.signalSet.id}`} columns={columns}/>
+                <Table ref={node => this.table = node} withHeader
+                       dataUrl={`rest/signal-set-aggregations-table/${this.props.signalSet.id}`} columns={columns}/>
             </Panel>
         );
     }

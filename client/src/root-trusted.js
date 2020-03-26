@@ -451,7 +451,7 @@ const getStructure = t => {
                                     },
                                     'aggregations': {
                                         title: t('Aggregations'),
-                                        link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations`,
                                         visible: resolved => resolved.signalSet.permissions.includes('edit'),
                                         panelRender: props => <SignalSetAggregations action={props.match.params.action} signalSet={props.resolved.signalSet} />
                                     },

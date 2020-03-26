@@ -51,31 +51,7 @@ export default class CUD extends Component {
 
         this.state = {};
 
-        this.paramTypes = new ParamTypes(props.t);
-
-
-        this.adjacentTasksConfig = {
-            "id": "jobs",
-            "label": "Jobs",
-            "type": "fieldset",
-            "cardinality": "1..n",
-            "children": [
-                {
-                    "id": "task",
-                    "label": "Task",
-                    "type": "task"
-                },
-                {
-                    "id": "taskParams",
-                    "type": "taskParams",
-                    "taskRef": "task"
-                }
-            ]
-        };
-
-
         this.initForm({
-            onChangeBeforeValidation: ::this.onChangeBeforeValidation,
             serverValidation: {
                 url: 'rest/signal-sets-validate',
                 changed: ['cid'],
@@ -109,9 +85,6 @@ export default class CUD extends Component {
         entity: PropTypes.object
     }
 
-    onChangeBeforeValidation(mutStateData, key, oldVal, newVal) {
-        this.paramTypes.onChange(this.adjacentTasksConfig, mutStateData, key, oldVal, newVal)
-    }
 
     componentDidMount() {
         if (this.props.entity) {
@@ -129,11 +102,6 @@ export default class CUD extends Component {
                 }
             );
         }
-
-        this.updateForm((mutStateData) => {
-            this.paramTypes.adopt(this.adjacentTasksConfig, mutStateData);
-        });
-        this.loaded = true;
     }
 
     getFormValuesMutator(data) {
@@ -141,7 +109,6 @@ export default class CUD extends Component {
             data.record_id_template = '';
         }
 
-        this.paramTypes.setFields(this.adjacentTasksConfig, data.adjacentTasks, data);
     }
 
 
@@ -173,10 +140,6 @@ export default class CUD extends Component {
         if (data.record_id_template.trim() === '') {
             data.record_id_template = null;
         }
-
-        ListCreator.submitFormValuesMutator('multi', data);
-
-        data.params = this.paramTypes.getParams(this.adjacentTasksConfig, data);
 
         const allowedKeys = [
             'name',
@@ -243,15 +206,6 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
 
-        const params = this.loaded ? this.paramTypes.render(this.adjacentTasksConfig, this) : null;
-
-        const taskColumns = [
-            {data: 1, title: t('Name')},
-            {data: 2, title: t('Description')},
-            {data: 4, title: t('Created'), render: data => moment(data).fromNow()}
-        ];
-
-
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
                 {canDelete &&
@@ -274,15 +228,6 @@ export default class CUD extends Component {
                                 help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
-
-
-                    <ListCreator id={'adjacentJobs'} label={t('Adjacent jobs')} entryElement={
-                        <Element/>
-                    } initValues={[]}/>
-
-                    <Fieldset label={t('Test parameters')}>
-                        {params}
-                    </Fieldset>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
