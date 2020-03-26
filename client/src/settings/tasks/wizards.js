@@ -60,21 +60,15 @@ function apiShowcaseFn(data) {
 import os
 import json
 
+from ivis import init
 
-from elasticsearch import Elasticsearch, helpers
-    
-# Get parameters and set up elasticsearch
-data = json.loads(sys.stdin.readline())
-es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
+ivis = init()
 
-print('Data:')
-print(json.dumps(data, indent=2))
-print()
+es = ivis.elasticsearch
+state = ivis.state
 
-state = data.get('state')
-
-params= data['params']
-entities= data['entities']
+params= ivis.parameters
+entities= ivis.entities
 
 sigSet = params['sigSet']
 value_sig = params['value']
@@ -96,15 +90,7 @@ ts_sig = params['ts']
 if state is None or state.get('api_set') is None:
   ns = entities['signalSets'][sigSet]['namespace']
 
-  msg = {}
-  msg['type'] = 'create_signals'
   # Request new signal set creation 
-  msg['signalSets'] = {
-    "cid" : "api_set",
-    "name" : "API test" ,
-    "namespace": ns,
-    "description" : "API test",
-  }
 
   signals= []
   signals.append({
@@ -116,20 +102,10 @@ if state is None or state.get('api_set') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['signalSets']['signals'] = signals
+
+  state = ivis.create_signal_set("api_set",ns,"API test", "API test", None, signals)
     
-  ret = os.write(3,(json.dumps(msg) + '\\n').encode())
-  state = json.loads(sys.stdin.readline())
-  
-  error = state.get('error')
-  if error:
-    sys.stderr.write(error+"\\n")
-    sys.exit(1)
-  else:
-    store_msg = {}
-    store_msg["type"] = "store_state"
-    store_msg["state"] = state
-    ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+  ivis.store_state(state)
 
 # FILES
 with open('../files/test.txt', 'r') as file: 
@@ -160,19 +136,14 @@ print('ES reading:')
 print(value)
 print()
 
-
-
 # Elasticsearch indexing
 doc = {
   state['api_set']['fields']['api_signal']: value
 }
 res = es.index(index=state['api_set']['index'], doc_type='_doc', body=doc)
 
-store_msg = {}
-store_msg["type"] = "store_state"
-store_msg["state"] = state
-ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
-os.close(3)`
+ivis.store_state(state)
+`
     };
 }
 
@@ -204,11 +175,11 @@ import sys
 import os
 import json
 from datetime import datetime, timedelta
+from ivis import init
 
 import requests
 import subprocess
 import pathlib
-from elasticsearch import Elasticsearch, helpers
     
 from eppy import modeleditor
 from eppy.modeleditor import IDF
@@ -216,17 +187,15 @@ idd_file = "/usr/local/Energy+.idd"
 IDF.setiddname(idd_file)
 
 from io import StringIO
-    
-# Get parameters and set up elasticsearch
-data = json.loads(sys.stdin.readline())
-es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}], timeout=120)
 
-state = data.get('state')
+ivis = init()
+es = ivis.elasticsearch
+state = ivis.state
+params= ivis.parameters
+entities= ivis.entities
+
 if state is None:
   state= {}
-
-params= data['params']
-entities= data['entities']
 
 # BODY ==================================================================
 api_url_base = 'https://example.com/api'
@@ -263,17 +232,6 @@ with open(f'{model_dir}/weather.epw', 'wb') as f:
 
 if state is None or state.get(f'energy_plus_{mod}_{occ}') is None:
   ns = 1
-
-  msg = {}
-  msg['type'] = 'create_signals'
-  # Request new signal set creation 
-  msg['signalSets'] = {
-  "cid" : f"energy_plus_{mod}_{occ}",
-  "name" : f"EnergyPlus mod{mod} occ{occ}" ,
-  "namespace": ns,
-  "description" : f"EnergyPlus calculation for mod {mod} and occ {occ}" ,
-  "aggs" :  "0" 
-  }
 
   signals= []
   signals.append({
@@ -312,20 +270,12 @@ if state is None or state.get(f'energy_plus_{mod}_{occ}') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['signalSets']['signals'] = signals
-
-  ret = os.write(3,(json.dumps(msg) + '\\n').encode())
-  state = json.loads(sys.stdin.readline())
   
-  error = state.get('error')
-  if error:
-    sys.stderr.write(error+"\\n")
-    sys.exit(1)
-  else
-    store_msg = {}
-    store_msg["type"] = "store_state"
-    store_msg["state"] = state
-    ret = os.write(3,(json.dumps(store_msg) + '\n').encode())
+  state = ivis.create_signal_set(f"energy_plus_{mod}_{occ}",ns,f"EnergyPlus mod{mod} occ{occ}", f"EnergyPlus calculation for mod {mod} and occ {occ}" , None, signals)
+    
+  ivis.store_state(state)
+
+  
 else: 
   #clean up before calculation
   es.delete_by_query(index=state[f'energy_plus_{mod}_{occ}']['index'],request_timeout=60,body={"query" :{
@@ -488,17 +438,14 @@ function movingAvarageFn(data) {
 import sys
 import os
 import json
-from elasticsearch import Elasticsearch, helpers
+from ivis import init
 from collections import deque
 
-# Get parameters and set up elasticsearch
-data = json.loads(sys.stdin.readline())
-es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
-
-state = data.get('state')
-
-params= data['params']
-entities= data['entities']
+ivis = init()
+es = ivis.elasticsearch
+state = ivis.state
+params= ivis.parameters
+entities= ivis.entities
 
 # Task parameters' values
 # from params we get cid of signal/signal set and from according key in entities dictionary 
@@ -515,16 +462,6 @@ queue = deque(values, maxlen=window)
 
 if state is None or state.get('moving_average') is None:
   ns = sig_set['namespace']
-  
-  msg = {}
-  msg['type'] = 'create_signals'
-  # Request new signal set creation 
-  msg['signalSets'] = {
-    "cid" : "moving_average",
-    "name" : "moving average" ,
-    "namespace": ns,
-    "description" : "moving average" 
-  }
 
   signals= [] 
   signals.append({
@@ -536,19 +473,10 @@ if state is None or state.get('moving_average') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['signalSets']['signals'] = signals
-
-  ret = os.write(3,(json.dumps(msg) + '\\n').encode())
-  state = json.loads(sys.stdin.readline())
-  error = state.get('error')
-  if error:
-    sys.stderr.write(error+"\\n")
-    sys.exit(1)
-  else:
-    store_msg = {}
-    store_msg["type"] = "store_state"
-    store_msg["state"] = state
-    ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+  
+  state = ivis.create_signal_set("moving_average",ns,"moving average", "moving average", None, signals)
+    
+  ivis.store_state(state)
     
 last = None
 if state is not None and state.get('last') is not None:
@@ -831,20 +759,17 @@ function modelComparisonFn(data) {
 import sys
 import os
 import json
-from elasticsearch import Elasticsearch, helpers
+from ivis import init
 
 from datetime import datetime, timezone
 import numpy as np
 from dtw import dtw
 
-# Get parameters and set up elasticsearch
-data = json.loads(sys.stdin.readline())
-es = Elasticsearch([{'host': data['es']['host'], 'port': int(data['es']['port'])}])
-
-state = data.get('state')
-
-params= data['params']
-entities= data['entities']
+ivis = init()
+es = ivis.elasticsearch
+state = ivis.state
+params= ivis.parameters
+entities= ivis.entities
 
 # Get ES index and fields
 sensor_set = entities['signalSets'][params['sensors']]
@@ -857,16 +782,6 @@ limit = limit_val
 
 if state is None or state.get('models_comparison') is None:
     ns = sensor_set['namespace']
-  
-    msg = {}
-    msg['type'] = 'create_signals'
-    # Request new signal set creation 
-    msg['signalSets'] = {
-    "cid" : "models_comparison",
-    "name" : "Comparison of models" ,
-    "namespace": ns,
-    "description" : "Comparison of models" 
-    }
 
     signals= [] 
     signals.append({
@@ -887,19 +802,10 @@ if state is None or state.get('models_comparison') is None:
       "indexed": False,
       "settings": {}
     })
-    msg['signalSets']['signals'] = signals
-
-    ret = os.write(3,(json.dumps(msg) + '\\n').encode())
-    state = json.loads(sys.stdin.readline())
-    error = state.get('error')
-    if error:
-      sys.stderr.write(error+"\\n")
-      sys.exit(1)
-    else:
-      store_msg = {}
-      store_msg["type"] = "store_state"
-      store_msg["state"] = state
-      ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+    
+  state = ivis.create_signal_set("models_comparison",ns,"Comparison of models", "Comparison of models", None, signals)
+    
+  ivis.store_state(state)
 
 def get_source_values(index,ts_field, source_field):
   # sensor data query
