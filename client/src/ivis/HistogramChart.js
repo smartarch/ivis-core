@@ -122,6 +122,10 @@ export class HistogramChart extends Component {
         withTransition: PropTypes.bool,
         withZoom: PropTypes.bool,
 
+        xAxisTicksCount: PropTypes.number,
+        xAxisTicksFormat: PropTypes.func,
+        xAxisLabel: PropTypes.string,
+
         minStep: PropTypes.number,
         minBarWidth: PropTypes.number,
         maxBucketCount: PropTypes.number,
@@ -395,7 +399,10 @@ export class HistogramChart extends Component {
         this.xScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.xAxisSelection.call(xAxis);
+        this.xAxisLabelSelection.text(this.props.xAxisLabel).style("text-anchor", "middle");
 
         let maxProb = signalSetData.maxProb;
         let maxProbInZoom;
@@ -701,6 +708,8 @@ export class HistogramChart extends Component {
         this.overviewXScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.overviewXAxisSelection.call(xAxis);
         //</editor-fold>
 
@@ -775,8 +784,13 @@ export class HistogramChart extends Component {
                             <g ref={node => this.barsSelection = select(node)}/>
                             <g ref={node => this.barsHighlightSelection = select(node)}/>
                         </g>
+
+                        {/* axes */}
                         <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
+                        <text ref={node => this.xAxisLabelSelection = select(node)}
+                              transform={`translate(${this.props.margin.left + (this.state.width - this.props.margin.left - this.props.margin.right) / 2}, ${this.props.height - 5})`} />
                         <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+
                         {!this.state.zoomInProgress &&
                         <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>}
                         <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">

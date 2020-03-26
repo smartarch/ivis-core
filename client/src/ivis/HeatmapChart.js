@@ -164,6 +164,13 @@ export class HeatmapChart extends Component {
         withZoomX: PropTypes.bool,
         withZoomY: PropTypes.bool,
 
+        xAxisTicksCount: PropTypes.number,
+        xAxisTicksFormat: PropTypes.func,
+        xAxisLabel: PropTypes.string,
+        yAxisTicksCount: PropTypes.number,
+        yAxisTicksFormat: PropTypes.func,
+        yAxisLabel: PropTypes.string,
+
         minStepX: PropTypes.number,
         minStepY: PropTypes.number,
         minRectWidth: PropTypes.number,
@@ -523,7 +530,10 @@ export class HeatmapChart extends Component {
         this.xScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.xAxisSelection.call(xAxis);
+        this.xAxisLabelSelection.text(this.props.xAxisLabel).style("text-anchor", "middle");
         const xStep = signalSetData.step;
         const rectWidth = this.xType === DataType.NUMBER ?
             xScale(xStep) - xScale(0) :
@@ -536,7 +546,10 @@ export class HeatmapChart extends Component {
         this.yScale = yScale;
         const yAxis = d3Axis.axisLeft(yScale)
             .tickSizeOuter(0);
+        if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
+        if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
         this.yAxisSelection.call(yAxis);
+        this.yAxisLabelSelection.text(this.props.yAxisLabel).style("text-anchor", "middle");
         const yStep = signalSetData.buckets[0].step;
         const rectHeight = this.yType === DataType.NUMBER ?
             yScale(0) - yScale(yStep) :
@@ -896,6 +909,8 @@ export class HeatmapChart extends Component {
 
         const yAxis = d3Axis.axisLeft(yScale)
             .tickSizeOuter(0);
+        if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
+        if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
         this.overviewLeftYAxisSelection.call(yAxis);
         //</editor-fold>
 
@@ -915,6 +930,8 @@ export class HeatmapChart extends Component {
 
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.overviewBottomXAxisSelection.call(xAxis);
         //</editor-fold>
 
@@ -1119,12 +1136,19 @@ export class HeatmapChart extends Component {
                                 {!this.state.zoomInProgress &&
                                     <g ref={node => this.highlightSelection = select(node)}/>}
                             </g>
+
+                            {/* axes */}
                             <g ref={node => this.xAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}
                                clipPath="url(#bottomAxis)" />
+                            <text ref={node => this.xAxisLabelSelection = select(node)}
+                                  transform={`translate(${this.props.margin.left + (this.state.width - this.props.margin.left - this.props.margin.right) / 2}, ${this.props.height - 5})`} />
                             <g ref={node => this.yAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
                                clipPath="url(#leftAxis)"/>
+                            <text ref={node => this.yAxisLabelSelection = select(node)}
+                                  transform={`translate(${15}, ${this.props.margin.top + (this.props.height - this.props.margin.top - this.props.margin.bottom) / 2}) rotate(-90)`} />
+
                             <text textAnchor="middle" x="50%" y="50%"
                                   fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
                                 {this.state.statusMsg}
