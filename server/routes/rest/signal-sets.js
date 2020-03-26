@@ -183,7 +183,7 @@ router.postAsync('/signal-set-records-validate/:signalSetId', passport.loggedIn,
     return res.json(await signalSets.serverValidateRecord(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
-router.deleteAsync('/signal-sets/:signalSetId/aggregations', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+router.postAsync('/signal-sets/:signalSetId/aggregations', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     await signalSetsAggregations.create(req.context, castToInteger(req.params.signalSetId), req.body);
     return res.json();
 });

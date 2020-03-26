@@ -60,8 +60,7 @@ export default class AggregationsList extends Component {
 
     render() {
         const t = this.props.t;
-        const labels = this.labels;
-
+        const sigSetId = this.props.signalSet.id;
         const columns = [
             {data: 1, title: t('Id'), render: data => <code>{data}</code>},
             {
@@ -124,16 +123,16 @@ export default class AggregationsList extends Component {
         ];
 
         return (
-            <Panel title={labels['Signal Sets']}>
+            <Panel title={t('Signal Sets')}>
                 {tableRestActionDialogRender(this)}
                 {this.state.createPermitted &&
                 <Toolbar>
-                    <LinkButton to="/settings/signal-sets/create" className="btn-primary" icon="plus"
+                    <LinkButton to={`/settings/signal-sets/${sigSetId}/aggregations/create`} className="btn-primary" icon="plus"
                                 label={t('Create aggregation')}/>
                 </Toolbar>
                 }
                 <Table ref={node => this.table = node} withHeader
-                       dataUrl={`rest/signal-set-aggregations-table/${this.props.signalSet.id}`} columns={columns}/>
+                       dataUrl={`rest/signal-set-aggregations-table/${sigSetId}`} columns={columns}/>
             </Panel>
         );
     }

@@ -89,26 +89,12 @@ export default class CUD extends Component {
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
-            if (this.props.entity.type === SignalSetType.COMPUTED) {
-                this.disableForm();
-            }
         } else {
             this.populateFormValues({
-                    cid: '',
-                    name: '',
-                    description: '',
-                    record_id_template: '',
-                    namespace: ivisConfig.user.namespace,
+                   interval: 0
                 }
             );
         }
-    }
-
-    getFormValuesMutator(data) {
-        if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
-            data.record_id_template = '';
-        }
-
     }
 
 
@@ -164,10 +150,10 @@ export default class CUD extends Component {
         let sendMethod, url;
         if (this.props.entity) {
             sendMethod = FormSendMethod.PUT;
-            url = `rest/signal-sets/${this.props.entity.id}`
+            url = `rest/signal-sets/${this.props.signalSet.id}/aggregations`
         } else {
             sendMethod = FormSendMethod.POST;
-            url = 'rest/signal-sets'
+            url = `rest/signal-sets/${this.props.signalSet.id}/aggregations`
         }
 
         this.disableForm();
@@ -187,9 +173,9 @@ export default class CUD extends Component {
                 }
             } else {
                 if (submitAndLeave) {
-                    this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Signal set saved'));
+                    this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Aggregation created'));
                 } else {
-                    this.navigateToWithFlashMessage(`/settings/signal-sets/${submitResult}/edit`, 'success', t('Signal set saved'));
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${submitResult}/edit`, 'success', t('Aggregation created'));
                 }
             }
         } else {
