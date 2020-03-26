@@ -229,7 +229,7 @@ export class HeatmapChart extends Component {
             const prevSpec = this.getIntervalSpec(prevProps);
 
             if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = ConfigDifference.DATA_WITH_CLEAR;
+                configDiff = ConfigDifference.DATA;
             } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
                 configDiff = ConfigDifference.DATA;
             }
@@ -278,6 +278,7 @@ export class HeatmapChart extends Component {
         let maxBucketCountX = this.props.maxBucketCountX || this.state.maxBucketCountX;
         let maxBucketCountY = this.props.maxBucketCountY || this.state.maxBucketCountY;
         if (maxBucketCountX > 0 && maxBucketCountY > 0) {
+            this.setState({statusMsg: this.props.t('Loading...')});
             try {
                 let filter = {
                     type: 'and',
@@ -951,6 +952,10 @@ export class HeatmapChart extends Component {
             .call(this.brushLeft);
         if (!brushExisted)
             this.overviewLeftBrushSelection.call(this.brushLeft.move, this.defaultBrushLeft);
+        // ensure that brush is not outside the extent
+        if (this.brushLeftValues && (this.brushLeftValues[0] < this.defaultBrushLeft[0] || this.brushLeftValues[1] > this.defaultBrushLeft[1]))
+            this.overviewLeftBrushSelection.call(this.brushLeft.move, [Math.max(this.brushLeftValues[0], this.defaultBrushLeft[0]), Math.min(this.brushLeftValues[1], this.defaultBrushLeft[1])]);
+        
         this.overviewLeftBrushSelection.select(".selection")
             .classed(styles.selection, true);
         this.overviewLeftBrushSelection.select(".overlay")
@@ -988,6 +993,10 @@ export class HeatmapChart extends Component {
             .call(this.brushBottom);
         if (!brushExisted)
             this.overviewBottomBrushSelection.call(this.brushBottom.move, this.defaultBrushBottom);
+        // ensure that brush is not outside the extent
+        if (this.brushBottomValues && (this.brushBottomValues[0] < this.defaultBrushBottom[0] || this.brushBottomValues[1] > this.defaultBrushBottom[1]))
+            this.overviewBottomBrushSelection.call(this.brushBottom.move, [Math.max(this.brushBottomValues[0], this.defaultBrushBottom[0]), Math.min(this.brushBottomValues[1], this.defaultBrushBottom[1])]);
+
         this.overviewBottomBrushSelection.select(".selection")
             .classed(styles.selection, true);
         this.overviewBottomBrushSelection.select(".overlay")
