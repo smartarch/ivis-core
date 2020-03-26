@@ -65,8 +65,8 @@ export default class AggregationsList extends Component {
             {data: 1, title: t('Id'), render: data => <code>{data}</code>},
             {
                 data: 2,
-                title: t('Name'), render,
-                actions: data => {
+                title: t('Name'), render: data => {return data? data : 'Not created yet';}},
+                /*actions: data => {
                     const id = data[0];
                     const label = data[2];
                     const perms = data[8];
@@ -86,7 +86,7 @@ export default class AggregationsList extends Component {
                         ];
                     }
                 }
-            },
+            },*/
             {data: 3, title: t('Description')},
             {data: 4, title: t('Status'), render: data => data? this.indexingStates[data.status]: ''},
             {data: 5, title: t('Created'), render: data => data ? moment(data).fromNow(): ''},

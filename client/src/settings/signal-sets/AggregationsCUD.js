@@ -62,8 +62,11 @@ export default class CUD extends Component {
 
 
     componentDidMount() {
-        if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity);
+        if (this.props.job) {
+            this.populateFormValues({
+                interval: this.props.job.params.interval
+            });
+            this.disableForm();
         } else {
             this.populateFormValues({
                     interval: 0
@@ -116,15 +119,15 @@ export default class CUD extends Component {
                 if (submitAndLeave) {
                     this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations`, 'success', t('Aggregation updated'));
                 } else {
-                    await this.getFormValuesFromURL(`rest/signal-sets/${this.props.signalSet.id}/aggregation/`);
+                    await this.getFormValuesFromURL(`rest/signal-sets/${this.props.signalSet.id}/aggregations/`);
                     this.enableForm();
                     this.setFormStatusMessage('success', t('Aggregation updated'));
                 }
             } else {
                 if (submitAndLeave) {
-                    this.navigateToWithFlashMessage('/settings/signal-sets', 'success', t('Aggregation created'));
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations`, 'success', t('Aggregation created'));
                 } else {
-                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregation/${submitResult}/edit`, 'success', t('Aggregation created'));
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations/${submitResult}/edit`, 'success', t('Aggregation created'));
                 }
             }
         } else {

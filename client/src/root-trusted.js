@@ -459,7 +459,7 @@ const getStructure = t => {
                                             ":jobId([0-9]+)": {
                                                 title: resolved => t('Aggregation "{{name}}"', {name: resolved.job.name}),
                                                 resolve: {
-                                                    job: params => `rest/jobss/${params.jobId}`
+                                                    job: params => `rest/jobs/${params.jobId}`
                                                 },
                                                 link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
                                                 children: {

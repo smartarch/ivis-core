@@ -596,12 +596,7 @@ for item in results:
 
 state["last"] = last
 state["values"] = list(queue)
-# Request to store state
-msg = {}
-msg["type"] = "store_state"
-msg["state"] = state
-ret = os.write(3,(json.dumps(msg).encode()))
-os.close(3)
+ivis.store_state(state)
         `
     };
 }
@@ -666,17 +661,6 @@ interval = params['interval']
 
 if state is None or state.get('aggs') is None:
   ns = sig_set['namespace']
-  
-  msg = {}
-  msg['type'] = 'create_signals'
-  # Request new signal set creation 
-  msg['signalSets'] = {
-    "cid" : "aggs",
-    "name" : "aggs" ,
-    "namespace": ns,
-    "description" : "aggs"
-  }
-    
 
   signals= []
   signals.append({
@@ -715,19 +699,10 @@ if state is None or state.get('aggs') is None:
     "indexed": False,
     "settings": {}
   })
-  msg['signalSets']['signals'] = signals
-
-  ret = os.write(3,(json.dumps(msg) + '\\n').encode())
-  state = json.loads(sys.stdin.readline())
-  error = state.get('error')
-  if error:
-    sys.stderr.write(error+"\\n")
-    sys.exit(1)
-  else:
-    store_msg = {}
-    store_msg["type"] = "store_state"
-    store_msg["state"] = state
-    ret = os.write(3,(json.dumps(store_msg) + '\\n').encode())
+  
+  state = ivis.create_signal_set("aggs",ns,"aggregation", "aggregation", None, signals)
+    
+  ivis.store_state(state)
 
 last = None
 if state is not None and state.get('last') is not None:
@@ -794,12 +769,8 @@ for hit in res['aggregations']['stats']['buckets']:
   res = es.index(index=state['aggs']['index'], doc_type='_doc', body=doc)
 
 # Request to store state
-msg={}
-msg={"type": "store_state"}
 state['last'] = last
-msg["state"] = state
-ret = os.write(3,(json.dumps(msg).encode()))
-os.close(3)
+ivis.store_state(state)
 `
     };
 }
