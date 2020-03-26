@@ -54,12 +54,11 @@ export default class CUD extends Component {
             this.populateFormValues({
                 interval: this.props.job.params.interval
             });
-            this.disableForm();
         } else {
             this.populateFormValues({
                     interval: 0
                 }
-            );
+            )
         }
     }
 
@@ -103,14 +102,8 @@ export default class CUD extends Component {
 
         if (submitResult) {
 
-            if (this.props.entity) {
-                if (submitAndLeave) {
-                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations`, 'success', t('Aggregation updated'));
-                } else {
-                    await this.getFormValuesFromURL(`rest/signal-sets/${this.props.signalSet.id}/aggregations/`);
-                    this.enableForm();
-                    this.setFormStatusMessage('success', t('Aggregation updated'));
-                }
+            if (this.props.job) {
+                this.navigateBack();
             } else {
                 if (submitAndLeave) {
                     this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations`, 'success', t('Aggregation created'));
@@ -128,7 +121,8 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const signalSet = this.props.signalSet;
-        const isEdit = !!this.props.job;
+        const aggJob = this.props.job;
+        const isEdit = !!aggJob;
         const canDelete = isEdit && this.props.job.permissions.includes('delete');
 
 
@@ -138,22 +132,31 @@ export default class CUD extends Component {
                 <DeleteModalDialog
                     stateOwner={this}
                     visible={this.props.action === 'delete'}
-                    deleteUrl={`rest/signal-sets/${signalSet.id}/aggregations`}
-                    backUrl={`/settings/signal-sets/${signalSet.id}/aggregations/edit`}
+                    deleteUrl={`rest/jobs/${aggJob.id}`}
+                    backUrl={`/settings/signal-sets/${signalSet.id}/aggregations/${aggJob.id}/edit`}
                     successUrl={`/settings/signal-sets/${signalSet.id}/aggregations`}
                     deletingMsg={t('Deleting aggregation...')}
                     deletedMsg={t('Aggregation deleted')}/>
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
-                    <InputField id="interval" label={t('Interval')} help={t('Bucket interval in seconds')}/>
+                    <InputField id="interval" label={t('Interval')} help={t('Bucket interval in seconds')}
+                                disabled={isEdit}/>
 
                     <ButtonRow>
-                        <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
-                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {isEdit &&
+                        <Button type="submit" className="btn-primary" label={t('Back')}
+                                onClickAsync={() => this.navigateBack()}/>
+                        }
+                        {!isEdit &&
+                        <>
+                            <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                            <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                    onClickAsync={async () => await this.submitHandler(true)}/>
+                        </>
+                        }
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
-                                                  to={`/settings/signal-sets/${this.props.job.id}/delete`}/>}
+                                                  to={`/settings/signal-sets/${signalSet.id}/aggregations/${aggJob.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>
