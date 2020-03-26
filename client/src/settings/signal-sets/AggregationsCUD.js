@@ -131,6 +131,7 @@ export default class CUD extends Component {
                 {canDelete &&
                 <DeleteModalDialog
                     stateOwner={this}
+                    name={aggJob.name}
                     visible={this.props.action === 'delete'}
                     deleteUrl={`rest/jobs/${aggJob.id}`}
                     backUrl={`/settings/signal-sets/${signalSet.id}/aggregations/${aggJob.id}/edit`}

@@ -13,12 +13,11 @@ import {
     ButtonRow,
     filterData,
     Form,
-    ListCreator,
-    ParamsLoader,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm, withFormErrorHandlers, TableSelect, Fieldset
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {
@@ -34,8 +33,6 @@ import em
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {SignalSetType} from "../../../../shared/signal-sets"
-import ParamTypes from "../ParamTypes";
-import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
