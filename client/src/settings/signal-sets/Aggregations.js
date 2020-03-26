@@ -14,8 +14,7 @@ import em from "../../lib/extension-manager";
 import {tableAddDeleteButton, tableRestActionDialogInit, tableRestActionDialogRender,} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {Link} from "react-router-dom";
-import {SignalSetType} from "../../../../shared/signal-sets";
+import PropTypes from "prop-types";
 
 @withComponentMixins([
     withTranslation,
@@ -24,6 +23,8 @@ import {SignalSetType} from "../../../../shared/signal-sets";
     requiresAuthenticatedUser
 ])
 export default class AggregationsList extends Component {
+
+
     constructor(props) {
         super(props);
 
@@ -39,6 +40,10 @@ export default class AggregationsList extends Component {
         }
 
     }
+
+    static propTypes = {
+        signalSet: PropTypes.object,
+    };
 
     @withAsyncErrorHandler
     async fetchPermissions() {

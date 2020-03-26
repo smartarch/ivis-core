@@ -13,29 +13,16 @@ import {
     ButtonRow,
     filterData,
     Form,
-    ListCreator,
-    ParamsLoader,
     FormSendMethod,
     InputField,
-    TextArea,
-    withForm, withFormErrorHandlers, TableSelect, Fieldset
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
-import {
-    NamespaceSelect,
-    validateNamespace
-} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
-import ivisConfig
-    from "ivisConfig";
-import em
-    from "../../lib/extension-manager";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {SignalSetType} from "../../../../shared/signal-sets"
-import ParamTypes from "../ParamTypes";
-import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
@@ -57,7 +44,8 @@ export default class CUD extends Component {
 
     static propTypes = {
         action: PropTypes.string.isRequired,
-        entity: PropTypes.object
+        signalSet: PropTypes.object,
+        job: PropTypes.object,
     };
 
 
@@ -140,8 +128,8 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const signalSet = this.props.signalSet;
-        const isEdit = !!this.props.entity;
-        const canDelete = isEdit && this.props.entity.permissions.includes('delete');
+        const isEdit = !!this.props.job;
+        const canDelete = isEdit && this.props.job.permissions.includes('delete');
 
 
         return (
@@ -165,7 +153,7 @@ export default class CUD extends Component {
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
                                 onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
-                                                  to={`/settings/signal-sets/${this.props.entity.id}/delete`}/>}
+                                                  to={`/settings/signal-sets/${this.props.job.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

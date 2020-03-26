@@ -454,7 +454,7 @@ const getStructure = t => {
                                         title: t('Aggregations'),
                                         link: params => `/settings/signal-sets/${params.signalSetId}/aggregations`,
                                         visible: resolved => resolved.signalSet.permissions.includes('view'),
-                                        panelRender: props => <SignalSetAggregations action={props.match.params.action} signalSet={props.resolved.signalSet} />,
+                                        panelRender: props => <SignalSetAggregations  signalSet={props.resolved.signalSet} />,
                                         children: {
                                             ":jobId([0-9]+)": {
                                                 title: resolved => t('Aggregation "{{name}}"', {name: resolved.job.name}),

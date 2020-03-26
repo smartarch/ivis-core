@@ -15,9 +15,9 @@ async function listDTAjax(context, sigSetId, params) {
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
-        builder => builder.from('adjacent_jobs')
+        builder => builder.from('aggregation_jobs')
             .innerJoin('jobs',function () {
-                this.on('adjacent_jobs.job', '=', 'jobs.id').andOn('adjacent_jobs.set', '=', sigSetId);
+                this.on('aggregation_jobs.job', '=', 'jobs.id').andOn('aggregation_jobs.set', '=', sigSetId);
             })
             .leftJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
             .leftJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set'),
@@ -44,7 +44,7 @@ async function createTx(tx, context, sigSetId, params) {
     }
 
     const jobParams = {
-        signalSet: sigSetId,
+        signalSet: signalSet.cid,
         interval: intervalInSecs
     };
 
@@ -67,7 +67,7 @@ async function createTx(tx, context, sigSetId, params) {
     };
     const jobId = await jobs.create(context, job);
 
-    await tx('adjacent_jobs').insert({job: jobId, set: signalSet.id});
+    await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id});
 
     return jobId;
 }

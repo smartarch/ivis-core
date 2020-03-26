@@ -21,7 +21,137 @@ const aggregationTask = {
             "type": "number",
             "label": "Interval"
         }],
-        code: `print('aggs')`
+        code: `import sys
+import os
+import json
+
+from ivis import init
+
+ivis = init()
+
+es = ivis.elasticsearch
+state = ivis.state
+
+params= ivis.parameters
+entities= ivis.entities
+
+sig_set = entities['signalSets'][params['sigSet']]
+ts = entities['signals'][params['sigSet']][params['ts']]
+source = entities['signals'][params['sigSet']][params['source']]
+interval = params['interval']
+
+if state is None or state.get('aggs') is None:
+  ns = sig_set['namespace']
+
+  signals= []
+  signals.append({
+    "cid": "ts",
+    "name": "Timestamp",
+    "description": "Interval timestamp",
+    "namespace": ns,
+    "type": "date",
+    "indexed": False,
+    "settings": {}
+  })
+  signals.append({
+    "cid": "min",
+    "name": "min",
+    "description": "min",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+    signals.append({
+    "cid": "avg",
+    "name": "avg",
+    "description": "avg",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+  signals.append({
+    "cid": "max",
+    "name": "max",
+    "description": "max",
+    "namespace": ns,
+    "type": "double",
+    "indexed": False,
+    "settings": {}
+  })
+  
+  state = ivis.create_signal_set("aggs",ns,"aggregation", "aggregation", None, signals)
+    
+  ivis.store_state(state)
+
+last = None
+if state is not None and state.get('last') is not None:
+  last = state['last']
+  query_content = {
+    "range" : {
+      ts['field'] : {
+        "gte" : last
+      }
+    }
+  }
+  
+  es.delete_by_query(index=state['aggs']['index'], body={
+    "query": { 
+      "match": {
+        state['aggs']['fields']['ts']: last
+      }
+    }}
+  )
+  
+else:
+  query_content = {'match_all': {}}
+
+query = {
+  'size': 0,
+  'query': query_content,
+  "aggs": {
+    "stats": {
+      "date_histogram": {
+        "field": ts['field'],
+        "interval": interval+"s"
+      },
+      "aggs": {
+        "avg": {
+          "avg": {
+            "field": source['field']
+          }
+        },
+        "max": {
+          "max" : {
+            "field": source['field']
+          }
+        },
+        "min": {
+          "min" : {
+            "field": source['field']
+          }
+        }
+      }
+    }
+  }
+}
+
+res = es.search(index=sig_set['index'], body=query)
+
+for hit in res['aggregations']['stats']['buckets']:
+  last = hit['key_as_string']
+  doc = {
+    state['aggs']['fields']['ts']: last,
+    state['aggs']['fields']['min']: hit['min']['value'],
+    state['aggs']['fields']['avg']: hit['avg']['value'],
+    state['aggs']['fields']['max']: hit['max']['value']
+  }
+  res = es.index(index=state['aggs']['index'], doc_type='_doc', body=doc)
+
+# Request to store state
+state['last'] = last
+ivis.store_state(state)`
     },
 };
 
@@ -32,14 +162,13 @@ const builtinTasks = [
     aggregationTask
 ];
 
-
 em.on('builtinTasks.add', addTasks);
 
 async function getBuiltinTask(name) {
     return await knex.transaction(async tx => {
         return await checkExistence(tx, name)
     });
-};
+}
 
 /**
  * Check if builtin in task with fiven name alredy exists
