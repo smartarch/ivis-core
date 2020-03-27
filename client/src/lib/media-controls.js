@@ -4,11 +4,14 @@ import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {SVG} from "../ivis/SVG";
 import {select, mouse} from "d3-selection";
-import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
+import {scaleTime, scaleLinear} from "d3-scale";
+import {utcMillisecond, utcSecond, utcMinute, utcHour, utcDay, utcWeek, utcMonth, utcYear} from "d3-time";
+import {timeFormat} from "d3-time-format";
 import {AnimationStatusContext, AnimationControlContext} from "../ivis/ServerAnimationContext";
 import moment from "moment";
 import {withTranslation} from "./i18n";
 import styles from "./media-controls.scss";
+import {withComponentMixins, createComponentMixin} from "./decorator-helpers";
 
 const withAnimationControl = createComponentMixin({
     contexts: [
@@ -294,70 +297,367 @@ class JumpBackwardButton extends Component {
 @withComponentMixins([
     withAnimationControl
 ])
-class SpeedSlider extends Component {
+class PlaybackSpeedSlider extends Component {
     static propTypes = {
-        height: PropTypes.string,
-        width: PropTypes.string,
         maxFactor: PropTypes.number,
         minFactor: PropTypes.number,
         animControl: PropTypes.object,
         animStatus: PropTypes.object,
-        labelFontSize: PropTypes.string,
     }
 
     constructor(props) {
         super(props);
+
+        this.state = {
+            nodes: {},
+            enabled: false,
+        };
+
         this.minPos = 10;
         this.maxPos = 115;
-
-        this.innerSvg = `<svg id="innerSvg" viewBox="0 0 125 50" xmlns="http://www.w3.org/2000/svg" color="black">
-            <line id="scale"
-                x1="${this.minPos}" y1="40" x2="${this.maxPos}" y2="40"
-                stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-            <circle id="pointer"
-                cy="40" r="6" stroke="currentColor" stroke-width="2" fill="white"/>
-            <text id="label" text-anchor="middle" x="50%" y="20" />
-        </svg>`;
     }
 
-    valueToFactor(value) {
-        return this.props.minFactor + value * (this.props.maxFactor - this.props.minFactor);
+    componentDidUpdate(prevProps) {
+        if (prevProps.minFactor !== this.props.minFactor || prevProps.maxFactor !== this.props.maxFactor) {
+            this.setState({scale: this.generateScale()});
+        }
+
+        if (prevProps.animControl.changeSpeed !== this.props.animControl.changeSpeed) {
+            this.setState({enabled: !!this.props.animControl.changeSpeed});
+        }
     }
 
-    factorToValue(factor) {
-        return (factor - this.props.minFactor) / (this.props.maxFactor - this.props.minFactor);
+    componentDidMount() {
+        this.init();
+    }
+
+    init() {
+        // TODO: extra enable and extra disable props on SliderBase
+        // const pointerSel = select(this.pointerN);
+        // pointerSel
+        //     .on("mouseenter", () => pointerSel.attr("fill", "yellow"))
+        //     .on("mouseleave", () => pointerSel.attr("fill", "white"));
+
+        this.setState({
+            nodes: {
+                slider: select(this.sliderN),
+                scale: select(this.scaleN),
+                pointer: select(this.pointerN),
+                label: select(this.labelN)
+            },
+            enabled: !!this.props.animControl.changeSpeed,
+            scale: this.generateScale(),
+        });
+    }
+
+    generateScale() {
+        return scaleLinear()
+            .domain([this.props.minFactor, this.props.maxFactor])
+            .range([this.minPos, this.maxPos])
+            .clamp(true);
     }
 
     render() {
         return (
             <SliderBase
-                height={this.props.height}
-                width={this.props.width}
-                innerSvg={this.innerSvg}
-                minPos={this.minPos}
-                maxPos={this.maxPos}
-                printValue={(value) => {return this.valueToFactor(value).toFixed(2) + "x";}}
-                value={this.props.animStatus.speedFactor && this.factorToValue(this.props.animStatus.speedFactor)}
-                setValue={(value) =>
-                    this.props.animControl.changeSpeed(this.valueToFactor(value))
-                }
-                snapTo={(value) => {
-                    const factor = this.valueToFactor(value);
-                    const roundedFactor = Math.round(factor/0.25) * 0.25;
-                    return this.factorToValue(roundedFactor);
-                }}
-                movePointer={(pointerNode, position) => pointerNode.attr("cx", position)}
+                nodes={this.state.nodes}
 
-                data={{
-                    label: (node) => node.style("font-size", this.props.labelFontSize),
-                }}
-            />
+                enabled={this.state.enabled}
+
+                valueToPos={this.state.scale}
+                posToValue={this.state.scale && this.state.scale.invert}
+
+                value={this.props.animStatus.speedFactor && this.props.animStatus.speedFactor}
+                setValue={value => this.props.animControl.changeSpeed(value)}
+                printValue={value => value.toFixed(2) + "x"}
+                snapToValue={value => Math.round(value/0.25) * 0.25}>
+
+                <svg viewBox="0 0 125 50" xmlns="http://www.w3.org/2000/svg" color="grey" ref={node => this.sliderN = node}>
+                    <defs>
+                        <circle id="circle"
+                            cy="40" r="6" cx="0" stroke="currentColor" strokeWidth="2"/>
+                    </defs>
+                    <line id="scale"
+                        x1="10" y1="40" x2="115" y2="40"
+                        stroke="currentColor" strokeWidth="5" strokeLinecap="round"
+                        ref={node => this.scaleN = node}/>
+                    <text id="label"
+                        textAnchor="middle" fill="currentColor"
+                        x="50%" y="20" ref={node => this.labelN = node}/>
+                    <use id="pointer" x={this.minPos} href="#circle" fill="white" ref={(node) => this.pointerN = node}/>
+                </svg>
+
+            </SliderBase>
         );
     }
 }
 
+class TimelineD3 extends Component {
+    static propTypes = {
+        relative: PropTypes.bool,
+        beginTs: PropTypes.number,
+        endTs: PropTypes.number,
+        length: PropTypes.number,
+        position: PropTypes.number,
+        axis: PropTypes.func,
+    }
 
-const timeIntervals = [
+    static defaultProps = {
+        beginTs: 0,
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            enabled: false,
+            labelFormat: null,
+        };
+
+        this.viewBox = {width: 800, height: 70};
+        this.refreshRate = 500;
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.relative != prevProps.relative || this.props.beginTs != prevProps.beginTs ||
+            this.props.length != prevProps.length) {
+            this.axisInit();
+        }
+    }
+
+    componentDidMount() {
+        this.axisInit();
+        window.addEventListener("resize", ::this.axisInit);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener("resize", ::this.axisInit);
+    }
+
+
+    axisInit() {
+        const beginDate = new Date(this.props.beginTs);
+        const endDate = new Date(this.props.endTs);
+        const valueToRealtime = scaleTime()
+            .domain([beginDate, endDate])
+            .range([0, this.props.length])
+            .clamp(true);
+
+        const minTimeStep = (this.refreshRate / this.props.length) * (this.props.endTs - this.props.beginTs);
+
+        const labelFormat = generateTimestampLabelFormat(this.props.endTs - this.props.beginTs, minTimeStep);
+        // this.setState({labelFormat: generateTimestampLabelFormat(this.props.length, minNoticableDiff)});
+        select(this.labelN).text(labelFormat(valueToRealtime.invert(this.props.position)));
+
+        const labelRect = this.labelN.getBBox();
+        const axisMargins = {left: labelRect.width + labelRect.x + 20, top: 40, bottom: 10, right: 20};
+
+
+        const scale = scaleTime()
+            .domain([beginDate, endDate])
+            .range([0, this.viewBox.width - axisMargins.left - axisMargins.right])
+            .clamp(true);
+
+        const defaultTicks = scale.ticks();
+        const defaultFormat = scale.tickFormat();
+
+        select(this.pointerN)
+            .attr("transform", `translate(${axisMargins.left}, ${axisMargins.top})`);
+
+        select(this.hoverPointerN)
+            .attr("transform", `translate(${axisMargins.left}, ${axisMargins.top})`)
+            .style("display", "none");
+
+        select(this.timelineN)
+            .attr("transform", `translate(${axisMargins.left}, ${axisMargins.top})`)
+            .call(this.props.axis(scale).tickValues(defaultTicks).tickFormat(defaultFormat))
+            .call(g => g
+                .attr("font-size", null)
+                .attr("font-family", null)
+                .attr("pointer-events", "bounding-box")
+                .classed("timeline-axis", true)
+            );
+
+
+        this.setState({
+            nodes: {
+                slider: select(this.svgN),
+                scale: select(this.timelineN),
+                label: select(this.labelN),
+                pointer: select(this.pointerN),
+                hoverPointer: select(this.hoverPointerN),
+                hoverLabel: select(this.hoverLabelN),
+            },
+            enabled: true,
+            valueToPos: scale,
+            posToValue: scale.invert,
+            labelFormat,
+            valueToRealtime,
+        });
+    }
+
+    render() {
+
+        return (
+            <SliderBase
+                nodes={this.state.nodes}
+                enabled={this.state.enabled}
+                withHover={true}
+
+                posToValue={this.state.posToValue}
+                valueToPos={this.state.valueToPos}
+
+                value={this.state.valueToRealtime && this.state.valueToRealtime.invert(this.props.position)}
+                setValue={() => true}
+                printValue={this.state.labelFormat}
+            >
+
+                <svg viewBox={`0 0 ${this.viewBox.width} ${this.viewBox.height}`} xmlns="http://www.w3.org/2000/svg"
+                    ref={node => this.svgN = node}>
+                    <defs>
+                        {/* <filter x="-0.10" y="-0.08" width="1.20" height="1.16" id="solid"> */}
+                        {/*     <feFlood floodColor="white"></feFlood> */}
+                        {/*     <feComposite in="SourceGraphic" operator="over"></feComposite> */}
+                        {/* </filter> */}
+                        {/* <filter x="0" y="-0.18" width="1" height="1.36" id="solid-outer"> */}
+                        {/*     <feFlood floodColor="black"></feFlood> */}
+                        {/*     <feComposite in="SourceGraphic" operator="over"></feComposite> */}
+                        {/* </filter> */}
+                        <g id="pointerDef">
+                            {/* <line y2="-6" stroke="currentColor"/> */}
+                            <polygon className="triangle" points={`0,-3 -2,${-3-Math.sqrt(3)*2} 2,${-3-Math.sqrt(3)*2}`} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
+                        </g>
+                        <g id="hoverPointerDef">
+                            <text id="hoverLabel" className="label" textAnchor="middle" y="-13.5" fill="currentColor" ref={node => this.hoverLabelN = node}>Label</text>
+
+                            <polygon className="triangle"
+                                points={`0,-3 -2,${-3-Math.sqrt(3)*2} 2,${-3-Math.sqrt(3)*2}`} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
+                        </g>
+
+                    </defs>
+
+                    <text id="label" className="label" y="40" x="5" dominantBaseline="hanging" fill="currentColor" ref={node => this.labelN = node}>Label</text>
+                    <g ref={node => this.timelineN = node}/>
+                    <use href="#pointerDef" color="black" ref={node => this.pointerN = node}/>
+                    <use href="#hoverPointerDef" color="#808080" ref={node => this.hoverPointerN = node} />
+                </svg>
+
+            </SliderBase>
+        );
+    }
+}
+
+const timeIntervals = {
+    year: moment.duration(1, 'years').asMilliseconds(),
+    month: moment.duration(1, 'months').asMilliseconds(),
+    day: moment.duration(1, 'days').asMilliseconds(),
+    hour: moment.duration(1, 'hours').asMilliseconds(),
+    minute: moment.duration(1, 'minutes').asMilliseconds(),
+    second: moment.duration(1, 'seconds').asMilliseconds(),
+    millisecond: 1,
+};
+
+function generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim) {
+    const units = Object.keys(timeIntervals).map(key => timeIntervals[key]);
+    const unitNames = ['_year', '_month', '_day', '_hour', '_minute', '_second', '_millisecond'];
+
+    let i = 0;
+    while (i < units.length && maxTimeDiff < units[i]) i++;
+
+    let usedUnits = unitNames[i];
+
+    i++;
+    while (i < units.length && minTimeDiff < units[i]) {
+        usedUnits += delim + unitNames[i];
+        i++;
+    }
+
+    if (usedUnits.indexOf(delim) >= 0 && i < units.length) {
+        usedUnits += delim + unitNames[i];
+    }
+
+    return usedUnits;
+}
+
+function generateTimestampLabelFormat(maxTimeDiff, minTimeDiff) {
+    const replace = (match, replacement) => {return (str) => str.replace(match, replacement);};
+
+    const delim = ';';
+    const usedUnits = generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim);
+
+    //Order matters, longest matches at the top
+    const grammarRules = [
+        replace('_hour;_minute;_second;_millisecond', '%H:%M:%S.%L'),
+        replace('_year;_month;_day', '%Y/%m/%d/'),
+        replace('_hour;_minute;_second', '%H:%M:%S'),
+        replace('_month;_day', '%b %d, '),
+        replace('_second;_millisecond', '%S.%Ls'),
+        replace('_year', '%Y'),
+        replace('_month', '%b'),
+        replace('_day', '%a %d'),
+        replace('_hour', '%Hh'),
+        replace('_minute', '%Mm'),
+        replace('_second', '%Ss'),
+        replace('_millisecond', '0.%Ls'),
+    ];
+
+    const formatStr = grammarRules.reduce((str, func) => func(str), usedUnits).replace(new RegExp(delim, 'g'), '\u00A0');
+    //DO not know if sccepts timestamps
+    return timeFormat(formatStr);
+}
+
+
+
+// function generateDurationLabelFormat(durLenght, minTimeDiff) {
+//     const replace = (match, replacement) => {return (str) => str.replace(match, replacement);};
+
+//     const usedUnits = generateTimeUnitsUsedInLabel(durLenght, minTimeDiff, ',');
+
+//     const getValues = {};
+//     for(let intervalKey of Object.keys(timeIntervals)) {
+//         getValues[intervalKey] = (ts) => Math.floor();
+//     }
+
+//     function decompose(ts) {
+//         const d = moment.duration(ts);
+//         const addLeadingZero = (n) => n < 10 ? "0" + n : "" + n;
+
+//         return {
+//             hoursMinutesSeconds: d.hours() + ":" + addLeadingZero(d.minutes()) + ":" + addLeadingZero(d.seconds()),
+//             secondsMilliseconds: d.seconds() + "." + d.milliseconds().toFixed(3) + "s",
+//             milliseconds: "0." + d.milliseconds().toFixed(3) + "s",
+//             seconds: d.seconds() + "s",
+//             minutes: d.minutes() + "min",
+//             hours:   d.hours() + "h",
+//             days:   d.days() + "d",
+//             months: d.months() + "mo",
+//             years:  d.years() + "y",
+//         };
+
+//     }
+
+//     function format(ts) {
+//         const d = decompose(ts);
+
+//         const grammarRules = [
+//             replace('hour,minute,second', d.hoursMinutesSeconds),
+//             replace('second,millisecond', d.secondsMilliseconds),
+//             replace('year', d.years),
+//             replace('month', d.months),
+//             replace('day', d.days),
+//             replace('hour', d.hours),
+//             replace('minute', d.minutes),
+//             replace('second', d.seconds),
+//             replace('millisecond', d.milliseconds)
+//         ];
+
+//         return grammarRules.reduce((acc, func) => func(acc), usedUnits).replace(/,/, ' ');
+//     }
+
+//     return format;
+// }
+
+const timeIntervals_ = [
     moment.duration(1, 'seconds').asMilliseconds(),
     moment.duration(5, 'seconds').asMilliseconds(),
     moment.duration(10, 'seconds').asMilliseconds(),
@@ -566,6 +866,7 @@ class Timeline extends Component {
         length: PropTypes.number,
         beginTs: PropTypes.number,
         width: PropTypes.string,
+
         bigTickMargin: PropTypes.number,
         smallTickMargin: PropTypes.number,
         labelFontSize: PropTypes.string,
@@ -574,7 +875,7 @@ class Timeline extends Component {
     }
 
     static defaultProps = {
-        timeIntervals,
+        timeIntervals: timeIntervals_,
     }
 
     constructor(props) {
@@ -826,26 +1127,26 @@ class Timeline extends Component {
 //Implementation of slider logic
 class SliderBase extends Component {
     static propTypes = {
-        height: PropTypes.string,
-        width: PropTypes.string,
-        minPos: PropTypes.number,
-        maxPos: PropTypes.number,
-        innerSvg: PropTypes.string,
+        nodes: PropTypes.object,
 
-        value: PropTypes.number, //relative 0...1
+        enabled: PropTypes.bool,
+        withHover: PropTypes.bool,
+
+        valueToPos: PropTypes.func,
+        posToValue: PropTypes.func,
+
+        value: PropTypes.any,
         setValue: PropTypes.func,
         printValue: PropTypes.func,
+        snapToValue: PropTypes.func,
 
-        snapTo: PropTypes.func,
-        movePointer: PropTypes.func,
-        moveHoverPointer: PropTypes.func,
-
-        init: PropTypes.func,
-        data: PropTypes.object,
+        children: PropTypes.node,
     }
 
     static defaultProps = {
-        data: {}
+        nodes: {},
+        withHover: false,
+        enabled: false,
     }
 
     constructor(props) {
@@ -856,29 +1157,143 @@ class SliderBase extends Component {
             value: props.value || 0,
             hoverValue: 0,
         };
-
     }
 
     componentDidUpdate(prevProps) {
+        if (!this.props.enabled && prevProps.enabled) {
+            this.disable();
+            return;
+        }
+
+        if (this.props.enabled && !prevProps.enabled)
+            this.enable();
+        else if (this.props.enabled && this.props.withHover && !prevProps.withHover)
+            this.enableHover();
+        else if (this.props.enabled && !this.props.withHover && prevProps.withHover)
+            this.disableHover();
+
+
         if (prevProps.value !== this.props.value && this.props.value && !this.isSliding) {
             this.setState({value: this.props.value});
         }
     }
 
+    componentDidMount() {
+        if (this.props.enabled) this.enable();
+    }
+
+    enable() {
+        const sliderNode = this.props.nodes.slider;
+        const scaleNode = this.props.nodes.scale;
+        const labelNode = this.props.nodes.label;
+        const pointerNode = this.props.nodes.pointer;
+
+        const terminateSliding = () => {
+            sliderNode.on("mousemove", null);
+            scaleNode.attr("pointer-events", this.scaleNodePointerEvents);
+            labelNode.attr("pointer-events", this.labelNodePointerEvents);
+        };
+
+        const startSliding = () => {
+            this.isSliding = true;
+            this.scaleNodePointerEvents = scaleNode.attr("pointer-events");
+            this.labelNodePointerEvents = labelNode.attr("pointer-events");
+            labelNode.attr("pointer-events", "none");
+            scaleNode.attr("pointer-events", "none");
+
+            sliderNode.on("mousemove", () => {
+                this.setState({value: this.getMouseValue()});
+            });
+        };
+
+        //---Slider---
+        sliderNode.
+            on("mouseup", () => {
+                if (!this.isSliding) return;
+
+                terminateSliding();
+
+                this.sendChangeUp();
+                this.isSliding = false;
+            }).
+            on("mouseleave", () => {
+                if (!this.isSliding) return;
+                terminateSliding();
+
+                this.setState({value: this.props.value});
+                this.isSliding = false;
+            }).
+            attr("color", "black");
+
+        //---Scale---
+        scaleNode
+            .on("click", () => {
+                this.setState({value: this.getMouseValue()});
+                this.sendChangeUp();
+            })
+            .style("cursor", "pointer")
+            .style("user-select", "none");
+
+        //---Pointer---
+        pointerNode.
+            style("cursor", "pointer").
+            on("mousedown", startSliding);
+
+        //---Label---
+        labelNode
+            .style("user-select", "none");
+
+        if (this.props.withHover) this.enableHover();
+    }
+
+    enableHover() {
+        const hoverLabelNode = this.props.nodes.hoverLabel;
+        const hoverPointerNode = this.props.nodes.hoverPointer;
+        const scaleNode = this.props.nodes.scale;
+
+        hoverLabelNode.style("user-select", "none");
+        scaleNode.
+            on("mouseenter", () => hoverPointerNode.style("display", "block")).
+            on("mouseleave", () => hoverPointerNode.style("display", "none")).
+            on("mousemove", () => this.setState({hoverValue: this.getMouseValue()}));
+    }
+
+    disable() {
+        const sliderNode = this.props.nodes.slider;
+        const pointerNode = this.props.nodes.pointer;
+        const scaleNode = this.props.nodes.scale;
+
+        if (sliderNode) {
+            sliderNode.
+                on("mouseleave mouseup", null).
+                attr("color", "grey");
+        }
+
+        if (pointerNode) {
+            pointerNode.
+                style("cursor", "not-allowed").
+                on("mousedown", null);
+        }
+
+        if (scaleNode) {
+            scaleNode.
+                style("cursor", "not-allowed").
+                on("click", null);
+        }
+
+        if (this.props.withHover) this.disableHover();
+    }
+
+    disableHover() {
+        const scaleNode = this.props.nodes.scale;
+        if (scaleNode) scaleNode.on("mouseenter mouseleave mousemove", null);
+    }
+
+
     getMouseValue() {
-        const x = mouse(this.svgNodeRaw)[0];
-        const value = this.posToValue(x);
-        return this.props.snapTo(value);
-    }
-
-    valueToPos(val) {
-        const valLimited = Math.min(1, Math.max(0, val));
-        return this.props.minPos + valLimited * (this.props.maxPos - this.props.minPos);
-    }
-
-    posToValue(pos) {
-        const posLimited = Math.min(this.props.maxPos, Math.max(this.props.minPos, pos));
-        return (posLimited - this.props.minPos) / (this.props.maxPos - this.props.minPos);
+        const x = mouse(this.props.nodes.scale.node())[0];
+        const value = this.props.posToValue(x);
+        return this.props.snapToValue ? this.props.snapToValue(value) : value;
     }
 
     sendChangeUp() {
@@ -887,115 +1302,23 @@ class SliderBase extends Component {
     }
 
     render() {
-        const isDisabled = !this.props.setValue;
-        const withHoverPointer = !!this.props.moveHoverPointer;
-        const extraData = {};
-        const dataBlacklist = ["pointer", "scale", "label", "innerSvg"];
+        if (this.props.nodes.pointer && this.props.valueToPos)
+            this.props.nodes.pointer.attr("x", this.props.valueToPos(this.state.value));
+        if (this.props.nodes.label && this.props.printValue)
+            this.props.nodes.label.text(this.props.printValue(this.state.value));
 
-        Object.assign(extraData, this.props.data);
-
-        for (const key of dataBlacklist) {
-            delete extraData[key];
-        }
-
-        if (withHoverPointer) {
-            extraData["hover-pointer"] = (node) => {
-                this.props.moveHoverPointer(node, this.valueToPos(this.state.hoverValue));
-                if (this.props.data["hover-pointer"]) this.props.data["hover-pointer"](node);
-            };
-            extraData["hover-label"] = (node) => {
-                node.text(this.props.printValue(this.state.hoverValue));
-                if (this.props.data["hover-label"]) this.props.data["hover-label"](node);
-            };
+        if (this.props.enabled && this.props.withHover) {
+            this.props.nodes.hoverPointer.attr("x", this.props.valueToPos(this.state.hoverValue));
+            this.props.nodes.hoverLabel.text(this.props.printValue(this.state.hoverValue));
         }
 
         return (
-            <SVG
-                height={this.props.height}
-                width={this.props.width}
-                source={this.props.innerSvg}
-                init={node => {
-                    this.svgNodeRaw = node;
-                    this.scaleNode = select(node).select("#scale");
-                    this.labelNode = select(node).select("#label");
-                    this.hoverPointerNode = select(node).select("#hover-pointer");
-
-                    this.scaleNode.attr("pointer-events", "bounding-box");
-                    this.labelNode.attr("pointer-events", "bounding-box");
-                    this.labelNode.style("user-select", "none");
-                    if (withHoverPointer) select(node).select("#hover-label").style("user-select", "none");
-
-                    if (this.props.init) this.props.init(node);
-                }}
-                data={{
-                    pointer: (node) => {
-                        node.
-                            style("cursor", isDisabled ? "not-allowed" : "pointer").
-                            on("mousedown", isDisabled ? null : () => {
-                                this.isSliding = true;
-                                this.labelNode.attr("pointer-events", "none");
-                                this.scaleNode.attr("pointer-events", "none");
-
-                                select(this.svgNodeRaw).on("mousemove", () => {
-                                    this.setState({value: this.getMouseValue()});
-                                });
-                            });
-
-                        this.props.movePointer(node, this.valueToPos(this.state.value));
-
-                        if (this.props.data.pointer) this.props.data.pointer(node);
-                    },
-                    scale: (node) => {
-                        node
-                            .on("click", isDisabled ? null : () => {
-                                this.setState({value: this.getMouseValue()});
-                                this.sendChangeUp();
-                            }).
-                            style("cursor", isDisabled ? "not-allowed" : "pointer");
-
-                        if (withHoverPointer) {
-                            node.
-                                on("mouseenter", () => {
-                                    this.hoverPointerNode.style("display", "block");
-                                }).
-                                on("mouseleave", () => {
-                                    this.hoverPointerNode.style("display", "none");
-                                }).
-                                on("mousemove", () => {
-                                    this.setState({hoverValue: this.getMouseValue()});
-                                });
-                        }
-
-                        if (this.props.data.scale) this.props.data.scale(node);
-                    },
-                    label: (node) => {
-                        node.text(this.props.printValue(this.state.value));
-
-                        if (this.props.data.label) this.props.data.label(node);
-                    },
-                    innerSvg: (node) => {
-                        node.
-                            on("mouseleave mouseup", isDisabled ? null : () => {
-                                node.on("mousemove", null);
-
-                                if (this.isSliding) {
-                                    this.sendChangeUp();
-                                    this.scaleNode.attr("pointer-events", "bounding-box");
-                                    this.labelNode.attr("pointer-events", "bounding-box");
-                                }
-
-                                this.isSliding = false;
-                            }).
-                            attr("color", isDisabled ? "grey" : "black");
-
-                        if (this.props.data.innerSvg) this.props.data.innerSvg(node);
-                    },
-                    ...extraData
-                }}
-            />
+            <>
+                { this.props.children }
+            </>
         );
     }
 
 }
 
-export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, SpeedSlider, SliderBase as SliderBase, Timeline};
+export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline, TimelineD3};

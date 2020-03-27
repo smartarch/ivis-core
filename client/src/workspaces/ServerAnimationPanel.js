@@ -5,7 +5,8 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, SpeedSlider, SliderBase, Timeline} from "../lib/media-controls";
+import {axisBottom} from "d3-axis";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, TimelineD3} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
@@ -40,21 +41,27 @@ class SampleAnimation extends Component {
                             isJoinedRight={false}
                             jump={200}
                         />
-                        <SpeedSlider
-                            width={"125"}
-                            height={"50"}
+                        <PlaybackSpeedSlider
                             minFactor={0.25}
-                            maxFactor={2}
+                            maxFactor={2.25}
                         />
 
-                        <Timeline
-                            length={2.5*60*60*1000}
-                            width={"100%"}
-                            bigTickMargin={100}
-                            smallTickMargin={15}
-                            labelFontSize={"89px"}
-                            begin={Date.now()}
+                        <TimelineD3
+                            length={1000*60*60}
+                            beginTs={0}
+                            endTs={1000*60*60*24*30*6}
+                            position={1000*60*4}
+                            axis={axisBottom}
                         />
+
+                        {/* <Timeline */}
+                        {/*     length={2.5*60*60*1000} */}
+                        {/*     width={"100%"} */}
+                        {/*     bigTickMargin={100} */}
+                        {/*     smallTickMargin={15} */}
+                        {/*     labelFontSize={"89px"} */}
+                        {/*     begin={Date.now()} */}
+                        {/* /> */}
                     </div>
                 </ServerAnimationContext>
             </>
