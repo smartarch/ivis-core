@@ -45,7 +45,8 @@ export class BubblePlot extends Component {
                     type: PropTypes.string.isRequired,
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
                     createRegressionForEachColor: PropTypes.bool, // default: false
-                    bandwidth: PropTypes.number    // for LOESS
+                    bandwidth: PropTypes.number,    // for LOESS
+                    order: PropTypes.number         // for polynomial
                 }))
             })).isRequired
         }).isRequired,

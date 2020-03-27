@@ -375,7 +375,7 @@ export class ScatterPlotBase extends Component {
                     color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
                     createRegressionForEachColor: PropTypes.bool, // default: false
                     bandwidth: PropTypes.number,    // for LOESS
-                    // order: PropTypes.number         // for polynomial
+                    order: PropTypes.number         // for polynomial
                 }))
             })).isRequired
         }).isRequired,
@@ -1117,7 +1117,6 @@ export class ScatterPlotBase extends Component {
             case "linear":
                 regression = d3Regression.regressionLinear();
                 break;
-            /* other types of regressions are to slow to compute
             case "exponential":
                 regression = d3Regression.regressionExp();
                 break;
@@ -1135,7 +1134,6 @@ export class ScatterPlotBase extends Component {
             case "power":
                 regression = d3Regression.regressionPow();
                 break;
-            /**/
             case "loess":
                 regression = d3Regression.regressionLoess();
                 if (regressionConfig.bandwidth)
@@ -1219,18 +1217,33 @@ export class ScatterPlotBase extends Component {
         if (this.regressions.length <= 0)
             return;
 
-        this.regressionsCoefficients.append("h4").text("Linear regression coefficients");
+        this.regressionsCoefficients.append("h4").text("Regression coefficients");
 
         const coeffs = this.regressionsCoefficients
             .selectAll("div")
             .data(this.regressions);
 
+        const drawCoefficients = function (r) {
+            const data = r.data;
+            switch (r.config.type) {
+                case "linear":
+                    return `<b>${r.label} (${r.config.type})</b>: <i>slope:</i> ${d3Format.format(".3r")(data.a)}; <i>intercept:</i> ${d3Format.format(".3r")(data.b)}`;
+                case "exponential":
+                case "logarithmic":
+                case "power":
+                    return `<b>${r.label} (${r.config.type})</b>: <i>a:</i> ${d3Format.format(".3r")(data.a)}; <i>b:</i> ${d3Format.format(".3r")(data.b)}`;
+                case "quadratic":
+                    return `<b>${r.label} (${r.config.type})</b>: <i>a:</i> ${d3Format.format(".3r")(data.a)}; <i>b:</i> ${d3Format.format(".3r")(data.b)}; <i>c:</i> ${d3Format.format(".3r")(data.c)}`;
+                case "polynomial":
+                    return `<b>${r.label} (${r.config.type})</b>: <i>coefficients (highest degree last):</i> ${data.coefficients.map(c => d3Format.format(".3r")(c)).join(",&ensp;")}`;
+                case "loess":
+                    return;
+            }
+        };
+
         coeffs.enter().append("div")
             .merge(coeffs)
-            .html(d => {
-            if (d.data.hasOwnProperty("a"))
-                return `<b>${d.label}</b>: <i>slope:</i> ${d3Format.format(".3r")(d.data.a)}; <i>intercept:</i> ${d3Format.format(".3r")(d.data.b)}`;
-        });
+            .html(drawCoefficients);
     }
     //</editor-fold>
 
@@ -1752,7 +1765,7 @@ export class ScatterPlotBase extends Component {
                         </svg>
                     </div>
                     {this.props.withRegressionCoefficients &&
-                    <div ref={node => this.regressionsCoefficients = select(node)}/>}
+                    <div ref={node => this.regressionsCoefficients = select(node)} className={styles.regressionsCoefficients}/>}
                 </div>
             );
         }
