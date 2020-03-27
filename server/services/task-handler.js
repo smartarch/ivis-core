@@ -170,11 +170,12 @@ async function afterDelay(msg, task, job) {
 
 /**
  * Prepare entities specifications for a job, like index name in es.
+ * @param job
  * @param jobParams Stored job parameters
  * @param taskParams Set task parameters
  * @returns {Promise<void>}
  */
-async function getEntitiesFromParams(jobParams, taskParams) {
+async function getEntitiesFromParams(job, jobParams, taskParams) {
     const entities = {
         signalSets: {},
         signals: {}
@@ -207,10 +208,42 @@ async function getEntitiesFromParams(jobParams, taskParams) {
         return walker;
     }
 
-    // Walks all subtrees of params and gets info for signals and signalSets found
-    async function loadFromParams(prefix, jobParamSpec, params) {
+    async function addAllSignalsOfSignalSet(signalSet) {
 
-        for (let param of params) {
+        if (!entities.signals[signalSet.cid]) {
+            entities.signals[signalSet.cid] = {};
+        }
+
+        const signals = await knex('signals').where({set: signalSet.id});
+        for (const signal of signals) {
+            if (entities.signals[signalSet.cid][signal.cid]) {
+                // info already stored
+                continue;
+            }
+            entities.signals[signalSet.cid][signal.cid] = getSignalEntitySpec(signal);
+        }
+    }
+
+    function getSignalEntitySpec(signal) {
+        return {
+            field: getFieldName(signal.id),
+            name: signal.name,
+            namespace: signal.namespace
+        };
+    }
+
+    function getSignalSetEntitySpec(signalSet) {
+        return {
+            index: getIndexName(signalSet),
+            name: signalSet.name,
+            namespace: signalSet.namespace
+        };
+    }
+
+    // Walks all subtrees of params and gets info for signals and signalSets found
+    async function loadFromParams(prefix, jobParamsSpec, taskParamsSpec) {
+
+        for (let param of taskParamsSpec) {
 
             /* TODO check whether param can be undefined, if not throw error here for unspecified one
             let paramValue = jobParams[param.id];
@@ -222,27 +255,30 @@ async function getEntitiesFromParams(jobParams, taskParams) {
             switch (param.type) {
                 case 'signalSet': {
 
-                    const cid = jobParamSpec[param.id];
+                    const signalSetCid = jobParamsSpec[param.id];
 
-                    if (!cid) {
+                    if (!signalSetCid) {
                         throw new Error(`Job doesn't specify parameter ${param.id}.`);
                     }
 
-                    if (entities.signalSets[cid]) {
+                    if (entities.signalSets[signalSetCid]) {
                         // info already stored
                         continue;
                     }
 
-                    const sigSet = await knex('signal_sets').where({cid: cid}).first();
-                    if (!sigSet) {
-                        throw new Error(`Set with cid ${cid} not found.`);
+                    const signalSet = await knex('signal_sets').where({cid: signalSetCid}).first();
+                    if (!signalSet) {
+                        throw new Error(`Set with cid ${signalSetCid} not found.`);
                     }
 
-                    entities.signalSets[cid] = {
-                        index: getIndexName(sigSet),
-                        name: sigSet.name,
-                        namespace: sigSet.namespace
-                    };
+
+                    entities.signalSets[signalSetCid] = getSignalSetEntitySpec(signalSet);
+
+
+                    if (param.includeSignals === true) {
+                        await addAllSignalsOfSignalSet(signalSet);
+                    }
+
                     break;
                 }
 
@@ -253,13 +289,13 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                         throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
                     }
 
-                    const sigCid = jobParamSpec[param.id];
-                    if (!sigCid) {
+                    const signalCid = jobParamsSpec[param.id];
+                    if (!signalCid) {
                         throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
                     }
 
                     if (entities.signals[signalSetCid]) {
-                        if (entities.signals[signalSetCid][sigCid]) {
+                        if (entities.signals[signalSetCid][signalCid]) {
                             // info already stored
                             continue;
                         }
@@ -267,29 +303,25 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                         entities.signals[signalSetCid] = {};
                     }
 
-                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                    if (!sigSet) {
+                    const signalSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                    if (!signalSet) {
                         throw new Error(`Signal set with cid ${param.cid} not found.`);
                     }
 
 
-                    const sig = await knex('signals').where({cid: sigCid, set: sigSet.id}).first();
-                    if (!sig) {
-                        throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
+                    const signal = await knex('signals').where({cid: signalCid, set: signalSet.id}).first();
+                    if (!signal) {
+                        throw new Error(`Signal with cid ${signalCid} in set ${signalSet.id} not found.`);
                     }
 
-                    entities.signals[signalSetCid][sigCid] = {
-                        field: getFieldName(sig.id),
-                        name: sig.name,
-                        namespace: sig.namespace
-                    };
+                    entities.signals[signalSetCid][signalCid] = getSignalEntitySpec(signal);
                     break;
                 }
 
                 case 'fieldset': {
                     if (param.children) {
                         let idx = 0;
-                        for (const child of jobParamSpec[param.id]) {
+                        for (const child of jobParamsSpec[param.id]) {
                             await loadFromParams(getFieldsetPrefix(prefix, param, idx), child, param.children);
                             idx++;
                         }
@@ -306,7 +338,22 @@ async function getEntitiesFromParams(jobParams, taskParams) {
     }
 
     await loadFromParams('/', jobParams, taskParams);
+    // Load all owned signal sets
+    const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
+    for (const signalSet of ownedSignalSets) {
+        if (!entities.signalSets[signalSet.cid]) {
+            entities.signalSets[signalSet.cid] = getSignalSetEntitySpec(signalSet);
+        }
+        await addAllSignalsOfSignalSet(signalSet);
+    }
+
     return entities;
+}
+
+async function getSignalSetsOwnedByJob(jobId) {
+    return await knex('signal_sets_owners').select('signal_sets.*').innerJoin('signal_sets', function () {
+        this.on('signal_sets_owners.set', '=', 'signal_sets.id').andOn('signal_sets_owners.job', '=', jobId);
+    });
 }
 
 /**
@@ -326,6 +373,20 @@ async function checkAndSetMsgRunStatus(runId, status, output) {
     }
 }
 
+async function getOwnedEntities(job) {
+    const owned = {};
+    const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
+    for (const signalSet of ownedSignalSets) {
+        if (!owned.signalSets) {
+            owned.signalSets = [];
+        }
+
+        owned.signalSets.push(signalSet.cid);
+    }
+
+    return owned;
+}
+
 /**
  * This is a core of run msg handling process, where msg always ends up being in the work queue.
  * @param msg
@@ -337,7 +398,8 @@ async function processRunMsg(msg, task, job) {
     const spec = msg.spec;
     try {
         spec.params = JSON.parse(job.params);
-        spec.entities = await getEntitiesFromParams(spec.params, JSON.parse(task.settings).params);
+        spec.entities = await getEntitiesFromParams(job, spec.params, JSON.parse(task.settings).params);
+        spec.owned = await getOwnedEntities(job);
     } catch (error) {
         return void await onRunFail(job.id, spec.runId, null, error.message);
     }
@@ -966,16 +1028,22 @@ async function handleRun(workEntry) {
         await updateRun(runId, {status: RunStatus.RUNNING});
         runData.started_at = new Date();
         inProcessMsgs.set(runId, handler);
+
+        const runConfig = {
+            jobId: jobId,
+            runId: runId,
+            taskDir: spec.taskDir,
+            inputData: {
+                params: spec.params,
+                entities: spec.entities,
+                owned: spec.owned,
+                state: await loadJobState(jobId)
+            }
+        };
+
         handler.run(
-            jobId,
-            runId,
-            spec.params,
-            spec.entities,
-            await loadJobState(jobId),
-            spec.taskDir,
-            async (request) => {
-                return await onRunRequest(jobId, request);
-            },
+            runConfig,
+            async (request) => await onRunRequest(jobId, request),
             (output, config) => onRunSuccess(jobId, runId, runData, output, config),
             (error) => onRunFail(jobId, runId, runData, error)
         );
@@ -1111,7 +1179,7 @@ async function runTimeTriggers() {
 }
 
 function logErr(err) {
-    log.info(LOG_ID, err.stack);
+    log.error(LOG_ID, err.stack);
 }
 
 // This line starts the time trigger functionality
