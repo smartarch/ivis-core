@@ -16,6 +16,7 @@ class Ivis:
         self.state = self._data.get('state')
         self.parameters = self._data['params']
         self.entities = self._data['entities']
+        self.owned = self._data['owned']
 
     @property
     def elasticsearch(self):
@@ -95,9 +96,9 @@ class Ivis:
 
         signal.update(extra_keys)
 
-        signals = {
-            [signal_set_cid]: signal
-        }
+        signals = {}
+        signals[signal_set_cid]: signal
+
         return Ivis.create_signals(signals=signals)
 
     @staticmethod

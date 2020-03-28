@@ -172,7 +172,7 @@ async function createTx(tx, context, entity) {
         status: IndexingStatus.READY
     });
 
-    if (entity.type) {
+    if (entity.type){
         enforce(!(entity.type in Object.values(SignalSetType)), `${entity.type} is not valid signal set type.`)
     }
 
@@ -406,6 +406,7 @@ async function serverValidateRecord(context, sigSetId, data) {
     return result;
 }
 
+
 async function getLastId(context, sigSet) {
     await shares.enforceEntityPermission(context, 'signalSet', sigSet.id, 'query');
 
@@ -512,16 +513,17 @@ async function queryTx(tx, context, queries) {
                 for (const fltChild of flt.children) {
                     checkFilter(fltChild);
                 }
-
             } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
                     shares.throwPermissionDenied();
                 }
                 signalsToCheck.add(sig.id);
-
-            } else if (flt.type === 'ids') {
-                // empty
+            } else  if (flt.type === 'ids'){
+               // empty
+            } else if (flt.type === 'function_score') {
+                if (!flt.function)
+                    throw new Error('Function not specified for function_score query');
             } else {
                 throw new Error(`Unknown filter type "${flt.type}"`);
             }
@@ -747,5 +749,3 @@ module.exports.getLastId = getLastId;
 module.exports.getSignalByCidMapTx = getSignalByCidMapTx;
 module.exports.getRecordIdTemplate = getRecordIdTemplate;
 module.exports.listRecordsDTAjax = listRecordsDTAjax;
-
-
