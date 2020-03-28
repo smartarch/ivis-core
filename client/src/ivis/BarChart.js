@@ -318,11 +318,11 @@ export class StaticBarChart extends Component {
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width={"100%"}>
                     <defs>
                         <clipPath id="plotRect">
-                            <rect x="0" y="0" width={this.state.width}
+                            <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right}
                                   height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
                         </clipPath>
                         <clipPath id="bottomAxis">
-                            <rect x={-6} y={0} width={this.state.width + 6}
+                            <rect x={-6} y={0} width={this.state.width - this.props.margin.left - this.props.margin.right + 6}
                                   height={this.props.margin.bottom} /* same reason for 6 as in HeatmapChart */ />
                         </clipPath>
                     </defs>

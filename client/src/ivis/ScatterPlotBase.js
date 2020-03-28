@@ -1705,7 +1705,7 @@ export class ScatterPlotBase extends Component {
                         <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                             <defs>
                                 <clipPath id="plotRect">
-                                    <rect x="0" y="0" width={this.state.width} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
+                                    <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                                 </clipPath>
                                 {/* dot shape definitions */}
                                 {dotShapes}

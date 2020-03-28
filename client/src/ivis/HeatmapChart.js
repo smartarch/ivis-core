@@ -1122,13 +1122,13 @@ export class HeatmapChart extends Component {
                         <svg id="cnt" ref={node => this.containerNode = node} height={"100%"} width={"100%"}>
                             <defs>
                                 <clipPath id="plotRect">
-                                    <rect x="0" y="0" width={this.state.width} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
+                                    <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                                 </clipPath>
                                 <clipPath id="leftAxis">
                                     <rect x={-this.props.margin.left + 1} y={0} width={this.props.margin.left} height={this.props.height - this.props.margin.top - this.props.margin.bottom + 6} /* 6 is default size of axis ticks, so we can add extra space in the bottom left corner for this axis and still don't collide with the other axis. Thanks to this, the first tick text should not be cut in half. */ />
                                 </clipPath>
                                 <clipPath id="bottomAxis">
-                                    <rect x={-6} y={0} width={this.state.width + 6} height={this.props.margin.bottom} /* same reason for 6 as above */ />
+                                    <rect x={-6} y={0} width={this.state.width - this.props.margin.left - this.props.margin.right + 6} height={this.props.margin.bottom} /* same reason for 6 as above */ />
                                 </clipPath>
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
