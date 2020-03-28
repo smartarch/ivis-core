@@ -226,17 +226,15 @@ async function getEntitiesFromParams(job, jobParams, taskParams) {
 
     function getSignalEntitySpec(signal) {
         return {
+            ...signal,
             field: getFieldName(signal.id),
-            name: signal.name,
-            namespace: signal.namespace
         };
     }
 
     function getSignalSetEntitySpec(signalSet) {
         return {
+            ...signalSet,
             index: getIndexName(signalSet),
-            name: signalSet.name,
-            namespace: signalSet.namespace
         };
     }
 

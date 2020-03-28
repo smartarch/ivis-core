@@ -56,13 +56,9 @@ function apiShowcaseFn(data) {
                 }
             ],
         code:
-            `import sys 
-import os
+            `
 import json
-
-from ivis import init
-
-ivis = init()
+from ivis import ivis 
 
 es = ivis.elasticsearch
 state = ivis.state
@@ -171,11 +167,10 @@ function energyPlusFn(data) {
             }
         ],
         code: `
-import sys
-import os
 import json
 from datetime import datetime, timedelta
-from ivis import init
+from ivis import ivis 
+from elasticsearch import helpers
 
 import requests
 import subprocess
@@ -188,7 +183,6 @@ IDF.setiddname(idd_file)
 
 from io import StringIO
 
-ivis = init()
 es = ivis.elasticsearch
 state = ivis.state
 params= ivis.parameters
@@ -435,13 +429,10 @@ function movingAvarageFn(data) {
             }
         ],
         code: `
-import sys
-import os
-import json
-from ivis import init
+from ivis import ivis
 from collections import deque
+from elasticsearch import helpers
 
-ivis = init()
 es = ivis.elasticsearch
 state = ivis.state
 params= ivis.parameters
@@ -568,13 +559,7 @@ function aggregationFn(data) {
             }
         ],
         code: `
-import sys
-import os
-import json
-
-from ivis import init
-
-ivis = init()
+from ivis import ivis
 
 es = ivis.elasticsearch
 state = ivis.state
@@ -756,16 +741,12 @@ function modelComparisonFn(data) {
             }
         ],
         code: ` 
-import sys
-import os
-import json
-from ivis import init
+from ivis import ivis 
 
 from datetime import datetime, timezone
 import numpy as np
 from dtw import dtw
 
-ivis = init()
 es = ivis.elasticsearch
 state = ivis.state
 params= ivis.parameters

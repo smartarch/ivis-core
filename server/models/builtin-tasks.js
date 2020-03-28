@@ -7,7 +7,7 @@ const em = require('../lib/extension-manager');
 
 const aggregationTask = {
     name: 'aggregation',
-    description: '',
+    description: 'Task used by aggregation feature for signal sets',
     type: TaskType.PYTHON,
     settings: {
         params: [{
@@ -21,28 +21,22 @@ const aggregationTask = {
             "type": "number",
             "label": "Interval"
         }],
-        code: `import sys
-import os
-import json
-
-from ivis import init
-
-ivis = init()
+        code: `from ivis import ivis
 
 es = ivis.elasticsearch
 state = ivis.state
-
 params= ivis.parameters
 entities= ivis.entities
+owned= ivis.owned
 
-sig_set = entities['signalSets'][params['sigSet']]
-ts = entities['signals'][params['sigSet']][params['ts']]
-source = entities['signals'][params['sigSet']][params['source']]
+sig_set_cid = params['signalSet']
+sig_set = entities['signalSets'][sig_set_cid]
+#ts = entities['signals'][sig_set_cid][params['ts']]
 interval = params['interval']
 
-if state is None or state.get('aggs') is None:
+if not owned:
   ns = sig_set['namespace']
-
+    
   signals= []
   signals.append({
     "cid": "ts",
@@ -62,7 +56,7 @@ if state is None or state.get('aggs') is None:
     "indexed": False,
     "settings": {}
   })
-    signals.append({
+  signals.append({
     "cid": "avg",
     "name": "avg",
     "description": "avg",
@@ -80,12 +74,18 @@ if state is None or state.get('aggs') is None:
     "indexed": False,
     "settings": {}
   })
-  
-  state = ivis.create_signal_set("aggs",ns,"aggregation", "aggregation", None, signals)
-    
-  ivis.store_state(state)
 
-last = None
+  state = ivis.create_signal_set(
+    f"aggregation_{interval}s_{sig_set_cid}",
+    ns,
+    f"aggregation_{interval}s_{sig_set_cid}",
+    "aggregation with interval {interval}s for signal set {sig_set_cid}",
+    None,
+    signals)
+    
+  state['last'] = None
+  ivis.store_state(state)
+  
 if state is not None and state.get('last') is not None:
   last = state['last']
   query_content = {
@@ -96,10 +96,10 @@ if state is not None and state.get('last') is not None:
     }
   }
   
-  es.delete_by_query(index=state['aggs']['index'], body={
+  es.delete_by_query(index=state['index'], body={
     "query": { 
       "match": {
-        state['aggs']['fields']['ts']: last
+        state['fields']['ts']: last
       }
     }}
   )
@@ -114,7 +114,7 @@ query = {
     "stats": {
       "date_histogram": {
         "field": ts['field'],
-        "interval": interval+"s"
+        "interval": interval+"m"
       },
       "aggs": {
         "avg": {
@@ -142,14 +142,14 @@ res = es.search(index=sig_set['index'], body=query)
 for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
   doc = {
-    state['aggs']['fields']['ts']: last,
-    state['aggs']['fields']['min']: hit['min']['value'],
-    state['aggs']['fields']['avg']: hit['avg']['value'],
-    state['aggs']['fields']['max']: hit['max']['value']
+    state['fields']['ts']: last,
+    state['fields']['min']: hit['min']['value'],
+    state['fields']['avg']: hit['avg']['value'],
+    state['fields']['max']: hit['max']['value']
   }
-  res = es.index(index=state['aggs']['index'], doc_type='_doc', body=doc)
+  res = es.index(index=state['index'], doc_type='_doc', body=doc)
 
-# Request to store state
+
 state['last'] = last
 ivis.store_state(state)`
     },
