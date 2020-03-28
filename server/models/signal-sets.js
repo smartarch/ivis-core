@@ -229,7 +229,7 @@ async function remove(context, id) {
 
         // TODO cant use ensure dependecies here as job doesn't have foreign key to signal-sets, but this
         // probably should be handled better, as there may be other extensions
-        const exists = tx('aggregation_jobs').where('set', id).first();
+        const exists = await tx('aggregation_jobs').where('set', id).first();
         enforce(!exists,`Signal set has aggregation ${exists ? exists.id: ''} delete it first.`);
 
         const existing = await tx('signal_sets').where('id', id).first();
