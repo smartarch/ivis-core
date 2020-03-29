@@ -186,24 +186,22 @@ export class HistogramChart extends Component {
             }
         }
 
+        // test if limits changed
+        if (!Object.is(prevProps.xMinValue, this.props.xMinValue) || !Object.is(prevProps.xMaxValue, this.props.xMaxValue))
+            configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
+
         if (prevState.maxBucketCount !== this.state.maxBucketCount) {
             configDiff = Math.max(configDiff, ConfigDifference.DATA);
         }
 
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
-            if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
-                this.brush = null;
-                this.zoom = null;
-                this.setState({
-                    signalSetData: null,
-                    globalSignalSetData: null,
-                    statusMsg: t('Loading...'),
-                    zoomTransform: d3Zoom.zoomIdentity
-                }, () => {
-                    // noinspection JSIgnoredPromiseFromCall
-                    this.fetchData();
-                });
-            }
+            this.setZoom(d3Zoom.zoomIdentity); // reset zoom
+            this.setState({
+                statusMsg: t('Loading...')
+            }, () => {
+                // noinspection JSIgnoredPromiseFromCall
+                this.fetchData();
+            });
         }
         else if (configDiff === ConfigDifference.DATA) {
             // noinspection JSIgnoredPromiseFromCall
@@ -298,8 +296,6 @@ export class HistogramChart extends Component {
                         this.xExtent = [processedResults.min, processedResults.max];
                         if (!isNaN(this.props.xMinValue)) this.xExtent[0] = this.props.xMinValue;
                         if (!isNaN(this.props.xMaxValue)) this.xExtent[1] = this.props.xMaxValue;
-
-                        this.setZoom(d3Zoom.zoomIdentity); // reset zoom
                     }
 
                     const newState = {
@@ -595,12 +591,7 @@ export class HistogramChart extends Component {
             self.setState({
                 zoomTransform: transform
             });
-            moveBrush(transform);
-        };
-
-        const moveBrush = function (transform) {
-            if (self.brush)
-                self.overviewBrushSelection.call(self.brush.move, self.defaultBrush.map(transform.invertX, transform));
+            self.moveBrush(transform);
         };
 
         const handleZoomEnd = function () {
@@ -627,7 +618,7 @@ export class HistogramChart extends Component {
             .on("start", handleZoomStart)
             .wheelDelta(WheelDelta(2));
         this.svgContainerSelection.call(this.zoom);
-        moveBrush(this.state.zoomTransform);
+        this.moveBrush(this.state.zoomTransform);
     }
 
     /** Returns the current view (boundaries of visible region)
@@ -681,9 +672,17 @@ export class HistogramChart extends Component {
     setZoom(transform) {
         if (this.zoom)
             this.svgContainerSelection.call(this.zoom.transform, transform);
-        else
-            this.setState({ zoomTransform: transform });
+        else {
+            this.setState({zoomTransform: transform});
+            this.moveBrush(transform);
+        }
     }
+
+    /** Updates overview brushes from zoom transform. */
+    moveBrush(transform) {
+        if (this.brush)
+            this.overviewBrushSelection.call(this.brush.move, this.defaultBrush.map(transform.invertX, transform));
+    };
 
     callViewChangeCallback() {
         if (typeof(this.props.viewChangeCallback) !== "function")
@@ -738,6 +737,8 @@ export class HistogramChart extends Component {
 
                 // noinspection JSUnresolvedVariable
                 if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom" && d3Event.sourceEvent.target === self.zoom) return; // ignore brush-by-zoom
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "brush" && d3Event.sourceEvent.target === self.brush) return; // ignore brush by itself
 
                 // noinspection JSUnresolvedVariable
                 if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))

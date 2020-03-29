@@ -380,7 +380,7 @@ export class ScatterPlotBase extends Component {
             })).isRequired
         }).isRequired,
 
-        maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
+        maxDotCount: PropTypes.number, // prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
         minDotSize: PropTypes.number, // for BubblePlot
         maxDotSize: PropTypes.number, // for BubblePlot
@@ -493,25 +493,24 @@ export class ScatterPlotBase extends Component {
             const prevSpec = this.getIntervalSpec(prevProps);
 
             if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = Math.max(configDiff, ConfigDifference.DATA);
+                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
             } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
                 configDiff = Math.max(configDiff, ConfigDifference.DATA);
             }
         }
 
+        // test if limits changed
+        if (!Object.is(prevProps.xMinValue, this.props.xMinValue) || !Object.is(prevProps.xMaxValue, this.props.xMaxValue) || !Object.is(prevProps.yMinValue, this.props.yMinValue) || !Object.is(prevProps.yMaxValue, this.props.yMaxValue))
+            configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
+
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR)
         {
-            this.clearChart();
+            this.resetZoom(false, false);
             this.setState({
-                signalSetsData: null,
-                globalSignalSetsData: null,
                 xMin: this.props.xMinValue,
                 xMax: this.props.xMaxValue,
                 yMin: this.props.yMinValue,
                 yMax: this.props.yMaxValue,
-                zoomTransform: d3Zoom.zoomIdentity,
-                zoomYScaleMultiplier: 1,
-                noData: true,
                 statusMsg: "Loading..."
             }, () => this.fetchData());
         }
@@ -1551,7 +1550,7 @@ export class ScatterPlotBase extends Component {
     /** helper method to update zoom transform in state and zoom object */
     setZoom(transform, yScaleMultiplier, withTransition = true) {
         const self = this;
-        if (this.props.withZoom) {
+        if (this.props.withZoom && this.zoom) {
             if (this.props.withTransition && withTransition) {
                 const transition = this.svgContainerSelection.transition().duration(500)
                     .tween("yZoom", () => function (t) {
@@ -1627,9 +1626,9 @@ export class ScatterPlotBase extends Component {
         this.svgContainerSelection.transition().call(this.zoom.scaleBy, 1.0 / this.props.zoomLevelStepFactor);
     };
 
-    resetZoom(causedByUser = true) {
+    resetZoom(causedByUser = true, withTransition = true) {
         this.lastZoomCausedByUser = causedByUser;
-        this.setZoom(d3Zoom.zoomIdentity, 1);
+        this.setZoom(d3Zoom.zoomIdentity, 1, withTransition);
     }
 
     reloadData(xMin, xMax, yMin, yMax) {

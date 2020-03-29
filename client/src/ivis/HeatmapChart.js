@@ -230,34 +230,40 @@ export class HeatmapChart extends Component {
 
         let configDiff = compareConfigs(this.props.config, prevProps.config);
 
+        // test if time interval changed
         const considerTs = !!this.props.config.tsSigCid;
         if (considerTs) {
             const prevAbs = this.getIntervalAbsolute(prevProps);
             const prevSpec = this.getIntervalSpec(prevProps);
 
             if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = ConfigDifference.DATA;
+                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
             } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
-                configDiff = ConfigDifference.DATA;
+                configDiff = Math.max(configDiff, ConfigDifference.DATA);
             }
         }
+
+        // test if limits changed
+        if (!Object.is(prevProps.xMinValue, this.props.xMinValue) || !Object.is(prevProps.xMaxValue, this.props.xMaxValue) || !Object.is(prevProps.yMinValue, this.props.yMinValue) || !Object.is(prevProps.yMaxValue, this.props.yMaxValue))
+            configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
 
         if (prevState.maxBucketCountX !== this.state.maxBucketCountX ||
             prevState.maxBucketCountY !== this.state.maxBucketCountY) {
             configDiff = Math.max(configDiff, ConfigDifference.DATA);
         }
 
-        if (configDiff === ConfigDifference.DATA || configDiff === ConfigDifference.DATA_WITH_CLEAR) {
-            if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
-                this.setState({
-                    signalSetData: null,
-                    statusMsg: t('Loading...')
-                });
-            }
-
+        if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
+            this.setZoom(d3Zoom.zoomIdentity); // reset zoom
+            this.setState({
+                statusMsg: t('Loading...')
+            }, () => {
+                // noinspection JSIgnoredPromiseFromCall
+                this.fetchData();
+            });
+        }
+        else if (configDiff === ConfigDifference.DATA) {
             // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
-
         } else {
             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetData !== this.state.signalSetData
@@ -1037,14 +1043,17 @@ export class HeatmapChart extends Component {
 
         this.setState({
             zoomYScaleMultiplier: newZoomYScaleMultiplier
-        }, () => {
-            if (this.zoom)
-                this.svgContainerSelection.call(this.zoom.transform, transform);
-            else {
-                this.setState({zoomTransform: transform});
-                this.moveBrush(transform, newZoomYScaleMultiplier);
-            }
-        });
+        }, () => this.setZoom(transform, newZoomYScaleMultiplier));
+    }
+
+    /** Helper method to update zoom transform in state and zoom object. */
+    setZoom(transform, zoomYScaleMultiplier) {
+        if (this.zoom)
+            this.svgContainerSelection.call(this.zoom.transform, transform);
+        else {
+            this.setState({zoomTransform: transform});
+            this.moveBrush(transform, zoomYScaleMultiplier);
+        }
     }
 
     drawVerticalBars(data, barsSelection, keyScale, probScale, barColor) {
