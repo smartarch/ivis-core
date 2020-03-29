@@ -9,8 +9,8 @@ export default class SynchronizedViews extends Component {
         super(props);
 
         this.state = {
-            xMinValue: undefined,
-            xMaxValue: undefined
+            xMinValue: null,
+            xMaxValue: null
         }
     }
 
@@ -22,7 +22,7 @@ export default class SynchronizedViews extends Component {
         this.histogram.setView(view.xMin, view.xMax, target);
     }
 
-    processSummaryResults(results) {
+    processMinMaxResults(results) {
         const config = this.getPanelConfig();
         this.setState({
             xMinValue: results[config.x_sigCid].min,
@@ -47,7 +47,8 @@ export default class SynchronizedViews extends Component {
                 y_sigCid: config.y_sigCid,
                 tsSigCid: config.tsSigCid,
                 label_sigCid: config.label_sigCid,
-                color: color
+                color: color,
+                dotGlobalShape: "circle"
             }]
         };
         const histogram_config = {
@@ -64,18 +65,23 @@ export default class SynchronizedViews extends Component {
         return (
             <TimeContext initialIntervalSpec={new IntervalSpec("2003-10-30", "2016-04-01", null, null)}>
                 <TimeRangeSelector/>
-                <MinMaxLoader config={{
-                    sigSetCid: config.sigSet,
-                    sigCids: config.x_sigCid,
-                    tsSigCid: "year"}}
-                               processData={::this.processSummaryResults}/>
-                {this.state.xMinValue !== undefined && this.state.xMaxValue !== undefined &&
+
+                <MinMaxLoader
+                    config={{
+                        sigSetCid: config.sigSet,
+                        sigCids: config.x_sigCid,
+                        tsSigCid: config.tsSigCid
+                    }}
+                    processData={::this.processMinMaxResults} // the :: operator is a shortcut for 'bind' method, so when the 'processMinMaxResults' is called (from inside MinMaxLoader), 'this' inside it is set to this class
+                />
+
+                {this.state.xMinValue !== null && this.state.xMaxValue !== null &&
                 <>
                     <ScatterPlot config={scatter_config}
                                  height={400}
                                  margin={margin}
                                  maxDotCount={200}
-                                 dotSize={5}
+                                 dotSize={3}
                                  xMinValue={xMinValue}
                                  xMaxValue={xMaxValue}
                                  withToolbar={false}
@@ -92,6 +98,9 @@ export default class SynchronizedViews extends Component {
                                     ref={node => this.histogram = node}
                     />
                 </>
+                }
+                {(this.state.xMinValue === null || this.state.xMaxValue === null) &&
+                    <div style={{textAlign: 'center'}}>No data.</div>
                 }
             </TimeContext>);
     }
