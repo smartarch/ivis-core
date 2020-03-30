@@ -359,20 +359,23 @@ class PlaybackSpeedSlider extends Component {
 
     render() {
         return (
-            <SliderBase
-                nodes={this.state.nodes}
+            <>
+                <SliderBase
+                    nodes={this.state.nodes}
 
-                enabled={this.state.enabled}
+                    enabled={this.state.enabled}
 
-                valueToPos={this.state.scale}
-                posToValue={this.state.scale && this.state.scale.invert}
+                    valueToPos={this.state.scale}
+                    posToValue={this.state.scale && this.state.scale.invert}
 
-                value={this.props.animStatus.speedFactor && this.props.animStatus.speedFactor}
-                setValue={value => this.props.animControl.changeSpeed(value)}
-                printValue={value => value.toFixed(2) + "x"}
-                snapToValue={value => Math.round(value/0.25) * 0.25}>
+                    value={this.props.animStatus.speedFactor && this.props.animStatus.speedFactor}
+                    setValue={value => this.props.animControl.changeSpeed(value)}
+                    printValue={value => value.toFixed(2) + "x"}
+                    snapToValue={value => Math.round(value/0.25) * 0.25}
+                    movePointer={(pointer, pos) => pointer.attr("x", pos)}
+                />
 
-                <svg viewBox="0 0 125 50" xmlns="http://www.w3.org/2000/svg" color="grey" ref={node => this.sliderN = node}>
+                <svg viewBox="0 0 125 50" xmlns="http://www.w3.org/2000/svg" color="black" ref={node => this.sliderN = node}>
                     <defs>
                         <circle id="circle"
                             cy="40" r="6" cx="0" stroke="currentColor" strokeWidth="2"/>
@@ -387,7 +390,7 @@ class PlaybackSpeedSlider extends Component {
                     <use id="pointer" x={this.minPos} href="#circle" fill="white" ref={(node) => this.pointerN = node}/>
                 </svg>
 
-            </SliderBase>
+            </>
         );
     }
 }
@@ -400,6 +403,8 @@ class TimelineD3 extends Component {
         length: PropTypes.number,
         position: PropTypes.number,
         axis: PropTypes.func,
+        ticks: PropTypes.object,
+        id: PropTypes.number,
     }
 
     static defaultProps = {
@@ -414,8 +419,48 @@ class TimelineD3 extends Component {
             labelFormat: null,
         };
 
+        this.axisMargins = {left: 30, top: 40, bottom: 10, right: 30};
         this.viewBox = {width: 800, height: 70};
-        this.refreshRate = 500;
+        this.labelRefreshRate = 500;
+
+        this.durationBaseIntervals = {
+            millisecond: 1,
+            second: 1000,
+            minute: 1000*60,
+            hour:   1000*60*60,
+            day:    1000*60*60*24,
+            month:  1000*60*60*24*30,
+            year:   1000*60*60*24*30*12,
+        };
+
+        this.durationIntervals = [
+            1, 10, 50, 250, 500,
+
+            this.durationBaseIntervals.second,
+            5*this.durationBaseIntervals.second,
+            15*this.durationBaseIntervals.seconds,
+            30*this.durationBaseIntervals.second,
+
+            this.durationBaseIntervals.minute,
+            5*this.durationBaseIntervals.minute,
+            15*this.durationBaseIntervals.minute,
+            30*this.durationBaseIntervals.minute,
+
+            this.durationBaseIntervals.hour,
+            3*this.durationBaseIntervals.hour,
+            6*this.durationBaseIntervals.hour,
+            12*this.durationBaseIntervals.hour,
+
+            this.durationBaseIntervals.day,
+            5*this.durationBaseIntervals.day,
+            15*this.durationBaseIntervals.day,
+
+            this.durationBaseIntervals.month,
+            3*this.durationBaseIntervals.month,
+
+            this.durationBaseIntervals.year,
+        ];
+
     }
 
     componentDidUpdate(prevProps) {
@@ -434,48 +479,231 @@ class TimelineD3 extends Component {
         window.removeEventListener("resize", ::this.axisInit);
     }
 
+    movePointer(node, pos) {
+        node.attr("x", pos);
+        this.playbackLineSel.attr("x2", pos);
+    }
+
+    moveHoverPointer(node, pos) {
+        node.attr("x", pos);
+    }
+
+    getDefaultRelativeTicks(scale) {
+        const scaleRange = scale.range();
+        const scaleDomain = scale.domain();
+
+        const minTickCount = scaleRange[scaleRange.length - 1] / 125;
+        const duration = scaleDomain[scaleDomain.length - 1];
+
+        let i = this.durationIntervals.length - 1;
+        while (i >= 0 && duration / this.durationIntervals[i] < minTickCount) i--;
+
+        console.log(this.durationIntervals[i]);
+        const ticks = [];
+        let lastTick = 0;
+        while (lastTick < duration) {
+            ticks.push(lastTick);
+            lastTick += this.durationIntervals[i];
+        }
+
+        return ticks;
+    }
+
+    getDefaultRelativeTickFormat() {
+        const suffixes = ['ms', 's', 'min', 'h', 'd', 'mo', 'y'];
+        const durationBaseIntervalsArr = Object.keys(this.durationBaseIntervals).map(key => this.durationBaseIntervals[key]);
+
+        const format = (ts) => {
+            let i = durationBaseIntervalsArr.length - 1;
+
+            while (i >= 0 && ts % durationBaseIntervalsArr[i] !== 0) i--;
+
+            const count = ts / durationBaseIntervalsArr[i];
+            return count + ' ' + suffixes[i];
+        };
+
+        return format;
+    }
+
+    absoluteScaleInit() {
+        const scale = scaleTime()
+            .domain([new Date(this.props.beginTs), new Date(this.props.endTs)])
+            .range([0, this.viewBox.width - this.axisMargins.left - this.axisMargins.right])
+            .clamp(true);
+
+        const ticks = this.props.ticks?.values ? this.props.ticks.values.map(ts => new Date(ts)).sort() : scale.ticks();
+        if (ticks[0].valueOf() !== this.props.beginTs) ticks.unshift(new Date(this.props.beginTs));
+        if (ticks[ticks.length - 1].valueOf() !== this.props.endTs) ticks.push(new Date(this.props.endTs));
+
+        const labels = new Set(this.props.ticks?.labels);
+        labels.add(this.props.beginTs);
+        labels.add(this.props.endTs);
+
+        const defaultFormat = scale.tickFormat();
+        const tickFormat = this.props.ticks?.labels ?
+            (date) => labels.has(date.valueOf()) ? defaultFormat(date) : null :
+            defaultFormat;
+
+        return {scale, ticks, tickFormat};
+    }
+
+    relativeScaleInit() {
+        const scale = scaleLinear()
+            .domain([0, this.props.endTs])
+            .range([0, this.viewBox.width - this.axisMargins.left - this.axisMargins.right])
+            .clamp(true);
+
+        const ticks = this.props.ticks?.values ? this.props.ticks.values.sort() : this.getDefaultRelativeTicks(scale);
+        if (ticks[0] !== 0) ticks.unshift(0);
+        if (ticks[ticks.length - 1] !== this.props.endTs) ticks.push(this.props.endTs);
+
+        const tickLabels = new Set(this.props.ticks?.labels);
+        tickLabels.add(0);
+        tickLabels.add(this.props.endTs);
+
+        const defaultTickFormat = this.getDefaultRelativeTickFormat();
+        const tickFormat = this.props.ticks?.labels ?
+            (ts) => tickLabels.has(ts) ? defaultTickFormat(ts) : null :
+            defaultTickFormat;
+
+        return {scale, ticks, tickFormat};
+    }
+
+    getLabelFormat() {
+        const minTimeStep = (this.labelRefreshRate / this.props.length) * (this.props.endTs - this.props.beginTs);
+
+        if (this.props.relative) {
+            return this.generateDurationLabelFormat(this.props.endTs, minTimeStep);
+        } else {
+            return this.generateTimestampLabelFormat(this.props.endTs - this.props.beginTs, minTimeStep);
+        }
+    }
+
+    generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim) {
+        const timeIntervals = {
+            year: moment.duration(1, 'years').asMilliseconds(),
+            month: moment.duration(1, 'months').asMilliseconds(),
+            day: moment.duration(1, 'days').asMilliseconds(),
+            hour: moment.duration(1, 'hours').asMilliseconds(),
+            minute: moment.duration(1, 'minutes').asMilliseconds(),
+            second: moment.duration(1, 'seconds').asMilliseconds(),
+            millisecond: 1,
+        };
+
+        const units = Object.keys(timeIntervals).map(key => timeIntervals[key]);
+        const unitNames = ['year', 'month', 'day', 'hour', 'minute', 'second', 'millisecond'];
+
+        let i = 0;
+        while (i < units.length && maxTimeDiff < units[i]) i++;
+
+        let usedUnits = unitNames[i];
+
+        i++;
+        while (i < units.length && minTimeDiff < units[i]) {
+            usedUnits += delim + unitNames[i];
+            i++;
+        }
+
+        if (usedUnits.indexOf(delim) >= 0 && i < units.length) {
+            usedUnits += delim + unitNames[i];
+        }
+
+        return usedUnits;
+    }
+
+    generateTimestampLabelFormat(maxTimeDiff, minTimeDiff) {
+        const replace = (match, replacement) => {return (str) => str.replace(match, replacement);};
+
+        const delim = ';';
+        const usedUnits = this.generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim);
+
+        //Order matters, longest matches at the top
+        const grammarRules = [
+            replace('hour;minute;second;millisecond', '%H:%M:%S.%L'),
+            replace('year;month;day', '%Y/%m/%d/'),
+            replace('hour;minute;second', '%H:%M:%S'),
+            replace('month;day', '%b %d, '),
+            replace('second;millisecond', '%S.%Ls'),
+            replace('year', '%Y'),
+            replace('month', '%b'),
+            replace('day', '%a %d'),
+            replace('hour', '%Hh'),
+            replace('minute', '%Mm'),
+            replace('millisecond', '0.%Ls'),
+            replace('second', '%Ss'),
+        ];
+
+        const formatStr = grammarRules.reduce((str, func) => func(str), usedUnits).replace(new RegExp(delim, 'g'), '\u00A0');
+        //DO not know if sccepts timestamps
+        return timeFormat(formatStr);
+    }
+
+    generateDurationLabelFormat(durLenght, minTimeDiff) {
+        const usedUnits = this.generateTimeUnitsUsedInLabel(durLenght, minTimeDiff, ',').split(',');
+
+        const suffixes = {
+            millisecond: 'ms',
+            second: 's',
+            minute: 'min',
+            hour: 'h',
+            day: 'd',
+            month: 'mo',
+            year: 'y',
+        };
+
+        const format = (ts) => {
+            console.log("new call");
+            console.log(ts);
+            let str = "";
+            let leftOverMs = ts;
+            for (let i = 0; i < usedUnits.length; i++) {
+                const unitName = usedUnits[i];
+                const unitDuration = this.durationBaseIntervals[unitName];
+
+                const count = Math.floor(leftOverMs / unitDuration);
+                leftOverMs -= count * unitDuration;
+
+                if (count > 0) str += count + suffixes[unitName] + " ";
+                console.log(str);
+            }
+
+            return str.substring(0, str.length - 1);
+        };
+
+        return format;
+    }
 
     axisInit() {
-        const beginDate = new Date(this.props.beginTs);
-        const endDate = new Date(this.props.endTs);
+        const {scale, ticks, tickFormat} = this.props.relative ? this.relativeScaleInit() : this.absoluteScaleInit();
+
         const valueToRealtime = scaleTime()
-            .domain([beginDate, endDate])
+            .domain(scale.domain())
             .range([0, this.props.length])
             .clamp(true);
 
-        const minTimeStep = (this.refreshRate / this.props.length) * (this.props.endTs - this.props.beginTs);
-
-        const labelFormat = generateTimestampLabelFormat(this.props.endTs - this.props.beginTs, minTimeStep);
-        // this.setState({labelFormat: generateTimestampLabelFormat(this.props.length, minNoticableDiff)});
-        select(this.labelN).text(labelFormat(valueToRealtime.invert(this.props.position)));
-
-        const labelRect = this.labelN.getBBox();
-        const axisMargins = {left: labelRect.width + labelRect.x + 20, top: 40, bottom: 10, right: 20};
-
-
-        const scale = scaleTime()
-            .domain([beginDate, endDate])
-            .range([0, this.viewBox.width - axisMargins.left - axisMargins.right])
-            .clamp(true);
-
-        const defaultTicks = scale.ticks();
-        const defaultFormat = scale.tickFormat();
+        const labelFormat = this.getLabelFormat();
 
         select(this.pointerN)
-            .attr("transform", `translate(${axisMargins.left}, ${axisMargins.top})`);
+            .attr("transform", `translate(${this.axisMargins.left}, ${this.axisMargins.top})`);
 
         select(this.hoverPointerN)
-            .attr("transform", `translate(${axisMargins.left}, ${axisMargins.top})`)
+            .attr("transform", `translate(${this.axisMargins.left}, ${this.axisMargins.top})`)
             .style("display", "none");
 
         select(this.timelineN)
-            .attr("transform", `translate(${axisMargins.left}, ${axisMargins.top})`)
-            .call(this.props.axis(scale).tickValues(defaultTicks).tickFormat(defaultFormat))
+            .attr("transform", `translate(${this.axisMargins.left}, ${this.axisMargins.top})`)
+            .call(this.props.axis(scale).tickValues(ticks).tickFormat(tickFormat))
             .call(g => g
                 .attr("font-size", null)
                 .attr("font-family", null)
                 .attr("pointer-events", "bounding-box")
                 .classed("timeline-axis", true)
+            ).call(g => g.select(".domain")
+
+            ).call(g =>
+                this.playbackLineSel = g
+                    .append("line")
+                    .attr("stroke", "red")
             );
 
 
@@ -497,38 +725,33 @@ class TimelineD3 extends Component {
     }
 
     render() {
-
         return (
-            <SliderBase
-                nodes={this.state.nodes}
-                enabled={this.state.enabled}
-                withHover={true}
+            <>
+                <SliderBase
+                    nodes={this.state.nodes}
+                    enabled={this.state.enabled}
+                    withHover
 
-                posToValue={this.state.posToValue}
-                valueToPos={this.state.valueToPos}
+                    posToValue={this.state.posToValue}
+                    valueToPos={this.state.valueToPos}
 
-                value={this.state.valueToRealtime && this.state.valueToRealtime.invert(this.props.position)}
-                setValue={() => true}
-                printValue={this.state.labelFormat}
-            >
+                    value={this.state.valueToRealtime && this.state.valueToRealtime.invert(this.props.position)}
+                    setValue={() => true}
+                    printValue={this.state.labelFormat}
+
+                    movePointer={::this.movePointer}
+                    moveHoverPointer={::this.moveHoverPointer}
+                />
 
                 <svg viewBox={`0 0 ${this.viewBox.width} ${this.viewBox.height}`} xmlns="http://www.w3.org/2000/svg"
                     ref={node => this.svgN = node}>
                     <defs>
-                        {/* <filter x="-0.10" y="-0.08" width="1.20" height="1.16" id="solid"> */}
-                        {/*     <feFlood floodColor="white"></feFlood> */}
-                        {/*     <feComposite in="SourceGraphic" operator="over"></feComposite> */}
-                        {/* </filter> */}
-                        {/* <filter x="0" y="-0.18" width="1" height="1.36" id="solid-outer"> */}
-                        {/*     <feFlood floodColor="black"></feFlood> */}
-                        {/*     <feComposite in="SourceGraphic" operator="over"></feComposite> */}
-                        {/* </filter> */}
-                        <g id="pointerDef">
-                            {/* <line y2="-6" stroke="currentColor"/> */}
-                            <polygon className="triangle" points={`0,-3 -2,${-3-Math.sqrt(3)*2} 2,${-3-Math.sqrt(3)*2}`} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
+                        <g id={`pointerDef_${this.props.id}`}>
+                            <text id="label" className="label" y="-13" dominantBaseline="baseline" textAnchor="middle" fill="currentColor" ref={node => this.labelN = node}>Label</text>
+                            <polygon className="triangle" points={`0,-3 -2,${-3-Math.sqrt(3)*2} 2,${-3-Math.sqrt(3)*2}`} fill="red" stroke="red" strokeWidth="3" strokeLinejoin="round"/>
                         </g>
-                        <g id="hoverPointerDef">
-                            <text id="hoverLabel" className="label" textAnchor="middle" y="-13.5" fill="currentColor" ref={node => this.hoverLabelN = node}>Label</text>
+                        <g id={`hoverPointerDef_${this.props.id}`}>
+                            <text id="hoverLabel" className="label" textAnchor="middle" y="-13.5" fill="currentColor" ref={node => this.hoverLabelN = node}></text>
 
                             <polygon className="triangle"
                                 points={`0,-3 -2,${-3-Math.sqrt(3)*2} 2,${-3-Math.sqrt(3)*2}`} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
@@ -536,126 +759,15 @@ class TimelineD3 extends Component {
 
                     </defs>
 
-                    <text id="label" className="label" y="40" x="5" dominantBaseline="hanging" fill="currentColor" ref={node => this.labelN = node}>Label</text>
                     <g ref={node => this.timelineN = node}/>
-                    <use href="#pointerDef" color="black" ref={node => this.pointerN = node}/>
-                    <use href="#hoverPointerDef" color="#808080" ref={node => this.hoverPointerN = node} />
+                    <use href={`#pointerDef_${this.props.id}`} color="black" ref={node => this.pointerN = node}/>
+                    <use href={`#hoverPointerDef_${this.props.id}`} color="black" ref={node => this.hoverPointerN = node} />
                 </svg>
-
-            </SliderBase>
+            </>
         );
     }
 }
 
-const timeIntervals = {
-    year: moment.duration(1, 'years').asMilliseconds(),
-    month: moment.duration(1, 'months').asMilliseconds(),
-    day: moment.duration(1, 'days').asMilliseconds(),
-    hour: moment.duration(1, 'hours').asMilliseconds(),
-    minute: moment.duration(1, 'minutes').asMilliseconds(),
-    second: moment.duration(1, 'seconds').asMilliseconds(),
-    millisecond: 1,
-};
-
-function generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim) {
-    const units = Object.keys(timeIntervals).map(key => timeIntervals[key]);
-    const unitNames = ['_year', '_month', '_day', '_hour', '_minute', '_second', '_millisecond'];
-
-    let i = 0;
-    while (i < units.length && maxTimeDiff < units[i]) i++;
-
-    let usedUnits = unitNames[i];
-
-    i++;
-    while (i < units.length && minTimeDiff < units[i]) {
-        usedUnits += delim + unitNames[i];
-        i++;
-    }
-
-    if (usedUnits.indexOf(delim) >= 0 && i < units.length) {
-        usedUnits += delim + unitNames[i];
-    }
-
-    return usedUnits;
-}
-
-function generateTimestampLabelFormat(maxTimeDiff, minTimeDiff) {
-    const replace = (match, replacement) => {return (str) => str.replace(match, replacement);};
-
-    const delim = ';';
-    const usedUnits = generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim);
-
-    //Order matters, longest matches at the top
-    const grammarRules = [
-        replace('_hour;_minute;_second;_millisecond', '%H:%M:%S.%L'),
-        replace('_year;_month;_day', '%Y/%m/%d/'),
-        replace('_hour;_minute;_second', '%H:%M:%S'),
-        replace('_month;_day', '%b %d, '),
-        replace('_second;_millisecond', '%S.%Ls'),
-        replace('_year', '%Y'),
-        replace('_month', '%b'),
-        replace('_day', '%a %d'),
-        replace('_hour', '%Hh'),
-        replace('_minute', '%Mm'),
-        replace('_second', '%Ss'),
-        replace('_millisecond', '0.%Ls'),
-    ];
-
-    const formatStr = grammarRules.reduce((str, func) => func(str), usedUnits).replace(new RegExp(delim, 'g'), '\u00A0');
-    //DO not know if sccepts timestamps
-    return timeFormat(formatStr);
-}
-
-
-
-// function generateDurationLabelFormat(durLenght, minTimeDiff) {
-//     const replace = (match, replacement) => {return (str) => str.replace(match, replacement);};
-
-//     const usedUnits = generateTimeUnitsUsedInLabel(durLenght, minTimeDiff, ',');
-
-//     const getValues = {};
-//     for(let intervalKey of Object.keys(timeIntervals)) {
-//         getValues[intervalKey] = (ts) => Math.floor();
-//     }
-
-//     function decompose(ts) {
-//         const d = moment.duration(ts);
-//         const addLeadingZero = (n) => n < 10 ? "0" + n : "" + n;
-
-//         return {
-//             hoursMinutesSeconds: d.hours() + ":" + addLeadingZero(d.minutes()) + ":" + addLeadingZero(d.seconds()),
-//             secondsMilliseconds: d.seconds() + "." + d.milliseconds().toFixed(3) + "s",
-//             milliseconds: "0." + d.milliseconds().toFixed(3) + "s",
-//             seconds: d.seconds() + "s",
-//             minutes: d.minutes() + "min",
-//             hours:   d.hours() + "h",
-//             days:   d.days() + "d",
-//             months: d.months() + "mo",
-//             years:  d.years() + "y",
-//         };
-
-//     }
-
-//     function format(ts) {
-//         const d = decompose(ts);
-
-//         const grammarRules = [
-//             replace('hour,minute,second', d.hoursMinutesSeconds),
-//             replace('second,millisecond', d.secondsMilliseconds),
-//             replace('year', d.years),
-//             replace('month', d.months),
-//             replace('day', d.days),
-//             replace('hour', d.hours),
-//             replace('minute', d.minutes),
-//             replace('second', d.seconds),
-//             replace('millisecond', d.milliseconds)
-//         ];
-
-//         return grammarRules.reduce((acc, func) => func(acc), usedUnits).replace(/,/, ' ');
-//     }
-
-//     return format;
-// }
 
 const timeIntervals_ = [
     moment.duration(1, 'seconds').asMilliseconds(),
@@ -1124,6 +1236,141 @@ class Timeline extends Component {
     }
 }
 
+class SliderBaseEvents extends Component {
+    static propTypes = {
+        nodes: PropTypes.object,
+        events: PropTypes.object,
+        enabled: PropTypes.bool,
+        value: PropTypes.any,
+    }
+
+    static defaultProps = {
+        enabled: false,
+        events: {},
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            position: this.props.value || 0,
+            hoverPosition: 0
+        };
+
+        this.sliding = false;
+        this.eventHandlersAttached = false;
+    }
+
+    componentDidUpdate(prevProps) {
+        if ((this.props.nodes !== prevProps.nodes || !prevProps.enabled) && this.props.enabled && this.props.nodes) {
+            this.attachEventHandlers();
+        }
+
+        if (!this.props.enabled && prevProps.enabled) {
+            this.detachEventHandlers();
+        }
+    }
+
+    componentDidMount() {
+        if (this.props.nodes && this.props.enabled) {
+            this.attachEventHandlers();
+        }
+    }
+
+    emit(event, ...args) {
+        this.props.events[event] && this.props.events[event](...args);
+    }
+
+    attachEventHandlers() {
+        const sliderNode = this.props.nodes.slider;
+        const scaleNode = this.props.nodes.scale;
+        const labelNode = this.props.nodes.label;
+        const pointerNode = this.props.nodes.pointer;
+
+        const terminateSliding = () => {
+            sliderNode.on("mousemove", null);
+            scaleNode.attr("pointer-events", this.scaleNodePointerEvents);
+            labelNode.attr("pointer-events", this.labelNodePointerEvents);
+            this.sliding = false;
+        };
+
+        const startSliding = () => {
+            this.sliding = true;
+            this.scaleNodePointerEvents = scaleNode.attr("pointer-events");
+            this.labelNodePointerEvents = labelNode.attr("pointer-events");
+            labelNode.attr("pointer-events", "none");
+            scaleNode.attr("pointer-events", "none");
+
+            sliderNode.on("mousemove", () => this.setState({position: this.getMousePos()}));
+        };
+
+        //---Slider---
+        sliderNode.
+            on("mouseup", () => {
+                if (!this.sliding) return;
+                terminateSliding();
+                this.emit("onPointerSetTo", this.state.position);
+            }).
+            on("mouseleave", () => {
+                if (!this.sliding) return;
+                terminateSliding();
+                this.setState({position: this.props.value});
+            });
+
+        //---Scale---
+        scaleNode
+            .on("click", () => {
+                const mousePos = this.getMousePos();
+                this.setState({position: mousePos});
+                this.emit("onPointerSetTo", mousePos);
+            })
+            .style("cursor", "pointer")
+            .style("user-select", "none");
+
+        //---Pointer---
+        pointerNode
+            .style("cursor", "pointer")
+            .on("mousedown", startSliding)
+            .on("mouseenter", () => this.emit("onPointerMouseEnter", pointerNode))
+            .on("mouseleave", () => this.emit("onPointerMouseLeave", pointerNode));
+
+        //---Label---
+        labelNode
+            .style("user-select", "none");
+
+        //---Hover---
+        if (this.props.nodes.hoverPointer) {
+            scaleNode
+                .on("mouseenter", () => this.emit("onHoverPointerAppear", this.props.nodes.hoverPointer))
+                .on("mouseleave", () => this.emit("onHoverPointerDisappear", this.props.nodes.hoverPointer))
+                .on("mousemove", () => this.setState({hoverPosition: this.getMousePos()}));
+        }
+    }
+
+    detachEventHandlers() {
+        const sliderNode = this.props.nodes?.slider;
+        const pointerNode = this.props.nodes?.pointer;
+        const scaleNode = this.props.nodes?.scale;
+
+        sliderNode && sliderNode.on("mouseleave mouseup", null);
+        pointerNode && pointerNode.on("mousedown", null);
+
+        if (scaleNode) {
+            const eventsRegistered = this.props.nodes?.hoverPointer ? "mouseenter mouseleave mousemove click" : "click";
+            scaleNode.
+                on(eventsRegistered, null);
+        }
+    }
+
+    render() {
+        this.props.nodes.pointer && this.emit("onPointerMoveTo", this.props.nodes.pointer, this.state.position);
+        this.props.nodes.hoverPointer && this.emit("onPointerMoveTo", this.props.nodes.hoverPointer, this.state.hoverPosition);
+
+        return <></>;
+    }
+
+}
+
 //Implementation of slider logic
 class SliderBase extends Component {
     static propTypes = {
@@ -1138,9 +1385,10 @@ class SliderBase extends Component {
         value: PropTypes.any,
         setValue: PropTypes.func,
         printValue: PropTypes.func,
-        snapToValue: PropTypes.func,
+        // snapToValue: PropTypes.func,
 
-        children: PropTypes.node,
+        movePointer: PropTypes.func,
+        moveHoverPointer: PropTypes.func,
     }
 
     static defaultProps = {
@@ -1165,13 +1413,13 @@ class SliderBase extends Component {
             return;
         }
 
-        if (this.props.enabled && !prevProps.enabled)
+        if (this.props.enabled && !prevProps.enabled) {
             this.enable();
-        else if (this.props.enabled && this.props.withHover && !prevProps.withHover)
+        } else if (this.props.enabled && this.props.withHover && !prevProps.withHover) {
             this.enableHover();
-        else if (this.props.enabled && !this.props.withHover && prevProps.withHover)
+        } else if (this.props.enabled && !this.props.withHover && prevProps.withHover) {
             this.disableHover();
-
+        }
 
         if (prevProps.value !== this.props.value && this.props.value && !this.isSliding) {
             this.setState({value: this.props.value});
@@ -1222,8 +1470,7 @@ class SliderBase extends Component {
 
                 this.setState({value: this.props.value});
                 this.isSliding = false;
-            }).
-            attr("color", "black");
+            });
 
         //---Scale---
         scaleNode
@@ -1250,11 +1497,18 @@ class SliderBase extends Component {
         const hoverLabelNode = this.props.nodes.hoverLabel;
         const hoverPointerNode = this.props.nodes.hoverPointer;
         const scaleNode = this.props.nodes.scale;
+        const labelNode = this.props.nodes.label;
 
         hoverLabelNode.style("user-select", "none");
         scaleNode.
-            on("mouseenter", () => hoverPointerNode.style("display", "block")).
-            on("mouseleave", () => hoverPointerNode.style("display", "none")).
+            on("mouseenter", () => {
+                hoverPointerNode.style("display", "block");
+                labelNode.style("display", "none");
+            }).
+            on("mouseleave", () => {
+                hoverPointerNode.style("display", "none");
+                labelNode.style("display", "block");
+            }).
             on("mousemove", () => this.setState({hoverValue: this.getMouseValue()}));
     }
 
@@ -1264,20 +1518,17 @@ class SliderBase extends Component {
         const scaleNode = this.props.nodes.scale;
 
         if (sliderNode) {
-            sliderNode.
-                on("mouseleave mouseup", null).
-                attr("color", "grey");
+            sliderNode
+                .on("mouseleave mouseup", null);
         }
 
         if (pointerNode) {
-            pointerNode.
-                style("cursor", "not-allowed").
-                on("mousedown", null);
+            pointerNode
+                .on("mousedown", null);
         }
 
         if (scaleNode) {
             scaleNode.
-                style("cursor", "not-allowed").
                 on("click", null);
         }
 
@@ -1302,20 +1553,20 @@ class SliderBase extends Component {
     }
 
     render() {
-        if (this.props.nodes.pointer && this.props.valueToPos)
-            this.props.nodes.pointer.attr("x", this.props.valueToPos(this.state.value));
-        if (this.props.nodes.label && this.props.printValue)
-            this.props.nodes.label.text(this.props.printValue(this.state.value));
+        if (this.props.printValue && this.props.valueToPos) {
+            if (this.props.nodes.pointer && this.props.movePointer)
+                this.props.movePointer(this.props.nodes.pointer, this.props.valueToPos(this.state.value));
+            if (this.props.nodes.label)
+                this.props.nodes.label.text(this.props.printValue(this.state.value));
 
-        if (this.props.enabled && this.props.withHover) {
-            this.props.nodes.hoverPointer.attr("x", this.props.valueToPos(this.state.hoverValue));
-            this.props.nodes.hoverLabel.text(this.props.printValue(this.state.hoverValue));
+            if (this.props.moveHoverPointer && this.props.withHover && this.props.valueToPos) {
+                this.props.moveHoverPointer(this.props.nodes.hoverPointer, this.props.valueToPos(this.state.hoverValue));
+                this.props.nodes.hoverLabel.text(this.props.printValue(this.state.hoverValue));
+            }
         }
 
         return (
-            <>
-                { this.props.children }
-            </>
+            <></>
         );
     }
 

@@ -47,8 +47,23 @@ class SampleAnimation extends Component {
                         />
 
                         <TimelineD3
-                            length={1000*60*60}
+                            id={0}
+                            length={1000*60*30}
                             beginTs={0}
+                            endTs={1000*60*60*24*30*6}
+                            position={1000*60*4}
+                            axis={axisBottom}
+                            ticks={{
+                                values: [1000*60*60*24*30*3, 1000*60*60*24*30*2],
+                                labels: [0, 1000*60*60*24*30*3, 1000*60*60*24*30*6],
+                            }}
+                        />
+
+                        <TimelineD3
+                            id={1}
+                            length={1000*60*30}
+                            beginTs={0}
+                            relative
                             endTs={1000*60*60*24*30*6}
                             position={1000*60*4}
                             axis={axisBottom}
