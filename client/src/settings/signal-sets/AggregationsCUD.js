@@ -10,11 +10,11 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow,
+    ButtonRow, DatePicker,
     filterData,
     Form,
     FormSendMethod,
-    InputField,
+    InputField, TableSelect, TableSelectMode,
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
@@ -23,6 +23,8 @@ import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
+import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
@@ -126,6 +128,14 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.job.permissions.includes('delete');
 
 
+        const signalTypes = getSignalTypes(t);
+        const signalColumns = [
+            {data: 1, title: t('Id')},
+            {data: 2, title: t('Name')},
+            {data: 3, title: t('Description')},
+            {data: 4, title: t('Type'), render: data => signalTypes[data]},
+        ];
+
         return (
             <Panel title={isEdit ? t('Edit Aggregation') : t('Create Aggregation')}>
                 {canDelete &&
@@ -141,6 +151,23 @@ export default class CUD extends Component {
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
+
+                    <TableSelect
+                        key="ts"
+                        id="ts"
+                        label={t("Timestamp signal")}
+                        help={t("Timestamp signal that aggregations is based on")}
+                        columns={signalColumns}
+                        withHeader
+                        dropdown
+                        selectMode={ TableSelectMode.SINGLE }
+                        selectionLabelIndex={2}
+                        selectionKeyIndex={1}
+                        dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
+                    />
+
+                    {/*<DatePicker label={t("Offset")} id="offset" />*/}
+
                     <InputField id="interval" label={t('Interval')} help={t('Bucket interval in seconds')}
                                 disabled={isEdit}/>
 

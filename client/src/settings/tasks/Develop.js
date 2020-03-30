@@ -423,11 +423,9 @@ export default class Develop extends Component {
                         </Form>
                     </div>
                     <div className={developStyles.integrationPane}>
-                        <React.StrictMode>
                             <IntegrationTabs onJobChange={this.changeJob.bind(this)} taskId={this.props.entity.id}
                                              taskHash={this.state.taskVersionId} run={this.state.run}/>
 
-                        </React.StrictMode>
                     </div>
                 </div>
             </Panel>

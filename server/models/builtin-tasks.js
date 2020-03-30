@@ -12,17 +12,23 @@ const aggregationTask = {
     settings: {
         params: [{
             "id": "signalSet",
-            "help": "Signal set to aggregate",
             "type": "signalSet",
-            "label": "Signal Set"
-        },{
+            "label": "Signal Set",
+            "help": "Signal set to aggregate"
+        }, {
+            "id": "ts",
+            "type": "signal",
+            "signalSetRef": "signalSet",
+            "label": "Timestamp signal",
+            "help": "Timestamp for aggregation"
+        }, {
             "id": "interval",
-            "help": "Bucket interval in seconds",
             "type": "number",
-            "label": "Interval"
+            "label": "Interval",
+            "help": "Bucket interval in seconds"
         }],
         code: `from ivis import ivis
-
+        
 es = ivis.elasticsearch
 state = ivis.state
 params= ivis.parameters
@@ -31,49 +37,24 @@ owned= ivis.owned
 
 sig_set_cid = params['signalSet']
 sig_set = entities['signalSets'][sig_set_cid]
-#ts = entities['signals'][sig_set_cid][params['ts']]
+ts = entities['signals'][sig_set_cid][params['ts']]
 interval = params['interval']
+#offset = params['offset']
 
 if not owned:
   ns = sig_set['namespace']
     
   signals= []
-  signals.append({
-    "cid": "ts",
-    "name": "Timestamp",
-    "description": "Interval timestamp",
-    "namespace": ns,
-    "type": "date",
-    "indexed": False,
-    "settings": {}
-  })
-  signals.append({
-    "cid": "min",
-    "name": "min",
-    "description": "min",
-    "namespace": ns,
-    "type": "double",
-    "indexed": False,
-    "settings": {}
-  })
-  signals.append({
-    "cid": "avg",
-    "name": "avg",
-    "description": "avg",
-    "namespace": ns,
-    "type": "double",
-    "indexed": False,
-    "settings": {}
-  })
-  signals.append({
-    "cid": "max",
-    "name": "max",
-    "description": "max",
-    "namespace": ns,
-    "type": "double",
-    "indexed": False,
-    "settings": {}
-  })
+  for cid, signal in entities['signals'][sig_set_cid].items():
+    signals.append({
+      "cid": signal['cid'],
+      "name": signal['name'],
+      "description": signal['description'],
+      "namespace": signal['namespace'],
+      "type": signal['type'],
+      "indexed": signal['indexed'],
+      "settings": signal['settings']
+    })
 
   state = ivis.create_signal_set(
     f"aggregation_{interval}s_{sig_set_cid}",
@@ -106,7 +87,7 @@ if state is not None and state.get('last') is not None:
   
 else:
   query_content = {'match_all': {}}
-
+# interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
 query = {
   'size': 0,
   'query': query_content,
@@ -114,21 +95,11 @@ query = {
     "stats": {
       "date_histogram": {
         "field": ts['field'],
-        "interval": interval+"m"
+        "interval": interval+"s"
       },
       "aggs": {
         "avg": {
           "avg": {
-            "field": source['field']
-          }
-        },
-        "max": {
-          "max" : {
-            "field": source['field']
-          }
-        },
-        "min": {
-          "min" : {
             "field": source['field']
           }
         }
@@ -143,9 +114,7 @@ for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
   doc = {
     state['fields']['ts']: last,
-    state['fields']['min']: hit['min']['value'],
     state['fields']['avg']: hit['avg']['value'],
-    state['fields']['max']: hit['max']['value']
   }
   res = es.index(index=state['index'], doc_type='_doc', body=doc)
 

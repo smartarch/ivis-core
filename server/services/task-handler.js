@@ -820,53 +820,66 @@ function parseRequest(req) {
 /**
  * This function processes all requests coming from the type handlers.
  * @param jobId
- * @param request
+ * @param requestStr
  * @returns {Promise<Object>}
  */
-async function onRunRequest(jobId, request) {
+async function onRunRequest(jobId, requestStr) {
     let response = {};
-    if (request) {
-        let req = {};
-        try {
-            req = parseRequest(request);
 
-            if (req.id) {
-                response.id = req.id;
-            }
+    if (!requestStr) {
+        response.error = "Request not specified";
+        return response;
+    }
 
-        } catch (err) {
-            response.error = `Request parsing failed: ${err.message}`;
-            return response;
+    let request = {};
+    try {
+        request = parseRequest(requestStr);
+
+        if (request.id) {
+            response.id = request.id;
         }
 
-        if (req.type) {
-            try {
-                switch (req.type) {
-                    case JobMsgType.CREATE_SIGNALS:
-                        if (req.signalSets || req.signals) {
-                            return await processCreateRequest(jobId, req.signalSets, req.signals);
-                        } else {
-                            response.error = `Either signalSets or signals have to be specified`;
-                        }
-                        break;
-                    case  JobMsgType.STORE_STATE:
-                        if (req[STATE_FIELD]) {
-                            await storeRunState(jobId, req[STATE_FIELD]);
-                        } else {
-                            response.error(`${STATE_FIELD} not specified`)
-                        }
-                        break;
-                    default:
-                        response.error = "Type not recognized";
-                        break;
+    } catch (err) {
+        response.error = `Request parsing failed: ${err.message}`;
+        return response;
+    }
+
+    if (!request.type) {
+        response.error = "Type not specified";
+        return response;
+    }
+
+    try {
+        switch (request.type) {
+            case JobMsgType.CREATE_SIGNALS:
+                if (request.signalSets || request.signals) {
+                    const reqResult = await processCreateRequest(jobId, request.signalSets, request.signals);
+                    response = {
+                        ...response,
+                        ...reqResult
+                    };
+                } else {
+                    response.error = `Either signalSets or signals have to be specified`;
                 }
-            } catch (error) {
-                log.warn(LOG_ID, error);
-                response.error = error.message;
-            }
-        } else {
-            response.error = "Type not specified";
+                break;
+            case  JobMsgType.STORE_STATE:
+                if (request[STATE_FIELD]) {
+                    const reqResult = await storeRunState(jobId, request[STATE_FIELD]);
+                    response = {
+                        ...response,
+                        ...reqResult
+                    };
+                } else {
+                    response.error(`${STATE_FIELD} not specified`)
+                }
+                break;
+            default:
+                response.error = "Type not recognized";
+                break;
         }
+    } catch (error) {
+        log.warn(LOG_ID, error);
+        response.error = error.message;
     }
     return response;
 }
@@ -1004,7 +1017,11 @@ async function loadJobState(id) {
 async function storeRunState(id, state) {
     const jobBody = {};
     jobBody[STATE_FIELD] = state;
-    await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
+    try {
+        await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
+    } catch (err){
+        return {error: err.message};
+    }
 }
 
 /**
