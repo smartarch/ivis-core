@@ -48,8 +48,6 @@ sig_cids = []
 for cid in entities['signals'][sig_set_cid].keys():
   sig_cids.append(cid)
 
-print(sig_cids)
-
 if state is None or state.get(agg_set_cid) is None:
   ns = sig_set['namespace']
     
@@ -96,7 +94,7 @@ if state is not None and state.get('last') is not None:
   
 else:
   query_content = {'match_all': {}}
-# interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
+
 
 avg_aggs = {}
 for cid, signal in entities['signals'][sig_set_cid].items():
@@ -105,8 +103,8 @@ for cid, signal in entities['signals'][sig_set_cid].items():
               "field": signal['field']
             }
           }
-
-print(avg_aggs)
+          
+# interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
 query = {
   'size': 0,
   'query': query_content,
@@ -125,13 +123,12 @@ res = es.search(index=sig_set['index'], body=query)
 
 for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
-  print(hit)
   doc = {}
   for cid in sig_cids:
-    state[agg_set_cid]['fields'][cid]: hit[cid]['value']
+    doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['value']
   
-  doc[state[agg_set_cid]['fields'][ts['cid']]]= last
-  res = es.index(index=state[agg_set_cid]['index'], doc_type='_doc', body=doc)
+  doc[state[agg_set_cid]['fields'][ts['cid']]] = last
+  res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
 
 
 state['last'] = last
