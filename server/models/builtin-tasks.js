@@ -14,7 +14,8 @@ const aggregationTask = {
             "id": "signalSet",
             "type": "signalSet",
             "label": "Signal Set",
-            "help": "Signal set to aggregate"
+            "help": "Signal set to aggregate",
+            "includeSignals": true
         }, {
             "id": "ts",
             "type": "signal",
@@ -28,12 +29,12 @@ const aggregationTask = {
             "help": "Bucket interval in seconds"
         }],
         code: `from ivis import ivis
-        
+
 es = ivis.elasticsearch
 state = ivis.state
 params= ivis.parameters
 entities= ivis.entities
-owned= ivis.owned
+#owned= ivis.owned
 
 sig_set_cid = params['signalSet']
 sig_set = entities['signalSets'][sig_set_cid]
@@ -41,7 +42,15 @@ ts = entities['signals'][sig_set_cid][params['ts']]
 interval = params['interval']
 #offset = params['offset']
 
-if not owned:
+agg_set_cid =  f"aggregation_{interval}s_{sig_set_cid}"
+
+sig_cids = []
+for cid in entities['signals'][sig_set_cid].keys():
+  sig_cids.append(cid)
+
+print(sig_cids)
+
+if state is None or state.get(agg_set_cid) is None:
   ns = sig_set['namespace']
     
   signals= []
@@ -57,9 +66,9 @@ if not owned:
     })
 
   state = ivis.create_signal_set(
-    f"aggregation_{interval}s_{sig_set_cid}",
+    agg_set_cid,
     ns,
-    f"aggregation_{interval}s_{sig_set_cid}",
+    agg_set_cid,
     "aggregation with interval {interval}s for signal set {sig_set_cid}",
     None,
     signals)
@@ -77,10 +86,10 @@ if state is not None and state.get('last') is not None:
     }
   }
   
-  es.delete_by_query(index=state['index'], body={
+  es.delete_by_query(index=state[agg_set_cid]['index'], body={
     "query": { 
       "match": {
-        state['fields']['ts']: last
+        state[agg_set_cid]['fields']['ts']: last
       }
     }}
   )
@@ -88,6 +97,16 @@ if state is not None and state.get('last') is not None:
 else:
   query_content = {'match_all': {}}
 # interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
+
+avg_aggs = {}
+for cid, signal in entities['signals'][sig_set_cid].items():
+  avg_aggs[cid] = {
+            "avg": {
+              "field": signal['field']
+            }
+          }
+
+print(avg_aggs)
 query = {
   'size': 0,
   'query': query_content,
@@ -97,13 +116,7 @@ query = {
         "field": ts['field'],
         "interval": interval+"s"
       },
-      "aggs": {
-        "avg": {
-          "avg": {
-            "field": source['field']
-          }
-        }
-      }
+      "aggs": avg_aggs
     }
   }
 }
@@ -112,11 +125,13 @@ res = es.search(index=sig_set['index'], body=query)
 
 for hit in res['aggregations']['stats']['buckets']:
   last = hit['key_as_string']
-  doc = {
-    state['fields']['ts']: last,
-    state['fields']['avg']: hit['avg']['value'],
-  }
-  res = es.index(index=state['index'], doc_type='_doc', body=doc)
+  print(hit)
+  doc = {}
+  for cid in sig_cids:
+    state[agg_set_cid]['fields'][cid]: hit[cid]['value']
+  
+  doc[state[agg_set_cid]['fields'][ts['cid']]]= last
+  res = es.index(index=state[agg_set_cid]['index'], doc_type='_doc', body=doc)
 
 
 state['last'] = last

@@ -907,7 +907,7 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
 
         const esSetInfo = {};
 
-        const signals = signalSet.signals;
+        let signals = signalSet.signals;
         delete signalSet.signals;
 
         signalSet.type = SignalSetType.COMPUTED;
@@ -918,13 +918,17 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
 
         esSetInfo.fields = {};
         if (signals) {
+            if (!Array.isArray(signals)) {
+                signals = [signals];
+            }
+
             for (const signal of signals) {
-                // Here are possible overwrites of input form job
+                // Here are possible overwrites of input from job
                 signal.weight_list = 0;
                 signal.weight_edit = null;
                 signal.source = SignalSource.JOB;
                 const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
-                esSetInfo.fields[signal.cid] = getFieldName(sigId);
+                esSetInfo['fields'][signal.cid] = getFieldName(sigId);
             }
         }
 
@@ -967,12 +971,12 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
                     esInfo[sigSetCid]['type'] = TYPE_JOBS;
                     esInfo[sigSetCid]['fields'] = {};
 
-                    if (Array.isArray(signals)) {
-                        for (let signal of signals) {
-                            esInfo[sigSetCid]['fields'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
-                        }
-                    } else {
-                        esInfo[sigSetCid]['fields'][signals.cid] = await createComputedSignal(tx, sigSet.id, signals);
+                    if (!Array.isArray(signals)) {
+                        signals = [signals];
+                    }
+
+                    for (let signal of signals) {
+                        esInfo[sigSetCid]['fields'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
                     }
 
                 }
@@ -1019,7 +1023,7 @@ async function storeRunState(id, state) {
     jobBody[STATE_FIELD] = state;
     try {
         await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
-    } catch (err){
+    } catch (err) {
         return {error: err.message};
     }
 }
