@@ -3,6 +3,7 @@
 const {JobState} = require("../../shared/jobs");
 const {getBuiltinTask} = require("./builtin-tasks");
 
+const log = require('../lib/log');
 const knex = require('../lib/knex');
 const {enforce} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
@@ -70,6 +71,8 @@ async function createTx(tx, context, sigSetId, params) {
     const jobId = await jobs.create(context, job);
 
     await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id});
+
+    jobs.run(context, jobId).catch(error => log.error('signal-set-aggregations',error));
 
     return jobId;
 }

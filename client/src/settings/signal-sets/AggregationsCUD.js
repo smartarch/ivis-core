@@ -54,7 +54,8 @@ export default class CUD extends Component {
     componentDidMount() {
         if (this.props.job) {
             this.populateFormValues({
-                interval: this.props.job.params.interval
+                interval: this.props.job.params.interval,
+                ts: this.props.job.params.ts
             });
         } else {
             this.populateFormValues({
@@ -73,12 +74,20 @@ export default class CUD extends Component {
         } else {
             state.setIn(['interval', 'error'], null);
         }
+
+        if (!state.getIn(['ts', 'value'])) {
+            state.setIn(['ts', 'error'], t('Timestamp signal must not be empty'));
+        } else {
+            state.setIn(['ts', 'error'], null);
+        }
     }
 
     submitFormValuesMutator(data) {
 
         const allowedKeys = [
-            'interval'
+            'interval',
+            'ts',
+            'offset'
         ];
 
         return filterData(data, allowedKeys);
@@ -164,9 +173,10 @@ export default class CUD extends Component {
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
+                        disabled={isEdit}
                     />
 
-                    {/*<DatePicker label={t("Offset")} id="offset" />*/}
+                    {/*<DatePicker id="offset" label={t("Offset")}  />*/}
 
                     <InputField id="interval" label={t('Interval')} help={t('Bucket interval in seconds')}
                                 disabled={isEdit}/>

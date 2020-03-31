@@ -67,7 +67,7 @@ if state is None or state.get(agg_set_cid) is None:
     agg_set_cid,
     ns,
     agg_set_cid,
-    "aggregation with interval {interval}s for signal set {sig_set_cid}",
+    f"aggregation with interval {interval}s for signal set {sig_set_cid}",
     None,
     signals)
     
