@@ -17,7 +17,7 @@ async function listDTAjax(context, sigSetId, params) {
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
         builder => builder.from('aggregation_jobs')
-            .innerJoin('jobs',function () {
+            .innerJoin('jobs', function () {
                 this.on('aggregation_jobs.job', '=', 'jobs.id').andOn('aggregation_jobs.set', '=', sigSetId);
             })
             .leftJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
@@ -35,10 +35,19 @@ async function listDTAjax(context, sigSetId, params) {
 
 async function createTx(tx, context, sigSetId, params) {
     const intervalInSecs = params.interval;
+    const ts = params.ts;
+
     const signalSet = await tx('signal_sets').where('id', sigSetId).first();
     enforce(signalSet, `Signal set ${sigSetId} not found`);
+
     const task = await getBuiltinTask('aggregation');
     enforce(task, `Aggregation task not found`);
+
+    const tsExists = tx('signals').where({set: sigSetId, cid: ts}).first();
+    enforce(tsExists, `Timestamp signal not found in ${sigSetId}`);
+
+    enforce(!/^([1-9]\d*)$/.test(intervalInSecs), 'Interval must be a positive integer');
+
 
     function getJobName() {
         return `aggregation_${intervalInSecs}s_${signalSet.cid}`;
@@ -47,7 +56,7 @@ async function createTx(tx, context, sigSetId, params) {
     const jobParams = {
         signalSet: signalSet.cid,
         //offset: params.offset
-        ts: params.ts,
+        ts: ts,
         interval: intervalInSecs
     };
 
@@ -72,7 +81,7 @@ async function createTx(tx, context, sigSetId, params) {
 
     await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id});
 
-    jobs.run(context, jobId).catch(error => log.error('signal-set-aggregations',error));
+    jobs.run(context, jobId).catch(error => log.error('signal-set-aggregations', error));
 
     return jobId;
 }

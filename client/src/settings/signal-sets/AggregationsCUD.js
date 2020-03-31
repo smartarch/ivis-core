@@ -75,10 +75,16 @@ export default class CUD extends Component {
             state.setIn(['interval', 'error'], null);
         }
 
-        if (!state.getIn(['ts', 'value'])) {
+        const tsVal = state.getIn(['ts', 'value']);
+        if (!tsVal) {
             state.setIn(['ts', 'error'], t('Timestamp signal must not be empty'));
         } else {
-            state.setIn(['ts', 'error'], null);
+            // positive integer test
+            if(!/^([1-9]\d*)$/.test(tsVal)) {
+                state.setIn(['ts', 'error'], t('Timestamp signal must be a positive integer'));
+            } else {
+                state.setIn(['ts', 'error'], null);
+            }
         }
     }
 
