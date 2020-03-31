@@ -46,7 +46,7 @@ async function createTx(tx, context, sigSetId, params) {
     const tsExists = tx('signals').where({set: sigSetId, cid: ts}).first();
     enforce(tsExists, `Timestamp signal not found in ${sigSetId}`);
 
-    enforce(!/^([1-9]\d*)$/.test(intervalInSecs), 'Interval must be a positive integer');
+    enforce(Number.isInteger(intervalInSecs) && intervalInSecs > 0, 'Interval must be a positive integer');
 
 
     function getJobName() {
@@ -60,7 +60,7 @@ async function createTx(tx, context, sigSetId, params) {
         interval: intervalInSecs
     };
 
-    // TODO ambiguous, name can be shared should inner join on adjecent jobs, after testing, or param check
+    // TODO name isn't necessary unique, should join on aggregation_jobs and search on that
     //const exists = tx('jobs').where('params', JSON.stringify(jobParams)).first();
     const exists = await tx('jobs').where('name', getJobName()).first();
     enforce(!exists, `Aggregation for bucket interval ${intervalInSecs} exists`);

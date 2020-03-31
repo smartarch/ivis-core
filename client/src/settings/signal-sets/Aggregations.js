@@ -69,37 +69,23 @@ export default class AggregationsList extends Component {
         const columns = [
             {data: 1, title: t('Id'), render: data => <code>{data}</code>},
             {
-                data: 2,
-                title: t('Name'), render: data => {return data? data : 'Not created yet';}},
-                /*actions: data => {
-                    const id = data[0];
-                    const label = data[2];
-                    const perms = data[8];
-
-                    if (perms.includes('query')) {
-                        return [
-                            {
-                                label,
-                                link: `/settings/signal-sets/${id}/records`
-                            }
-                        ];
-                    } else {
-                        return [
-                            {
-                                label
-                            }
-                        ];
-                    }
+                data: 2, title: t('Name'), render: data => {
+                    return data ? data : 'Not created yet';
                 }
-            },*/
+            },
             {data: 3, title: t('Description')},
-            {data: 4, title: t('Status'), render: data => data? this.indexingStates[data.status]: ''},
-            {data: 5, title: t('Created'), render: data => data ? moment(data).fromNow(): ''},
+            {data: 4, title: t('Status'), render: data => data ? this.indexingStates[data.status] : ''},
+            {data: 5, title: t('Created'), render: data => data ? moment(data).fromNow() : ''},
             {data: 7, title: t('Interval'), render: data => `${data.interval} s`},
             {
                 actions: data => {
                     const actions = [];
                     const perms = data[8];
+
+                    actions.push({
+                        label: <Icon icon="chart-line" title={t('View')}/>,
+                        link: `/settings/signal-sets/${data[0]}/edit`
+                    });
 
                     if (perms.includes('edit')) {
                         actions.push({
@@ -119,7 +105,8 @@ export default class AggregationsList extends Component {
                 {tableRestActionDialogRender(this)}
                 {this.state.createPermitted &&
                 <Toolbar>
-                    <LinkButton to={`/settings/signal-sets/${sigSetId}/aggregations/create`} className="btn-primary" icon="plus"
+                    <LinkButton to={`/settings/signal-sets/${sigSetId}/aggregations/create`} className="btn-primary"
+                                icon="plus"
                                 label={t('Create aggregation')}/>
                 </Toolbar>
                 }

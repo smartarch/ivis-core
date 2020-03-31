@@ -54,12 +54,13 @@ export default class CUD extends Component {
     componentDidMount() {
         if (this.props.job) {
             this.populateFormValues({
-                interval: this.props.job.params.interval,
-                ts: this.props.job.params.ts
+                ts: this.props.job.params.ts,
+                interval: this.props.job.params.interval
             });
         } else {
             this.populateFormValues({
-                    interval: 0
+                    ts: null,
+                    interval: null
                 }
             )
         }
@@ -69,26 +70,28 @@ export default class CUD extends Component {
     localValidateFormValues(state) {
         const t = this.props.t;
 
-        if (!state.getIn(['interval', 'value'])) {
-            state.setIn(['interval', 'error'], t('Interval must not be empty'));
-        } else {
-            state.setIn(['interval', 'error'], null);
-        }
-
-        const tsVal = state.getIn(['ts', 'value']);
-        if (!tsVal) {
+        if (!state.getIn(['ts', 'value'])) {
             state.setIn(['ts', 'error'], t('Timestamp signal must not be empty'));
         } else {
+            state.setIn(['ts', 'error'], null);
+        }
+
+        const intervalVal = state.getIn(['interval', 'value']);
+        if (!intervalVal) {
+            state.setIn(['interval', 'error'], t('Interval must not be empty'));
+        } else {
             // positive integer test
-            if(!/^([1-9]\d*)$/.test(tsVal)) {
-                state.setIn(['ts', 'error'], t('Timestamp signal must be a positive integer'));
+            if (!/^([1-9]\d*)$/.test(intervalVal)) {
+                state.setIn(['interval', 'error'], t('Interval must be a positive integer'));
             } else {
-                state.setIn(['ts', 'error'], null);
+                state.setIn(['interval', 'error'], null);
             }
         }
     }
 
     submitFormValuesMutator(data) {
+
+        data.interval = Number.parseInt(data.interval);
 
         const allowedKeys = [
             'interval',
@@ -175,7 +178,7 @@ export default class CUD extends Component {
                         columns={signalColumns}
                         withHeader
                         dropdown
-                        selectMode={ TableSelectMode.SINGLE }
+                        selectMode={TableSelectMode.SINGLE}
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
