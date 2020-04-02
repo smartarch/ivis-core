@@ -52,11 +52,16 @@ class SampleAnimation extends Component {
                             beginTs={0}
                             endTs={1000*60*60*24*30*6}
                             position={1000*60*4}
-                            axis={axisBottom}
-                            ticks={{
-                                values: [1000*60*60*24*30*3, 1000*60*60*24*30*2],
-                                labels: [0, 1000*60*60*24*30*3, 1000*60*60*24*30*6],
+                            margin={{
+                                left: 20,
+                                right: 20,
+                                top: 50,
+                                bottom: 20
                             }}
+                            // ticks={{
+                            //     values: [1000*60*60*24*30*3, 1000*60*60*24*30*2],
+                            //     labels: [0, 1000*60*60*24*30*3, 1000*60*60*24*30*6],
+                            // }}
                         />
 
                         <TimelineD3
@@ -66,7 +71,12 @@ class SampleAnimation extends Component {
                             relative
                             endTs={1000*60*60*24*30*6}
                             position={1000*60*4}
-                            axis={axisBottom}
+                            margin={{
+                                left: 20,
+                                right: 20,
+                                top: 50,
+                                bottom: 20
+                            }}
                         />
 
                         {/* <Timeline */}
