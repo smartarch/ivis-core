@@ -71,7 +71,7 @@ export class StaticBarChart extends Component {
             })).isRequired
         }).isRequired,
         height: PropTypes.number.isRequired,
-        margin: PropTypes.object.isRequired,
+        margin: PropTypes.object,
         padding: PropType_NumberInRange(0, 1),
         colors: PropTypes.arrayOf(PropType_d3Color_Required()),
 
@@ -84,6 +84,9 @@ export class StaticBarChart extends Component {
 
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
+
+        className: PropTypes.string,
+        style: PropTypes.object
     };
 
     static defaultProps = {
@@ -105,6 +108,7 @@ export class StaticBarChart extends Component {
         this.createChart(false, false);
     }
 
+    /** Update and redraw the chart based on changes in React props and state */
     componentDidUpdate(prevProps, prevState) {
         const forceRefresh = this.prevContainerNode !== this.containerNode
             || !Object.is(prevProps.config, this.props.config);
@@ -119,6 +123,9 @@ export class StaticBarChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
+    /** Creates (or updates) the chart with current data.
+     * This method is called from componentDidUpdate automatically when state or config is updated.
+     * All the 'createChart*' methods are called from here. */
     createChart(forceRefresh, updateZoom) {
         const width = this.containerNode.getClientRects()[0].width;
 
@@ -179,6 +186,8 @@ export class StaticBarChart extends Component {
         }
     }
 
+    /** Handles zoom of the chart by user using d3-zoom.
+     *  Called from this.createChart(). */
     createChartZoom(xSize, ySize) {
         const self = this;
 
@@ -213,7 +222,9 @@ export class StaticBarChart extends Component {
         };
 
         const zoomExtent = [[0, 0], [xSize, ySize]];
-        this.zoom = d3Zoom.zoom()
+        const zoomExisted = this.zoom !== null;
+        this.zoom = zoomExisted ? this.zoom : d3Zoom.zoom();
+        this.zoom
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(zoomExtent)
             .extent(zoomExtent)
@@ -224,6 +235,11 @@ export class StaticBarChart extends Component {
         this.svgContainerSelection.call(this.zoom);
     }
 
+    // noinspection JSCommentMatchesSignature
+    /** Draws the bars and also assigns them mouseover event handler to select them
+     * @param data          data in format of props.config.bars
+     * @param barsSelection d3 selection to which the data will get assigned and drawn
+     */
     drawVerticalBars(data, barsSelection, xScale, yScale) {
         const self = this;
         const bars = barsSelection
@@ -296,15 +312,17 @@ export class StaticBarChart extends Component {
 
     render() {
         return (
-            <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionNone}>
+            <div ref={node => this.svgContainerSelection = select(node)}
+                 className={this.props.className ? `${styles.touchActionNone} ${this.props.className}` : styles.touchActionNone}
+                 style={this.props.style} >
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width={"100%"}>
                     <defs>
                         <clipPath id="plotRect">
-                            <rect x="0" y="0" width={this.state.width}
+                            <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right}
                                   height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
                         </clipPath>
                         <clipPath id="bottomAxis">
-                            <rect x={-6} y={0} width={this.state.width + 6}
+                            <rect x={-6} y={0} width={this.state.width - this.props.margin.left - this.props.margin.right + 6}
                                   height={this.props.margin.bottom} /* same reason for 6 as in HeatmapChart */ />
                         </clipPath>
                     </defs>
