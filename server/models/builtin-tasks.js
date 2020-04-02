@@ -112,7 +112,7 @@ query = {
     "stats": {
       "date_histogram": {
         "field": ts['field'],
-        "interval": interval+"s"
+        "interval": f"{interval}s"
       },
       "aggs": avg_aggs
     }

@@ -299,6 +299,7 @@ export class SaveDialog extends Component {
                 this.disableForm();
                 this.setFormStatusMessage('info', t('Saving ...'));
 
+                // FIXME id can be virtual -> panel doesn't exists so saving will result in error
                 await axios.put(getUrl(`rest/panels-config/${owner.props.panel.id}`), owner.getPanelConfig());
 
                 this.enableForm();
