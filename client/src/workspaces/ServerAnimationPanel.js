@@ -5,8 +5,7 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {axisBottom} from "d3-axis";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, TimelineD3} from "../lib/media-controls";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
@@ -46,7 +45,7 @@ class SampleAnimation extends Component {
                             maxFactor={2.25}
                         />
 
-                        <TimelineD3
+                        <Timeline
                             id={0}
                             length={1000*60*30}
                             beginTs={0}
@@ -64,7 +63,7 @@ class SampleAnimation extends Component {
                             // }}
                         />
 
-                        <TimelineD3
+                        <Timeline
                             id={1}
                             length={1000*60*30}
                             beginTs={0}

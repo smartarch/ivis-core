@@ -5,11 +5,8 @@ import PropTypes from "prop-types";
 import {SVG} from "../ivis/SVG";
 import {select, mouse} from "d3-selection";
 import {scaleTime, scaleLinear} from "d3-scale";
-import {utcMillisecond, utcSecond, utcMinute, utcHour, utcDay, utcWeek, utcMonth, utcYear} from "d3-time";
 import {timeFormat} from "d3-time-format";
 import {AnimationStatusContext, AnimationControlContext} from "../ivis/ServerAnimationContext";
-import moment from "moment";
-import {withTranslation} from "./i18n";
 import styles from "./media-controls.scss";
 import {withComponentMixins, createComponentMixin} from "./decorator-helpers";
 
@@ -395,7 +392,7 @@ class PlaybackSpeedSlider extends Component {
     }
 }
 
-class TimelineD3 extends Component {
+class Timeline extends Component {
     static propTypes = {
         relative: PropTypes.bool,
         beginTs: PropTypes.number,
@@ -421,6 +418,7 @@ class TimelineD3 extends Component {
         };
 
         this.labelRefreshRate = 500;
+        this.defaultTickCount = 50;
 
         this.durationBaseIntervals = {
             millisecond: 1,
@@ -533,7 +531,6 @@ class TimelineD3 extends Component {
 
     generateDurationLabelFormat(durLenght, minTimeDiff) {
         const usedUnits = this.generateTimeUnitsUsedInLabel(durLenght, minTimeDiff, ',').split(',');
-        console.log(usedUnits);
 
         const suffixes = {
             millisecond: 'ms',
@@ -588,11 +585,10 @@ class TimelineD3 extends Component {
 
 
     getDefaultRelativeTicks(scale) {
-        const scaleRange = scale.range();
         const scaleDomain = scale.domain();
 
-        const minTickCount = scaleRange[scaleRange.length - 1] / 125;
-        const duration = scaleDomain[scaleDomain.length - 1];
+        const minTickCount = this.defaultTickCount;
+        const duration = scaleDomain[1];
 
         let i = this.durationIntervals.length - 1;
         while (i >= 0 && duration / this.durationIntervals[i] < minTickCount) i--;
@@ -655,7 +651,7 @@ class TimelineD3 extends Component {
             .range([0, containerWidth - this.props.margin.left - this.props.margin.right])
             .clamp(true);
 
-        const ticks = this.props.ticks?.values ? this.props.ticks.values.map(ts => new Date(ts)).sort() : scale.ticks();
+        const ticks = this.props.ticks?.values ? this.props.ticks.values.map(ts => new Date(ts)).sort() : scale.ticks(this.defaultTickCount);
         if (ticks[0].valueOf() !== this.props.beginTs) ticks.unshift(new Date(this.props.beginTs));
         if (ticks[ticks.length - 1].valueOf() !== this.props.endTs) ticks.push(new Date(this.props.endTs));
 
@@ -688,26 +684,17 @@ class TimelineD3 extends Component {
             .call(sel => sel.select("#playback-line").remove())
             .call(sel => this.playbackLineSel = sel.append("line").attr("id", "playback-line").attr("stroke", "red"));
 
-
-        const ticksData = this.state.scaleDef.ticks.map((t, i, arr) => {
+        const generateDataForTick = (t, i, arr) => {
             const label = this.state.scaleDef.tickLabelFormat(t);
-            const isBeginTick = i == 0;
-            const isEndTick = i == arr.length - 1;
+            const role = i === 0 ? "begin" :
+                i === arr.length - 1 ? "end" :
+                label.length > 0 ? "big" :
+                "small";
 
-            const priority = isBeginTick ? 10 :
-                             isEndTick ? 9 :
-                             label.length > 0 ? 1 :
-                             0;
-            const textAnchor = isBeginTick ? "start" :
-                               isEndTick ? "end" :
-                               "middle";
-            return {
-                pos: this.state.scaleDef.scale(t),
-                label,
-                priority,
-                textAnchor,
-            };
-        });
+            return {pos: this.state.scaleDef.scale(t), label, role};
+        };
+
+        const ticksData = this.state.scaleDef.ticks.map(generateDataForTick);
 
         this.generateTicksFromData(ticksData);
 
@@ -726,33 +713,58 @@ class TimelineD3 extends Component {
         const createTick = (sel) => {
             return sel.append("g")
                 .classed("tick", true)
-                .call(g => g.append("line").attr("stroke", "currentColor").attr("y2", "6"))
+                .call(g => g.append("line").attr("stroke", "currentColor"))
                 .call(g =>
-                    g.append("text").classed("tick-label", true).attr("fill", "currentColor").attr("y", 9).attr("dy", "0.71em")
+                    g.append("text").classed("tick-label", true).attr("fill", "currentColor").attr("dy", "0.71em")
                 );
         };
 
+        const config = {
+            begin: {
+                size: 10,
+                textAnchor: "start",
+            },
+            end: {
+                size: 10,
+                textAnchor: "end",
+            },
+            big: {
+                size: 10,
+                textAnchor: "middle",
+            },
+            small: {
+                size: 3,
+                textAnchor: null,
+            },
+        };
 
         select(this.axisN).selectAll(".tick")
             .data(ticksData)
             .join(createTick)
             .attr("transform", d => `translate(${d.pos}, 0)`)
+            .call(sel => sel.select("line").attr("y2", d => config[d.role].size))
             .select(".tick-label")
                 .text(d => d.label)
-            .attr("text-anchor", d => d.textAnchor);
+                .attr("y", d => config[d.role].size + 3)
+                .attr("text-anchor", d => config[d.role].textAnchor);
     }
 
     filterTicks() {
+        const priorityConf = {
+            begin: 10,
+            end: 9,
+            big: 2,
+            small: 1
+        };
+
         const tickDataArr = [];
         select(this.axisN).selectAll(".tick").each(function (d, i) {
-            const bbox = this.getBBox();
-            const begin = d.textAnchor === "start" ? d.pos :
-                          d.textAnchor === "end" ? d.pos - bbox.width :
-                          d.pos - bbox.width/2;
+            const box = this.getBoundingClientRect();
             tickDataArr[i] = {
                 ...d,
-                begin,
-                end: begin + bbox.width,
+                begin: box.x,
+                end: box.x + box.width,
+                priority: priorityConf[d.role],
             };
         });
 
@@ -761,19 +773,19 @@ class TimelineD3 extends Component {
         const minSpace = 8;
         for(let i = 1; i < tickDataArr.length; i++) {
             const currTick = tickDataArr[i];
-            const isBigTick = currTick.label.length > 0;
+            const isSmallTick = currTick.role === "small";
 
-            // console.log({lastBigTick, lastTick, currTick});
-            if (isBigTick && lastBigTick.end + minSpace > currTick.begin) {
+            console.log({lastBigTick, lastTick, currTick});
+            if (!isSmallTick && lastBigTick.end + minSpace > currTick.begin) {
                 if (currTick.priority <= lastBigTick.priority) {
-                    currTick.label = "";
+                    currTick.role = "small";
                 } else {
-                    lastBigTick.label = "";
+                    lastBigTick.role = "small";
                     lastBigTick = currTick;
                 }
 
-                // console.log("Big tick collision", {lastBigTick, currTick});
-            } else if (isBigTick) {
+                console.log("Big tick collision", {lastBigTick, currTick});
+            } else if (!isSmallTick) {
                 lastBigTick = currTick;
             }
 
@@ -785,19 +797,19 @@ class TimelineD3 extends Component {
                     lastTick = currTick;
                 }
 
-                // console.log("Small tick collision", {lastTick, currTick});
+                console.log("Small tick collision", {lastTick, currTick});
             } else {
                 lastTick = currTick;
             }
         }
 
-        return tickDataArr.filter(d => !d.isOmitted).map(d => ({
-            pos: d.pos,
-            label: d.label,
-            priority: d.priority,
-            id: d.id,
-            textAnchor: d.textAnchor
-        }));
+        console.log("---------------END");
+        return tickDataArr.filter(d => !d.isOmitted).map(d => {
+            // delete d.begin;
+            // delete d.end;
+            if (d.role === "small") d.label = "";
+            return d;
+        });
     }
 
 
@@ -920,541 +932,6 @@ class TimelineD3 extends Component {
                     <use href={`#hoverPointerDef_${this.props.id}`} color="black" ref={node => this.hoverPointerN = node} />
                 </svg>
             </>
-        );
-    }
-}
-
-class BottomAxis extends Component {
-    static propTypes = {
-        scaleRefFunc: PropTypes.func,
-        scaleDefinition: PropTypes.shape({
-            ticks: PropTypes.arrayOf(PropTypes.any),
-            tickLabelFormat: PropTypes.func,
-            scale: PropTypes.func,
-        }),
-    }
-
-    constructor(props) {
-        super(props);
-
-        this.tickLength = 6;
-    }
-
-    componentDidUpdate(prevProps) {
-        if (this.props.scaleDefinition !== prevProps.scaleDefinition) this.init();
-    }
-
-    componentDidMount() {
-        if (this.props.scaleDefinition) this.init();
-    }
-
-    init() {
-        const tickArr = this.props.scaleDefinition.ticks.map(t => ({pos: this.props.scaleDefinition.scale(t), label: this.props.scaleDefinition.tickLabelFormat(t)}));
-        this.generateTicks(tickArr);
-    }
-
-    generateTicks(tickArr) {
-        const createTick = (sel) => {
-            sel.append("g")
-                .classed("tick", true)
-                .call(g =>
-                    g.append("line").attr("stroke", "currentColor").attr("y2", this.tickLength)
-                )
-                .call( g=>
-                    g.append("text").classed("tick-label", true).attr("fill", "currentColor").attr("y", 9).attr("dy", "0.71em")
-                );
-        };
-
-        select(this.gN).selectAll(".tick")
-            .data(tickArr)
-            .join(createTick)
-            .attr("transform", d => `translate(${d.pos}, 0)`)
-            .select("tick-label").text(d => d.label);
-
-        select(this.gN)
-            .call(g => g
-                .attr("pointer-events", "bounding-box")
-                .classed("timeline-axis", true)
-            ).call(g => g.select(".domain")
-
-            ).call(g =>
-                this.playbackLineSel = g
-                    .append("line")
-                    .attr("stroke", "red")
-            );
-    }
-
-    render() {
-        return (
-            <g ref={node => {this.gN = node; this.props.scaleRefFunc(node);}}>
-            </g>
-        );
-    }
-}
-
-const timeIntervals_ = [
-    moment.duration(1, 'seconds').asMilliseconds(),
-    moment.duration(5, 'seconds').asMilliseconds(),
-    moment.duration(10, 'seconds').asMilliseconds(),
-    moment.duration(30, 'seconds').asMilliseconds(),
-    moment.duration(1, 'minutes').asMilliseconds(),
-    moment.duration(5, 'minutes').asMilliseconds(),
-    moment.duration(10, 'minutes').asMilliseconds(),
-    moment.duration(30, 'minutes').asMilliseconds(),
-    moment.duration(1, 'hours').asMilliseconds(),
-    moment.duration(6, 'hours').asMilliseconds(),
-    moment.duration(12, 'hours').asMilliseconds(),
-    moment.duration(1, 'days').asMilliseconds(),
-    moment.duration(3, 'days').asMilliseconds(),
-    moment.duration(1, 'weeks').asMilliseconds(),
-    moment.duration(2, 'weeks').asMilliseconds(),
-    moment.duration(1, 'months').asMilliseconds(),
-    moment.duration(3, 'months').asMilliseconds(),
-    moment.duration(6, 'months').asMilliseconds(),
-    moment.duration(1, 'years').asMilliseconds(),
-];
-
-export const timeContext = {
-    SECOND: 0,
-    MINUTE: 1,
-    HOUR: 2,
-    DAY: 3,
-    MONTH: 4,
-    YEAR: 5,
-    ETERNITY: 6,
-};
-
-// Objects describing label formatting func
-// formattingFunc: accepting timestamp(num of ms), returning formatted string
-// argForMaxLabel: timestamp(num of ms) for which formattingFunc will give label
-// of maximum length
-function LabelFormat(formattingFunc, argForMaxLabel) {
-    this.format = formattingFunc;
-    this.maxLabel = formattingFunc(argForMaxLabel);
-}
-
-// Generates LabelFormat for duration based time points
-// maxDuration: max duration of animation as ms or as moment.duration
-// commonTimeContext: common time context of the duration
-// t: translate function
-function generateDurationFormat(maxDuration, commonTimeContext, t) {
-
-    function getDecomposition(wholeMomDuration) {
-        const addLeadingZeros = (n) => n < 10 ? "0" + n : "" + n;
-
-        return {
-            asMilliseconds: wholeMomDuration.asMilliseconds().toFixed(3),
-            seconds: addLeadingZeros(wholeMomDuration.seconds()),
-            minutes: addLeadingZeros(wholeMomDuration.minutes()),
-            hours:   addLeadingZeros(wholeMomDuration.hours()),
-            days:   wholeMomDuration.days(),
-            months: wholeMomDuration.months(),
-            years:  wholeMomDuration.years(),
-        };
-    }
-
-    function tWithCount(word, count) {
-        console.log(t("seconds", {count: 7}));
-        return count + " " + t(word, {count: count});
-    }
-
-    let formattingFunc;
-    switch (commonTimeContext) {
-        case timeContext.ETERNITY:
-            formattingFunc = (d) =>
-                `${d.years && tWithCount("year", d.years)} ` +
-                `${d.months && tWithCount("month", d.months)} ` +
-                `${tWithCount("day", d.days)}`;
-            break;
-
-        case timeContext.YEAR:
-            formattingFunc = (d) =>
-                `${d.months && tWithCount("month", d.months)} ${tWithCount("day", d.days)}`;
-            break;
-
-        case timeContext.MONTH:
-            formattingFunc = (d) =>
-                `${d.days && tWithCount("day", d.days)} ${d.hours}:${d.minutes}`;
-            break;
-
-        case timeContext.DAY:
-            //adding seconds for clarity
-            formattingFunc = (d) => `${d.hours}:${d.minutes}:${d.seconds}`;
-            break;
-
-
-        case timeContext.HOUR:
-            formattingFunc = (d) => `${d.minutes}:${d.seconds}`;
-            break;
-
-        case timeContext.MINUTE:
-            formattingFunc = (d) => tWithCount("second", d.seconds);
-            break;
-
-        default:
-            formattingFunc = (d) => tWithCount("second", d.asMilliseconds);
-    }
-
-    const maxLabelLengthFor = moment.duration({
-        seconds: 59,
-        minutes: 59,
-        hours: 23,
-        days: 29,
-        months: 11,
-        years: maxDuration.years(),
-    }).asMilliseconds();
-
-    const formattingFuncWrapper = (ts) => {
-        const decompDuration = getDecomposition(moment.duration(ts));
-        return formattingFunc(decompDuration);
-    };
-
-    return new LabelFormat(formattingFuncWrapper, maxLabelLengthFor);
-}
-
-// Generates LabelFormat for timestamp based time points
-// commonTimeContext: time context shared by both time points
-// TODO: add locale support
-// TODO: think about differentiating hours vs minutes vs seconds
-function generateTimestampFormat(commonTimeContext) {
-    console.log(commonTimeContext);
-    let formatStr;
-    let afterFormat = null;
-
-    switch(commonTimeContext) {
-        case timeContext.ETERNITY:
-            formatStr = "ll"; //Sep 4, 1986
-            break;
-
-        case timeContext.YEAR:
-            formatStr = "MMM D"; //Sep 4
-            break;
-
-        case timeContext.MONTH:
-            formatStr = "D, LT"; //4, 8:30 PM
-            break;
-
-        case timeContext.DAY:
-            formatStr = "LTS"; //8:30:25 PM
-            break;
-
-        case timeContext.HOUR:
-            formatStr = "mm:ss"; //30:25
-            break;
-
-        case timeContext.MINUTE:
-            formatStr = "ss"; //25
-            afterFormat = (strTime) => strTime + " sec.";
-            break;
-
-        default:
-            formatStr = "ss.SSS"; //25.123
-            afterFormat = (strTime) => strTime + " sec.";
-            break;
-    }
-
-    const formatFunc = (ts) => {
-        const momentTs = moment(ts);
-        return afterFormat ?
-            afterFormat(momentTs.format(formatStr)) : momentTs.format(formatStr);
-    };
-
-    const maxLabelLengthFor = moment({
-        milliseconds: 999,
-        seconds: 59,
-        minutes: 59,
-        hours: 23,
-        days: 31,
-        months: 0, //Zero based months
-        years: 2020,
-    }).valueOf();
-
-    return new LabelFormat(formatFunc, maxLabelLengthFor);
-}
-
-function getCommonTimeContextForTimestamps(ts1, ts2) {
-    const momentTimeContexts = Object.keys(timeContext).map(key => key.toLowerCase());
-
-    let mtc;
-    for (mtc of momentTimeContexts) {
-        if (mtc === "eternity" || ts1.isSame(ts2, mtc)) break;
-    }
-
-    return timeContext[mtc.toUpperCase()];
-}
-
-function getCommonTimeContextForDuration(duration) {
-    if (duration.years() > 0) return timeContext.ETERNITY;
-    if (duration.months() > 0) return timeContext.YEAR;
-    if (duration.days() > 0) return timeContext.MONTH;
-    if (duration.hours() > 0) return timeContext.DAY;
-    if (duration.minutes() > 0) return timeContext.HOUR;
-    if (duration.seconds() > 0) return timeContext.MINUTE;
-    return timeContext.SECOND;
-}
-
-@withComponentMixins([
-    withTranslation
-])
-class Timeline extends Component {
-    static propTypes = {
-        length: PropTypes.number,
-        beginTs: PropTypes.number,
-        width: PropTypes.string,
-
-        bigTickMargin: PropTypes.number,
-        smallTickMargin: PropTypes.number,
-        labelFontSize: PropTypes.string,
-        timeIntervals: PropTypes.arrayOf(PropTypes.number),
-        t: PropTypes.func,
-    }
-
-    static defaultProps = {
-        timeIntervals: timeIntervals_,
-    }
-
-    constructor(props) {
-        super(props);
-        this.state = {
-            value: 0,
-        };
-
-        this.minPos = 30;
-        this.maxPos = 770;
-
-        this.pointerSide = 5;
-        this.pointerHeight = 0.5 * Math.sqrt(3) * this.pointerSide;
-
-        this.scaleY = 30;
-        this.labelHeight = 16;
-        this.innerSvg = `
-            <svg id="innerSvg" viewBox="0 0 800 70" xmlns="http://www.w3.org/2000/svg">
-                <filter x="-0.08" y="0" width="116%" height="100%" id="solid">
-                    <feFlood flood-color="black"></feFlood>
-                    <feComposite in="SourceGraphic" operator="over"></feComposite>
-                </filter>
-                <text id="test-label"
-                    x="0" y="0" fill-opacity="0" dominant-baseline="hanging" style="display: none"/>
-                <text id="begin-label"
-                    text-anchor="start" x="10" y="${this.scaleY}" dominant-baseline="hanging" />
-                <g id="scale">
-                </g>
-                <g id="pointer" style="display: none">
-                    <text id="label" class="label" text-anchor="middle" y="${this.labelHeight}"></text>
-                    <polygon class="triangle"
-                        points="" fill="black" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                </g>
-                <g id="hover-pointer" style="display:none" color="#707070">
-                    <text id="hover-label" class="label"
-                        text-anchor="middle" y="${this.labelHeight}"
-                        fill="white" filter="url(#solid)"></text>
-                    <polygon class="triangle"
-                        points="" fill="black" stroke="black" stroke-width="2" stroke-linejoin="round" />
-                </g>
-                <text id="end-label"
-                    text-anchor="end" x="790" y="${this.scaleY}"
-                    dominant-baseline="hanging" />
-            </svg>`;
-    }
-
-    componentDidUpdate(prevProps) {
-        // if (prevProps.width !== this.props.width ||
-        //     prevProps.beginTs !== this.props.beginTs) {
-        //     this.generateTicks();
-        // }
-    }
-
-    componentDidMount() {
-        this.renderTestLabel();
-        // this.renderEndpointLabels();
-        // this.generateTicks();
-        //window.addEventListener("resize", ::this.generateTicks);
-    }
-
-    componentWillUnmount() {
-        // window.removeEventListener("resize", ::this.generateTicks);
-    }
-
-    renderTestLabel() {
-        this.generateLabelFormat();
-        this.getLabelClientRect();
-        this.renderTimeline();
-    }
-
-    generateLabelFormat() {
-        const isRelative = this.props.beginTs === undefined || this.props.beginTs === null;
-
-        if (isRelative) {
-            const duration = moment.duration(this.props.length);
-            const timeContext = getCommonTimeContextForDuration(duration);
-            console.log({duration, timeContext});
-            this.labelFormat = generateDurationFormat(duration, timeContext, this.props.t);
-        } else {
-            const ts1 = moment(this.props.beginTs);
-            const ts2 = moment(this.props.beginTs + this.props.length);
-            const timeContext = getCommonTimeContextForTimestamps(ts1, ts2);
-            this.labelFormat = generateTimestampFormat(timeContext);
-        }
-    }
-
-    getLabelClientRect() {
-        this.testLabelNode.
-            text(this.labelFormat.maxLabel).
-            style("font-size", this.props.labelFontSize).
-            style("display", "block");
-
-        const testLabelRect = this.testLabelNode.node().getBoundingClientRect();
-        this.labelClientRect = {width: testLabelRect.width, height: testLabelRect.height};
-
-        this.testLabelNode.style("display", "none");
-    }
-
-    renderTimeline() {
-        this.scaleNode.selectAll(".tick").remove();
-
-        const isRelative = this.props.beginTs === undefined || this.props.beginTs === null;
-
-        const beginTime = isRelative ? 0 : this.props.beginTs;
-        const endTime = beginTime + this.props.length;
-
-        //TODO: vyporadat se s vyskou
-        this.beginLabelNode.
-            text(this.labelFormat.format(beginTime)).
-            style("font-size", this.props.labelFontSize);
-        this.endLabelNode.
-            text(this.labelFormat.format(endTime)).
-            style("font-size", this.props.labelFontSize);
-
-        const containerWidth = this.svgNodeSel.node().getBoundingClientRect().width;
-        const scalePadding = 10;
-        const scaleWidth = containerWidth - 2*this.labelClientRect.width - 2*scalePadding;
-        this.minPos = this.beginLabelNode.attr("x");
-    }
-
-    movePointer(pointerNode, position) {
-        const pointerY = this.scaleY - 5;
-
-        const leftUp =`${position - (this.pointerSide*0.5)},${pointerY - this.pointerHeight}`;
-        const rightUp = `${position + (this.pointerSide*0.5)},${pointerY - this.pointerHeight}`;
-        const down = `${position},${pointerY}`;
-
-        pointerNode.select(".triangle").attr("points", `${leftUp} ${rightUp} ${down}`);
-        pointerNode.select(".label").attr("x", position);
-    }
-
-    getMsWidth() {
-        const currWidth = this.svgNodeSel.node().getBoundingClientRect().width;
-        return ((this.maxPos - this.minPos) / this.props.length) * (currWidth / 800);
-    }
-
-    computeTickFrequency() {
-        const msWidth = this.getMsWidth();
-
-        let i = 0;
-        while (i < this.props.timeIntervals.length && this.props.timeIntervals[i] * msWidth < this.props.bigTickMargin) i++;
-
-        let bigTickFactor = 1;
-        if (i === this.props.timeIntervals.length) {
-            i--;
-            while (this.props.timeIntervals[i] * msWidth * bigTickFactor < this.props.bigTickMargin) bigTickFactor++;
-        }
-
-        const bigTickFreq = this.props.timeIntervals[i]*bigTickFactor; //could be bigger than this.length
-
-        let smallTicksCount = 2;
-        while ((bigTickFreq/(smallTicksCount + 1)) * msWidth > this.props.smallTickMargin) smallTicksCount++;
-
-        return {bigTickFreq, smallTicksCount};
-    }
-
-    generateTicks() {
-        const scaleNode = this.svgNodeSel.select("#scale");
-        scaleNode.selectAll(".tick").remove();
-
-        const {bigTickFreq, smallTicksCount} = this.computeTickFrequency();
-        const msWidth = this.getMsWidth();
-        const smallTickFreq = bigTickFreq / smallTicksCount;
-
-        let nextTickPos = this.minPos + msWidth*smallTickFreq; //if relative, find last spot
-        console.log({bigTickFreq, smallTicksCount, msWidth, nextTickPos});
-
-        let tickCount = 1;
-        while (nextTickPos < this.maxPos) {
-            if (tickCount % smallTicksCount === 0) {
-                this.drawBigTick(scaleNode, nextTickPos);
-            }
-            else {
-                this.drawSmallTick(scaleNode, nextTickPos);
-            }
-
-            nextTickPos += msWidth*smallTickFreq;
-            tickCount++;
-        }
-
-        this.drawBigTick(scaleNode, this.minPos);
-        this.drawBigTick(scaleNode, this.maxPos);
-    }
-
-    drawSmallTick(scaleNode, pos) {
-        console.log("drawSmallTick");
-        const tickLength = 8;
-
-        scaleNode.append("line").classed("tick", true).
-            attr("x1", pos).
-            attr("x2", pos).
-            attr("y1", this.scaleY).
-            attr("y2", this.scaleY + tickLength).
-            attr("stroke", "black").
-            attr("stroke-width", "2").
-            attr("stroke-linecap", "round");
-
-    }
-
-    drawBigTick(scaleNode, pos) {
-        console.log("drawBigTick");
-        const tickLength = 12;
-
-        scaleNode.append("line").classed("tick", true).
-            attr("x1", pos).
-            attr("x2", pos).
-            attr("y1", this.scaleY).
-            attr("y2", this.scaleY + tickLength).
-            attr("stroke", "black").
-            attr("stroke-width", "4").
-            attr("stroke-linecap", "round");
-    }
-
-
-    render() {
-        console.log(this.props.t("dog", {count: 2}));
-        console.log(styles);
-        return (
-            <SliderBase
-                width={this.props.width}
-                height={"auto"}
-
-                innerSvg={this.innerSvg}
-                minPos={this.minPos}
-                maxPos={this.maxPos}
-
-                value={this.state.value}
-                setValue={(value) => this.setState({value})}
-                printValue={(value) => value.toFixed(2)}
-
-                snapTo={(value) => value}
-                movePointer={::this.movePointer}
-                moveHoverPointer={::this.movePointer}
-
-                init={(node) => {
-                    this.svgNodeSel = select(node);
-                    this.testLabelNode = this.svgNodeSel.select("#test-label");
-                    this.beginLabelNode = this.svgNodeSel.select("#begin-label");
-                    this.endLabelNode = this.svgNodeSel.select("#end-label");
-                    this.scaleNode = this.svgNodeSel.select("#scale");
-                }}
-                data={{
-                }}
-            />
         );
     }
 }
@@ -1808,4 +1285,4 @@ class SliderBase extends Component {
 
 }
 
-export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline, TimelineD3};
+export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline};
