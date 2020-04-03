@@ -349,7 +349,7 @@ export class HeatmapChart extends Component {
                         this.zoom = null;
                         this.setState({
                             signalSetData: null,
-                            statusMsg: "No data."
+                            statusMsg: this.props.t("No data.")
                         });
                         return;
                     }
@@ -360,6 +360,7 @@ export class HeatmapChart extends Component {
                     });
                 }
             } catch (err) {
+                this.setState({statusMsg: this.props.t("Error loading data.")});
                 throw err;
             }
         }

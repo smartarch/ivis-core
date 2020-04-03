@@ -697,7 +697,7 @@ export class ScatterPlotBase extends Component {
                             signalSetsData: null,
                             globalSignalSetsData: null,
                             noData: true,
-                            statusMsg: "No data."
+                            statusMsg: this.props.t("No data.")
                         });
                         return;
                     }
@@ -801,6 +801,7 @@ export class ScatterPlotBase extends Component {
                 this.createChart(true);
             }
         } catch (err) {
+            this.setState({statusMsg: this.props.t("Error loading data.")});
             throw err;
         }
     }

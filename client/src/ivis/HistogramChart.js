@@ -277,7 +277,7 @@ export class HistogramChart extends Component {
                     if (processedResults.buckets.length === 0) {
                         this.setState({
                             signalSetData: null,
-                            statusMsg: "No data."
+                            statusMsg: this.props.t("No data.")
                         });
                         this.brush = null;
                         this.zoom = null;
@@ -312,6 +312,7 @@ export class HistogramChart extends Component {
                     });
                 }
             } catch (err) {
+                this.setState({statusMsg: this.props.t("Error loading data.")});
                 throw err;
             }
         }
