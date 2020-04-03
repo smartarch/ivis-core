@@ -434,7 +434,20 @@ function createCertificates {
     local hostAPI="$3"
     local email="$4"
 
+    local certbotBin="certbot"
+    local certbotPath="/usr/bin/"
+
     case "$hostType" in
+        centos8-aws|centos8-minimal)
+            #
+            certbotPath="/usr/local/bin/"
+            certbotBin="certbot-auto"
+
+            curl -O https://dl.eff.org/certbot-auto
+            mv certbot-auto "${certbotPath}${certbotBin}"
+            chmod 0755 "${certbotPath}${certbotBin}"
+            ;;
+
         centos7-aws|centos7-minimal)
             yum install -y certbot python2-certbot-apache
             ;;
@@ -446,13 +459,13 @@ function createCertificates {
 
     # The --expand flag is to support cases when an existing installation is just being reconfigured
     if [ -n "${hostAPI}" ]; then
-        certbot certonly --agree-tos --email "${email}" --webroot --webroot-path /var/www/html --expand -n -d "${hostTrusted}" -d "${hostSandbox}" -d "${hostAPI}"
+        "${certbotBin}" certonly --agree-tos --email "${email}" --webroot --webroot-path /var/www/html --expand -n -d "${hostTrusted}" -d "${hostSandbox}" -d "${hostAPI}"
     else
-        certbot certonly --agree-tos --email "${email}" --webroot --webroot-path /var/www/html --expand -n -d "${hostTrusted}" -d "${hostSandbox}"
+        "${certbotBin}" certonly --agree-tos --email "${email}" --webroot --webroot-path /var/www/html --expand -n -d "${hostTrusted}" -d "${hostSandbox}"
     fi
 
     # Install cron
-    echo "0 3 * * * /usr/bin/certbot certonly --apache -n -d \"${hostTrusted}\" -d \"${hostSandbox}\" -d \"${hostAPI}\"" > crontab
+    echo "0 3 * * * \"${certbotPath}${certbotBin}\" certonly --apache -n -d \"${hostTrusted}\" -d \"${hostSandbox}\" -d \"${hostAPI}\"" > crontab
     crontab crontab
     rm -rf crontab
 }
