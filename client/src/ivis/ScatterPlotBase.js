@@ -27,6 +27,7 @@ import {ActionLink, Icon} from "../lib/bootstrap-components";
 import {distance, extentWithMargin, getColorScale, getExtent, isInExtent, isSignalVisible, ModifyColorCopy, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
+import {withPageHelpers} from "../lib/page-common";
 
 const ConfigDifference = {
     NONE: 0,
@@ -306,6 +307,7 @@ class ScatterPlotToolbar extends Component {
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
+    withPageHelpers,
     intervalAccessMixin()
 ], ["setMaxDotCount", "setWithTooltip", "getView", "setView"])
 export class ScatterPlotBase extends Component {
@@ -587,7 +589,6 @@ export class ScatterPlotBase extends Component {
                     yMin = this.state.yMin;
                 if (yMax === undefined && !isNaN(this.state.yMax))
                     yMax = this.state.yMax;
-                // TODO does not work when updating after brush zoom!!!
             }
 
             // set limits to props (if not set yet)
@@ -762,12 +763,19 @@ export class ScatterPlotBase extends Component {
                     for (const [j, res] of results.filter((_, i) => queries[i].type === "aggs").entries()) {
                         const buckets = res[0].buckets;
                         const i = aggsQueriesSignalSetIndices[j];
+                        const signalSetConfig = this.props.config.signalSets[i];
                         if (this.props.colorValues && this.props.colorValues.length)
                             this.dExtents[i] = this.props.colorValues;
                         else
                             this.dExtents[i] = buckets.map(b => b.key);
+
+                        if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
+                            if (this.dExtents[i].length > signalSetConfig.color.length)
+                                this.setFlashMessage("warning", "More values than colors in signal set config at index " + i + ". Colors will be repeated.");
                     }
                     this.dExtent = [...new Set(this.dExtents.flat())]; // get all keys in extents and then keeps only unique values
+                    if (this.props.config.signalSets.some(s => !Array.isArray(s.color)) && this.dExtent.length > this.props.colors.length)
+                        this.setFlashMessage("warning", "More values than colors in props. Colors will be repeated.");
                     //</editor-fold>
                 }
 
@@ -897,12 +905,8 @@ export class ScatterPlotBase extends Component {
             } else if (signalSetConfig.hasOwnProperty("colorDiscrete_sigCid")) {
                 if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0) {
                     const dExtent = this.dExtents[i];
-                    if (dExtent.length > signalSetConfig.color.length)
-                        console.warn("More values than colors in signal set config " + i + ". Colors will be repeated."); // TODO better warning
                     cScales.push(d3Scale.scaleOrdinal(dExtent, signalSetConfig.color));
                 } else {
-                    if (this.dExtent.length > this.props.colors.length)
-                        console.warn("More values than colors in props. Colors will be repeated."); // TODO better warning
                     cScales.push(d3Scale.scaleOrdinal(this.dExtent, this.props.colors));
                 }
             } else {
