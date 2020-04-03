@@ -1,0 +1,32 @@
+.timeline {
+    color: #000;
+
+    $accentColor: #20a8d8;
+    $grey: #73818f;
+
+    .label {
+        user-select: none;
+    }
+
+    .tickLabel {
+        font-size: 0.9em;
+    }
+
+    .playbackLine {
+        fill: $accentColor;
+    }
+
+    .pointer {
+        fill: $accentColor;
+        stroke: $accentColor;
+    }
+
+    .hoverPointer {
+        fill: $grey;
+        stroke: $grey;
+    }
+}
+
+
+
+
