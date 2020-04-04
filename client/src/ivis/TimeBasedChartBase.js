@@ -443,9 +443,10 @@ export class TimeBasedChartBase extends Component {
 
         const renderStatus = this.props.createChart(this, signalSetsData, this.state, abs, xScale);
 
-        if (renderStatus == RenderStatus.NO_DATA) {
-            this.statusMsgSelection.text(t('No data.'));
-        }
+        if (renderStatus === RenderStatus.NO_DATA)
+            this.setState({statusMsg: t('No data.')});
+        else
+            this.setState({statusMsg: ""})
     }
     setInterval(from, to) {
         const intv = this.getInterval();
@@ -574,7 +575,10 @@ export class TimeBasedChartBase extends Component {
                     <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
                     <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                     <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>
-                    <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"/>
+                    <text textAnchor="middle" x="50%" y="50%"
+                          fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                        {this.state.statusMsg}
+                    </text>
                     {this.props.withTooltip &&
                         <Tooltip
                             config={this.props.config.signalSets}
