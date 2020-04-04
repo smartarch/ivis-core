@@ -17,6 +17,8 @@ import * as dateMath from "../lib/datemath";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
+import {setZoomTransform, transitionInterpolate, WheelDelta} from "./common";
+import * as d3Zoom from "d3-zoom";
 
 export function createBase(base, self) {
     self.base = base;
@@ -179,8 +181,10 @@ export class TimeBasedChartBase extends Component {
             mousePosition: null,
             signalSetsData: null,
             statusMsg: t('Loading...'),
-            width: 0
+            width: 0,
+            zoomTransform: d3Zoom.zoomIdentity
         };
+        this.zoom = null;
 
         this.resizeListener = () => {
             this.createChart(this.state.signalSetsData);
@@ -198,6 +202,8 @@ export class TimeBasedChartBase extends Component {
         margin: PropTypes.object.isRequired,
         withBrush: PropTypes.bool,
         withTooltip: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
 
@@ -219,7 +225,8 @@ export class TimeBasedChartBase extends Component {
     static defaultProps = {
         tooltipExtraProps: {},
         minimumIntervalMs: 10000,
-        getSvgDefs: () => null
+        getSvgDefs: () => null,
+        zoomUpdateReloadInterval: 1000
     }
 
     updateTimeIntervalChartWidth() {
@@ -262,6 +269,8 @@ export class TimeBasedChartBase extends Component {
                 signalSetsData: null,
                 statusMsg: t('Loading...')
             });
+            this.resetZoom();
+            this.zoom = null;
 
             this.fetchData();
 
@@ -270,13 +279,17 @@ export class TimeBasedChartBase extends Component {
         } else if (this.delayedFetchDueToTimeIntervalChartWidthUpdate || prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
             this.delayedFetchDueToTimeIntervalChartWidthUpdate = false;
 
+            if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) // update time interval based on what is currently visible
+                this.setInterval(...this.xScaleDomain);
+
             this.fetchData();
 
         } else {
             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || configDiff !== ConfigDifference.NONE
-                || this.getIntervalAbsolute(prevProps) !== this.getIntervalAbsolute();
+                || this.getIntervalAbsolute(prevProps) !== this.getIntervalAbsolute()
+                || !Object.is(prevState.zoomTransform, this.state.zoomTransform);
 
             this.createChart(signalSetsData, forceRefresh);
             this.prevContainerNode = this.containerNode;
@@ -285,6 +298,7 @@ export class TimeBasedChartBase extends Component {
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.resizeListener);
+        clearTimeout(this.zoomUpdateReloadTimeoutID);
     }
 
     @withAsyncErrorHandler
@@ -346,7 +360,6 @@ export class TimeBasedChartBase extends Component {
     createChart(signalSetsData, forceRefresh) {
         const t = this.props.t;
         const self = this;
-        const intv = this.getInterval();
 
         const width = this.containerNode.getClientRects()[0].width;
 
@@ -367,9 +380,12 @@ export class TimeBasedChartBase extends Component {
 
         const abs = this.getIntervalAbsolute();
 
-        const xScale = d3Scale.scaleTime()
-            .domain([abs.from, abs.to])
-            .range([0, width - this.props.margin.left - this.props.margin.right]);
+        const xScale = this.state.zoomTransform.rescaleX(
+            d3Scale.scaleTime()
+                .domain([abs.from, abs.to])
+                .range([0, width - this.props.margin.left - this.props.margin.right])
+        );
+        this.xScaleDomain = xScale.domain().map(d => d.valueOf());
 
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
@@ -381,6 +397,10 @@ export class TimeBasedChartBase extends Component {
         if (this.props.withBrush) {
             const brush = d3Brush.brushX()
                 .extent([[0, 0], [width - this.props.margin.left - this.props.margin.right, this.props.height - this.props.margin.top - this.props.margin.bottom]])
+                .filter(() => { // TODO what to do when withZoom == false
+                    // noinspection JSUnresolvedVariable
+                    return d3Event.ctrlKey && !d3Event.button; // enable brush only when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
+                })
                 .on("end", function brushed() {
                     const sel = d3Event.selection;
 
@@ -388,19 +408,7 @@ export class TimeBasedChartBase extends Component {
                         const selFrom = xScale.invert(sel[0]).valueOf();
                         let selTo = xScale.invert(sel[1]).valueOf();
 
-                        if (selTo - selFrom < self.props.minimumIntervalMs) {
-                            selTo = selFrom + self.props.minimumIntervalMs;
-                        }
-
-                        const rounded = intv.roundToMinAggregationInterval(selFrom, selTo);
-
-                        const spec = new IntervalSpec(
-                            rounded.from,
-                            rounded.to,
-                            null
-                        );
-
-                        intv.setSpec(spec);
+                        self.setInterval(selFrom, selTo);
 
                         self.brushSelection.call(brush.move, null);
                     }
@@ -424,6 +432,8 @@ export class TimeBasedChartBase extends Component {
                 .attr('visibility', 'hidden');
         }
 
+        if (this.props.withZoom)
+            this.createChartZoom();
 
         this.cursorLineVisible = false;
         this.cursorSelection
@@ -436,6 +446,78 @@ export class TimeBasedChartBase extends Component {
         if (renderStatus == RenderStatus.NO_DATA) {
             this.statusMsgSelection.text(t('No data.'));
         }
+    }
+    setInterval(from, to) {
+        const intv = this.getInterval();
+
+        if (to - from < this.props.minimumIntervalMs) {
+            to = from + this.props.minimumIntervalMs;
+        }
+
+        const rounded = intv.roundToMinAggregationInterval(from, to);
+
+        const spec = new IntervalSpec(
+            rounded.from,
+            rounded.to,
+            null
+        );
+
+        intv.setSpec(spec);
+    }
+
+    createChartZoom() {
+        const self = this;
+
+        const handleZoom = function () {
+            // noinspection JSUnresolvedVariable
+            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                transitionInterpolate(self.containerNodeSelection, self.state.zoomTransform, d3Event.transform, setZoomTransform(self));
+            } else {
+                // noinspection JSUnresolvedVariable
+                self.setState({zoomTransform: d3Event.transform});
+            }
+        };
+
+        const handleZoomStart = function () {
+            clearTimeout(self.zoomUpdateReloadTimeoutID);
+        };
+
+        const handleZoomEnd = function () {
+            // noinspection JSUnresolvedVariable
+            if (self.props.zoomUpdateReloadInterval === null || self.props.zoomUpdateReloadInterval === undefined) // don't update automatically
+                return;
+            // noinspection JSUnresolvedVariable
+            if (!Object.is(d3Event.transform, d3Zoom.zoomIdentity))
+                if (self.props.zoomUpdateReloadInterval > 0) {
+                    clearTimeout(self.zoomUpdateReloadTimeoutID);
+                    self.zoomUpdateReloadTimeoutID = setTimeout(() => {self.setInterval(...self.xScaleDomain)}, self.props.zoomUpdateReloadInterval);
+                }
+                else if (self.props.zoomUpdateReloadInterval >= 0)
+                    self.setInterval(...self.xScaleDomain);
+        };
+
+        const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
+        const zoomExtent = [[0, 0], [this.renderedWidth - this.props.margin.left - this.props.margin.right, ySize]];
+        const translateExtent = [[-Infinity, 0], [Infinity, this.props.height - this.props.margin.top - this.props.margin.bottom]];
+        const zoomExisted = this.zoom !== null;
+        this.zoom = zoomExisted ? this.zoom : d3Zoom.zoom();
+        this.zoom
+            .translateExtent(translateExtent)
+            .extent(zoomExtent)
+            .on("zoom", handleZoom)
+            .on("end", handleZoomEnd)
+            .on("start", handleZoomStart)
+            .wheelDelta(WheelDelta(3));
+        this.containerNodeSelection.call(this.zoom);
+    }
+    setZoom(transform) {
+        if (this.props.withZoom && this.zoom)
+            this.containerNodeSelection.call(this.zoom.transform, transform);
+        else
+            this.setState({zoomTransform: transform})
+    }
+    resetZoom() {
+        this.setZoom(d3Zoom.zoomIdentity);
     }
 
     render() {
@@ -477,7 +559,7 @@ export class TimeBasedChartBase extends Component {
 
 
             return (
-                <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                <svg id="cnt" ref={node => {this.containerNode = node; this.containerNodeSelection = select(node)}} height={this.props.height} width="100%">
                     {this.props.getSvgDefs(this)}
                     <defs>
                         <clipPath id="plotRect">
@@ -485,6 +567,8 @@ export class TimeBasedChartBase extends Component {
                         </clipPath>
                     </defs>
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                        {!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity) &&
+                            <rect width={"100%"} height={"100%"} fill={"#dbdbdb"} />}
                         {this.props.getGraphContent(this)}
                     </g>
                     <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
