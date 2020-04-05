@@ -121,7 +121,7 @@ export default class List extends Component {
         const columns = [
             {data: 1, title: t('Name')},
             {data: 2, title: t('Description')},
-            {data: 3, title: t('Task')},
+            {data: 10, title: t('Task')},
             {data: 4, title: t('Created'), render: data => moment(data).fromNow()},
             {data: 5, title: t('State'), render: data => this.jobStates[data]},
             {data: 6, title: t('Trigger')},
