@@ -44,16 +44,14 @@ interval = params['interval']
 
 agg_set_cid =  f"aggregation_{interval}s_{sig_set_cid}"
 
-sig_cids = []
-for cid in entities['signals'][sig_set_cid].keys():
-  sig_cids.append(cid)
+numeric_signals = { cid: signal for (cid,signal) in entities['signals'][sig_set_cid].items() if (signal['type'] in ['integer','long','float','double']) }
 
 if state is None or state.get(agg_set_cid) is None:
   ns = sig_set['namespace']
     
   signals= []
-  for cid, signal in entities['signals'][sig_set_cid].items():
-    signals.append({
+  for cid, signal in numeric_signals.items():
+    signal_base = {
       "cid": signal['cid'],
       "name": signal['name'],
       "description": signal['description'],
@@ -61,7 +59,27 @@ if state is None or state.get(agg_set_cid) is None:
       "type": signal['type'],
       "indexed": signal['indexed'],
       "settings": signal['settings']
-    })
+    }
+    signals.append(signal_base)
+  
+    for stat in ['min', 'max', 'count']:
+      signal = signal_base.copy()
+      signal.update({
+        "cid": f"{signal_base['cid']}_{stat}",
+        "name": f"{stat} of {signal_base['cid']}",
+        "description": f"Stat {stat} for aggregation of signal {signal_base['cid']}"
+      })
+      signals.append(signal)
+
+  signals.append({
+      "cid": ts['cid'],
+      "name": ts['name'],
+      "description": ts['description'],
+      "namespace": ts['namespace'],
+      "type": ts['type'],
+      "indexed": ts['indexed'],
+      "settings": ts['settings']
+  })
 
   state = ivis.create_signal_set(
     agg_set_cid,
@@ -97,9 +115,9 @@ else:
 
 
 avg_aggs = {}
-for cid, signal in entities['signals'][sig_set_cid].items():
+for cid, signal in numeric_signals.items():
   avg_aggs[cid] = {
-            "avg": {
+            "stats": {
               "field": signal['field']
             }
           }
@@ -109,7 +127,7 @@ query = {
   'size': 0,
   'query': query_content,
   "aggs": {
-    "stats": {
+    "sig_set_aggs": {
       "date_histogram": {
         "field": ts['field'],
         "interval": f"{interval}s"
@@ -121,11 +139,14 @@ query = {
 
 res = es.search(index=sig_set['index'], body=query)
 
-for hit in res['aggregations']['stats']['buckets']:
+for hit in res['aggregations']['sig_set_aggs']['buckets']:
   last = hit['key_as_string']
   doc = {}
-  for cid in sig_cids:
-    doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['value']
+  for cid in numeric_signals.keys():
+    doc[state[agg_set_cid]['fields'][f"{cid}_min"]]= hit[cid]['min']
+    doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['avg']
+    doc[state[agg_set_cid]['fields'][f"{cid}_max"]]= hit[cid]['max']
+    doc[state[agg_set_cid]['fields'][f"{cid}_count"]]= hit[cid]['count']
   
   doc[state[agg_set_cid]['fields'][ts['cid']]] = last
   res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
