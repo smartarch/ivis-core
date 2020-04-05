@@ -182,7 +182,8 @@ export class TimeBasedChartBase extends Component {
             signalSetsData: null,
             statusMsg: t('Loading...'),
             width: 0,
-            zoomTransform: d3Zoom.zoomIdentity
+            zoomTransform: d3Zoom.zoomIdentity,
+            loading: true
         };
         this.zoom = null;
 
@@ -264,18 +265,19 @@ export class TimeBasedChartBase extends Component {
 
         const prevAbs = this.getIntervalAbsolute(prevProps);
         const prevSpec = this.getIntervalSpec(prevProps);
-        if (configDiff === ConfigDifference.DATA || prevSpec !== this.getIntervalSpec()) {
+        if (configDiff === ConfigDifference.DATA) {
             this.setState({
-                signalSetsData: null,
-                statusMsg: t('Loading...')
+                signalSetsData: null
             });
-            this.resetZoom();
             this.zoom = null;
 
             this.fetchData();
 
             signalSetsData = null;
 
+        } else if (prevSpec !== this.getIntervalSpec()) {
+            this.zoom = null;
+            this.fetchData();
         } else if (this.delayedFetchDueToTimeIntervalChartWidthUpdate || prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
             this.delayedFetchDueToTimeIntervalChartWidthUpdate = false;
 
@@ -304,6 +306,7 @@ export class TimeBasedChartBase extends Component {
     @withAsyncErrorHandler
     async fetchData() {
         const t = this.props.t;
+        this.setState({statusMsg: t('Loading...'), loading: true});
 
         try {
             const queries = this.props.getQueries(this, this.getIntervalAbsolute(), this.props.config);
@@ -343,7 +346,13 @@ export class TimeBasedChartBase extends Component {
                     }
                 }
 
-                this.setState(this.props.prepareData(this, results));
+                this.setState({signalSetsData: null}, () =>
+                    this.setState({
+                        statusMsg: "",
+                        ...this.props.prepareData(this, results),
+                        loading: false
+                    })
+                );
             }
         } catch (err) {
             if (err instanceof interoperableErrors.TooManyPointsError) {
@@ -354,6 +363,8 @@ export class TimeBasedChartBase extends Component {
             }
 
             throw err;
+        } finally {
+            this.setState({loading: false});
         }
     }
 
@@ -443,10 +454,8 @@ export class TimeBasedChartBase extends Component {
 
         const renderStatus = this.props.createChart(this, signalSetsData, this.state, abs, xScale);
 
-        if (renderStatus === RenderStatus.NO_DATA)
+        if (renderStatus === RenderStatus.NO_DATA && this.state.statusMsg === "")
             this.setState({statusMsg: t('No data.')});
-        else
-            this.setState({statusMsg: ""})
     }
     setInterval(from, to) {
         const intv = this.getInterval();
@@ -510,6 +519,8 @@ export class TimeBasedChartBase extends Component {
             .on("start", handleZoomStart)
             .wheelDelta(WheelDelta(3));
         this.containerNodeSelection.call(this.zoom);
+        if (!zoomExisted)
+            this.resetZoom(); // this is called after data are reloaded
     }
     setZoom(transform) {
         if (this.props.withZoom && this.zoom)
@@ -567,9 +578,9 @@ export class TimeBasedChartBase extends Component {
                             <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                         </clipPath>
                     </defs>
-                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
-                        {!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity) &&
-                            <rect width={"100%"} height={"100%"} fill={"#dbdbdb"} />}
+                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" ref={node => this.GraphContentSelection = select(node)}>
+                        {(!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
+                            <rect width={"100%"} height={"100%"} fill={"#e5e5e5"} />}
                         {this.props.getGraphContent(this)}
                     </g>
                     <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
