@@ -130,7 +130,7 @@ export default class List extends Component {
                 actions: data => {
 
                     const actions = [];
-                    const perms = data[10];
+                    const perms = data[11];
                     const runSpecs = this.runSpecs.get(data[0]);
                     let runStatus = null;
                     if (runSpecs) {
