@@ -471,9 +471,20 @@ export class ScatterPlotBase extends Component {
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
+        window.addEventListener('keydown', ::this.keydownListener);
+        window.addEventListener('keyup', ::this.keyupListener);
         this.createChart(false);
         // noinspection JSIgnoredPromiseFromCall
         this.fetchData();
+    }
+
+    keydownListener(event) {
+        if (event.key === "Control" && !this.state.brushInProgress)
+            this.setState({brushInProgress: true});
+    }
+    keyupListener(event) {
+        if (event.key === "Control" && this.state.brushInProgress && !this.state.zoomInProgress)
+            this.setState({brushInProgress: false});
     }
 
     /** Update and redraw the chart based on changes in React props and state */
@@ -539,6 +550,8 @@ export class ScatterPlotBase extends Component {
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.resizeListener);
+        window.removeEventListener('keydown', ::this.keydownListener);
+        window.removeEventListener('keyup', ::this.keyupListener);
     }
     //</editor-fold>
 
@@ -1376,6 +1389,10 @@ export class ScatterPlotBase extends Component {
             const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
             const brush = d3Brush.brush()
                 .extent([[0, 0], [xSize, ySize]])
+                .filter(() => {
+                    // noinspection JSUnresolvedVariable
+                    return !d3Event.button // enable brush when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
+                })
                 .on("start", function () {
                     self.setState({
                         zoomInProgress: true
