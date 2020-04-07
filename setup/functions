@@ -19,6 +19,19 @@ case "$hostType" in
         fi
         ;;
 
+    centos8-minimal)
+        hostTypeLabel="CentOS 8"
+        redisService=redis
+        apacheConf="/etc/httpd/conf.d/${productId}.conf"
+        apacheLogsPath="logs"
+        userId=root
+        groupId=root
+
+        if hash firewall-cmd 2>/dev/null; then
+            firewallCmdExists=true
+        fi
+        ;;
+
     centos7|centos7-aws)
         hostTypeLabel="CentOS 7"
         redisService=redis
@@ -164,6 +177,7 @@ function installPrerequisities {
             yum -y install mariadb-server nodejs redis pwgen gcc-c++ make bzip2 java-1.8.0-openjdk git libXScrnSaver at-spi2-atk gtk3
             rpm -Uhv --force https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.rpm
             ;;
+
         centos7-aws|centos7-minimal)
             yum -y install epel-release
 
@@ -306,7 +320,7 @@ function installHttpd {
     local portAPI="$3"
 
     case "$hostType" in
-        centos7-aws|centos7-minimal)
+        centos7-aws|centos7-minimal|centos8-aws|centos8-minimal)
             yum -y install httpd mod_ssl
             systemctl start httpd
             systemctl enable httpd
@@ -430,7 +444,7 @@ EOT
     fi
 
     case "$hostType" in
-        centos7-aws|centos7-minimal)
+        centos7-aws|centos7-minimal|centos8-aws|centos8-minimal)
             systemctl restart httpd
             ;;
 
