@@ -5,10 +5,25 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline} from "../lib/media-controls";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SelectableTimeline, Timeline, AnimationTimeline} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
+    constructor(props) {
+        super(props);
+
+        this.animConfig = {
+            timeline: {
+                beginTs: 0,
+                endTs: 1000*60*60*24,
+                relative: true,
+            },
+        };
+
+        this.animStatus = {
+            position: 1000*60*60*5,
+        };
+    }
     render() {
         return (
             <>
@@ -68,7 +83,7 @@ class SampleAnimation extends Component {
                             length={1000*60*30}
                             beginTs={0}
                             relative
-                            endTs={1000*60*60*24*30*6}
+                            endTs={1000*60*60*24}
                             position={1000*60*4}
                             margin={{
                                 left: 20,
@@ -77,6 +92,28 @@ class SampleAnimation extends Component {
                                 bottom: 20
                             }}
                         />
+
+                        {/* <SelectableTimeline */}
+                        {/*     height={200} */}
+                        {/*     width={600} */}
+                        {/*     margin={{ */}
+                        {/*         left: 20, */}
+                        {/*         right: 50, */}
+                        {/*         bottom: 20, */}
+                        {/*         top: 10, */}
+                        {/*     }} */}
+                        {/*     relative */}
+                        {/*     beginTs={0} */}
+                        {/*     endTs={1000*60*60*24} */}
+                        {/*     position={1000*60*4} */}
+                        {/* /> */}
+
+                        <AnimationTimeline
+                            width={600}
+                            animConfig={this.animConfig}
+                            animStatus={this.animStatus}
+                        />
+
 
                         {/* <Timeline */}
                         {/*     length={2.5*60*60*1000} */}

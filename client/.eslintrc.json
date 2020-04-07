@@ -43,7 +43,10 @@
         "indent": [
             "error",
             4,
-            {"SwitchCase": 1}
+            {
+              "SwitchCase": 2,
+              "flatTernaryExpressions": true
+            }
         ],
         "linebreak-style": [
             "error",
@@ -53,6 +56,7 @@
             "error",
             "always"
         ],
-        "indent": "off"
+        "react/prop-types": ["warn", {"skipUndeclared": true}],
+        "no-unused-vars": ["error", {"ignoreRestSiblings": true}]
     }
 }

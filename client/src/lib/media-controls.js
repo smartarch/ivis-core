@@ -1,9 +1,9 @@
 "use strict";
 
-import React, {Component} from "react";
+import React, {Component, useState, useEffect, useRef} from "react";
 import PropTypes from "prop-types";
 import {SVG} from "../ivis/SVG";
-import {select, mouse} from "d3-selection";
+import {select, mouse, local} from "d3-selection";
 import {scaleTime, scaleLinear} from "d3-scale";
 import {timeFormat} from "d3-time-format";
 import {scan} from "d3-array";
@@ -403,7 +403,7 @@ const durationBaseIntervals = {
     year:        1000*60*60*24*30*12,
 };
 
-function generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim) {
+function generateTimeUnitsUsedInLabel(maxTimeDiff, precision, delim) {
     const unitNames = ['year', 'month', 'day', 'hour', 'minute', 'second', 'millisecond'];
     const units = unitNames.map(key => durationBaseIntervals[key]);
 
@@ -413,7 +413,7 @@ function generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim) {
     let usedUnits = unitNames[i];
 
     i++;
-    while (i < units.length && minTimeDiff < units[i]) {
+    while (i < units.length && precision < units[i]) {
         usedUnits += delim + unitNames[i];
         i++;
     }
@@ -425,11 +425,11 @@ function generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim) {
     return usedUnits;
 }
 
-function generateTimestampLabelFormat(maxTimeDiff, minTimeDiff) {
+function generateTimestampLabelFormat(maxTimeDiff, precision) {
     const replace = (match, replacement) => {return (str) => str.replace(match, replacement);};
 
     const delim = ';';
-    const usedUnits = generateTimeUnitsUsedInLabel(maxTimeDiff, minTimeDiff, delim);
+    const usedUnits = generateTimeUnitsUsedInLabel(maxTimeDiff, precision, delim);
 
     //Order matters, longest matches at the top
     const grammarRules = [
@@ -451,8 +451,8 @@ function generateTimestampLabelFormat(maxTimeDiff, minTimeDiff) {
     return timeFormat(formatStr);
 }
 
-function generateDurationLabelFormat(durLenght, minTimeDiff) {
-    const usedUnits = generateTimeUnitsUsedInLabel(durLenght, minTimeDiff, ',').split(',');
+function generateDurationLabelFormat(durLenght, precision) {
+    const usedUnits = generateTimeUnitsUsedInLabel(durLenght, precision, ',').split(',');
 
     const suffixes = {
         millisecond: 'ms',
@@ -502,6 +502,7 @@ class Timeline extends Component {
         beginTs: PropTypes.number,
         endTs: PropTypes.number,
         ticks: PropTypes.object,
+
         margin: PropTypes.object,
 
         length: PropTypes.number,
@@ -685,11 +686,9 @@ class Timeline extends Component {
 
             return {pos: this.state.scaleDef.scale(t), label, role};
         };
-
         const ticksData = this.state.scaleDef.ticks.map(generateDataForTick);
 
         const longestLabelIdx = scan(ticksData, (d1, d2) => - d1.label.length + d2.label.length); //returns index of the element with the "lowest" value
-
         const maxLabelWidth = this.getPointerLabelWidth(ticksData[longestLabelIdx].label);
 
         const filteredTicksData = this.filterTicks(ticksData, maxLabelWidth);
@@ -821,6 +820,7 @@ class Timeline extends Component {
 
         return labelWidth;
     }
+
 
     getPointerLabelWidth(label) {
         let labelWidth;
@@ -955,6 +955,781 @@ class Timeline extends Component {
         );
     }
 }
+
+class SelectableTimeline extends Component {
+    static propTypes = {
+        height: PropTypes.number,
+        width: PropTypes.number,
+        margin: PropTypes.object,
+
+        ticks: PropTypes.arrayOf(PropTypes.shape({
+            ts: PropTypes.number,
+            label: PropTypes.bool,
+        })),
+        relative: PropTypes.bool,
+        beginTs: PropTypes.number, //TODO: can be relative and have beginTs?
+        endTs: PropTypes.number,
+
+        markers: PropTypes.object,
+        defaultMarker: PropTypes.string,
+        setMarkers: PropTypes.func,
+
+        highlights: PropTypes.arrayOf(PropTypes.shape({
+            beginning: PropTypes.string,
+            end: PropTypes.string,
+            className: PropTypes.string,
+        })),
+        selectors: PropTypes.arrayOf(PropTypes.shape({
+            markerName: PropTypes.string,
+            key: PropTypes.string,
+            className: PropTypes.string,
+            visible: PropTypes.bool,
+            enabled: PropTypes.bool,
+            comp: PropTypes.elementType,
+        })),
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            markers: this.props.markers,
+        };
+
+        this.lockedMarkers = new Set();
+
+        this.selectorPrecision = 3;
+        this.defaultTickCount = 50;
+        this.axisHeight = 40;
+
+
+        this.durationIntervals = [
+            1, 10, 50, 250, 500,
+
+            durationBaseIntervals.second,
+            5*durationBaseIntervals.second,
+            15*durationBaseIntervals.seconds,
+            30*durationBaseIntervals.second,
+
+            durationBaseIntervals.minute,
+            5*durationBaseIntervals.minute,
+            15*durationBaseIntervals.minute,
+            30*durationBaseIntervals.minute,
+
+            durationBaseIntervals.hour,
+            3*durationBaseIntervals.hour,
+            6*durationBaseIntervals.hour,
+            12*durationBaseIntervals.hour,
+
+            durationBaseIntervals.day,
+            5*durationBaseIntervals.day,
+            15*durationBaseIntervals.day,
+
+            durationBaseIntervals.month,
+            3*durationBaseIntervals.month,
+
+            durationBaseIntervals.year,
+        ];
+    }
+
+    componentDidUpdate(prevProps) {
+        console.log("selectable update", {props: this.props, state: this.state});
+        if (this.props.width !== prevProps.width || this.props.margin !== prevProps.margin ||
+            this.props.relative !== prevProps.relative || this.props.beginTs !== prevProps.beginTs || this.props.endTs !== prevProps.endTs ||
+            this.props.ticks !== prevProps.ticks) {
+            this.createTimeline();
+        }
+
+        if (this.props.defaultMarker && !prevProps.defaultMarker) {
+            this.attachOnClickEvent();
+        }
+
+        if (this.props.markers !== prevProps.markers) {
+            const updatedMarkerNames = Object.keys(this.props.markers).filter(thisMarkerName =>
+                this.props.markers[thisMarkerName] !== prevProps.markers[thisMarkerName] && !this.lockedMarkers.has(thisMarkerName)
+            );
+            this.updateLocalMarkers(updatedMarkerNames);
+        }
+
+        if (this.props.selectors !== prevProps.selectors) {
+            this.prepareSelectors();
+        }
+    }
+
+    componentDidMount() {
+        this.createTimeline();
+
+        if (this.props.selectors) this.prepareSelectors();
+        if (this.props.defaultMarker) this.attachOnClickEvent();
+    }
+
+
+    attachOnClickEvent() {
+        select(this.axisN)
+            .attr("cursor", "pointer")
+            .on("click", () => {
+                const pos = mouse(this.axisN)[0];
+                const ts = this.state.scaleDef.scale.invert(pos);
+                if (this.state.scaleDef) this.setGlobalMarkers({[this.props.defaultMarker]: ts});
+            });
+    }
+
+    updateLocalMarkers(markerNames) {
+        console.log("updating markers", markerNames);
+
+        this.setState((state, props) => {
+            const newMarkers = {...this.state.markers};
+            markerNames.map(newName => newMarkers[newName] = props.markers[newName]);
+
+            return {markers: newMarkers};
+        });
+    }
+
+    setGlobalMarkers(markers) {
+        console.log("selectable setting markers", markers);
+        Object.keys(markers).map(markerName => this.lockedMarkers.delete(markerName));
+
+        this.props.setMarkers(markers);
+    }
+
+    setLocalMarkers(markers) {
+        console.log("set temp markers:" , markers);
+        Object.keys(markers).map(markerName => this.lockedMarkers.add(markerName));
+
+        this.setState(state => ({
+            markers: Object.assign({}, state.markers, markers),
+        }));
+    }
+
+    clearLocalMarker(markerName) {
+        console.log("clearing temp marker", markerName);
+        this.lockedMarkers.delete(markerName);
+
+        this.setState(state => ({
+            markers: Object.assign({}, state.markers, {[markerName]: this.props.markers[markerName]}),
+        }));
+    }
+
+
+    getSelectorLabelFormat(scale) {
+        const beginPos = scale.range()[0];
+        const precision = scale.invert(beginPos + this.selectorPrecision) - scale.invert(beginPos);
+
+        return this.props.relative ?
+            generateDurationLabelFormat(scale.domain()[1], precision) :
+            generateTimestampLabelFormat(scale.domain()[1] - scale.domain()[0], precision);
+    }
+
+    prepareSelectors() {
+        this.setState({
+            selectors: this.props.selectors.map(
+                config => ({...config, comp: withTimelineAccess(config.comp)})
+            )
+        });
+    }
+
+
+    getDefaultRelativeTicks(scale) {
+        const minTickCount = this.defaultTickCount;
+        const duration = scale.domain()[1];
+
+        let i = this.durationIntervals.length - 1;
+        while (i >= 0 && duration / this.durationIntervals[i] < minTickCount) i--;
+
+        const ticks = [];
+        const chosenInterval = this.durationIntervals[i];
+        let lastTickTs = 0;
+        while (lastTickTs <= duration) {
+            ticks.push({ts: lastTickTs, label: true});
+            lastTickTs += chosenInterval;
+        }
+
+        return ticks;
+    }
+
+    getRelativeTickFormat() {
+        const suffixes = ['ms', 's', 'min', 'h', 'd', 'mo', 'y'];
+        const durationBaseIntervalsArr = ['millisecond', 'second', 'minute', 'hour', 'day', 'month', 'year'].map(key => durationBaseIntervals[key]);
+
+        const format = ({ts, label}) => {
+            if (!label) return null;
+            //TODO: get better formatter
+            //probably from moment blug-in https://github.com/jsmreese/moment-duration-format
+            let i = durationBaseIntervalsArr.length - 1;
+
+            while (i > 0 && ts < durationBaseIntervalsArr[i]) i--;
+
+            const count = ts / durationBaseIntervalsArr[i];
+            const numberOfDecimalDigits = Number.isInteger(count) ? 0 : 2;
+            return count.toFixed(numberOfDecimalDigits) + ' ' + suffixes[i];
+        };
+
+        return format;
+    }
+
+
+    relativeScaleInit() {
+        const scale = scaleLinear()
+            .domain([0, this.props.endTs])
+            .range([0, this.props.width - this.props.margin.left - this.props.margin.right])
+            .clamp(true);
+
+        const ticks = this.props.ticks ? this.props.ticks : this.getDefaultRelativeTicks(scale);
+
+        return {scale, ticks, tickLabelFormat: this.getRelativeTickFormat()};
+    }
+
+    absoluteScaleInit() {
+        const scale = scaleTime()
+            .domain([this.props.beginTs, this.props.endTs])
+            .range([0, this.props.width - this.props.margin.left - this.props.margin.right])
+            .clamp(true);
+
+        const ticks = this.props.ticks ? this.props.ticks.map(({ts, label}) => ({ts: new Date(ts), label})) : scale.ticks(this.defaultTickCount).map(d => ({ts: d, label: true}));
+
+        const defaultFormat = scale.tickFormat();
+        const tickLabelFormat = ({ts, label}) => label ? defaultFormat(ts) : null;
+
+        return {scale, ticks, tickLabelFormat};
+    }
+
+    prepareTicks(scale, ticks, tickLabelFormat) {
+        let includesBeginTick = false;
+        let includesEndTick = false;
+        let tickData = [];
+
+        const createBeginTick = () => ( {
+            pos: scale(scale.domain()[0]),
+            label: tickLabelFormat({ts: scale.domain()[0], label: true}),
+            role: "begin"
+        });
+
+        const createEndTick = () => ({
+            pos: scale(scale.domain()[1]),
+            label: tickLabelFormat({ts: scale.domain()[1], label: true}),
+            role: "end"
+        });
+
+        for(let tick of ticks) {
+            if (tick.ts === scale.domain()[0]) {
+                tickData.push(createBeginTick());
+                continue;
+            }
+            if (ticks.ts === scale.domain()[1]) {
+                tickData.push(createEndTick());
+                continue;
+            }
+
+            let role = tick.label ? "big" : "small";
+            const pos = scale(tick.ts);
+            let label = tickLabelFormat(tick);
+
+            tickData.push({pos, label, role});
+        }
+
+        if (!includesBeginTick) tickData.push(createBeginTick());
+        if (!includesEndTick) tickData.push(createEndTick());
+
+        return tickData;
+    }
+
+    filterTicks(ticksData, maxLabelWidth) {
+        const tickConf = {
+            begin: {
+                priority: 10,
+                getBegin: (d) => d.pos,
+                getEnd: (d, width) => d.pos + width,
+            },
+            end: {
+                priority: 9,
+                getBegin: (d, width) => d.pos - width,
+                getEnd: (d) => d.pos,
+            },
+            big: {
+                priority: 2,
+                getBegin: (d, width) => d.pos - width/2,
+                getEnd: (d, width) => d.pos + width/2,
+            },
+            small: {
+                priority: 1,
+            }
+        };
+
+        ticksData.sort((t1, t2) => t1.pos - t2.pos);
+
+        let lastBigTick = ticksData[0];
+        let lastTick = ticksData[0];
+        const minSpace = 10;
+        const labelMinSpace = 15;
+
+        for(let i = 1; i < ticksData.length; i++) {
+            const currTick = ticksData[i];
+            const isSmallTick = currTick.role === "small";
+
+            if (!isSmallTick &&
+                tickConf[lastBigTick.role].getEnd(lastBigTick, maxLabelWidth) + labelMinSpace > tickConf[currTick.role].getBegin(currTick, maxLabelWidth)) {
+
+                if (tickConf[currTick.role].priority <= tickConf[lastBigTick.role].priority) {
+                    currTick.role = "small";
+                } else {
+                    lastBigTick.role = "small";
+                    lastBigTick = currTick;
+                }
+            } else if (!isSmallTick) {
+                lastBigTick = currTick;
+            }
+
+            if (lastTick.pos + minSpace > currTick.pos) {
+                if (tickConf[currTick.role].priority <= tickConf[lastTick.role].priority) {
+                    currTick.isOmitted = true;
+                } else {
+                    lastTick.isOmitted = true;
+                    lastTick = currTick;
+                }
+            } else {
+                lastTick = currTick;
+            }
+        }
+
+        return ticksData.filter(d => !d.isOmitted);
+    }
+
+    generateTicks(ticksData) {
+        const createTick = (sel) => {
+            return sel.append("g")
+                .classed("tick", true)
+                .attr("pointer-events", "none")
+                .call(sel => sel.append("line").attr("stroke", "currentColor").attr("stroke-width", 1.2))
+                .call(sel => sel.append("text")
+                    .classed(styles.tickLabel + " " + styles.label, true)
+                    .attr("fill", "currentColor")
+                    .attr("dy", "1em"));
+        };
+
+        const config = {
+            begin: {
+                updateTickMark: (sel) => sel.attr("y1", 0).attr("y2", 0),
+                updateLabel: (sel, d) => sel.attr("y", 23).attr("text-anchor", "start").text(d.label),
+            },
+            end: {
+                updateTickMark: (sel) => sel.attr("y1", 0).attr("y2", 0),
+                updateLabel: (sel, d) => sel.attr("y", 23).attr("text-anchor", "end").text(d.label),
+            },
+            big: {
+                updateTickMark: (sel) => sel.attr("y1", 20).attr("y2", 10),
+                updateLabel: (sel, d) => sel.attr("y", 23).attr("text-anchor", "middle").text(d.label),
+            },
+            small: {
+                updateTickMark: (sel) => sel.attr("y1", 20).attr("y2", 14),
+                updateLabel: (sel) => sel.text(null),
+            },
+        };
+
+        select(this.axisN).selectAll(".tick")
+            .data(ticksData)
+            .join(createTick)
+            .attr("transform", d => `translate(${d.pos}, 0)`)
+            .call(sel => sel.select("line")
+                .each(function (d) {
+                    config[d.role].updateTickMark(select(this));
+                }))
+            .call(sel => sel.select("text")
+                .each(function (d) {
+                    config[d.role].updateLabel(select(this), d);
+                }));
+    }
+
+    getTickLabelWidth(label) {
+        let labelWidth;
+        select(this.testLabelN)
+            .style("display", "block")
+            .classed(styles.tickLabel, true)
+            .text(label)
+            .call(n => labelWidth = n.node().getBBox().width)
+            .style("display", "none")
+            .classed(styles.tickLabel, false);
+
+        return labelWidth;
+    }
+
+    drawTicks(scale, ticks, tickLabelFormat) {
+        const ticksData = this.prepareTicks(scale, ticks, tickLabelFormat);
+
+        const longestLabelIdx = scan(ticksData, (d1, d2) => - d1.label.length + d2.label.length);
+        const maxLabelWidth = this.getTickLabelWidth(ticksData[longestLabelIdx].label);
+        const filteredTicksData = this.filterTicks(ticksData, maxLabelWidth);
+        this.generateTicks(filteredTicksData);
+    }
+
+    createTimeline() {
+        const {scale, ticks, tickLabelFormat} = this.props.relative ? this.relativeScaleInit() : this.absoluteScaleInit();
+
+        this.drawTicks(scale, ticks, tickLabelFormat);
+
+        const selectorLabelFormat = this.getSelectorLabelFormat(scale);
+
+        this.setState({
+            scaleDef: {
+                scale,
+                tickLabelFormat,
+                ticks,
+            },
+            selectorLabelFormat,
+        });
+    }
+
+    render() {
+        console.log("selected render", {markers: this.state.markers});
+
+        const domainHeight = this.props.height - this.axisHeight;
+        const containerWidth = this.props.width - this.props.margin.left - this.props.margin.right;
+        const containerHeight = this.props.height - this.props.margin.top - this.props.margin.bottom;
+
+        const highlightComp = (props) => {
+            const beginningPos = this.state.scaleDef.scale(this.state.markers[props.beginning]);
+            const width = this.state.scaleDef.scale(this.state.markers[props.end]) - beginningPos;
+
+            return <rect height="20" rx="2" className={props.className + " highlight"} x={beginningPos} width={width} key={props.key}/>;
+        };
+
+        const selectorComp = (config) => {
+            const {key, comp, ...props} = config;
+            const Comp = comp;
+
+            return (
+                <Comp
+                    key={key}
+
+                    markers={this.state.markers}
+                    y={domainHeight}
+
+                    labelFormat={this.state.selectorLabelFormat}
+                    scale={this.state.scaleDef.scale}
+
+                    setGlobalMarkers={::this.setGlobalMarkers}
+                    setLocalMarkers={::this.setLocalMarkers}
+                    clearLocalMarker={::this.clearLocalMarker}
+
+                    markerName={props.markerName}
+                    visible={props.visible}
+                    className={props.className}
+                    enabled={props.enabled}
+                    parentNode={this.containerN}
+                />
+            );
+        };
+
+        return (
+            <svg className={styles.timeline} xmlns="http://www.w3.org/2000/svg"
+                ref={node => this.svgN = node}
+                width={this.props.width + this.props.margin.left + this.props.margin.right}
+                height={this.props.height + this.props.margin.bottom + this.props.margin.top}>
+
+                <text ref={node => this.testLabelN = node} opacity="0"/>
+                <g ref={node => this.containerN = node}
+                    pointerEvents="bounding-box"
+                    transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} >
+                    <rect width={containerWidth} height={containerHeight} fill="none" />
+
+                    {this.state.selectors && this.props.selectors.map(selectorComp)}
+
+                    <g ref={node => this.axisN = node}
+                        transform={`translate(0, ${domainHeight})`}
+                        pointerEvents="bounding-box">
+                        <g>
+                            {this.props.highlights && this.state.scaleDef && this.props.highlights.map(highlightComp)}
+                        </g>
+
+                        <rect height="20" fill="none" rx="2" stroke="currentColor" strokeWidth="1.5" width={this.state.scaleDef && this.state.scaleDef.scale.range()[1]}/>
+                    </g>
+                </g>
+            </svg>
+        );
+    }
+}
+
+
+const Selector = React.forwardRef(function Selector(props, ref) {
+    const [labelWidth, setLabelWidth] = useState(null);
+
+    const labelRef = useRef(null);
+    useEffect(() => setLabelWidth(labelRef.current.getBBox().width), []);
+
+    let labelShift = 0;
+    if (labelWidth) {
+        const leftLabelBoundary = props.boundaries[0] + labelWidth/2;
+        const rightLabelBoundary = props.boundaries[1] - labelWidth/2;
+
+        labelShift = Math.max(0, leftLabelBoundary - props.x) || Math.min(0, rightLabelBoundary - props.x);
+    }
+    console.log("selector render", {labelWidth});
+    return (
+        <>
+            {props.visible &&
+                <g className={props.className} transform={`translate(${props.x}, ${props.y})`} ref={ref}>
+                    <text
+                        transform={`translate(${labelShift}, 0)`}
+                        ref={labelRef}
+                        className={styles.label}
+                        textAnchor="middle"
+                        y="-13.5"
+                        fill="currentColor"
+                        opacity={labelWidth ? 1 : 0}>
+                        {props.label}
+                    </text>
+                    <polygon className={styles.selector}
+                        points="0,-3 -2,-6.464 2,-6.464" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
+                </g>
+            }
+        </>
+    );
+});
+Selector.propTypes = {
+    className: PropTypes.string,
+    visible: PropTypes.bool,
+    x: PropTypes.number,
+    y: PropTypes.number,
+    label: PropTypes.string,
+    boundaries: PropTypes.arrayOf(PropTypes.number),
+};
+
+function withDrag(Selector) {
+    class DraggableSelector extends Component {
+        static propTypes = {
+            setGlobal: PropTypes.func,
+            setLocal: PropTypes.func,
+            clearLocal: PropTypes.func,
+
+            enabled: PropTypes.bool,
+
+            parentNode: PropTypes.object,
+        }
+
+        constructor(props) {
+            super(props);
+
+            this.sliding = false;
+        }
+
+        componentDidUpdate(prevProps) {
+            if (this.props.enabled && (!prevProps.enabled || this.props.parentNode !== prevProps.parentNode)) {
+                this.attachDragEvents();
+            }
+
+            if (!this.props.enabled && prevProps.enabled) {
+                this.detachDragEvents();
+            }
+        }
+
+        componentDidMount() {
+            if (this.props.enabled) this.attachDragEvents();
+        }
+
+        attachDragEvents() {
+            const parentSel = select(this.props.parentNode);
+            const selectorSel = select(this.selectorN);
+
+            const endSliding = () => {
+                parentSel
+                    .on("mousemove.selectorDrag", null)
+                    .on("mouseleave.selectorDrag", null)
+                    .on("mouseup.selectorDrag", null);
+            };
+
+            selectorSel
+                .attr("cursor", "pointer")
+                .on("mousedown", () => {
+                    parentSel
+                        .on("mousemove.selectorDrag", () =>
+                            this.props.setLocal(mouse(this.props.parentNode)[0])
+                        )
+                        .on("mouseleave.selectorDrag", () => {
+                            this.props.clearLocal();
+                            endSliding();
+                        })
+                        .on("mouseup.selectorDrag", () => {
+                            this.props.setGlobal(mouse(this.props.parentNode)[0]);
+                            endSliding();
+                        });
+                });
+        }
+
+        detachDragEvents() {
+            select(this.selectorN)
+                .attr("cursor", "default")
+                .on("mousedown", null);
+        }
+
+        render() {
+            const {setGlobal, setLocal, clearLocal, parentNode, enabled, ...rest} = this.props;
+
+            return ( <Selector  {...rest} ref={node => this.selectorN = node}/>);
+        }
+
+    }
+
+    return DraggableSelector;
+}
+
+function withTimelineAccess(Selector) {
+    class TimelineSelector extends Component {
+        static propTypes = {
+            markers: PropTypes.object,
+            markerName: PropTypes.string,
+
+            labelFormat: PropTypes.func,
+            scale: PropTypes.func,
+
+            setGlobalMarkers: PropTypes.func,
+            setLocalMarkers: PropTypes.func,
+            clearLocalMarker: PropTypes.func,
+            enabled: PropTypes.bool,
+            parentNode: PropTypes.object,
+
+            y: PropTypes.number,
+            visible: PropTypes.bool,
+            className: PropTypes.string,
+        }
+
+        constructor(props) {
+            super(props);
+
+            this.setGlobal = (pos) => {
+                const ts = this.props.scale.invert(pos);
+                this.props.setGlobalMarkers({[this.props.markerName]: ts});
+            };
+
+            this.setLocal = (pos) => {
+                const ts = this.props.scale.invert(pos);
+                this.props.setLocalMarkers({[this.props.markerName]: ts});
+            };
+
+            this.clearLocal = () => {
+                this.props.clearLocalMarker(this.props.markerName);
+            };
+
+            this.state = {
+                boundaries: this.props.scale.range(),
+            };
+        }
+
+        componentDidUpdate(prevProps) {
+            if (this.props.scale !== prevProps.scale) {
+                this.setState({boundaries: this.props.scale.range()});
+            }
+        }
+
+        render() {
+            const ts = this.props.markers[this.props.markerName];
+            console.log("wta render", ts);
+
+            return (
+                <Selector
+                    x={this.props.scale(ts)}
+                    y={this.props.y}
+                    className={this.props.className}
+                    visible={this.props.visible}
+
+                    setGlobal={::this.setGlobal}
+                    setLocal={::this.setLocal}
+                    clearLocal={::this.clearLocal}
+                    parentNode={this.props.parentNode}
+                    enabled={this.props.enabled}
+
+                    label={this.props.labelFormat(ts)}
+                    boundaries={this.state.boundaries}
+                />
+            );
+        }
+    }
+
+    return TimelineSelector;
+}
+
+class AnimationTimeline extends Component {
+    static propTypes = {
+        animConfig: PropTypes.object,
+        animControl: PropTypes.object,
+        animStatus: PropTypes.object,
+
+        width: PropTypes.number,
+    }
+
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            markers: {
+                beginning: this.props.animConfig.timeline.beginTs,
+                playbackPosition: this.props.animStatus.position,
+            },
+            margin: {
+                left: 20,
+                right: 20,
+                bottom: 10,
+                top: 30,
+            },
+        };
+
+        this.selectors = [
+            {
+                markerName: "playbackPosition",
+                key: "playbackPositionSelector",
+                className: styles.playbackPositionSelector,
+                visible: true,
+                enabled: true,
+                comp: withDrag(Selector),
+            },
+        ];
+
+        this.highlights = [
+            {beginning: "beginning", end: "playbackPosition", className: styles.playedHighlight, key: "playedHighlight"},
+        ];
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        console.log("animation update", {props: this.props, state: this.state});
+        if (this.props.animConfig !== prevProps.animConfig || this.props.animStatus !== prevProps.animStatus) {
+            this.setMarkers({
+                beginning: this.props.animConfig.timeline.beginTs,
+                playbackPosition: this.props.animStatus.position
+            });
+        }
+
+        if (this.state.markers.playbackPosition !== prevState.markers.playbackPosition) {
+            console.log("Pushing playback position change ups");
+        }
+    }
+
+    setMarkers(markersOverride) {
+        console.log("animation, setting markers:", markersOverride);
+        this.setState(prevState => ({markers: Object.assign({}, prevState.markers, markersOverride)}));
+    }
+
+    render() {
+        console.log("anim render, markers:", this.state.markers);
+
+        return (
+            <>
+                <SelectableTimeline
+                    {...this.props.animConfig.timeline}
+                    width={this.props.width}
+                    height={100}
+                    margin={this.state.margin}
+
+                    defaultMarker={"playbackPosition"}
+                    markers={this.state.markers}
+                    setMarkers={::this.setMarkers}
+
+                    highlights={this.highlights}
+                    selectors={this.selectors}
+                />
+            </>
+        );
+    }
+}
+
 
 class SliderBaseEvents extends Component {
     static propTypes = {
@@ -1305,4 +2080,4 @@ class SliderBase extends Component {
 
 }
 
-export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline};
+export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline, SelectableTimeline, AnimationTimeline};
