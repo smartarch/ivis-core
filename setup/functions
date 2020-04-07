@@ -218,8 +218,7 @@ certs:
     fi
 
     mysqlPassword=`pwgen 12 -1`
-    mysqlRoPassword=`pwgen 12 -1`
-    
+
     # Setup MySQL user
     mysql -u root -e "CREATE USER '$productId'@'localhost' IDENTIFIED BY '$mysqlPassword';"
     mysql -u root -e "GRANT ALL PRIVILEGES ON $productId.* TO '$productId'@'localhost';"
