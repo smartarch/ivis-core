@@ -5,6 +5,20 @@ productId=${productId:-"ivis-core"}
 productLabel=${productLabel:-"IVIS Core"}
 
 case "$hostType" in
+    centos8|centos8-aws)
+        hostTypeLabel="CentOS 8"
+        redisService=redis
+        apacheConf="/etc/httpd/conf.d/${productId}.conf"
+        apacheLogsPath="logs"
+        userId=root
+        groupId=root
+        hostType=centos8-aws
+
+        if hash firewall-cmd 2>/dev/null; then
+            firewallCmdExists=true
+        fi
+        ;;
+
     centos7|centos7-aws)
         hostTypeLabel="CentOS 7"
         redisService=redis
