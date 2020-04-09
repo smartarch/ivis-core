@@ -306,7 +306,7 @@ function doForAllModules {
 function reinstallModules {
     local idx=$1
     echo Reinstalling modules in $idx
-    cd $idx && rm -rf node_modules && npm install
+    cd $idx && rm -rf node_modules && npm install --unsafe-perm
 }
 
 function reinstallAllModules {
