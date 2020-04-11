@@ -25,7 +25,8 @@ export class FrequencyDataLoader extends Component {
             sigCid: PropTypes.string.isRequired,
             tsSigCid: PropTypes.string
         }).isRequired,
-        processData: PropTypes.func.isRequired
+        processData: PropTypes.func.isRequired,
+        maxBucketCount: PropTypes.number
     };
 
     static defaultProps = { };
@@ -82,7 +83,8 @@ export class FrequencyDataLoader extends Component {
 
             const aggs = [{
                 sigCid: config.sigCid,
-                agg_type: "terms"
+                agg_type: "terms",
+                maxBucketCount: this.props.maxBucketCount
             }];
             const query = {
                 type: "aggs",

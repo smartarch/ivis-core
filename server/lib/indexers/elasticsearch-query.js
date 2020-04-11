@@ -406,6 +406,8 @@ class QueryProcessor {
             if (agg.agg_type) {
                 if (agg.agg_type === "terms") {
                     elsAgg.terms = { ...this.getField(field) };
+                    if (agg.maxBucketCount)
+                        elsAgg.terms.size = agg.maxBucketCount;
                 }
                 else {
                     throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
