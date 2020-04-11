@@ -3,7 +3,7 @@
 import React, {Component, useState, useEffect, useRef} from "react";
 import PropTypes from "prop-types";
 import {SVG} from "../ivis/SVG";
-import {select, mouse, local} from "d3-selection";
+import {select, mouse} from "d3-selection";
 import {scaleTime, scaleLinear} from "d3-scale";
 import {timeFormat} from "d3-time-format";
 import {scan} from "d3-array";
@@ -495,6 +495,424 @@ function generateDurationLabelFormat(durLenght, precision) {
     return format;
 }
 
+const Selector = React.forwardRef(function Selector(props, ref) {
+    const [labelRect, setLabelRect] = useState(null);
+
+    const labelRef = useRef(null);
+    useEffect(() => {
+        if (props.visible && props.label && labelRect === null) setLabelRect(labelRef.current.getBBox());
+    }, [props.visible, props.label]);
+
+    let labelShift = 0;
+    let labelButtonRect = {width: 0, height: 0};
+    const labelBaseline = -14.5;
+    if (labelRect) {
+        const leftLabelBoundary = props.boundaries[0] + labelRect.width/2;
+        const rightLabelBoundary = props.boundaries[1] - labelRect.width/2;
+
+        labelShift = Math.max(0, leftLabelBoundary - props.x) || Math.min(0, rightLabelBoundary - props.x);
+
+        labelButtonRect = {
+            width: 1.1*labelRect.width,
+            height: 1.3*labelRect.height,
+        };
+    }
+
+    return (
+        <>
+            {props.visible &&
+                <g className={props.className} transform={`translate(${props.x}, ${props.y})`} ref={ref}
+                    opacity={props.visible ? 1 : 0}>
+                    <rect
+                        transform={`translate(${labelShift}, 0)`}
+                        x={-labelButtonRect.width/2}
+                        y={labelBaseline - labelButtonRect.height + 5}
+                        width={labelButtonRect.width}
+                        height={labelButtonRect.height}
+                        className={styles.labelButton}
+                        rx="5"/>
+
+                    <text
+                        transform={`translate(${labelShift}, 0)`}
+                        ref={labelRef}
+                        className={styles.label}
+                        textAnchor="middle"
+                        y={labelBaseline}
+                        fill="currentColor"
+                        opacity={labelRect ? 1 : 0}>
+                        {props.label}
+                    </text>
+                    <polygon className={styles.selector}
+                        points="0,-3 -2,-6.464 2,-6.464" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
+                </g>
+            }
+        </>
+    );
+});
+Selector.propTypes = {
+    className: PropTypes.string,
+    visible: PropTypes.bool,
+    x: PropTypes.number,
+    y: PropTypes.number,
+    label: PropTypes.string,
+    boundaries: PropTypes.arrayOf(PropTypes.number),
+};
+
+function withHover(Selector) {
+    class HoverSelector extends Component {
+        static propTypes = {
+            getTargetNode: PropTypes.func,
+            enabled: PropTypes.bool,
+        }
+
+        constructor(props) {
+            super(props);
+
+            this.state = {
+                visible: false,
+                x: 0,
+            };
+        }
+
+        componentDidUpdate(prevProps, prevState) {
+            if (this.props.getTargetNode() !== this.state.targetNode) {
+                this.setState({targetNode: this.props.getTargetNode()});
+                return;
+            }
+
+            if ((this.state.targetNode !== prevState.targetNode || !prevProps.enabled) &&
+                this.props.enabled) {
+                this.attachHoverEvents();
+            }else if (!this.props.enabled && prevProps.enabled) {
+                this.detachHoverEvents();
+            }
+        }
+
+        componentDidMount() {
+            const targetNode = this.props.getTargetNode();
+            if (this.props.enabled) this.setState({targetNode: targetNode});
+        }
+
+        componentWillUnmount() {
+            this.detachHoverEvents();
+            this.setState({visible: false});
+        }
+
+        attachHoverEvents() {
+            select(this.state.targetNode)
+                .on("mouseenter.selectorHover", () => this.setState({visible: true}))
+                .on("mouseleave.selectorHover", () => this.setState({visible: false}))
+                .on("mousemove.selectorHover", () =>
+                    this.setState({visible: true, x: mouse(this.state.targetNode)[0]})
+                );
+        }
+
+        detachHoverEvents() {
+            this.setState({visible: false});
+            select(this.state.targetNode)
+                .on("mouseenter.selectorHover", null)
+                .on("mouseleave.selectorHover", null)
+                .on("mousemove.selectorHover", null);
+        }
+
+        render() {
+            const {getTargetNode, enabled, ...rest} = this.props;
+
+            return <Selector x={this.state.x} visible={this.state.visible} {...rest} />;
+        }
+    }
+
+    return HoverSelector;
+}
+
+function withDrag(Selector) {
+    class DraggableSelector extends Component {
+        static propTypes = {
+            setGlobal: PropTypes.func,
+
+            onDragStart: PropTypes.func,
+            onDragEnd: PropTypes.func,
+
+            enabled: PropTypes.bool,
+
+            parentNode: PropTypes.object,
+            parentNodeXShift: PropTypes.number,
+
+            getTargetNode: PropTypes.func,
+
+            x: PropTypes.number,
+            boundaries: PropTypes.arrayOf(PropTypes.number),
+        }
+
+        constructor(props) {
+            super(props);
+
+            this.state = {
+                x: this.props.x,
+                targetNode: null,
+            };
+
+            this.sliding = false;
+        }
+
+        componentDidUpdate(prevProps, prevState) {
+            if (this.props.getTargetNode && this.props.getTargetNode() !== this.state.targetNode) {
+                this.setState({targetNode: this.props.getTargetNode()});
+                return;
+            }
+
+            if ((this.state.targetNode !== prevState.targetNode ||
+                this.props.parentNode !== prevProps.parentNode || !prevProps.enabled) &&
+                this.props.enabled) {
+
+                this.attachDragEvents();
+            } else if (!this.props.enabled && prevProps.enabled) {
+                this.detachDragEvents();
+            }
+
+            if (this.props.x !== prevProps.x && !this.sliding) {
+                this.setState({x: this.props.x});
+            }
+        }
+
+        componentDidMount() {
+            if (this.props.getTargetNode) this.setState({targetNode: this.props.getTargetNode()});
+            else if (this.props.enabled) this.attachDragEvents();
+        }
+
+        componentWillUnmount() {
+            this.detachDragEvents();
+        }
+
+        attachDragEvents() {
+            const parentSel = select(this.props.parentNode);
+            const selectorSel = select(this.selectorN);
+
+            const endSliding = () => {
+                this.sliding = false;
+                if (this.props.onDragEnd) this.props.onDragEnd();
+                parentSel
+                    .on("mousemove.selectorDrag", null)
+                    .on("mouseleave.selectorDrag", null)
+                    .on("mouseup.selectorDrag", null);
+            };
+
+            const getClampedX = () => {
+                const x = mouse(this.props.parentNode)[0] - this.props.parentNodeXShift;
+                return Math.max(this.props.boundaries[0], Math.min(this.props.boundaries[1], x));
+            };
+
+            const startSliding = () => {
+                this.sliding = true;
+                if (this.props.onDragStart) this.props.onDragStart();
+                this.setState({x: getClampedX()});
+
+                parentSel
+                    .on("mousemove.selectorDrag", () => {
+                        this.setState({x: getClampedX()});
+                    })
+                    .on("mouseleave.selectorDrag", () => {
+                        endSliding();
+                        this.setState({x: this.props.x});
+                    })
+                    .on("mouseup.selectorDrag", () => {
+                        endSliding();
+                        this.props.setGlobal(getClampedX());
+                    });
+            };
+
+            selectorSel
+                .attr("cursor", "pointer")
+                .on("mousedown", startSliding);
+
+            select(this.state.targetNode)
+                .attr("cursor", "pointer")
+                .on("mousedown", startSliding);
+        }
+
+        detachDragEvents() {
+            select(this.selectorN)
+                .attr("cursor", "default")
+                .on("mousedown", null);
+            this.sliding = false;
+        }
+
+        render() {
+            const {setGlobal, parentNode, enabled, x, ...rest} = this.props;
+
+            return <Selector  {...rest} x={this.state.x} ref={node => this.selectorN = node}/>;
+        }
+    }
+
+    return DraggableSelector;
+}
+
+function withTimelineAccess(Selector) {
+    class TimelineSelector extends Component {
+        static propTypes = {
+            markers: PropTypes.object,
+            markerName: PropTypes.string,
+
+            labelFormat: PropTypes.func,
+            scale: PropTypes.func,
+
+            setGlobalMarkers: PropTypes.func,
+            setLocalMarkers: PropTypes.func,
+            clearLocalMarker: PropTypes.func,
+            enabled: PropTypes.bool,
+            parentNode: PropTypes.object,
+
+            y: PropTypes.number,
+            visible: PropTypes.bool,
+            className: PropTypes.string,
+        }
+
+        constructor(props) {
+            super(props);
+
+            this.setGlobal = (pos) => {
+                const ts = this.props.scale.invert(pos);
+                this.props.setGlobalMarkers({[this.props.markerName]: ts});
+            };
+
+            this.setLocal = (pos) => {
+                const ts = this.props.scale.invert(pos);
+                this.props.setLocalMarkers({[this.props.markerName]: ts});
+            };
+
+            this.clearLocal = () => {
+                this.props.clearLocalMarker(this.props.markerName);
+            };
+
+            this.state = {
+                boundaries: this.props.scale.range(),
+            };
+        }
+
+        componentDidUpdate(prevProps) {
+            if (this.props.scale !== prevProps.scale) {
+                this.setState({boundaries: this.props.scale.range()});
+            }
+        }
+
+        render() {
+            const ts = this.props.markers[this.props.markerName];
+
+            return (
+                <Selector
+                    x={this.props.scale(ts)}
+                    y={this.props.y}
+                    className={this.props.className}
+                    visible={this.props.visible}
+
+                    setGlobal={::this.setGlobal}
+                    setLocal={::this.setLocal}
+                    clearLocal={::this.clearLocal}
+                    parentNode={this.props.parentNode}
+                    enabled={this.props.enabled}
+
+                    label={this.props.labelFormat(ts)}
+                    boundaries={this.state.boundaries}
+                />
+            );
+        }
+    }
+
+    return TimelineSelector;
+}
+
+function withLabel(Selector) {
+    class LabeledSelector extends Component {
+        static propTypes = {
+            x: PropTypes.number,
+            scale: PropTypes.func,
+
+            forwardRef: PropTypes.func,
+        }
+
+        constructor(props) {
+            super(props);
+
+            this.state = {
+                labelFormat: null,
+            };
+
+            this.selectorPrecision = 3;
+        }
+
+        componentDidUpdate(prevProps) {
+            if (this.props.scale !== prevProps.scale) {
+                this.getLabelFormat();
+            }
+        }
+
+        componentDidMount() {
+            this.getLabelFormat();
+        }
+
+        getLabelFormat() {
+            const beginPos = this.props.scale.range()[0];
+            const precision = this.props.scale.invert(beginPos + this.selectorPrecision) - this.props.scale.invert(beginPos);
+
+            const labelFormat = this.props.scale.type === "relative" ?
+                generateDurationLabelFormat(this.props.scale.domain()[1], precision) :
+                generateTimestampLabelFormat(this.props.scale.domain()[1] - this.props.scale.domain()[0], precision);
+
+
+            this.setState({labelFormat: (px) => labelFormat(this.props.scale.invert(px))});
+        }
+
+        render() {
+            const {scale, forwardRef, ...rest} = this.props;
+
+            return <Selector {...rest} ref={forwardRef} label={this.state.labelFormat && this.state.labelFormat(this.props.x)}/>;
+        }
+    }
+
+    return React.forwardRef((props, ref) => {
+        return <LabeledSelector {...props} forwardRef={ref} />;
+    });
+}
+
+function withHighlightControl(Selector) {
+    class SelectorAssocWithHighlight extends Component {
+        static propTypes = {
+            getHighlightNode: PropTypes.func,
+            x: PropTypes.number,
+            highlightAttr: PropTypes.string,
+
+            forwardRef: PropTypes.func,
+        }
+
+        componentDidUpdate(prevProps) {
+            if (this.props.x !== prevProps.x) {
+                this.moveHighlight();
+            }
+        }
+
+        componentDidMount() {
+            this.moveHighlight();
+        }
+
+        moveHighlight() {
+            select(this.props.getHighlightNode()).attr(this.props.highlightAttr, this.props.x);
+        }
+
+        render() {
+            const {getHighlightNode, highlightAttr, forwardRef, ...rest} = this.props;
+
+            return <Selector {...rest} ref={forwardRef} />;
+        }
+    }
+
+    return React.forwardRef((props, ref) => {
+        return <SelectorAssocWithHighlight {...props} forwardRef={ref} />;
+    });
+}
+
+const PlaybackPositionSelector = withDrag(withHighlightControl(withLabel(Selector)));
+const PlaybackHoverSelector = withHover(withLabel(Selector));
+
 class Timeline extends Component {
     static propTypes = {
         //TODO
@@ -575,6 +993,7 @@ class Timeline extends Component {
     componentWillUnmount() {
         window.removeEventListener("resize", ::this.init);
     }
+
 
     getPointerLabelFormat() {
         const minTimeStep = (this.labelRefreshRate / this.props.length) * (this.props.endTs - this.props.beginTs);
@@ -680,9 +1099,9 @@ class Timeline extends Component {
         const generateDataForTick = (t, i, arr) => {
             const label = this.state.scaleDef.tickLabelFormat(t);
             const role = i === 0 ? "begin" :
-                         i === arr.length - 1 ? "end" :
-                         label.length > 0 ? "big" :
-                         "small";
+                i === arr.length - 1 ? "end" :
+                label.length > 0 ? "big" :
+                "small";
 
             return {pos: this.state.scaleDef.scale(t), label, role};
         };
@@ -700,7 +1119,6 @@ class Timeline extends Component {
                 axis: select(this.domainN),
             }
         }));
-
     }
 
     generateTicks(ticksData) {
@@ -987,6 +1405,10 @@ class SelectableTimeline extends Component {
             enabled: PropTypes.bool,
             comp: PropTypes.elementType,
         })),
+        hoverSelector: PropTypes.shape({
+            key: PropTypes.string,
+            markerName: PropTypes.string,
+        }),
     }
 
     constructor(props) {
@@ -994,10 +1416,10 @@ class SelectableTimeline extends Component {
 
         this.state = {
             markers: this.props.markers,
+            hoverSelectorVisible: false,
         };
 
         this.lockedMarkers = new Set();
-
         this.selectorPrecision = 3;
         this.defaultTickCount = 50;
         this.axisHeight = 40;
@@ -1033,7 +1455,6 @@ class SelectableTimeline extends Component {
     }
 
     componentDidUpdate(prevProps) {
-        console.log("selectable update", {props: this.props, state: this.state});
         if (this.props.width !== prevProps.width || this.props.margin !== prevProps.margin ||
             this.props.relative !== prevProps.relative || this.props.beginTs !== prevProps.beginTs || this.props.endTs !== prevProps.endTs ||
             this.props.ticks !== prevProps.ticks) {
@@ -1054,6 +1475,12 @@ class SelectableTimeline extends Component {
         if (this.props.selectors !== prevProps.selectors) {
             this.prepareSelectors();
         }
+
+        if (this.props.hoverSelector && !prevProps.hoverSelector) {
+            this.enableHoverSelector();
+        } else if (!this.props.hoverSelector && prevProps.hoverSelector) {
+            this.disableHoverSelector();
+        }
     }
 
     componentDidMount() {
@@ -1061,6 +1488,7 @@ class SelectableTimeline extends Component {
 
         if (this.props.selectors) this.prepareSelectors();
         if (this.props.defaultMarker) this.attachOnClickEvent();
+        if (this.props.hoverSelector) this.enableHoverSelector();
     }
 
 
@@ -1075,8 +1503,6 @@ class SelectableTimeline extends Component {
     }
 
     updateLocalMarkers(markerNames) {
-        console.log("updating markers", markerNames);
-
         this.setState((state, props) => {
             const newMarkers = {...this.state.markers};
             markerNames.map(newName => newMarkers[newName] = props.markers[newName]);
@@ -1086,14 +1512,12 @@ class SelectableTimeline extends Component {
     }
 
     setGlobalMarkers(markers) {
-        console.log("selectable setting markers", markers);
         Object.keys(markers).map(markerName => this.lockedMarkers.delete(markerName));
 
         this.props.setMarkers(markers);
     }
 
     setLocalMarkers(markers) {
-        console.log("set temp markers:" , markers);
         Object.keys(markers).map(markerName => this.lockedMarkers.add(markerName));
 
         this.setState(state => ({
@@ -1102,7 +1526,6 @@ class SelectableTimeline extends Component {
     }
 
     clearLocalMarker(markerName) {
-        console.log("clearing temp marker", markerName);
         this.lockedMarkers.delete(markerName);
 
         this.setState(state => ({
@@ -1128,6 +1551,25 @@ class SelectableTimeline extends Component {
         });
     }
 
+    enableHoverSelector() {
+
+        select(this.axisN)
+            .on("mouseenter", () =>
+                (this.lockedMarkers.size === 1 && this.lockedMarkers.has(this.props.hoverSelector.markerName)) && this.setState({hoverSelectorVisible: true})
+            )
+            .on("mouseleave", () => this.setState({hoverSelectorVisible: false}))
+            .on("mousemove", () => {
+                if (!this.state.hoverSelectorVisible) return;
+
+                const ts = this.state.scaleDef.scale.invert(mouse(this.axisN)[0]);
+                this.setLocalMarkers(({[this.props.hoverSelector.markerName]: ts}));
+            });
+    }
+
+    disableHoverSelector() {
+        select(this.axisN)
+            .on("mouseenter mouseleave mousemove", null);
+    }
 
     getDefaultRelativeTicks(scale) {
         const minTickCount = this.defaultTickCount;
@@ -1379,8 +1821,7 @@ class SelectableTimeline extends Component {
     }
 
     render() {
-        console.log("selected render", {markers: this.state.markers});
-
+        // console.log("render", {props: this.props, state: this.state});
         const domainHeight = this.props.height - this.axisHeight;
         const containerWidth = this.props.width - this.props.margin.left - this.props.margin.right;
         const containerHeight = this.props.height - this.props.margin.top - this.props.margin.bottom;
@@ -1392,13 +1833,10 @@ class SelectableTimeline extends Component {
             return <rect height="20" rx="2" className={props.className + " highlight"} x={beginningPos} width={width} key={props.key}/>;
         };
 
-        const selectorComp = (config) => {
-            const {key, comp, ...props} = config;
-            const Comp = comp;
-
+        const hoverSelectorComp = (Comp, className) => {
             return (
                 <Comp
-                    key={key}
+                    key={this.props.hoverSelector.key}
 
                     markers={this.state.markers}
                     y={domainHeight}
@@ -1410,13 +1848,42 @@ class SelectableTimeline extends Component {
                     setLocalMarkers={::this.setLocalMarkers}
                     clearLocalMarker={::this.clearLocalMarker}
 
-                    markerName={props.markerName}
-                    visible={props.visible}
-                    className={props.className}
-                    enabled={props.enabled}
+                    markerName={this.props.hoverSelector.markerName}
+                    visible={this.state.hoverSelectorVisible}
+                    enabled={false}
+                    className={className}
                     parentNode={this.containerN}
                 />
             );
+        };
+        const selectorComp = (config) => {
+            const {key, comp, ...props} = config;
+            const Comp = comp;
+
+            if (this.props.hoverSelector && key === this.props.hoverSelector.key)
+                return hoverSelectorComp(comp, config.className);
+            else
+                return (
+                    <Comp
+                        key={key}
+
+                        markers={this.state.markers}
+                        y={domainHeight}
+
+                        labelFormat={this.state.selectorLabelFormat}
+                        scale={this.state.scaleDef.scale}
+
+                        setGlobalMarkers={::this.setGlobalMarkers}
+                        setLocalMarkers={::this.setLocalMarkers}
+                        clearLocalMarker={::this.clearLocalMarker}
+
+                        markerName={props.markerName}
+                        visible={props.visible}
+                        className={props.className}
+                        enabled={props.enabled}
+                        parentNode={this.containerN}
+                    />
+                );
         };
 
         return (
@@ -1431,7 +1898,7 @@ class SelectableTimeline extends Component {
                     transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} >
                     <rect width={containerWidth} height={containerHeight} fill="none" />
 
-                    {this.state.selectors && this.props.selectors.map(selectorComp)}
+                    {this.state.selectors && this.state.selectors.map(selectorComp)}
 
                     <g ref={node => this.axisN = node}
                         transform={`translate(0, ${domainHeight})`}
@@ -1448,203 +1915,513 @@ class SelectableTimeline extends Component {
     }
 }
 
+class PlaybackTimeline extends Component {
+    static propTypes  = {
+        relative: PropTypes.bool,
+        beginTs: PropTypes.number, //TODO: can be relative and have beginTs?
+        endTs: PropTypes.number,
 
-const Selector = React.forwardRef(function Selector(props, ref) {
-    const [labelWidth, setLabelWidth] = useState(null);
+        width: PropTypes.number,
+        height: PropTypes.number,
+        //TODO: maybe padding too? or consistency with top and bottom
+        margin: PropTypes.shape({
+            left: PropTypes.number,
+            right: PropTypes.number,
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+        }),
 
-    const labelRef = useRef(null);
-    useEffect(() => setLabelWidth(labelRef.current.getBBox().width), []);
+        playbackPosition: PropTypes.number,
+        playbackLength: PropTypes.number,
 
-    let labelShift = 0;
-    if (labelWidth) {
-        const leftLabelBoundary = props.boundaries[0] + labelWidth/2;
-        const rightLabelBoundary = props.boundaries[1] - labelWidth/2;
+        setPlaybackPosition: PropTypes.func,
+    };
 
-        labelShift = Math.max(0, leftLabelBoundary - props.x) || Math.min(0, rightLabelBoundary - props.x);
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            domainN: null,
+            hoverSelectorEnabled: true,
+            playbackHighlightNode: null,
+        };
+
+        this.axisHeight = 37;
+        this.selectorBaseline = 0;
+        this.axisHighlights = [
+            {
+                begin: 0,
+                end: 0,
+                className: styles.playedHighlight + " highlight",
+                ref: (node) => this.playedHighlightN = node,
+                key: "playedHighlight",
+            }
+        ];
     }
-    console.log("selector render", {labelWidth});
-    return (
-        <>
-            {props.visible &&
-                <g className={props.className} transform={`translate(${props.x}, ${props.y})`} ref={ref}>
-                    <text
-                        transform={`translate(${labelShift}, 0)`}
-                        ref={labelRef}
-                        className={styles.label}
-                        textAnchor="middle"
-                        y="-13.5"
-                        fill="currentColor"
-                        opacity={labelWidth ? 1 : 0}>
-                        {props.label}
-                    </text>
-                    <polygon className={styles.selector}
-                        points="0,-3 -2,-6.464 2,-6.464" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
+
+    componentDidUpdate(prevProps) {
+        if (this.props.width !== prevProps.width || this.props.margin !== prevProps.margin ||
+            this.props.playbackLength !== prevProps.playbackLength) {
+            this.timeScaleInit();
+        }
+    }
+
+    componentDidMount() {
+        this.timeScaleInit();
+    }
+
+    relativeScaleInit() {
+        const scale = scaleLinear()
+            .domain([0, this.props.endTs])
+            .range([0, this.props.width])
+            .clamp(true);
+        scale.type = "relative";
+
+        return scale;
+    }
+
+    absoluteScaleInit() {
+        const scale = scaleTime()
+            .domain([this.props.beginTs, this.props.endTs])
+            .range([0, this.props.width])
+            .clamp(true);
+        scale.type = "absolute";
+
+        return scale;
+    }
+
+    timeScaleInit() {
+        const timeScale = this.props.relative ? this.relativeScaleInit() : this.absoluteScaleInit();
+
+        const playbackToPx = scaleLinear()
+            .domain([0, this.props.playbackLength])
+            .range([timeScale.range()[0], timeScale.range()[1]])
+            .clamp(true);
+
+        this.setState({timeScale, playbackToPx});
+    }
+
+    setPlaybackPosition(px) {
+
+        const playbackPosition = this.state.playbackToPx.invert(px);
+        this.props.setPlaybackPosition(playbackPosition);
+    }
+
+    render() {
+        const axisTop = this.props.height - this.axisHeight;
+
+        return (
+            <svg className={styles.timeline} xmlns="http://www.w3.org/2000/svg"
+                width={this.props.width + this.props.margin.left + this.props.margin.right}
+                height={this.props.height + this.props.margin.bottom + this.props.margin.top}>
+
+                <g ref={node => this.containerN = node}
+                    pointerEvents="bounding-box"
+                    transform={`translate(0, ${this.props.margin.top})`}>
+                    <rect width={this.props.width + this.props.margin.left + this.props.margin.right} height={this.props.height} fill="none" />
+
+                    { this.state.timeScale &&
+                        <g transform={`translate(${this.props.margin.left}, ${axisTop})`}>
+                            <TimeAxis
+                                scale={this.state.timeScale}
+                                axisWidth={this.props.width}
+                                axisHeight={this.axisHeight}
+
+                                domainRef={node => this.domainN = node}
+                                highlights={this.axisHighlights}
+                            />
+
+                            <PlaybackPositionSelector
+                                setGlobal={::this.setPlaybackPosition}
+                                onDragStart={() => this.setState({hoverSelectorEnabled: false})}
+                                onDragEnd={() => this.setState({hoverSelectorEnabled: true})}
+
+                                enabled={true}
+                                parentNode={this.containerN}
+                                parentNodeXShift={this.props.margin.left}
+
+                                getTargetNode={() => this.domainN}
+
+                                x={this.state.playbackToPx(this.props.playbackPosition)}
+                                y={this.selectorBaseline}
+
+                                scale={this.state.timeScale}
+                                boundaries={this.state.timeScale.range()}
+                                visible={true}
+
+                                getHighlightNode={() => this.playedHighlightN}
+                                highlightAttr={"width"}
+                            />
+                            <PlaybackHoverSelector
+                                enabled={this.state.hoverSelectorEnabled}
+
+                                getTargetNode={() => this.domainN}
+
+                                y={this.selectorBaseline}
+
+                                scale={this.state.timeScale}
+                                boundaries={this.state.timeScale.range()}
+                            />
+
+                        </g>
+                    }
                 </g>
-            }
-        </>
-    );
-});
-Selector.propTypes = {
-    className: PropTypes.string,
-    visible: PropTypes.bool,
-    x: PropTypes.number,
-    y: PropTypes.number,
-    label: PropTypes.string,
-    boundaries: PropTypes.arrayOf(PropTypes.number),
-};
-
-function withDrag(Selector) {
-    class DraggableSelector extends Component {
-        static propTypes = {
-            setGlobal: PropTypes.func,
-            setLocal: PropTypes.func,
-            clearLocal: PropTypes.func,
-
-            enabled: PropTypes.bool,
-
-            parentNode: PropTypes.object,
-        }
-
-        constructor(props) {
-            super(props);
-
-            this.sliding = false;
-        }
-
-        componentDidUpdate(prevProps) {
-            if (this.props.enabled && (!prevProps.enabled || this.props.parentNode !== prevProps.parentNode)) {
-                this.attachDragEvents();
-            }
-
-            if (!this.props.enabled && prevProps.enabled) {
-                this.detachDragEvents();
-            }
-        }
-
-        componentDidMount() {
-            if (this.props.enabled) this.attachDragEvents();
-        }
-
-        attachDragEvents() {
-            const parentSel = select(this.props.parentNode);
-            const selectorSel = select(this.selectorN);
-
-            const endSliding = () => {
-                parentSel
-                    .on("mousemove.selectorDrag", null)
-                    .on("mouseleave.selectorDrag", null)
-                    .on("mouseup.selectorDrag", null);
-            };
-
-            selectorSel
-                .attr("cursor", "pointer")
-                .on("mousedown", () => {
-                    parentSel
-                        .on("mousemove.selectorDrag", () =>
-                            this.props.setLocal(mouse(this.props.parentNode)[0])
-                        )
-                        .on("mouseleave.selectorDrag", () => {
-                            this.props.clearLocal();
-                            endSliding();
-                        })
-                        .on("mouseup.selectorDrag", () => {
-                            this.props.setGlobal(mouse(this.props.parentNode)[0]);
-                            endSliding();
-                        });
-                });
-        }
-
-        detachDragEvents() {
-            select(this.selectorN)
-                .attr("cursor", "default")
-                .on("mousedown", null);
-        }
-
-        render() {
-            const {setGlobal, setLocal, clearLocal, parentNode, enabled, ...rest} = this.props;
-
-            return ( <Selector  {...rest} ref={node => this.selectorN = node}/>);
-        }
-
+            </svg>
+        );
     }
-
-    return DraggableSelector;
 }
 
-function withTimelineAccess(Selector) {
-    class TimelineSelector extends Component {
-        static propTypes = {
-            markers: PropTypes.object,
-            markerName: PropTypes.string,
+class TimeAxis extends Component {
+    static propTypes = {
+        axisWidth: PropTypes.number,
+        axisHeight: PropTypes.number,
 
-            labelFormat: PropTypes.func,
-            scale: PropTypes.func,
+        scale: PropTypes.func,
+        ticks: PropTypes.arrayOf(PropTypes.shape({
+            ts: PropTypes.number,
+            label: PropTypes.bool,
+        })),
 
-            setGlobalMarkers: PropTypes.func,
-            setLocalMarkers: PropTypes.func,
-            clearLocalMarker: PropTypes.func,
-            enabled: PropTypes.bool,
-            parentNode: PropTypes.object,
-
-            y: PropTypes.number,
-            visible: PropTypes.bool,
+        domainRef: PropTypes.func,
+        highlights: PropTypes.arrayOf(PropTypes.shape({
+            begin: PropTypes.number,
+            end: PropTypes.number,
             className: PropTypes.string,
-        }
+            ref: PropTypes.func,
+            key: PropTypes.string,
+        })),
+    };
 
-        constructor(props) {
-            super(props);
+    constructor(props) {
+        super(props);
 
-            this.setGlobal = (pos) => {
-                const ts = this.props.scale.invert(pos);
-                this.props.setGlobalMarkers({[this.props.markerName]: ts});
-            };
+        this.state = {};
 
-            this.setLocal = (pos) => {
-                const ts = this.props.scale.invert(pos);
-                this.props.setLocalMarkers({[this.props.markerName]: ts});
-            };
+        this.defaultTickCount = 50;
+        this.durationIntervals = [
+            1, 10, 50, 250, 500,
 
-            this.clearLocal = () => {
-                this.props.clearLocalMarker(this.props.markerName);
-            };
+            durationBaseIntervals.second,
+            5*durationBaseIntervals.second,
+            15*durationBaseIntervals.seconds,
+            30*durationBaseIntervals.second,
 
-            this.state = {
-                boundaries: this.props.scale.range(),
-            };
-        }
+            durationBaseIntervals.minute,
+            5*durationBaseIntervals.minute,
+            15*durationBaseIntervals.minute,
+            30*durationBaseIntervals.minute,
 
-        componentDidUpdate(prevProps) {
-            if (this.props.scale !== prevProps.scale) {
-                this.setState({boundaries: this.props.scale.range()});
-            }
-        }
+            durationBaseIntervals.hour,
+            3*durationBaseIntervals.hour,
+            6*durationBaseIntervals.hour,
+            12*durationBaseIntervals.hour,
 
-        render() {
-            const ts = this.props.markers[this.props.markerName];
-            console.log("wta render", ts);
+            durationBaseIntervals.day,
+            5*durationBaseIntervals.day,
+            15*durationBaseIntervals.day,
 
-            return (
-                <Selector
-                    x={this.props.scale(ts)}
-                    y={this.props.y}
-                    className={this.props.className}
-                    visible={this.props.visible}
+            durationBaseIntervals.month,
+            3*durationBaseIntervals.month,
 
-                    setGlobal={::this.setGlobal}
-                    setLocal={::this.setLocal}
-                    clearLocal={::this.clearLocal}
-                    parentNode={this.props.parentNode}
-                    enabled={this.props.enabled}
+            durationBaseIntervals.year,
+        ];
+    }
 
-                    label={this.props.labelFormat(ts)}
-                    boundaries={this.state.boundaries}
-                />
-            );
+    componentDidUpdate(prevProps) {
+        if (this.props.axisWidth !== prevProps.axisWidth || this.props.axisHeight !== prevProps.axisHeight ||
+            this.props.scale !== prevProps.scale || this.props.ticks !== prevProps.ticks) {
+            console.log("update, ticks");
+            this.axisInit();
         }
     }
 
-    return TimelineSelector;
+    componentDidMount() {
+        if (this.props.scale) this.axisInit();
+    }
+
+    getDefaultRelativeTicks() {
+        const minTickCount = this.defaultTickCount;
+        const duration = this.props.scale.domain()[1];
+
+        let i = this.durationIntervals.length - 1;
+        while (i >= 0 && duration / this.durationIntervals[i] < minTickCount) i--;
+
+        const ticks = [];
+        const chosenInterval = this.durationIntervals[i];
+        let lastTickTs = 0;
+        while (lastTickTs <= duration) {
+            ticks.push({ts: lastTickTs, label: true});
+            lastTickTs += chosenInterval;
+        }
+
+        return ticks;
+    }
+
+    getRelativeTickFormat() {
+        const suffixes = ['ms', 's', 'min', 'h', 'd', 'mo', 'y'];
+        const durationBaseIntervalsArr = ['millisecond', 'second', 'minute', 'hour', 'day', 'month', 'year'].map(key => durationBaseIntervals[key]);
+
+        const format = ({ts, label}) => {
+            if (!label) return null;
+            //TODO: get better formatter
+            //probably from moment blug-in https://github.com/jsmreese/moment-duration-format
+            let i = durationBaseIntervalsArr.length - 1;
+
+            while (i > 0 && ts < durationBaseIntervalsArr[i]) i--;
+
+            const count = ts / durationBaseIntervalsArr[i];
+            const numberOfDecimalDigits = Number.isInteger(count) ? 0 : 2;
+            return count.toFixed(numberOfDecimalDigits) + ' ' + suffixes[i];
+        };
+
+        return format;
+    }
+
+    relativeTicksInit() {
+        const ticks = this.props.ticks ? this.props.ticks : this.getDefaultRelativeTicks();
+
+        return {ticks, tickLabelFormat: this.getRelativeTickFormat()};
+    }
+
+    absoluteTicksInit() {
+        const ticks = this.props.ticks ?
+            this.props.ticks.map(({ts, label}) => ({ts: new Date(ts), label})) :
+            this.props.scale.ticks(this.defaultTickCount).map(d => ({ts: d, label: true}));
+
+        const defaultFormat = this.props.scale.tickFormat();
+        const tickLabelFormat = ({ts, label}) => label ? defaultFormat(ts) : null;
+
+        return {ticks, tickLabelFormat};
+    }
+
+    prepareTicks(ticks, tickLabelFormat) {
+        const scale = this.props.scale;
+
+        let includesBeginTick = false;
+        let includesEndTick = false;
+        let tickData = [];
+
+        const createBeginTick = () => ( {
+            pos: scale(scale.domain()[0]),
+            label: tickLabelFormat({ts: scale.domain()[0], label: true}),
+            role: "begin"
+        });
+
+        const createEndTick = () => ({
+            pos: scale(scale.domain()[1]),
+            label: tickLabelFormat({ts: scale.domain()[1], label: true}),
+            role: "end"
+        });
+
+        for(let tick of ticks) {
+            if (tick.ts === scale.domain()[0]) {
+                tickData.push(createBeginTick());
+                continue;
+            }
+            if (ticks.ts === scale.domain()[1]) {
+                tickData.push(createEndTick());
+                continue;
+            }
+
+            let role = tick.label ? "big" : "small";
+            const pos = scale(tick.ts);
+            let label = tickLabelFormat(tick);
+
+            tickData.push({pos, label, role});
+        }
+
+        if (!includesBeginTick) tickData.push(createBeginTick());
+        if (!includesEndTick) tickData.push(createEndTick());
+
+        return tickData;
+    }
+
+    filterTicks(ticksData, maxLabelWidth) {
+        const tickConf = {
+            begin: {
+                priority: 10,
+                getBegin: (d) => d.pos,
+                getEnd: (d, width) => d.pos + width,
+            },
+            end: {
+                priority: 9,
+                getBegin: (d, width) => d.pos - width,
+                getEnd: (d) => d.pos,
+            },
+            big: {
+                priority: 2,
+                getBegin: (d, width) => d.pos - width/2,
+                getEnd: (d, width) => d.pos + width/2,
+            },
+            small: {
+                priority: 1,
+            }
+        };
+
+        ticksData.sort((t1, t2) => t1.pos - t2.pos);
+
+        let lastBigTick = ticksData[0];
+        let lastTick = ticksData[0];
+        const minSpace = 10;
+        const labelMinSpace = 15;
+
+        for(let i = 1; i < ticksData.length; i++) {
+            const currTick = ticksData[i];
+            const isSmallTick = currTick.role === "small";
+
+            if (!isSmallTick &&
+                tickConf[lastBigTick.role].getEnd(lastBigTick, maxLabelWidth) + labelMinSpace > tickConf[currTick.role].getBegin(currTick, maxLabelWidth)) {
+
+                if (tickConf[currTick.role].priority <= tickConf[lastBigTick.role].priority) {
+                    currTick.role = "small";
+                } else {
+                    lastBigTick.role = "small";
+                    lastBigTick = currTick;
+                }
+            } else if (!isSmallTick) {
+                lastBigTick = currTick;
+            }
+
+            if (lastTick.pos + minSpace > currTick.pos) {
+                if (tickConf[currTick.role].priority <= tickConf[lastTick.role].priority) {
+                    currTick.isOmitted = true;
+                } else {
+                    lastTick.isOmitted = true;
+                    lastTick = currTick;
+                }
+            } else {
+                lastTick = currTick;
+            }
+        }
+
+        return ticksData.filter(d => !d.isOmitted);
+    }
+
+    generateTicks(ticksData, domainHeight, labelMarginTop) {
+        const createTick = (sel) => {
+            return sel.append("g")
+                .classed("tick", true)
+                .attr("pointer-events", "none")
+                .call(sel => sel.append("line").attr("stroke", "currentColor").attr("stroke-width", 1.2))
+                .call(sel => sel.append("text")
+                    .classed(styles.tickLabel + " " + styles.label, true)
+                    .attr("fill", "currentColor")
+                    .attr("dy", "1em"));
+        };
+
+        const config = {
+            begin: {
+                updateTickMark: (sel) => sel.attr("y1", 0).attr("y2", 0),
+                updateLabel: (sel, d) => sel
+                    .attr("y", domainHeight + labelMarginTop)
+                    .attr("text-anchor", "start")
+                    .text(d.label),
+            },
+            end: {
+                updateTickMark: (sel) => sel.attr("y1", 0).attr("y2", 0),
+                updateLabel: (sel, d) => sel
+                    .attr("y", domainHeight + labelMarginTop)
+                    .attr("text-anchor", "end")
+                    .text(d.label),
+            },
+            big: {
+                updateTickMark: (sel) => sel
+                    .attr("y1", domainHeight)
+                    .attr("y2", domainHeight/2),
+                updateLabel: (sel, d) => sel
+                    .attr("y", domainHeight + labelMarginTop)
+                    .attr("text-anchor", "middle")
+                    .text(d.label),
+            },
+            small: {
+                updateTickMark: (sel) => sel
+                    .attr("y1", domainHeight)
+                    .attr("y2", domainHeight*3/4),
+                updateLabel: (sel) => sel.text(null),
+            },
+        };
+
+        select(this.axisN).selectAll(".tick")
+            .data(ticksData)
+            .join(createTick)
+            .attr("transform", d => `translate(${d.pos}, 0)`)
+            .call(sel => sel.select("line")
+                .each(function (d) {
+                    config[d.role].updateTickMark(select(this));
+                }))
+            .call(sel => sel.select("text")
+                .each(function (d) {
+                    config[d.role].updateLabel(select(this), d);
+                }));
+    }
+
+    getTickLabelRect(label) {
+        let labelRect;
+        select(this.testLabelN)
+            .style("display", "block")
+            .classed(styles.tickLabel, true)
+            .text(label)
+            .call(n => labelRect = n.node().getBBox())
+            .style("display", "none")
+            .classed(styles.tickLabel, false);
+
+        return labelRect;
+    }
+
+    axisInit() {
+        const {ticks, tickLabelFormat} = this.props.scale.type === "absolute" ? this.absoluteTicksInit() : this.relativeTicksInit();
+
+        const ticksData = this.prepareTicks(ticks, tickLabelFormat);
+
+        const longestLabelIdx = scan(ticksData, (d1, d2) => - d1.label.length + d2.label.length);
+        const labelRect = this.getTickLabelRect(ticksData[longestLabelIdx].label);
+        const filteredTicksData = this.filterTicks(ticksData, labelRect.width);
+
+        const labelMarginTop = 3;
+        const domainHeight = this.props.axisHeight - labelMarginTop - labelRect.height;
+        this.generateTicks(filteredTicksData, domainHeight, labelMarginTop);
+
+        this.setState({
+            tickLabelFormat,
+            ticks,
+            domainHeight,
+        });
+    }
+
+    render() {
+        const highlightComp = (props) => (
+            <rect
+                x={props.begin}
+                width={props.end - props.begin}
+                className={props.className}
+                ref={props.ref}
+                rx="2"
+                height={this.state?.domainHeight}
+                key={props.key}/>
+        );
+
+        return (
+            <g ref={node => this.axisN = node}
+                pointerEvents="bounding-box">
+                <text ref={node => this.testLabelN = node} opacity="0"/>
+                {this.props.highlights && this.props.highlights.map(highlightComp)}
+                <rect
+                    fill="none"
+                    rx="2"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                    width={this.props.axisWidth}
+                    height={this.state.domainHeight}
+                    ref={node => {
+                        if(this.props.domainRef) this.props.domainRef(node);
+                        this.domainN = node;
+                    }}
+                />
+            </g>
+        );
+    }
 }
+
 
 class AnimationTimeline extends Component {
     static propTypes = {
@@ -1663,6 +2440,7 @@ class AnimationTimeline extends Component {
             markers: {
                 beginning: this.props.animConfig.timeline.beginTs,
                 playbackPosition: this.props.animStatus.position,
+                hoverPosition: this.props.animConfig.timeline.beginTs,
             },
             margin: {
                 left: 20,
@@ -1681,7 +2459,17 @@ class AnimationTimeline extends Component {
                 enabled: true,
                 comp: withDrag(Selector),
             },
+            {
+                key: "hoverSelector",
+                className: styles.hoverSelector,
+                comp: Selector,
+            },
         ];
+
+        this.hoverSelector = {
+            key: "hoverSelector",
+            markerName: "hoverPosition",
+        };
 
         this.highlights = [
             {beginning: "beginning", end: "playbackPosition", className: styles.playedHighlight, key: "playedHighlight"},
@@ -1689,7 +2477,6 @@ class AnimationTimeline extends Component {
     }
 
     componentDidUpdate(prevProps, prevState) {
-        console.log("animation update", {props: this.props, state: this.state});
         if (this.props.animConfig !== prevProps.animConfig || this.props.animStatus !== prevProps.animStatus) {
             this.setMarkers({
                 beginning: this.props.animConfig.timeline.beginTs,
@@ -1703,12 +2490,10 @@ class AnimationTimeline extends Component {
     }
 
     setMarkers(markersOverride) {
-        console.log("animation, setting markers:", markersOverride);
         this.setState(prevState => ({markers: Object.assign({}, prevState.markers, markersOverride)}));
     }
 
     render() {
-        console.log("anim render, markers:", this.state.markers);
 
         return (
             <>
@@ -1716,9 +2501,11 @@ class AnimationTimeline extends Component {
                     {...this.props.animConfig.timeline}
                     width={this.props.width}
                     height={100}
+
                     margin={this.state.margin}
 
                     defaultMarker={"playbackPosition"}
+                    hoverSelector={this.hoverSelector}
                     markers={this.state.markers}
                     setMarkers={::this.setMarkers}
 
@@ -1730,6 +2517,48 @@ class AnimationTimeline extends Component {
     }
 }
 
+class AnimationTimeline_ extends Component {
+    static propTypes = {
+        animConfig: PropTypes.object,
+        animControl: PropTypes.object,
+        animStatus: PropTypes.object,
+
+        width: PropTypes.number,
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            margin: {
+                left: 20,
+                right: 20,
+                bottom: 10,
+                top: 30,
+            },
+            playbackPosition: this.props.animStatus.position,
+        };
+    }
+
+
+    render() {
+        return (
+            <>
+                <PlaybackTimeline
+                    {...this.props.animConfig.timeline}
+                    width={this.props.width}
+                    height={100}
+                    margin={this.state.margin}
+
+                    playbackPosition={this.state.playbackPosition}
+                    playbackLength={this.props.animConfig.length}
+
+                    setPlaybackPosition={(pos) => this.setState({playbackPosition: pos})}
+                />
+            </>
+        );
+    }
+}
 
 class SliderBaseEvents extends Component {
     static propTypes = {
@@ -2080,4 +2909,4 @@ class SliderBase extends Component {
 
 }
 
-export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline, SelectableTimeline, AnimationTimeline};
+export {MediaButton, PlayPauseButton, StopButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SliderBase, Timeline, SelectableTimeline, AnimationTimeline, PlaybackTimeline, AnimationTimeline_};

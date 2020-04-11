@@ -5,7 +5,7 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, SelectableTimeline, Timeline, AnimationTimeline} from "../lib/media-controls";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, Timeline, AnimationTimeline_} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
@@ -18,6 +18,7 @@ class SampleAnimation extends Component {
                 endTs: 1000*60*60*24,
                 relative: true,
             },
+            length: 1000*60*60*20,
         };
 
         this.animStatus = {
@@ -108,7 +109,7 @@ class SampleAnimation extends Component {
                         {/*     position={1000*60*4} */}
                         {/* /> */}
 
-                        <AnimationTimeline
+                        <AnimationTimeline_
                             width={600}
                             animConfig={this.animConfig}
                             animStatus={this.animStatus}
