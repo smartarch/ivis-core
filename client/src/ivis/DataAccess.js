@@ -606,29 +606,17 @@ class DataAccess {
 
     processHistogramResults(responseData, sigSetCid, signals) {
         const processBucketsRecursive = function(bucket) {
+            let agg;
             if (bucket.aggs && bucket.aggs.length > 0) {
-                let buckets = bucket.aggs[0].buckets.map(processBucketsRecursive);
-                return {
-                    step: bucket.aggs[0].step,     // step of the inner aggregation
-                    offset: bucket.aggs[0].offset, // offset of the inner aggregation
-                    buckets: buckets,
-                    key: bucket.key,
-                    count: bucket.count
-                }
+                agg = bucket.aggs[0];
+                agg.buckets = agg.buckets.map(processBucketsRecursive);
             }
-            else
-                return {
-                    key: bucket.key,
-                    count: bucket.count
-                };
+            delete bucket.aggs;
+            return {...bucket, ...agg};
         };
 
         if (signals.length > 0) {
-            return {
-                step: responseData[0].aggs[0].step,
-                offset: responseData[0].aggs[0].offset,
-                buckets: responseData[0].aggs[0].buckets.map(b => processBucketsRecursive(b))
-            };
+            return processBucketsRecursive(responseData[0]);
         } else {
             return {
                 buckets: []

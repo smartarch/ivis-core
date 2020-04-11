@@ -369,7 +369,7 @@ export class HeatmapChart extends Component {
     /** Processes the results of queries and updates this.xType, this.yType, this.xExtent, this.yExtent accordingly
      * @return {{}} data in form which can be directly passed to the setState function */
     processData(data) {
-        this.xType = data.step !== undefined ? DataType.NUMBER : DataType.KEYWORD;
+        this.xType = data.agg_type === "histogram" ? DataType.NUMBER : DataType.KEYWORD;
         const xBucketsCount = data.buckets.length;
         this.xExtent = null; this.yExtent = null;
 
@@ -380,7 +380,7 @@ export class HeatmapChart extends Component {
                 yBucketsCount: 0
             };
 
-        this.yType = data.buckets[0].step !== undefined ? DataType.NUMBER : DataType.KEYWORD;
+        this.yType = data.buckets[0].agg_type === "histogram" ? DataType.NUMBER : DataType.KEYWORD;
 
         let yBucketsCount;
         if (this.xType === DataType.NUMBER) {

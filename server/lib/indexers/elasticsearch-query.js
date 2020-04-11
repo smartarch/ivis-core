@@ -523,8 +523,10 @@ class QueryProcessor {
 
             const buckets = [];
             let additionalResponses = {};
+            let agg_type;
 
             if (agg.agg_type) {
+                agg_type = agg.agg_type;
                 if (agg.agg_type === "terms") {
                     _processTermsAgg(elsAggResp, buckets, additionalResponses);
                 }
@@ -543,7 +545,7 @@ class QueryProcessor {
                             count: elsBucket.doc_count
                         });
                     }
-
+                    agg_type = "date_histogram";
                 } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE) {
                     for (const elsBucket of elsAggResp.buckets) {
                         buckets.push({
@@ -551,8 +553,10 @@ class QueryProcessor {
                             count: elsBucket.doc_count
                         });
                     }
+                    agg_type = "histogram";
                 } else if (field.type === SignalType.KEYWORD) {
                     _processTermsAgg(elsAggResp, buckets, additionalResponses);
+                    agg_type = "terms";
                 } else {
                     throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
                 }
@@ -575,7 +579,8 @@ class QueryProcessor {
 
             const res = {
                 buckets,
-                ...additionalResponses
+                ...additionalResponses,
+                agg_type
             };
 
             if (agg.computedStep) res.step = agg.computedStep;
