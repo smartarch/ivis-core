@@ -363,8 +363,9 @@ export class ScatterPlotBase extends Component {
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
                 dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
-                dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
                 dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
+                globalDotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.defaultGlobalDotShape
+                getGlobalDotColor: PropTypes.func, // color modification for global dots (default: lower opacity)
                 tooltipLabels: PropTypes.shape({
                     label_format: PropTypes.func,
                     x_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
@@ -467,7 +468,8 @@ export class ScatterPlotBase extends Component {
     };
 
     static defaultDotShape = "circle";
-    static defaultDotGlobalShape = "circle_empty";
+    static defaultGlobalDotShape = "circle_empty";
+    static defaultGetGlobalDotColor = color => { color.opacity *= 0.5; return color; };
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
@@ -934,7 +936,7 @@ export class ScatterPlotBase extends Component {
         for (let i = 0; i < filteredData.length; i++) {
             const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
             this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
-            this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotGlobalShape || ScatterPlotBase.defaultDotGlobalShape, c => ModifyColorCopy(c, 0.5));
+            this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].globalDotShape || ScatterPlotBase.defaultGlobalDotShape, SignalSetsConfigs[i].getGlobalDotColor || ScatterPlotBase.defaultGetGlobalDotColor);
         }
         this.drawRegressions(xScale, yScale, cScales);
 
@@ -1085,8 +1087,8 @@ export class ScatterPlotBase extends Component {
         // update
         (this.props.withTransition ? allDots.transition() : allDots)
             .attr('transform', d => `scale(${s(d)})`)
-            .attr('fill', d => modifyColor(cScale(d.c || d.d)))
-            .attr('stroke', d => modifyColor(cScale(d.c || d.d)));
+            .attr('fill', d => modifyColor(d3Color.color(cScale(d.c || d.d))))
+            .attr('stroke', d => modifyColor(d3Color.color(cScale(d.c || d.d))));
 
         // remove
         dots.exit()

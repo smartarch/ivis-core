@@ -29,11 +29,12 @@ export class ScatterPlot extends Component {
                 tsSigCid: PropTypes.string, // for use of TimeContext
                 label_sigCid: PropTypes.string,
                 color: PropTypes.oneOfType([PropType_d3Color_Required(), PropTypes.arrayOf(PropType_d3Color_Required())]),
-                dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
-                dotGlobalShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotGlobalShape
-                dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
                 label: PropTypes.string,
                 enabled: PropTypes.bool,
+                dotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.dotShape
+                dotSize: PropTypes.number, // default = props.dotSize; used when dotSize_sigCid is not specified
+                globalDotShape: PropTypes.oneOf(dotShapeNames), // default = ScatterPlotBase.defaultGlobalDotShape
+                getGlobalDotColor: PropTypes.func, // color modification for global dots (default: lower opacity)
                 tooltipLabels: PropTypes.shape({
                     label_format: PropTypes.func,
                     x_label: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
