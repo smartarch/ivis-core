@@ -1,43 +1,66 @@
-.timeline {
-    color: #000;
 
-    $accentColor: #20a8d8;
-    $grey: #73818f;
+$grey: #73818f;
+$black: #000;
+$darkGrey: #2f353a;
+$light: #f0f3f5;
+
+$primary: #20a8d8;
+$secondary: #c8ced3;
+
+
+.timeline {
+
+    color: #000;
 
     .label {
         user-select: none;
     }
 
     .labelButton {
-        fill: #bbb;
+        // fill: #bbb;
     }
 
     .tickLabel {
         font-size: 0.9em;
     }
 
-    .playbackLine {
-        fill: $accentColor;
-    }
-
     .playedHighlight {
-        fill: $accentColor;
+        fill: $primary;
     }
 
     .playbackPositionSelector {
+        color: $primary;
+
+        .label {
+            fill: $black;
+        }
+
+        .labelButton {
+        }
+
+        .selector {
+        }
+
     }
 
-    .pointer {
-        fill: $accentColor;
-        stroke: $accentColor;
-    }
+    .hoverSelector {
+        color: $secondary;
 
-    .hoverPointer {
-        fill: $grey;
-        stroke: $grey;
+        .label {
+            fill: $black;
+        }
+
+        .labelButton {
+        }
+
+        .selector {
+        }
     }
 }
 
+
+
+//"media-button"
 
 
 
