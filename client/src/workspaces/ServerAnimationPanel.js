@@ -5,7 +5,7 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, PlaybackTimeline, AnimationTimeline} from "../lib/media-controls";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, Slider, AnimationTimeline} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
@@ -18,11 +18,22 @@ class SampleAnimation extends Component {
                 endTs: 1000*60*60*24,
                 relative: true,
             },
+            playbackSpeedSlider: {
+                enabled: true,
+                limits: [0.25, 5],
+                step: 0.25,
+            },
+
             length: 1000*60*60*20,
+        };
+
+        this.animControl = {
+            changeSpeed: (value) => console.log("AnimCtrl: speed changed to:", value),
         };
 
         this.animStatus = {
             position: 1000*60*60*5,
+            playbackSpeedFactor: 1,
         };
     }
     render() {
@@ -56,11 +67,6 @@ class SampleAnimation extends Component {
                             isJoinedRight={false}
                             jump={200}
                         />
-                        <PlaybackSpeedSlider
-                            minFactor={0.25}
-                            maxFactor={2.25}
-                        />
-
 
                         <AnimationTimeline
                             width={600}
@@ -68,6 +74,30 @@ class SampleAnimation extends Component {
                             animStatus={this.animStatus}
                         />
 
+                        <Slider
+                            sliderWidth={110}
+                            sliderHeight={17}
+                            enabled
+                            margin={{
+                                top: 40,
+                                bottom: 10,
+                                left: 10,
+                                right: 10,
+                            }}
+                            domain={[0, 100]}
+                            value={50}
+                            setValue={value => console.log("value set:", value)}
+
+                            labelFormat={(value) => "" + value}
+                            snapTo={(value) => Math.floor(value/5)*5}
+                        />
+
+                        <PlaybackSpeedSlider
+                            width={110}
+                            animConfig={this.animConfig}
+                            animStatus={this.animStatus}
+                            animControl={this.animControl}
+                        />
                     </div>
                 </ServerAnimationContext>
             </>

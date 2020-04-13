@@ -8,13 +8,12 @@ $primary: #20a8d8;
 $secondary: #c8ced3;
 
 
-.timeline {
-
-    color: #000;
-
     .label {
         user-select: none;
     }
+
+.timeline {
+    color: #000;
 
     .labelButton {
         // fill: #bbb;
@@ -58,6 +57,20 @@ $secondary: #c8ced3;
     }
 }
 
+.slider {
+    .label {
+        font-weight: bold;
+    }
+    .sliderDomain {
+        fill: #fff;
+        stroke: $black;
+    }
+
+    .sliderSelector {
+        fill: $primary;
+        stroke: $black;
+    }
+}
 
 
 //"media-button"

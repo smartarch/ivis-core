@@ -295,7 +295,7 @@ class JumpBackwardButton extends Component {
 @withComponentMixins([
     withAnimationControl
 ])
-class PlaybackSpeedSlider extends Component {
+class PlaybackSpeedSlider_ extends Component {
     static propTypes = {
         maxFactor: PropTypes.number,
         minFactor: PropTypes.number,
@@ -387,8 +387,260 @@ class PlaybackSpeedSlider extends Component {
                         x="50%" y="20" ref={node => this.labelN = node}/>
                     <use id="pointer" x={this.minPos} href="#circle" fill="white" ref={(node) => this.pointerN = node}/>
                 </svg>
-
             </>
+        );
+    }
+}
+
+class PlaybackSpeedSlider extends Component {
+    static propTypes = {
+        animConfig: PropTypes.object,
+        animControl: PropTypes.object,
+        animStatus: PropTypes.object,
+
+        width: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            left: PropTypes.number,
+            right: PropTypes.number,
+        }),
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.adjustMargin = (margin) => {
+            let adjustedMargin = margin;
+            if (!adjustedMargin) adjustedMargin = {top: 0, bottom: 0, left: 0, right: 0},
+
+            adjustedMargin.top += 40;
+            adjustedMargin.bottom += 10;
+            adjustedMargin.right += 10;
+            adjustedMargin.left += 10;
+
+            return adjustedMargin;
+        };
+
+        this.state = {
+            margin: this.adjustMargin(this.props.margin),
+        };
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.margin !== prevProps.margin) {
+            this.setState({margin: this.adjustMargin(this.props.margin)});
+        }
+    }
+
+    labelFormat(factor) {
+        return factor.toFixed(2) + "x";
+    }
+
+    snapTo(factor) {
+        const step = this.props.animConfig.playbackSpeedSlider.step;
+
+        return Math.floor(factor/step) * step;
+    }
+
+    render() {
+
+        return (
+            <Slider
+                sliderWidth={110}
+                sliderHeight={17}
+                margin={this.state.margin}
+
+                enabled={this.props.animConfig.playbackSpeedSlider.enabled}
+                domain={this.props.animConfig.playbackSpeedSlider.limits}
+
+                value={this.props.animStatus.playbackSpeedFactor}
+                setValue={this.props.animControl.changeSpeed}
+
+                labelFormat={::this.labelFormat}
+                snapTo={::this.snapTo}
+            />
+        );
+    }
+}
+
+class Slider extends Component {
+    static propTypes = {
+        sliderWidth: PropTypes.number,
+        sliderHeight: PropTypes.number,
+        margin: PropTypes.shape({
+            left: PropTypes.number,
+            right: PropTypes.number,
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+        }),
+
+        domain: PropTypes.arrayOf(PropTypes.number),
+
+        snapTo: PropTypes.func,
+        value: PropTypes.number,
+        setValue: PropTypes.func,
+
+        labelFormat: PropTypes.func,
+
+        enabled: PropTypes.bool,
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            scale: null,
+            value: this.props.value,
+        };
+
+        this.sliding = false;
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.enabled && !prevProps.enabled) {
+            this.attachEvents();
+        } else if (!this.props.enabled && prevProps.enabled) {
+            this.detachEvents();
+        }
+
+        if (this.props.domain !== prevProps.domain || this.props.sliderWidth !== prevProps.sliderWidth ||
+            this.props.sliderHeight !== prevProps.sliderHeight) {
+            this.scaleInit();
+        }
+
+        if (this.props.value !== prevProps.value && !this.sliding) {
+            this.setState({value: this.props.value});
+        }
+    }
+
+    componentDidMount() {
+        this.scaleInit();
+        if (this.props.enabled) this.attachEvents();
+    }
+
+    attachEvents() {
+        const selectorSel = select(this.selectorN);
+        const domainSel = select(this.domainN);
+        const containerSel = select(this.domainContainerN);
+
+        const getMouseValue = () => {
+            const x = mouse(this.domainN)[0];
+            const value = this.state.scale.invert(x);
+            return this.props.snapTo(value);
+        };
+
+        const moveSelector = (val) => {
+            selectorSel.attr("transform", `translate(${this.state.scale(val)}, 0)`);
+            select(this.labelN).text(this.props.labelFormat(val));
+        };
+
+        const endSliding = () => {
+            this.sliding = false;
+            containerSel.on("mousemove mouseup mouseleave", null);
+        };
+
+        const startSliding = () => {
+            this.sliding = true;
+            containerSel
+                .on("mousemove", () => {
+                    const val = getMouseValue();
+                    moveSelector(val);
+                })
+                .on("mouseup", () => {
+                    endSliding();
+                    const val = getMouseValue();
+                    this.props.setValue(val);
+                    this.setState({
+                        value: val
+                    });
+                })
+                .on("mouseleave", () => {
+                    endSliding();
+                    moveSelector(this.state.value);
+                });
+        };
+
+
+        selectorSel
+            .on("mousedown", startSliding)
+            .attr("cursor", "pointer");
+
+        domainSel
+            .on("mousedown", startSliding)
+            .attr("cursor", "pointer");
+    }
+
+    detachEvents() {
+        const selectorSel = select(this.selectorN);
+        const domainSel = select(this.domainN);
+        const containerSel = select(this.domainContainerN);
+
+        containerSel
+            .on("mousedown mouseup mouseleave", null);
+        domainSel
+            .attr("cursor", "default")
+            .on("mousedown", null);
+        selectorSel
+            .attr("cursor", "default")
+            .on("mousedown", null);
+    }
+
+    scaleInit() {
+        const scale = scaleLinear()
+            .domain(this.props.domain)
+            .range([0, this.props.sliderWidth - this.props.sliderHeight])
+            .clamp(true);
+
+        this.setState({scale});
+    }
+
+    render() {
+        const adjustedSliderWidth = this.props.sliderWidth - this.props.sliderHeight;
+        const adjustedSliderHeight = 0.5 * this.props.sliderHeight;
+        const selectorShift = this.state.scale ? this.state.scale(this.state.value) : 0;
+
+        return (
+            <svg xmlns="http://www.w3.org/2000/svg"
+                width={this.props.sliderWidth + this.props.margin.left + this.props.margin.right}
+                height={this.props.sliderHeight + this.props.margin.top + this.props.margin.bottom}
+                className={styles.slider}>
+
+                <g transform={`translate(${this.props.margin.left + this.props.sliderHeight/2}, ${this.props.margin.top})`}
+                    ref={node => this.domainContainerN = node}>
+                    <rect
+                        x="0"
+                        y="0"
+                        pointerEvents="bounding-box"
+                        width={adjustedSliderWidth}
+                        height={adjustedSliderHeight}
+                        rx="2"
+                        strokeWidth="2"
+                        className={styles.sliderDomain}
+                        ref={node => this.domainN = node}/>
+
+                    <text
+                        className={styles.label}
+                        textAnchor="middle"
+                        fill="currentColor"
+                        x={adjustedSliderWidth/2}
+                        y="0"
+                        dy="-0.9em"
+                        ref={node => this.labelN = node}>
+                        {this.props.labelFormat(this.state.value)}
+                    </text>
+
+                    <rect transform={`translate(${selectorShift}, 0)`}
+                        x={-this.props.sliderHeight/2}
+                        y={adjustedSliderHeight/2 - this.props.sliderHeight/2}
+                        width={this.props.sliderHeight}
+                        height={this.props.sliderHeight}
+                        strokeWidth="2"
+                        rx="1"
+                        className={styles.sliderSelector}
+                        ref={node => this.selectorN = node}/>
+                </g>
+            </svg>
         );
     }
 }
@@ -494,6 +746,7 @@ function generateDurationLabelFormat(durLenght, precision) {
 
     return format;
 }
+
 
 const Selector = React.forwardRef(function Selector(props, ref) {
     const [labelRect, setLabelRect] = useState(null);
@@ -734,6 +987,9 @@ function withDrag(Selector) {
 
         detachDragEvents() {
             select(this.selectorN)
+                .attr("cursor", "default")
+                .on("mousedown", null);
+            select(this.state.targetNode)
                 .attr("cursor", "default")
                 .on("mousedown", null);
             this.sliding = false;
@@ -1753,5 +2009,7 @@ export {
     PlaybackSpeedSlider,
 
     PlaybackTimeline,
-    AnimationTimeline
+    AnimationTimeline,
+
+    Slider,
 };
