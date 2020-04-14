@@ -560,9 +560,10 @@ class DataAccess {
 
 
     /*
-      signals = [ sigCid1, sigCid2 ]
+      signals = [ sigCid1, sigCid2 ],
+      metrics: { [sigCid]: ['min', 'max', 'avg', 'sum'] }    // additional metrics for each bucket, same format as signals in summary query
     */
-    getHistogramQueries(sigSetCid, signals, maxBucketCounts, minSteps, filter) {
+    getHistogramQueries(sigSetCid, signals, maxBucketCounts, minSteps, filter, metrics) {
         if (Number.isInteger(maxBucketCounts) || maxBucketCounts === undefined)
             maxBucketCounts = signals.map(x => maxBucketCounts); // copy numeric value for each signal
         else if (signals.length !== maxBucketCounts.length)
@@ -588,8 +589,9 @@ class DataAccess {
             aggs: []
         };
 
-        let aggs = qry.aggs;
+        let aggs = [qry];
         for (const [index, sigCid] of signals.entries()) {
+            aggs = aggs[0].aggs;
             aggs.push(
                 {
                     sigCid,
@@ -598,7 +600,10 @@ class DataAccess {
                     aggs: []
                 }
             );
-            aggs = aggs[0].aggs;
+        }
+
+        if (metrics) {
+            aggs[0].signals = metrics;
         }
 
         return [qry];
@@ -667,7 +672,7 @@ class DataAccess {
 
     /*
         summary: {
-            signals: [sigCid: ['min', 'max', 'avg']]
+            signals: {sigCid: ['min', 'max', 'avg']}
         }
      */
     getSummaryQueries(sigSetCid, filter, summary) {
@@ -763,8 +768,8 @@ export class DataAccessSession {
         return await this._getLatestOne('timeSeriesSummary', sigSets, intervalAbsolute);
     }
 
-    async getLatestHistogram(sigSetCid, signals, maxBucketCount, minStep, filter) {
-        return await this._getLatestOne('histogram', sigSetCid, signals, maxBucketCount, minStep, filter);
+    async getLatestHistogram(sigSetCid, signals, maxBucketCount, minStep, filter, metrics) {
+        return await this._getLatestOne('histogram', sigSetCid, signals, maxBucketCount, minStep, filter, metrics);
     }
 
     async getLatestDocs(sigSetCid, signals, filter, sort, limit) {

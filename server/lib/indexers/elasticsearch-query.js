@@ -57,6 +57,13 @@ const aggHandlers = {
         }),
         processResponse: resp => resp.value
     }),
+    sum: aggSpec => ({
+        id: 'sum',
+        getAgg: field => ({
+            sum: field
+        }),
+        processResponse: resp => resp.value
+    }),
     percentiles: aggSpec => ({
         id: 'percentiles',
         getAgg: field => ({
