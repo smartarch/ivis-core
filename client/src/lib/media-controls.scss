@@ -72,6 +72,17 @@ $secondary: #c8ced3;
     }
 }
 
+.button {
+    color: $black;
+
+    .buttonFrame {
+        fill: white;
+    }
+
+    .buttonFrameOnMouseHover {
+        fill: $primary;
+    }
+}
 
 //"media-button"
 

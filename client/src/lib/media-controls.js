@@ -2,7 +2,6 @@
 
 import React, {Component, useState, useEffect, useRef} from "react";
 import PropTypes from "prop-types";
-import {SVG} from "../ivis/SVG";
 import {select, mouse} from "d3-selection";
 import {scaleTime, scaleLinear} from "d3-scale";
 import {timeFormat} from "d3-time-format";
@@ -18,379 +17,396 @@ const withAnimationControl = createComponentMixin({
     ]
 });
 
-//Should not be a problem that rerender of MediaButton will force update
-//underlying SVG. In case of needed performence boost use React.memo
-function MediaButton(props) {
-    //TODO: There is need to touch the div in SVG cuz of styling... Or just give
-    //the div "media-button-wrapper" class and thats it...
-    const isDisabled = !props.onClick;
-    const color = isDisabled ? "grey" : "black";
-    const accColor = '#20a8d8';
+class MediaButtonBase extends Component {
+    static propTypes = {
+        width: PropTypes.number,
+        height: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            left: PropTypes.number,
+            right: PropTypes.number,
+        }),
+        padding: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            left: PropTypes.number,
+            right: PropTypes.number,
+        }),
 
-    const baseButton = `<svg class="${styles["media-button"]}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <clipPath id="border-left-half">
-                    <rect
-                        x="0"
-                        y="0"
-                        width="50"
-                        height="100" />
-                </clipPath>
-                <clipPath id="border-right-half">
-                    <rect
-                        x="50"
-                        y="0"
-                        width="50"
-                        height="100"/>
-                </clipPath>
-            </defs>
+        enabled: PropTypes.bool,
+        onClick: PropTypes.func,
 
-            <g id="border" style="cursor: ${isDisabled ? 'not-allowed' : 'pointer'}"; color="white">
-                <rect
-                    ${props.isJoinedLeft ? 'x="0" width="100"' : 'x="2" rx="10" width="96"'}
-                    y="2"
-                    height="96"
-                    fill="currentColor"
-                    stroke-width="4"
-                    stroke=${color}
-                    clip-path="url(#border-left-half)" />
+        innerRender: PropTypes.func,
 
-                <rect
-                    ${props.isJoinedRight ? 'x="0" width="100"' : 'x="2" rx="10" width="96"'}
-                    y="2"
-                    height="96"
-                    fill="currentColor"
-                    stroke=${color}
-                    stroke-width="4"
-                    clip-path="url(#border-right-half)" />
-            </g>
-            ${props.innerSvg}
-        </svg>`;
+        isJoinedRight: PropTypes.bool,
+        isJoinedLeft: PropTypes.bool,
+    }
 
-    return (
-        <SVG
-            width={props.width}
-            height={props.height}
-            source={baseButton}
-            init={node => {
-                const innerSVG = select(node).select("#innerSvg");
-                const border = select(node).select("#border");
+    static defaultProps = {
+        padding: {
+            top: 7,
+            bottom: 7,
+            left: 7,
+            right: 7,
+        },
+    }
 
-                select(node.parentNode).
-                    classed("media-button-wrapper", true);
+    constructor(props) {
+        super(props);
 
-                innerSVG.
-                    attr('width', 70).
-                    attr('height', 70).
-                    attr('x', 15).
-                    attr('y', 15).
-                    attr('color', color).
-                    attr('pointer-events', 'none');
+        this.rx = 2;
+        this.borderWidth = 2;
 
-                if (!isDisabled) {
-                    border.
-                        on('click', () => props.onClick(node)).
-                        on('mouseenter', () => border.attr('color', accColor)).
-                        on('mouseleave', () => border.attr('color', 'white'));
+        this.state = {
+            mouseHover: false,
+            mouseDown: false,
+        };
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.enabled && !prevProps.enabled) {
+            this.attachEvents();
+        } else if (!this.props.enabled && prevProps.enabled) {
+            this.detachEvents();
+        }
+    }
+
+    componentDidMount() {
+        if (this.props.enabled) this.attachEvents();
+    }
+
+    attachEvents() {
+        const frameSel = select(this.frameN);
+
+        frameSel
+            .attr("cursor", "pointer")
+            .on("mouseenter", () => this.setState({mouseHover: true}))
+            .on("mouseleave", () => this.setState({mouseHover: false, mouseDown: false}))
+            .on("mousedown", () => this.setState({mouseDown: true}))
+            .on("mouseup", () => {
+                if (this.state.mouseDown) {
+                    this.props.onClick();
+                    this.setState({mouseDown: false});
                 }
-            }}
-        />
-    );
-}
-MediaButton.propTypes = {
-    height: PropTypes.string,
-    width: PropTypes.string,
-    isJoinedLeft: PropTypes.bool,
-    isJoinedRight: PropTypes.bool,
-    innerSvg: PropTypes.string,
-    onClick: PropTypes.func,
-};
+            });
+    }
 
-@withComponentMixins([
-    withAnimationControl
-])
+    detachEvents() {
+        const frameSel = select(this.frameN);
+
+        frameSel
+            .attr("cursor", "pointer")
+            .on("mouseenter mouseleave mousedown mouseup", null);
+    }
+
+    render() {
+        const innerWidth = this.props.width - this.props.padding.left - this.props.padding.right;
+        const innerHeight = this.props.height - this.props.padding.top - this.props.padding.bottom;
+
+        const innerProps = {
+            width: innerWidth,
+            height: innerHeight,
+            ...this.state
+        };
+
+        return (
+            <svg xmlns="http://www.w3.org/2000/svg"
+                width={this.props.margin.left + this.props.margin.right + this.props.width}
+                height={this.props.margin.top + this.props.margin.bottom + this.props.height}
+                className={styles.button}>
+
+                <defs>
+                    <clipPath id="borderLeftHalf">
+                        <rect
+                            x="0"
+                            y="0"
+                            width={this.props.width/2}
+                            height={this.props.height}/>
+                    </clipPath>
+                    <clipPath id="borderRightHalf" >
+                        <rect
+                            x={this.props.width/2}
+                            y="0"
+                            width={this.props.width/2}
+                            height={this.props.height}/>
+                    </clipPath>
+                </defs>
+
+                <g ref={node => this.frameN = node}
+                    className={styles.buttonFrame + " " +
+                        (this.state.mouseHover ? styles.buttonFrameOnMouseHover : "")}
+                    pointerEvents="bounding-box"
+                    transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
+                    <rect
+                        x={this.props.isJoinedLeft ? 0 : this.borderWidth/2}
+                        y={this.borderWidth/2}
+                        width={this.props.isJoinedLeft ? this.props.width : this.props.width - this.borderWidth}
+                        height={this.props.height - this.borderWidth}
+                        clipPath="url(#borderLeftHalf)"
+                        rx={this.props.isJoinedLeft ? 0 : this.rx}
+                        stroke="currentColor"
+                        strokeWidth={this.borderWidth}
+                    />
+
+                    <rect
+                        x={this.props.isJoinedRight ? 0 : this.borderWidth/2}
+                        y={this.borderWidth/2}
+                        width={this.props.isJoinedRight ? this.props.width: this.props.width - this.borderWidth}
+                        height={this.props.height - this.borderWidth}
+                        clipPath="url(#borderRightHalf)"
+                        rx={this.props.isJoinedRight ? 0 : this.rx}
+                        stroke="currentColor"
+                        strokeWidth={this.borderWidth}
+                    />
+
+                    <g transform={`translate(${this.props.padding.left}, ${this.props.padding.top})`}>
+                        {this.props.innerRender && this.props.innerRender(innerProps)}
+                    </g>
+                </g>
+            </svg>
+        );
+    }
+}
+
 class PlayPauseButton extends Component {
     static propTypes = {
-        height: PropTypes.string,
-        width: PropTypes.string,
-        isJoinedLeft: PropTypes.bool,
+        animStatus: PropTypes.object,
+        animControl: PropTypes.object,
+
+        width: PropTypes.number,
+        height: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            right: PropTypes.number,
+            left: PropTypes.number,
+        }),
+
         isJoinedRight: PropTypes.bool,
-        animStatus: PropTypes.object,
-        animControl: PropTypes.object,
-    }
-    constructor(props) {
-        super(props);
-
-        this.playButt = `<svg
-                id="innerSvg"
-                viewBox="0 0 100 100"
-                xmlns="http://www.w3.org/2000/svg">
-
-                <polygon points="26,18 80,50 26,82" stroke-width="10" stroke-linejoin="round"
-                    fill="currentColor"
-                    stroke="currentColor"
-                />
-            </svg>`;
-        this.pauseButt = `<svg
-                id="innerSvg"
-                viewBox="0 0 100 100"
-                xmlns="http://www.w3.org/2000/svg">
-
-                <g>
-                    <rect width="30" height="76" fill="currentColor" rx="10"
-                        x="15" y="12"
-                    />
-
-                    <rect width="30" height="76" fill="currentColor" rx="10"
-                        x="55" y="12"
-                    />
-                </g>
-            </svg>`;
-    }
-
-    onPress() {
-        if (this.props.animStatus.isPlaying || this.props.animStatus.isBuffering)
-            this.props.animControl.pause();
-        else
-            this.props.animControl.play();
-    }
-
-    render() {
-        const innerSvg = this.props.animStatus.isPlaying || this.props.animStatus.isBuffering ? this.pauseButt : this.playButt;
-
-        return (
-            <MediaButton
-                height={this.props.height}
-                width={this.props.width}
-                isJoinedLeft={this.props.isJoinedLeft}
-                isJoinedRight={this.props.isJoinedRight}
-                innerSvg={innerSvg}
-                onClick={this.props.animControl.play && this.props.animControl.pause && ::this.onPress}
-            />
-        );
-    }
-}
-
-@withComponentMixins([
-    withAnimationControl
-])
-class StopButton extends Component {
-    static propTypes = {
-        height: PropTypes.string,
-        width: PropTypes.string,
         isJoinedLeft: PropTypes.bool,
-        isJoinedRight: PropTypes.bool,
-        animStatus: PropTypes.object,
-        animControl: PropTypes.object,
-    }
-
-    constructor(props) {
-        super(props);
-        this.button = `<svg
-                id="innerSvg"
-                viewBox="0 0 100 100"
-                xmlns="http://www.w3.org/2000/svg">
-
-            <rect width="70" height="70" x="15" y="15" rx="10" fill="currentColor"/>
-        </svg>`;
-    }
-
-    render() {
-        return (
-            <MediaButton
-                height={this.props.height}
-                width={this.props.width}
-                isJoinedLeft={this.props.isJoinedLeft}
-                isJoinedRight={this.props.isJoinedRight}
-                innerSvg={this.button}
-                onClick={this.props.animControl.stop}/>
-        );
-    }
-}
-
-@withComponentMixins([
-    withAnimationControl
-])
-class JumpForwardButton extends Component {
-    static propTypes = {
-        height: PropTypes.string,
-        width: PropTypes.string,
-        isJoinedLeft: PropTypes.bool,
-        isJoinedRight: PropTypes.bool,
-        animStatus: PropTypes.object,
-        animControl: PropTypes.object,
-        jump: PropTypes.number,
-    }
-
-    constructor(props) {
-        super(props);
-        this.button = `<svg
-                id="innerSvg"
-                viewBox="0 0 100 100"
-                xmlns="http://www.w3.org/2000/svg">
-
-            <polygon points="26,20 70,50 26,80" stroke-width="20" stroke-linejoin="round"
-                fill="currentColor"
-                stroke="currentColor"
-            />
-            <rect width="20" height="80" y="10" x="65" rx="10" fill="currentColor" />
-        </svg>`;
-    }
-
-    render() {
-        return (
-            <MediaButton
-                height={this.props.height}
-                width={this.props.width}
-                isJoinedLeft={this.props.isJoinedLeft}
-                isJoinedRight={this.props.isJoinedRight}
-                innerSvg={this.button}
-                onClick={() => this.props.animControl.jumpForward(this.props.jump)}/>
-        );
-    }
-}
-
-@withComponentMixins([
-    withAnimationControl
-])
-class JumpBackwardButton extends Component {
-    static propTypes = {
-        height: PropTypes.string,
-        width: PropTypes.string,
-        isJoinedLeft: PropTypes.bool,
-        isJoinedRight: PropTypes.bool,
-        animStatus: PropTypes.object,
-        animControl: PropTypes.object,
-        jump: PropTypes.number,
-    }
-
-    constructor(props) {
-        super(props);
-        this.button = `<svg
-                id="innerSvg"
-                viewBox="0 0 100 100"
-                xmlns="http://www.w3.org/2000/svg">
-
-            <rect width="20" height="80" y="10" x="15" rx="10" fill="currentColor" />
-            <polygon points="74,20 30,50 74,80" stroke-width="20" stroke-linejoin="round"
-                fill="currentColor"
-                stroke="currentColor"
-            />
-        </svg>`;
-    }
-
-    render() {
-        return (
-            <MediaButton
-                height={this.props.height}
-                width={this.props.width}
-                isJoinedLeft={this.props.isJoinedLeft}
-                isJoinedRight={this.props.isJoinedRight}
-                innerSvg={this.button}
-                onClick={() => this.props.animControl.jumpBackward(this.props.jump)}/>
-        );
-    }
-}
-
-@withComponentMixins([
-    withAnimationControl
-])
-class PlaybackSpeedSlider_ extends Component {
-    static propTypes = {
-        maxFactor: PropTypes.number,
-        minFactor: PropTypes.number,
-        animControl: PropTypes.object,
-        animStatus: PropTypes.object,
     }
 
     constructor(props) {
         super(props);
 
         this.state = {
-            nodes: {},
-            enabled: false,
+            isPlaying: this.props.animStatus.isPlaying,
         };
-
-        this.minPos = 10;
-        this.maxPos = 115;
     }
 
     componentDidUpdate(prevProps) {
-        if (prevProps.minFactor !== this.props.minFactor || prevProps.maxFactor !== this.props.maxFactor) {
-            this.setState({scale: this.generateScale()});
-        }
-
-        if (prevProps.animControl.changeSpeed !== this.props.animControl.changeSpeed) {
-            this.setState({enabled: !!this.props.animControl.changeSpeed});
+        if (this.props.animStatus.isPlaying !== prevProps.animStatus.isPlaying) {
+            this.setState({isPlaying: this.props.animStatus.isPlaying});
         }
     }
 
-    componentDidMount() {
-        this.init();
+    handleClick() {
+        if (this.state.isPlaying) {
+            this.setState({isPlaying: false});
+            this.props.animControl.pause();
+        } else {
+            this.setState({isPlaying: true});
+            this.props.animControl.play();
+        }
     }
 
-    init() {
-        // TODO: extra enable and extra disable props on SliderBase
-        // const pointerSel = select(this.pointerN);
-        // pointerSel
-        //     .on("mouseenter", () => pointerSel.attr("fill", "yellow"))
-        //     .on("mouseleave", () => pointerSel.attr("fill", "white"));
-
-        this.setState({
-            nodes: {
-                slider: select(this.sliderN),
-                scale: select(this.scaleN),
-                pointer: select(this.pointerN),
-                label: select(this.labelN)
-            },
-            enabled: !!this.props.animControl.changeSpeed,
-            scale: this.generateScale(),
-        });
-    }
-
-    generateScale() {
-        return scaleLinear()
-            .domain([this.props.minFactor, this.props.maxFactor])
-            .range([this.minPos, this.maxPos])
-            .clamp(true);
-    }
 
     render() {
-        return (
-            <>
-                <SliderBase
-                    nodes={this.state.nodes}
+        const innerRender = ({width, height, mouseDown, mouseHover}) => {
+            return (
+                <svg viewBox={mouseHover && !mouseDown ? "4 4 92 92" : "0 0 100 100"}
+                    xmlns="http://www.w3.org/2000/svg"
+                    height={height} width={width}>
 
-                    enabled={this.state.enabled}
+                    {this.state.isPlaying &&
+                        <g>
+                            <rect width="25" height="76" fill="currentColor" rx="3"
+                                x="16" y="12"
+                            />
 
-                    valueToPos={this.state.scale}
-                    posToValue={this.state.scale && this.state.scale.invert}
-
-                    value={this.props.animStatus.speedFactor && this.props.animStatus.speedFactor}
-                    setValue={value => this.props.animControl.changeSpeed(value)}
-                    printValue={value => value.toFixed(2) + "x"}
-                    snapToValue={value => Math.round(value/0.25) * 0.25}
-                    movePointer={(pointer, pos) => pointer.attr("x", pos)}
-                />
-
-                <svg viewBox="0 0 125 50" xmlns="http://www.w3.org/2000/svg" color="black" ref={node => this.sliderN = node}>
-                    <defs>
-                        <circle id="circle"
-                            cy="40" r="6" cx="0" stroke="currentColor" strokeWidth="2"/>
-                    </defs>
-                    <line id="scale"
-                        x1="10" y1="40" x2="115" y2="40"
-                        stroke="currentColor" strokeWidth="5" strokeLinecap="round"
-                        ref={node => this.scaleN = node}/>
-                    <text id="label"
-                        textAnchor="middle" fill="currentColor"
-                        x="50%" y="20" ref={node => this.labelN = node}/>
-                    <use id="pointer" x={this.minPos} href="#circle" fill="white" ref={(node) => this.pointerN = node}/>
+                            <rect width="25" height="76" fill="currentColor" rx="3"
+                                x="59" y="12"
+                            />
+                        </g>
+                    ||
+                        <polygon points="22,14 84,50 22,86" strokeWidth="6" strokeLinejoin="round"
+                            fill="currentColor"
+                            stroke="currentColor"
+                        />
+                    }
                 </svg>
-            </>
+            );
+        };
+
+        return (
+            <MediaButtonBase
+                width={this.props.width}
+                height={this.props.height}
+                margin={this.props.margin}
+
+                isJoinedRight={this.props.isJoinedRight}
+                isJoinedLeft={this.props.isJoinedLeft}
+
+                enabled={this.props.animControl.play && this.props.animControl.pause && true || false}
+                innerRender={innerRender}
+                onClick={::this.handleClick}
+            />
         );
     }
 }
+
+class StopButton extends Component {
+    static propTypes = {
+        animStatus: PropTypes.object,
+        animControl: PropTypes.object,
+
+        width: PropTypes.number,
+        height: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            right: PropTypes.number,
+            left: PropTypes.number,
+        }),
+
+        isJoinedRight: PropTypes.bool,
+        isJoinedLeft: PropTypes.bool,
+    }
+
+    render() {
+        const innerRender = ({width, height, mouseHover, mouseDown}) => {
+            return (
+                <svg viewBox={mouseHover && !mouseDown ? "4 4 92 92" : "0 0 100 100"}
+                    xmlns="http://www.w3.org/2000/svg"
+                    height={height} width={width}>
+
+                    <rect width="70" height="70" x="15" y="15" rx="3" fill="currentColor"/>
+                </svg>
+            );
+        };
+
+        return (
+            <MediaButtonBase
+                width={this.props.width}
+                height={this.props.height}
+                margin={this.props.margin}
+
+                isJoinedRight={this.props.isJoinedRight}
+                isJoinedLeft={this.props.isJoinedLeft}
+
+                enabled={this.props.animControl.stop && true || false}
+                innerRender={innerRender}
+                onClick={this.props.animControl.stop}
+            />
+        );
+    }
+}
+
+class JumpForwardButton extends Component {
+    static propTypes = {
+        animStatus: PropTypes.object,
+        animControl: PropTypes.object,
+        animConfig: PropTypes.object,
+
+        width: PropTypes.number,
+        height: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            right: PropTypes.number,
+            left: PropTypes.number,
+        }),
+
+        isJoinedRight: PropTypes.bool,
+        isJoinedLeft: PropTypes.bool,
+    }
+
+    render() {
+        const innerRender = ({width, height, mouseHover, mouseDown}) => {
+            return (
+                <svg viewBox={mouseHover && !mouseDown ? "4 4 92 92" : "0 0 100 100"}
+                    xmlns="http://www.w3.org/2000/svg"
+                    height={height} width={width}>
+
+                    <polygon points="19,13 77,50 19,87" strokeWidth="6" strokeLinejoin="round"
+                        fill="currentColor"
+                        stroke="currentColor"
+                    />
+                    <rect width="20" height="80" y="10" x="65" rx="3" fill="currentColor" />
+                </svg>
+            );
+        };
+
+        return (
+            <MediaButtonBase
+                width={this.props.width}
+                height={this.props.height}
+                margin={this.props.margin}
+
+                isJoinedRight={this.props.isJoinedRight}
+                isJoinedLeft={this.props.isJoinedLeft}
+
+                enabled={this.props.animControl.jumpForward && true || false}
+                innerRender={innerRender}
+                onClick={this.props.animControl.jumpForward.bind(null, this.props.animConfig.jumpForwardButton.jump)}
+            />
+        );
+    }
+}
+
+class JumpBackwardButton extends Component {
+    static propTypes = {
+        animStatus: PropTypes.object,
+        animControl: PropTypes.object,
+        animConfig: PropTypes.object,
+
+        width: PropTypes.number,
+        height: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            bottom: PropTypes.number,
+            right: PropTypes.number,
+            left: PropTypes.number,
+        }),
+
+        isJoinedRight: PropTypes.bool,
+        isJoinedLeft: PropTypes.bool,
+    }
+
+    render() {
+        const innerRender = ({width, height, mouseHover, mouseDown}) => {
+            return (
+                <svg viewBox={mouseHover && !mouseDown ? "4 4 92 92" : "0 0 100 100"}
+                    xmlns="http://www.w3.org/2000/svg"
+                    height={height} width={width}>
+
+                    <rect width="20" height="80" y="10" x="15" rx="3" fill="currentColor" />
+                    <polygon points="81,13 23,50 81,87" strokeWidth="6" strokeLinejoin="round"
+                        fill="currentColor"
+                        stroke="currentColor"
+                    />
+                </svg>
+            );
+        };
+
+        return (
+            <MediaButtonBase
+                width={this.props.width}
+                height={this.props.height}
+                margin={this.props.margin}
+
+                isJoinedRight={this.props.isJoinedRight}
+                isJoinedLeft={this.props.isJoinedLeft}
+
+                enabled={this.props.animControl.jumpBackward && true || false}
+                innerRender={innerRender}
+                onClick={this.props.animControl.jumpBackward.bind(null, this.props.animConfig.jumpBackwardButton.jump)}
+            />
+        );
+    }
+}
+
 
 class PlaybackSpeedSlider extends Component {
     static propTypes = {
@@ -644,6 +660,7 @@ class Slider extends Component {
         );
     }
 }
+
 
 const durationBaseIntervals = {
     millisecond: 1,
@@ -1650,357 +1667,8 @@ class AnimationTimeline extends Component {
     }
 }
 
-class SliderBaseEvents extends Component {
-    static propTypes = {
-        nodes: PropTypes.shape({
-            slider: PropTypes.object.isRequired,
-            pointer: PropTypes.object.isRequired,
-            axis: PropTypes.object.isRequired,
-
-            hoverPointer: PropTypes.object,
-        }),
-        events: PropTypes.object,
-        enabled: PropTypes.bool,
-        value: PropTypes.any,
-    }
-
-    static defaultProps = {
-        enabled: false,
-        events: {},
-    }
-
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            position: this.props.value || 0,
-            hoverPosition: 0,
-            hoverPointerVisisible: false,
-        };
-
-        this.sliding = false;
-        this.eventHandlersAttached = false;
-    }
-
-    componentDidUpdate(prevProps) {
-        if ((this.props.nodes !== prevProps.nodes || !prevProps.enabled) && this.props.enabled && this.props.nodes) {
-            this.attachEventHandlers();
-        }
-
-        if (!this.props.enabled && prevProps.enabled) {
-            this.detachEventHandlers();
-        }
-
-        if (this.props.value !== prevProps.value && !this.sliding) {
-            this.setState({position: this.props.value});
-        }
-    }
-
-    componentDidMount() {
-        if (this.props.nodes && this.props.enabled) {
-            this.attachEventHandlers();
-        }
-    }
-
-    getMousePos() {
-        return mouse(this.props.nodes.axis.node())[0];
-    }
-
-    emit(event, ...args) {
-        this.props.events[event] && this.props.events[event](...args);
-    }
-
-    attachEventHandlers() {
-        const sliderNode = this.props.nodes.slider;
-        const axisNode = this.props.nodes.axis;
-        const pointerNode = this.props.nodes.pointer;
-
-        const terminateSliding = () => {
-            sliderNode.on("mousemove", null);
-            axisNode.attr("pointer-events", this.axisNodePointerEvents);
-            this.sliding = false;
-        };
-
-        const startSliding = () => {
-            this.sliding = true;
-            this.axisNodePointerEvents = axisNode.attr("pointer-events");
-            axisNode.attr("pointer-events", "none");
-
-            sliderNode.on("mousemove", () => this.setState({position: this.getMousePos()}));
-        };
-
-        //---Slider---
-        sliderNode.
-            on("mouseup", () => {
-                if (!this.sliding) return;
-                terminateSliding();
-                this.emit("onPointerSetTo", this.state.position);
-            }).
-            on("mouseleave", () => {
-                if (!this.sliding) return;
-                terminateSliding();
-                this.setState({position: this.props.value});
-            });
-
-        //---axis---
-        axisNode
-            .on("click", () => {
-                const mousePos = this.getMousePos();
-                this.setState({position: mousePos});
-                this.emit("onPointerSetTo", mousePos);
-            })
-            .style("cursor", "pointer")
-            .style("user-select", "none");
-
-        //---Pointer---
-        pointerNode
-            .style("cursor", "pointer")
-            .on("mousedown", startSliding)
-            .on("mouseenter", () => this.emit("onPointerMouseEnter", pointerNode))
-            .on("mouseleave", () => this.emit("onPointerMouseLeave", pointerNode));
-
-        //---Hover---
-        if (this.props.nodes.hoverPointer) {
-            axisNode
-                .on("mouseenter", () => {
-                    this.emit("onHoverPointerAppear", this.props.nodes.hoverPointer);
-                    this.setState({hoverPointerVisible: true});
-                })
-                .on("mouseleave", () => {
-                    this.emit("onHoverPointerDisappear", this.props.nodes.hoverPointer);
-                    this.setState({hoverPointerVisible: false});
-                })
-                .on("mousemove", () => this.setState({hoverPosition: this.getMousePos()}));
-        }
-    }
-
-    detachEventHandlers() {
-        const sliderNode = this.props.nodes?.slider;
-        const pointerNode = this.props.nodes?.pointer;
-        const axisNode = this.props.nodes?.axis;
-
-        sliderNode && sliderNode.on("mouseleave mouseup", null);
-        pointerNode && pointerNode.on("mousedown", null);
-
-        if (axisNode) {
-            const eventsRegistered = this.props.nodes?.hoverPointer ? "mouseenter mouseleave mousemove click" : "click";
-            axisNode.
-                on(eventsRegistered, null);
-        }
-    }
-
-    render() {
-        this.props.nodes?.pointer && this.emit("onPointerMoveTo", this.props.nodes.pointer, this.state.position);
-        this.state.hoverPointerVisible && this.props.nodes?.hoverPointer && this.emit("onHoverPointerMoveTo", this.props.nodes.hoverPointer, this.state.hoverPosition, this.state.position);
-
-        return <></>;
-    }
-
-}
-
-//Implementation of slider logic
-class SliderBase extends Component {
-    static propTypes = {
-        nodes: PropTypes.object,
-
-        enabled: PropTypes.bool,
-        withHover: PropTypes.bool,
-
-        valueToPos: PropTypes.func,
-        posToValue: PropTypes.func,
-
-        value: PropTypes.any,
-        setValue: PropTypes.func,
-        printValue: PropTypes.func,
-        // snapToValue: PropTypes.func,
-
-        movePointer: PropTypes.func,
-        moveHoverPointer: PropTypes.func,
-    }
-
-    static defaultProps = {
-        nodes: {},
-        withHover: false,
-        enabled: false,
-    }
-
-    constructor(props) {
-        super(props);
-
-        this.isSliding = false;
-        this.state = {
-            value: props.value || 0,
-            hoverValue: 0,
-        };
-    }
-
-    componentDidUpdate(prevProps) {
-        if (!this.props.enabled && prevProps.enabled) {
-            this.disable();
-            return;
-        }
-
-        if (this.props.enabled && !prevProps.enabled) {
-            this.enable();
-        } else if (this.props.enabled && this.props.withHover && !prevProps.withHover) {
-            this.enableHover();
-        } else if (this.props.enabled && !this.props.withHover && prevProps.withHover) {
-            this.disableHover();
-        }
-
-        if (prevProps.value !== this.props.value && this.props.value && !this.isSliding) {
-            this.setState({value: this.props.value});
-        }
-    }
-
-    componentDidMount() {
-        if (this.props.enabled) this.enable();
-    }
-
-    enable() {
-        const sliderNode = this.props.nodes.slider;
-        const scaleNode = this.props.nodes.scale;
-        const labelNode = this.props.nodes.label;
-        const pointerNode = this.props.nodes.pointer;
-
-        const terminateSliding = () => {
-            sliderNode.on("mousemove", null);
-            scaleNode.attr("pointer-events", this.scaleNodePointerEvents);
-            labelNode.attr("pointer-events", this.labelNodePointerEvents);
-        };
-
-        const startSliding = () => {
-            this.isSliding = true;
-            this.scaleNodePointerEvents = scaleNode.attr("pointer-events");
-            this.labelNodePointerEvents = labelNode.attr("pointer-events");
-            labelNode.attr("pointer-events", "none");
-            scaleNode.attr("pointer-events", "none");
-
-            sliderNode.on("mousemove", () => {
-                this.setState({value: this.getMouseValue()});
-            });
-        };
-
-        //---Slider---
-        sliderNode.
-            on("mouseup", () => {
-                if (!this.isSliding) return;
-
-                terminateSliding();
-
-                this.sendChangeUp();
-                this.isSliding = false;
-            }).
-            on("mouseleave", () => {
-                if (!this.isSliding) return;
-                terminateSliding();
-
-                this.setState({value: this.props.value});
-                this.isSliding = false;
-            });
-
-        //---Scale---
-        scaleNode
-            .on("click", () => {
-                this.setState({value: this.getMouseValue()});
-                this.sendChangeUp();
-            })
-            .style("cursor", "pointer")
-            .style("user-select", "none");
-
-        //---Pointer---
-        pointerNode.
-            style("cursor", "pointer").
-            on("mousedown", startSliding);
-
-        //---Label---
-        labelNode
-            .style("user-select", "none");
-
-        if (this.props.withHover) this.enableHover();
-    }
-
-    enableHover() {
-        const hoverLabelNode = this.props.nodes.hoverLabel;
-        const hoverPointerNode = this.props.nodes.hoverPointer;
-        const scaleNode = this.props.nodes.scale;
-        const labelNode = this.props.nodes.label;
-
-        hoverLabelNode.style("user-select", "none");
-        scaleNode.
-            on("mouseenter", () => {
-                hoverPointerNode.style("display", "block");
-                labelNode.style("display", "none");
-            }).
-            on("mouseleave", () => {
-                hoverPointerNode.style("display", "none");
-                labelNode.style("display", "block");
-            }).
-            on("mousemove", () => this.setState({hoverValue: this.getMouseValue()}));
-    }
-
-    disable() {
-        const sliderNode = this.props.nodes.slider;
-        const pointerNode = this.props.nodes.pointer;
-        const scaleNode = this.props.nodes.scale;
-
-        if (sliderNode) {
-            sliderNode
-                .on("mouseleave mouseup", null);
-        }
-
-        if (pointerNode) {
-            pointerNode
-                .on("mousedown", null);
-        }
-
-        if (scaleNode) {
-            scaleNode.
-                on("click", null);
-        }
-
-        if (this.props.withHover) this.disableHover();
-    }
-
-    disableHover() {
-        const scaleNode = this.props.nodes.scale;
-        if (scaleNode) scaleNode.on("mouseenter mouseleave mousemove", null);
-    }
-
-
-    getMouseValue() {
-        const x = mouse(this.props.nodes.scale.node())[0];
-        const value = this.props.posToValue(x);
-        return this.props.snapToValue ? this.props.snapToValue(value) : value;
-    }
-
-    sendChangeUp() {
-        const success = this.props.setValue(this.state.value);
-        if (!success) this.setState({value: this.props.value});
-    }
-
-    render() {
-        if (this.props.printValue && this.props.valueToPos) {
-            if (this.props.nodes.pointer && this.props.movePointer)
-                this.props.movePointer(this.props.nodes.pointer, this.props.valueToPos(this.state.value));
-            if (this.props.nodes.label)
-                this.props.nodes.label.text(this.props.printValue(this.state.value));
-
-            if (this.props.moveHoverPointer && this.props.withHover && this.props.valueToPos) {
-                this.props.moveHoverPointer(this.props.nodes.hoverPointer, this.props.valueToPos(this.state.hoverValue));
-                this.props.nodes.hoverLabel.text(this.props.printValue(this.state.hoverValue));
-            }
-        }
-
-        return (
-            <></>
-        );
-    }
-
-}
-
 export {
-    MediaButton,
+    MediaButtonBase,
     PlayPauseButton,
     StopButton,
     JumpForwardButton,
@@ -2010,6 +1678,4 @@ export {
 
     PlaybackTimeline,
     AnimationTimeline,
-
-    Slider,
 };

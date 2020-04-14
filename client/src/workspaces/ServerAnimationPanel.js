@@ -5,7 +5,7 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, Slider, AnimationTimeline} from "../lib/media-controls";
+import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, AnimationTimeline} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
@@ -23,17 +23,30 @@ class SampleAnimation extends Component {
                 limits: [0.25, 5],
                 step: 0.25,
             },
+            jumpForwardButton: {
+                jump: 10,
+            },
+            jumpBackwardButton: {
+                jump: 10,
+            },
 
             length: 1000*60*60*20,
         };
 
         this.animControl = {
             changeSpeed: (value) => console.log("AnimCtrl: speed changed to:", value),
+            play: () => console.log("AnimCtrl: playing..."),
+            pause: () => console.log("AnimCtrl: pausing..."),
+
+            stop: () => console.log("AnimCtrl: stopping..."),
+            jumpForward: (value) => console.log("AnimCtrl jumping forward by:", value),
+            jumpBackward: (value) => console.log("AnimCtrl jumping backward by:", value),
         };
 
         this.animStatus = {
             position: 1000*60*60*5,
             playbackSpeedFactor: 1,
+            isPlaying: true,
         };
     }
     render() {
@@ -42,30 +55,64 @@ class SampleAnimation extends Component {
                 <ServerAnimationContext interpolFunc={linear} >
                     <div>
                         <PlayPauseButton
-                            width={"40"}
-                            height={"40"}
-                            isJoinedLeft={false}
-                            isJoinedRight={true}
+                            width={40}
+                            height={40}
+                            margin={{
+                                top: 0,
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                            }}
+                            isJoinedRight
+
+                            animStatus={this.animStatus}
+                            animControl={this.animControl}
                         />
                         <StopButton
-                            width={"40"}
-                            height={"40"}
-                            isJoinedLeft={true}
-                            isJoinedRight={true}
-                        />
-                        <JumpBackwardButton
-                            width={"40"}
-                            height={"40"}
-                            isJoinedLeft={true}
-                            isJoinedRight={true}
-                            jump={200}
+                            width={40}
+                            height={40}
+                            margin={{
+                                top: 0,
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                            }}
+                            isJoinedLeft
+                            isJoinedRight
+
+                            animStatus={this.animStatus}
+                            animControl={this.animControl}
                         />
                         <JumpForwardButton
-                            width={"40"}
-                            height={"40"}
-                            isJoinedLeft={true}
-                            isJoinedRight={false}
-                            jump={200}
+                            width={40}
+                            height={40}
+                            margin={{
+                                top: 0,
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                            }}
+                            isJoinedLeft
+                            isJoinedRight
+
+                            animConfig={this.animConfig}
+                            animStatus={this.animStatus}
+                            animControl={this.animControl}
+                        />
+                        <JumpBackwardButton
+                            width={40}
+                            height={40}
+                            margin={{
+                                top: 0,
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                            }}
+                            isJoinedLeft
+
+                            animStatus={this.animStatus}
+                            animControl={this.animControl}
+                            animConfig={this.animConfig}
                         />
 
                         <AnimationTimeline
@@ -74,23 +121,6 @@ class SampleAnimation extends Component {
                             animStatus={this.animStatus}
                         />
 
-                        <Slider
-                            sliderWidth={110}
-                            sliderHeight={17}
-                            enabled
-                            margin={{
-                                top: 40,
-                                bottom: 10,
-                                left: 10,
-                                right: 10,
-                            }}
-                            domain={[0, 100]}
-                            value={50}
-                            setValue={value => console.log("value set:", value)}
-
-                            labelFormat={(value) => "" + value}
-                            snapTo={(value) => Math.floor(value/5)*5}
-                        />
 
                         <PlaybackSpeedSlider
                             width={110}
@@ -98,6 +128,7 @@ class SampleAnimation extends Component {
                             animStatus={this.animStatus}
                             animControl={this.animControl}
                         />
+
                     </div>
                 </ServerAnimationContext>
             </>
