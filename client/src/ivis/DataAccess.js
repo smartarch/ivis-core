@@ -568,7 +568,7 @@ class DataAccess {
         else if (signals.length !== maxBucketCounts.length)
             throw new Error("maxBucketCounts should be a single integer or an array with same length as signals");
 
-        if (!Number.isNaN(minSteps) || minSteps === undefined)
+        if (Number.isFinite(minSteps) || minSteps === undefined)
             minSteps = signals.map(x => minSteps); // copy numeric value for each signal
         else if (signals.length !== minSteps.length)
             throw new Error("minSteps should be a single number or an array with same length as signals");

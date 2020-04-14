@@ -61,6 +61,10 @@ exports.up = (knex, Promise) => (async () => {
     // New virtual namespace id
     await updateVirt(-1);
 
+
+    const maxId =  await knex('namespaces').max('id as maxId').first();
+    await knex.raw(`ALTER TABLE namespaces AUTO_INCREMENT=${maxId.maxId}`);
+
     await knex.raw('SET FOREIGN_KEY_CHECKS=1');
 })();
 
