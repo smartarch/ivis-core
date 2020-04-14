@@ -1,10 +1,9 @@
-const {getEntityTypes} = require("../../lib/entity-settings");
-
 exports.up = (knex, Promise) => (async () => {
 
     await knex.raw('SET FOREIGN_KEY_CHECKS=0');
 
-    const typeTables = Object.values(getEntityTypes()).map(type => type.entitiesTable);
+    const typeTables = ['namespaces', 'templates', 'jobs', 'tasks', 'workspaces', 'panels', 'signals', 'signal_sets', 'users'];
+
 
     async function updateVirt(id) {
         const virtObj = {
