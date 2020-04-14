@@ -4,8 +4,7 @@ exports.up = (knex, Promise) => (async () => {
 
     await knex.raw('SET FOREIGN_KEY_CHECKS=0');
 
-    const virtId = -1;
-    const types = Object.values(getEntityTypes());
+    const typeTables = Object.values(getEntityTypes()).map(type => type.entitiesTable);
 
     async function updateVirt(id) {
         const virtObj = {
@@ -18,15 +17,15 @@ exports.up = (knex, Promise) => (async () => {
 
         await knex.table('namespaces').where(virtObj).update({id: id});
 
-        for (let type of types) {
-            await knex.table(type.entitiesTable).where({
+        for (let tableName of typeTables) {
+            await knex.table(tableName).where({
                 namespace: oldId
             }).update({namespace: id});
         }
     }
 
-    for (const type of types) {
-        await knex.schema.table(type.entitiesTable, table => {
+    for (const tableName of typeTables) {
+        await knex.schema.table(tableName, table => {
             table.dropForeign('namespace');
         });
     }
@@ -43,9 +42,9 @@ exports.up = (knex, Promise) => (async () => {
     // No support for auto_increment on signed int type in knex
     await knex.schema.raw('ALTER TABLE `namespaces` MODIFY `id` int not null auto_increment;');
 
-    for (const type of types) {
-        await knex.schema.alterTable(type.entitiesTable, table => {
-            if (type.entitiesTable !== 'namespaces') {
+    for (const tableName of typeTables) {
+        await knex.schema.alterTable(tableName, table => {
+            if (tableName !== 'namespaces') {
                 table.integer('namespace').notNullable().references('namespaces.id').alter();
             } else {
                 table.integer('namespace').references('namespaces.id').alter();
@@ -60,7 +59,8 @@ exports.up = (knex, Promise) => (async () => {
         table.integer('entity').notNullable().references(`namespaces.id`).onDelete('CASCADE').alter();
     });
 
-    await updateVirt(virtId);
+    // New virtual namespace id
+    await updateVirt(-1);
 
     await knex.raw('SET FOREIGN_KEY_CHECKS=1');
 })();
