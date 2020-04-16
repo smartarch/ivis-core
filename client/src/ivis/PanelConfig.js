@@ -18,7 +18,7 @@ import {
 import "brace/mode/html";
 import "brace/mode/json";
 import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} from "../lib/error-handling";
-import ParamTypes from "../settings/workspaces/panels/ParamTypes"
+import ParamTypes from "../settings/ParamTypes"
 import {checkPermissions} from "../lib/permissions";
 import styles from "./PanelConfig.scss";
 import {panelMenuMixin} from "./PanelMenu";
@@ -299,6 +299,7 @@ export class SaveDialog extends Component {
                 this.disableForm();
                 this.setFormStatusMessage('info', t('Saving ...'));
 
+                // FIXME id can be virtual -> panel doesn't exists so saving will result in error
                 await axios.put(getUrl(`rest/panels-config/${owner.props.panel.id}`), owner.getPanelConfig());
 
                 this.enableForm();

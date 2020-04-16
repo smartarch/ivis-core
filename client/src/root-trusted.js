@@ -49,6 +49,8 @@ import PanelsCUD from './settings/workspaces/panels/CUD';
 
 import SignalSetsList from './settings/signal-sets/List';
 import SignalSetsCUD from './settings/signal-sets/CUD';
+import SignalSetAggregations from './settings/signal-sets/Aggregations';
+import AggregationsCUD from './settings/signal-sets/AggregationsCUD';
 import RecordsList from './settings/signal-sets/RecordsList';
 import RecordsCUD from './settings/signal-sets/RecordsCUD';
 
@@ -447,6 +449,36 @@ const getStructure = t => {
                                         link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
                                         visible: resolved => resolved.signalSet.permissions.includes('edit'),
                                         panelRender: props => <SignalSetsCUD action={props.match.params.action} entity={props.resolved.signalSet} />
+                                    },
+                                    'aggregations': {
+                                        title: t('Aggregations'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations`,
+                                        visible: resolved => resolved.signalSet.permissions.includes('view'),
+                                        panelRender: props => <SignalSetAggregations  signalSet={props.resolved.signalSet} />,
+                                        children: {
+                                            ":jobId([0-9]+)": {
+                                                title: resolved => t('Aggregation "{{name}}"', {name: resolved.job.name}),
+                                                resolve: {
+                                                    job: params => `rest/jobs/${params.jobId}`
+                                                },
+                                                link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                children: {
+                                                    ':action(edit|delete)': {
+                                                        title: t('Edit'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                                        panelRender: props => <AggregationsCUD
+                                                            signalSet={props.resolved.signalSet}
+                                                            job={props.resolved.job}
+                                                            action={props.match.params.action}/>
+                                                    }
+                                                }
+                                            },
+                                            create: {
+                                                title: t('Create'),
+                                                panelRender: props => <AggregationsCUD signalSet={props.resolved.signalSet} action="create" />
+                                            }
+                                        }
                                     },
                                     ':action(signals|reindex)': {
                                         title: t('Signals'),

@@ -5,7 +5,7 @@ function getGlobalNamespaceId() {
 }
 
 function getVirtualNamespaceId() {
-    return 4294967295;
+    return -1;
 }
 
 module.exports = {

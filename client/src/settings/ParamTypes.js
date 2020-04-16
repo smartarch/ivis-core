@@ -11,15 +11,15 @@ import {
     InputField,
     TableSelect,
     TextArea
-} from "../../../lib/form";
+} from "../lib/form";
 import "brace/mode/html";
 import "brace/mode/json";
 import moment from "moment";
-import {TableSelectMode} from "../../../lib/table";
+import {TableSelectMode} from "../lib/table";
 import styles from "./ParamTypes.scss";
-import {getFieldsetPrefix, parseCardinality, resolveAbs} from "../../../../../shared/templates";
-import {getSignalTypes} from "../../signal-sets/signals/signal-types";
+import {getSignalTypes} from "../settings/signal-sets/signals/signal-types";
 import {rgb} from "d3-color";
+import {getFieldsetPrefix, parseCardinality, resolveAbs} from "../../../shared/param-types-helpers";
 
 export default class ParamTypes {
     constructor(t) {
@@ -311,7 +311,6 @@ export default class ParamTypes {
             }
         };
 
-
         /*
           The form data has the following structure depending on cardinality:
           0..1:
@@ -418,8 +417,10 @@ export default class ParamTypes {
                         }
                     } else {
                         params = [];
-                        for (const entryId of childEntries) {
-                            params.push(getChildParams(entryId));
+                        if (childEntries) {
+                            for (const entryId of childEntries) {
+                                params.push(getChildParams(entryId));
+                            }
                         }
                     }
                 }
@@ -618,7 +619,8 @@ export default class ParamTypes {
                     }
                 }
 
-                return <Fieldset key={spec.id} id={formId} label={spec.label} help={spec.help} flat={spec.flat}>{fields}</Fieldset>;
+                return <Fieldset key={spec.id} id={formId} label={spec.label} help={spec.help}
+                                 flat={spec.flat}>{fields}</Fieldset>;
             },
             upcast: (spec, value) => {
                 const upcastChild = (childConfig) => {
@@ -802,7 +804,6 @@ export default class ParamTypes {
 
     getParamFormId(prefix, paramId) {
         const abs = paramId ? resolveAbs(prefix, paramId) : prefix;
-        const formId = 'param_' + abs;
-        return formId;
+        return 'param_' + abs;
     }
 }

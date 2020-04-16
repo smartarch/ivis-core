@@ -17,28 +17,25 @@ const runningProc = new Map();
 /**
  * Run job
  * @param id Job id
- * @param params Parameters for the task
  * @param runId Run ID, will be used by stop command
- * @param entities
- * @param state
  * @param taskDir Directory with the task
  * @param onRequest Callback for handling request msgs from job.
  * @param onSuccess Callback on successful run
  * @param onFail callback on failed run
  * @returns {Promise<void>}
  */
-async function run(id, runId, params, entities, state, taskDir, onRequest, onSuccess, onFail) {
+async function run({jobId, runId, taskDir, inputData}, onRequest, onSuccess, onFail) {
     try {
         let output = '';
         let errOutput = '';
 
-        const dataInput = {};
-        dataInput.params = params || {};
-        dataInput.entities = entities;
-        dataInput.state = state;
-        dataInput.es = {
-            host: `${ivisConfig.elasticsearch.host}`,
-            port: `${ivisConfig.elasticsearch.port}`
+        const dataInput = {
+            params: {},
+            es:{
+                host: `${ivisConfig.elasticsearch.host}`,
+                port: `${ivisConfig.elasticsearch.port}`
+            },
+            ...inputData
         };
 
         const pythonExec = path.join(taskDir, ENV_NAME, 'bin', 'python');

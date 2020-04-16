@@ -92,7 +92,7 @@ async function listDTAjax(context, params) {
             .from('jobs')
             .innerJoin('tasks', 'tasks.id', 'jobs.task')
             .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
-        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name']
+        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name']
     );
 }
 

@@ -28,7 +28,7 @@ import ivisConfig from "ivisConfig";
 import {getJobStates} from './states';
 import {JobState} from "../../../../shared/jobs";
 import moment from "moment";
-import ParamTypes from "../workspaces/panels/ParamTypes"
+import ParamTypes from "../ParamTypes"
 import axios from "axios";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
@@ -93,7 +93,6 @@ export default class CUD extends Component {
                 taskSource: TaskSource.USER,
                 state: JobState.ENABLED,
                 signal_sets_triggers: [],
-                sets: [],
                 trigger: '',
                 min_gap: '',
                 delay: ''
@@ -222,7 +221,7 @@ export default class CUD extends Component {
             data.settings = this.props.entity.settings;
         }
 
-        ListCreator.submitFormValuesMutator('signalSetTriggers',data);
+        ListCreator.submitFormValuesMutator('signalSetTriggers', data);
         data.signal_sets_triggers = data.signalSetTriggers;
 
         data.params = {};
@@ -382,7 +381,7 @@ export default class CUD extends Component {
                         <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>
                     </Fieldset>
 
-                    <ListCreator id={'signalSetTriggers'} label={t('Signal sets triggers')} withOrder={false} entryElement={
+                    <ListCreator id={'signalSetTriggers'} label={t('Signal sets triggers')} entryElement={
                         <TableSelect label={t('Trigger on')} withHeader dropdown
                                      dataUrl='rest/signal-sets-table' columns={setsColumns}
                                      selectionLabelIndex={2}/>

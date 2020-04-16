@@ -3,6 +3,7 @@
 const passport = require('../../lib/passport');
 const moment = require('moment');
 const signalSets = require('../../models/signal-sets');
+const signalSetsAggregations = require('../../models/signal-set-aggregations');
 const panels = require('../../models/panels');
 const templates = require('../../models/templates');
 const users = require('../../models/users');
@@ -177,6 +178,18 @@ router.deleteAsync('/signal-set-records/:signalSetId/:recordIdBase64', passport.
 
 router.postAsync('/signal-set-records-validate/:signalSetId', passport.loggedIn, async (req, res) => {
     return res.json(await signalSets.serverValidateRecord(req.context, castToInteger(req.params.signalSetId), req.body));
+});
+
+router.postAsync('/signal-sets/:signalSetId/aggregations', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    return res.json(await signalSetsAggregations.create(req.context, castToInteger(req.params.signalSetId), req.body));
+});
+
+router.postAsync('/signal-sets-table', passport.loggedIn, async (req, res) => {
+    return res.json(await signalSets.listDTAjax(req.context, req.body));
+});
+
+router.postAsync('/signal-set-aggregations-table/:signalSetId', passport.loggedIn, async (req, res) => {
+    return res.json(await signalSetsAggregations.listDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
 /* This is for testing. Kept here as long as we are still making bigger changes to ELS query processor
