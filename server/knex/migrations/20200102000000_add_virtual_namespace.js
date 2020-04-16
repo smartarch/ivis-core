@@ -1,9 +1,8 @@
-const {getVirtualNamespaceId} = require("../../../shared/namespaces");
-
+const id = 4294967295;
 exports.up = (knex, Promise) => (async () => {
     await knex.raw('SET FOREIGN_KEY_CHECKS=0');
     await knex('namespaces').insert({
-        id: getVirtualNamespaceId(),
+        id: id,
         name: 'Virtual',
         description: 'Virtual namespace'
     });
@@ -11,5 +10,5 @@ exports.up = (knex, Promise) => (async () => {
 })();
 
 exports.down = (knex, Promise) => (async () => {
-    await knex('namespaces').where('id', getVirtualNamespaceId()).del();
+    await knex('namespaces').where('id', id).del();
 });
