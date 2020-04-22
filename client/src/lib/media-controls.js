@@ -17,6 +17,7 @@ const withAnimationControl = createComponentMixin({
     ]
 });
 
+
 class MediaButtonBase extends Component {
     static propTypes = {
         width: PropTypes.number,
@@ -687,7 +688,7 @@ function generateTimeUnitsUsedInLabel(maxTimeDiff, precision, delim) {
         i++;
     }
 
-    if (usedUnits.indexOf(delim) >= 0 && i < units.length) {
+    if (i < units.length) {
         usedUnits += delim + unitNames[i];
     }
 
@@ -1037,7 +1038,6 @@ function withLabel(Selector) {
             this.state = {
                 labelFormat: null,
             };
-
             this.selectorPrecision = 3;
         }
 
@@ -1054,10 +1054,11 @@ function withLabel(Selector) {
         getLabelFormat() {
             const beginPos = this.props.scale.range()[0];
             const precision = this.props.scale.invert(beginPos + this.selectorPrecision) - this.props.scale.invert(beginPos);
+            const duration = this.props.scale.domain()[1] - this.props.scale.domain()[0];
 
             const labelFormat = this.props.scale.type === "relative" ?
-                generateDurationLabelFormat(this.props.scale.domain()[1], precision) :
-                generateTimestampLabelFormat(this.props.scale.domain()[1] - this.props.scale.domain()[0], precision);
+                generateDurationLabelFormat(duration, precision) :
+                generateTimestampLabelFormat(duration, precision);
 
 
             this.setState({labelFormat: (px) => labelFormat(this.props.scale.invert(px))});
@@ -1117,12 +1118,11 @@ const PlaybackHoverSelector = withHover(withLabel(Selector));
 class PlaybackTimeline extends Component {
     static propTypes  = {
         relative: PropTypes.bool,
-        beginTs: PropTypes.number, //TODO: can be relative and have beginTs?
+        beginTs: PropTypes.number,
         endTs: PropTypes.number,
 
         width: PropTypes.number,
         height: PropTypes.number,
-        //TODO: maybe padding too? or consistency with top and bottom
         margin: PropTypes.shape({
             left: PropTypes.number,
             right: PropTypes.number,
@@ -1140,9 +1140,7 @@ class PlaybackTimeline extends Component {
         super(props);
 
         this.state = {
-            domainN: null,
             hoverSelectorEnabled: true,
-            playbackHighlightNode: null,
         };
 
         this.axisHeight = 37;
@@ -1171,7 +1169,7 @@ class PlaybackTimeline extends Component {
 
     relativeScaleInit() {
         const scale = scaleLinear()
-            .domain([0, this.props.endTs])
+            .domain([this.props.beginTs, this.props.endTs])
             .range([0, this.props.width])
             .clamp(true);
         scale.type = "relative";
@@ -1201,7 +1199,6 @@ class PlaybackTimeline extends Component {
     }
 
     setPlaybackPosition(px) {
-
         const playbackPosition = this.state.playbackToPx.invert(px);
         this.props.setPlaybackPosition(playbackPosition);
     }
@@ -1299,13 +1296,13 @@ class TimeAxis extends Component {
 
         this.state = {};
 
-        this.defaultTickCount = 50;
+        this.defaultTickCount = 10;
         this.durationIntervals = [
             1, 10, 50, 250, 500,
 
             durationBaseIntervals.second,
             5*durationBaseIntervals.second,
-            15*durationBaseIntervals.seconds,
+            15*durationBaseIntervals.second,
             30*durationBaseIntervals.second,
 
             durationBaseIntervals.minute,
@@ -1332,7 +1329,6 @@ class TimeAxis extends Component {
     componentDidUpdate(prevProps) {
         if (this.props.axisWidth !== prevProps.axisWidth || this.props.axisHeight !== prevProps.axisHeight ||
             this.props.scale !== prevProps.scale || this.props.ticks !== prevProps.ticks) {
-            console.log("update, ticks");
             this.axisInit();
         }
     }
@@ -1343,15 +1339,19 @@ class TimeAxis extends Component {
 
     getDefaultRelativeTicks() {
         const minTickCount = this.defaultTickCount;
-        const duration = this.props.scale.domain()[1];
+        const beginTs = this.props.scale.domain()[0];
+        const endTs = this.props.scale.domain()[1];
+        const duration = endTs - beginTs;
 
         let i = this.durationIntervals.length - 1;
-        while (i >= 0 && duration / this.durationIntervals[i] < minTickCount) i--;
+        while (i >= 0 && duration / this.durationIntervals[i] < minTickCount) {
+            i--;
+        }
 
         const ticks = [];
         const chosenInterval = this.durationIntervals[i];
-        let lastTickTs = 0;
-        while (lastTickTs <= duration) {
+        let lastTickTs = Math.ceil(beginTs/chosenInterval) * chosenInterval;
+        while (lastTickTs <= endTs) {
             ticks.push({ts: lastTickTs, label: true});
             lastTickTs += chosenInterval;
         }
@@ -1646,7 +1646,6 @@ class AnimationTimeline extends Component {
             playbackPosition: this.props.animStatus.position,
         };
     }
-
 
     render() {
         return (

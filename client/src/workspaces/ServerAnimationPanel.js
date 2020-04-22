@@ -14,8 +14,8 @@ class SampleAnimation extends Component {
 
         this.animConfig = {
             timeline: {
-                beginTs: 0,
-                endTs: 1000*60*60*24,
+                beginTs: 1000*60*1.43687890679,
+                endTs: 1000*60*5,
                 relative: true,
             },
             playbackSpeedSlider: {
@@ -121,14 +121,12 @@ class SampleAnimation extends Component {
                             animStatus={this.animStatus}
                         />
 
-
                         <PlaybackSpeedSlider
                             width={110}
                             animConfig={this.animConfig}
                             animStatus={this.animStatus}
                             animControl={this.animControl}
                         />
-
                     </div>
                 </ServerAnimationContext>
             </>
