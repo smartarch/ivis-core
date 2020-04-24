@@ -5,7 +5,7 @@ import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
 import TestWorkspacePanel
     from "./panels/TestWorkspacePanel";
 import {linear} from "../lib/animation-interpolations";
-import {StopButton, PlayPauseButton, JumpForwardButton, JumpBackwardButton, PlaybackSpeedSlider, AnimationTimeline} from "../lib/media-controls";
+import {PlayStopControlGroup, FullControlGroup} from "../lib/media-controls";
 
 
 class SampleAnimation extends Component {
@@ -54,76 +54,12 @@ class SampleAnimation extends Component {
             <>
                 <ServerAnimationContext interpolFunc={linear} >
                     <div>
-                        <PlayPauseButton
-                            width={40}
-                            height={40}
-                            margin={{
-                                top: 0,
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                            }}
-                            isJoinedRight
-
-                            animStatus={this.animStatus}
-                            animControl={this.animControl}
-                        />
-                        <StopButton
-                            width={40}
-                            height={40}
-                            margin={{
-                                top: 0,
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                            }}
-                            isJoinedLeft
-                            isJoinedRight
-
-                            animStatus={this.animStatus}
-                            animControl={this.animControl}
-                        />
-                        <JumpForwardButton
-                            width={40}
-                            height={40}
-                            margin={{
-                                top: 0,
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                            }}
-                            isJoinedLeft
-                            isJoinedRight
-
+                        <FullControlGroup
                             animConfig={this.animConfig}
                             animStatus={this.animStatus}
                             animControl={this.animControl}
                         />
-                        <JumpBackwardButton
-                            width={40}
-                            height={40}
-                            margin={{
-                                top: 0,
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                            }}
-                            isJoinedLeft
-
-                            animStatus={this.animStatus}
-                            animControl={this.animControl}
-                            animConfig={this.animConfig}
-                        />
-
-                        <AnimationTimeline
-                            width={600}
-                            animConfig={this.animConfig}
-                            animStatus={this.animStatus}
-                        />
-
-                        <PlaybackSpeedSlider
-                            width={110}
-                            animConfig={this.animConfig}
+                        <PlayStopControlGroup
                             animStatus={this.animStatus}
                             animControl={this.animControl}
                         />

@@ -62,13 +62,16 @@ $secondary: #c8ced3;
         font-weight: bold;
     }
     .sliderDomain {
-        fill: #fff;
         stroke: $black;
     }
 
     .sliderSelector {
-        fill: $primary;
+        fill: #fff;
         stroke: $black;
+    }
+
+    .sliderSelectorOnMouseHover {
+        fill: $primary;
     }
 }
 
@@ -84,7 +87,27 @@ $secondary: #c8ced3;
     }
 }
 
-//"media-button"
+.controlGroup {
+    width: 100%;
+
+    svg {
+        vertical-align: top;
+    }
+
+    .floatLeft {
+        display: inline;
+        float: left;
+    }
+
+    .floatRight {
+        display: inline;
+        float: right;
+    }
+    .clear {
+        clear: both;
+    }
+}
+
 
 
 

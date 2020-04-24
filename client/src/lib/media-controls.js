@@ -17,6 +17,29 @@ const withAnimationControl = createComponentMixin({
     ]
 });
 
+const defaultConfig = {
+    animationTimeline: {
+        margin: {
+            top: 35,
+            right: 8,
+            bottom: 20,
+            left: 8,
+        },
+        axisHeight: 27,
+    },
+    playbackSpeedSlider: {
+        sliderRadius: 13,
+    },
+    mediaButton: {
+        width: 35,
+        height: 27,
+    },
+    common: {
+        borderWidth: 2,
+        borderRadius: 3,
+    }
+};
+
 
 class MediaButtonBase extends Component {
     static propTypes = {
@@ -28,12 +51,8 @@ class MediaButtonBase extends Component {
             left: PropTypes.number,
             right: PropTypes.number,
         }),
-        padding: PropTypes.shape({
-            top: PropTypes.number,
-            bottom: PropTypes.number,
-            left: PropTypes.number,
-            right: PropTypes.number,
-        }),
+        borderRadius: PropTypes.number,
+        borderWidth: PropTypes.number,
 
         enabled: PropTypes.bool,
         onClick: PropTypes.func,
@@ -45,11 +64,11 @@ class MediaButtonBase extends Component {
     }
 
     static defaultProps = {
-        padding: {
-            top: 7,
-            bottom: 7,
-            left: 7,
-            right: 7,
+        margin: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
         },
     }
 
@@ -57,7 +76,7 @@ class MediaButtonBase extends Component {
         super(props);
 
         this.rx = 2;
-        this.borderWidth = 2;
+        this.borderWidth = 1.5;
 
         this.state = {
             mouseHover: false,
@@ -102,8 +121,17 @@ class MediaButtonBase extends Component {
     }
 
     render() {
-        const innerWidth = this.props.width - this.props.padding.left - this.props.padding.right;
-        const innerHeight = this.props.height - this.props.padding.top - this.props.padding.bottom;
+        const innerWidth = this.props.width * 0.6;
+        const innerHeight = this.props.height * 0.6;
+        const paddingVert = (this.props.height - innerHeight)/2;
+        const paddingHor = (this.props.width - innerWidth)/2;
+
+        const borderBoundaries = {
+            left: this.props.borderWidth/2,
+            top: this.props.borderWidth/2,
+            bottom: this.props.height - this.props.borderWidth/2,
+            right: this.props.width - this.props.borderWidth/2,
+        };
 
         const innerProps = {
             width: innerWidth,
@@ -111,57 +139,61 @@ class MediaButtonBase extends Component {
             ...this.state
         };
 
+        const leftBorder = this.props.isJoinedLeft ?
+            `
+            L 0,${borderBoundaries.bottom}
+            L 0,${borderBoundaries.top}
+            L ${borderBoundaries.left + this.props.borderRadius},${borderBoundaries.top}
+            `
+            :
+            `
+            Q ${borderBoundaries.left},${borderBoundaries.bottom} ${borderBoundaries.left}, ${borderBoundaries.bottom - this.props.borderRadius}
+            L ${borderBoundaries.left},${borderBoundaries.top + this.props.borderRadius}
+            Q ${borderBoundaries.left},${borderBoundaries.top} ${borderBoundaries.left + this.props.borderRadius},${borderBoundaries.top}
+            `
+        ;
+
+        const rightBorder = this.props.isJoinedRight ?
+            `
+            L ${this.props.width},${borderBoundaries.top}
+            L ${this.props.width},${borderBoundaries.bottom}
+            L ${borderBoundaries.right - this.props.borderRadius},${borderBoundaries.bottom}
+            `
+            :
+            `
+            Q ${borderBoundaries.right},${borderBoundaries.top} ${borderBoundaries.right},${borderBoundaries.top + this.props.borderRadius}
+            L ${borderBoundaries.right},${borderBoundaries.bottom - this.props.borderRadius}
+            Q ${borderBoundaries.right},${borderBoundaries.bottom} ${borderBoundaries.right - this.props.borderRadius},${borderBoundaries.bottom}
+            `
+        ;
+
+
         return (
             <svg xmlns="http://www.w3.org/2000/svg"
                 width={this.props.margin.left + this.props.margin.right + this.props.width}
                 height={this.props.margin.top + this.props.margin.bottom + this.props.height}
                 className={styles.button}>
 
-                <defs>
-                    <clipPath id="borderLeftHalf">
-                        <rect
-                            x="0"
-                            y="0"
-                            width={this.props.width/2}
-                            height={this.props.height}/>
-                    </clipPath>
-                    <clipPath id="borderRightHalf" >
-                        <rect
-                            x={this.props.width/2}
-                            y="0"
-                            width={this.props.width/2}
-                            height={this.props.height}/>
-                    </clipPath>
-                </defs>
-
                 <g ref={node => this.frameN = node}
                     className={styles.buttonFrame + " " +
                         (this.state.mouseHover ? styles.buttonFrameOnMouseHover : "")}
                     pointerEvents="bounding-box"
                     transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
-                    <rect
-                        x={this.props.isJoinedLeft ? 0 : this.borderWidth/2}
-                        y={this.borderWidth/2}
-                        width={this.props.isJoinedLeft ? this.props.width : this.props.width - this.borderWidth}
-                        height={this.props.height - this.borderWidth}
-                        clipPath="url(#borderLeftHalf)"
-                        rx={this.props.isJoinedLeft ? 0 : this.rx}
+                    <path
+                        strokeWidth={this.props.borderWidth}
                         stroke="currentColor"
-                        strokeWidth={this.borderWidth}
+                        d={`
+                            M ${borderBoundaries.left + this.props.borderRadius},${borderBoundaries.top}
+                            L ${borderBoundaries.right - this.props.borderRadius},${borderBoundaries.top}
+                            ${rightBorder}
+                            L ${borderBoundaries.left + this.props.borderRadius},${borderBoundaries.bottom}
+                            ${leftBorder}
+                            z
+                        `}
                     />
 
-                    <rect
-                        x={this.props.isJoinedRight ? 0 : this.borderWidth/2}
-                        y={this.borderWidth/2}
-                        width={this.props.isJoinedRight ? this.props.width: this.props.width - this.borderWidth}
-                        height={this.props.height - this.borderWidth}
-                        clipPath="url(#borderRightHalf)"
-                        rx={this.props.isJoinedRight ? 0 : this.rx}
-                        stroke="currentColor"
-                        strokeWidth={this.borderWidth}
-                    />
 
-                    <g transform={`translate(${this.props.padding.left}, ${this.props.padding.top})`}>
+                    <g transform={`translate(${paddingHor}, ${paddingVert})`}>
                         {this.props.innerRender && this.props.innerRender(innerProps)}
                     </g>
                 </g>
@@ -183,6 +215,8 @@ class PlayPauseButton extends Component {
             right: PropTypes.number,
             left: PropTypes.number,
         }),
+        borderRadius: PropTypes.number,
+        borderWidth: PropTypes.number,
 
         isJoinedRight: PropTypes.bool,
         isJoinedLeft: PropTypes.bool,
@@ -211,7 +245,6 @@ class PlayPauseButton extends Component {
             this.props.animControl.play();
         }
     }
-
 
     render() {
         const innerRender = ({width, height, mouseDown, mouseHover}) => {
@@ -246,6 +279,9 @@ class PlayPauseButton extends Component {
                 height={this.props.height}
                 margin={this.props.margin}
 
+                borderWidth={this.props.borderWidth}
+                borderRadius={this.props.borderRadius}
+
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
@@ -259,7 +295,6 @@ class PlayPauseButton extends Component {
 
 class StopButton extends Component {
     static propTypes = {
-        animStatus: PropTypes.object,
         animControl: PropTypes.object,
 
         width: PropTypes.number,
@@ -270,6 +305,8 @@ class StopButton extends Component {
             right: PropTypes.number,
             left: PropTypes.number,
         }),
+        borderRadius: PropTypes.number,
+        borderWidth: PropTypes.number,
 
         isJoinedRight: PropTypes.bool,
         isJoinedLeft: PropTypes.bool,
@@ -292,6 +329,9 @@ class StopButton extends Component {
                 width={this.props.width}
                 height={this.props.height}
                 margin={this.props.margin}
+
+                borderWidth={this.props.borderWidth}
+                borderRadius={this.props.borderRadius}
 
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
@@ -318,6 +358,8 @@ class JumpForwardButton extends Component {
             right: PropTypes.number,
             left: PropTypes.number,
         }),
+        borderRadius: PropTypes.number,
+        borderWidth: PropTypes.number,
 
         isJoinedRight: PropTypes.bool,
         isJoinedLeft: PropTypes.bool,
@@ -345,6 +387,9 @@ class JumpForwardButton extends Component {
                 height={this.props.height}
                 margin={this.props.margin}
 
+                borderWidth={this.props.borderWidth}
+                borderRadius={this.props.borderRadius}
+
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
@@ -370,6 +415,8 @@ class JumpBackwardButton extends Component {
             right: PropTypes.number,
             left: PropTypes.number,
         }),
+        borderRadius: PropTypes.number,
+        borderWidth: PropTypes.number,
 
         isJoinedRight: PropTypes.bool,
         isJoinedLeft: PropTypes.bool,
@@ -397,6 +444,9 @@ class JumpBackwardButton extends Component {
                 height={this.props.height}
                 margin={this.props.margin}
 
+                borderWidth={this.props.borderWidth}
+                borderRadius={this.props.borderRadius}
+
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
@@ -411,43 +461,30 @@ class JumpBackwardButton extends Component {
 
 class PlaybackSpeedSlider extends Component {
     static propTypes = {
-        animConfig: PropTypes.object,
-        animControl: PropTypes.object,
-        animStatus: PropTypes.object,
-
         width: PropTypes.number,
+        height: PropTypes.number,
         margin: PropTypes.shape({
             top: PropTypes.number,
             bottom: PropTypes.number,
             left: PropTypes.number,
             right: PropTypes.number,
         }),
+
+        borderWidth: PropTypes.number,
+        sliderRadius: PropTypes.number,
+
+        animConfig: PropTypes.object,
+        animControl: PropTypes.object,
+        animStatus: PropTypes.object,
     }
 
-    constructor(props) {
-        super(props);
-
-        this.adjustMargin = (margin) => {
-            let adjustedMargin = margin;
-            if (!adjustedMargin) adjustedMargin = {top: 0, bottom: 0, left: 0, right: 0},
-
-            adjustedMargin.top += 40;
-            adjustedMargin.bottom += 10;
-            adjustedMargin.right += 10;
-            adjustedMargin.left += 10;
-
-            return adjustedMargin;
-        };
-
-        this.state = {
-            margin: this.adjustMargin(this.props.margin),
-        };
-    }
-
-    componentDidUpdate(prevProps) {
-        if (this.props.margin !== prevProps.margin) {
-            this.setState({margin: this.adjustMargin(this.props.margin)});
-        }
+    static defaultConfig = {
+        margin: {
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+        },
     }
 
     labelFormat(factor) {
@@ -461,12 +498,14 @@ class PlaybackSpeedSlider extends Component {
     }
 
     render() {
-
         return (
             <Slider
-                sliderWidth={110}
-                sliderHeight={17}
-                margin={this.state.margin}
+                width={this.props.width}
+                height={this.props.height}
+                margin={this.props.margin}
+
+                borderWidth={this.props.borderWidth}
+                sliderRadius={this.props.sliderRadius}
 
                 enabled={this.props.animConfig.playbackSpeedSlider.enabled}
                 domain={this.props.animConfig.playbackSpeedSlider.limits}
@@ -483,14 +522,17 @@ class PlaybackSpeedSlider extends Component {
 
 class Slider extends Component {
     static propTypes = {
-        sliderWidth: PropTypes.number,
-        sliderHeight: PropTypes.number,
+        width: PropTypes.number,
+        height: PropTypes.number,
+        sliderRadius: PropTypes.number,
         margin: PropTypes.shape({
             left: PropTypes.number,
             right: PropTypes.number,
             top: PropTypes.number,
             bottom: PropTypes.number,
         }),
+
+        borderWidth: PropTypes.number,
 
         domain: PropTypes.arrayOf(PropTypes.number),
 
@@ -521,8 +563,8 @@ class Slider extends Component {
             this.detachEvents();
         }
 
-        if (this.props.domain !== prevProps.domain || this.props.sliderWidth !== prevProps.sliderWidth ||
-            this.props.sliderHeight !== prevProps.sliderHeight) {
+        if (this.props.domain !== prevProps.domain || this.props.width !== prevProps.width ||
+            this.props.sliderRadius !== prevProps.sliderRadius) {
             this.scaleInit();
         }
 
@@ -567,10 +609,10 @@ class Slider extends Component {
                 .on("mouseup", () => {
                     endSliding();
                     const val = getMouseValue();
-                    this.props.setValue(val);
                     this.setState({
                         value: val
                     });
+                    this.props.setValue(val);
                 })
                 .on("mouseleave", () => {
                     endSliding();
@@ -580,6 +622,8 @@ class Slider extends Component {
 
 
         selectorSel
+            .on("mouseenter", () => selectorSel.classed(styles.sliderSelectorOnMouseHover, true))
+            .on("mouseleave", () => selectorSel.classed(styles.sliderSelectorOnMouseHover, false))
             .on("mousedown", startSliding)
             .attr("cursor", "pointer");
 
@@ -599,61 +643,63 @@ class Slider extends Component {
             .attr("cursor", "default")
             .on("mousedown", null);
         selectorSel
+            .classed(styles.sliderSelectorOnMouseHover, false)
             .attr("cursor", "default")
-            .on("mousedown", null);
+            .on("mouseenter mouseleave mousedown", null);
+    }
+
+    getDomainWidth() {
+        return this.props.width - 2*this.props.sliderRadius;
     }
 
     scaleInit() {
         const scale = scaleLinear()
             .domain(this.props.domain)
-            .range([0, this.props.sliderWidth - this.props.sliderHeight])
+            .range([0, this.getDomainWidth()])
             .clamp(true);
 
         this.setState({scale});
     }
 
     render() {
-        const adjustedSliderWidth = this.props.sliderWidth - this.props.sliderHeight;
-        const adjustedSliderHeight = 0.5 * this.props.sliderHeight;
+        const domainWidth = this.getDomainWidth();
+        const domainTop = this.props.margin.top + this.props.height/2;
         const selectorShift = this.state.scale ? this.state.scale(this.state.value) : 0;
 
         return (
             <svg xmlns="http://www.w3.org/2000/svg"
-                width={this.props.sliderWidth + this.props.margin.left + this.props.margin.right}
-                height={this.props.sliderHeight + this.props.margin.top + this.props.margin.bottom}
-                className={styles.slider}>
+                width={this.props.width + this.props.margin.left + this.props.margin.right}
+                height={this.props.height + this.props.margin.top + this.props.margin.bottom}
+                className={styles.slider}
+                ref={node => this.domainContainerN = node}>
 
-                <g transform={`translate(${this.props.margin.left + this.props.sliderHeight/2}, ${this.props.margin.top})`}
-                    ref={node => this.domainContainerN = node}>
-                    <rect
-                        x="0"
-                        y="0"
-                        pointerEvents="bounding-box"
-                        width={adjustedSliderWidth}
-                        height={adjustedSliderHeight}
-                        rx="2"
-                        strokeWidth="2"
+                <text className={styles.label}
+                    textAnchor="middle"
+                    dominantBaseline="ideographic"
+                    fill="currentColor"
+                    x={this.props.margin.left + this.props.width/2}
+                    y={this.props.margin.top}
+                    ref={node => this.labelN = node}>
+                    {this.props.labelFormat(this.state.value)}
+                </text>
+
+                <g transform={`translate(${this.props.margin.left + this.props.sliderRadius}, ${domainTop})`}>
+                    <line
+                        x1="0"
+                        y1="0"
+                        x2={domainWidth}
+                        y2="0"
+                        strokeWidth={this.props.borderWidth*2}
+                        strokeLinecap="round"
                         className={styles.sliderDomain}
                         ref={node => this.domainN = node}/>
 
-                    <text
-                        className={styles.label}
-                        textAnchor="middle"
-                        fill="currentColor"
-                        x={adjustedSliderWidth/2}
-                        y="0"
-                        dy="-0.9em"
-                        ref={node => this.labelN = node}>
-                        {this.props.labelFormat(this.state.value)}
-                    </text>
 
-                    <rect transform={`translate(${selectorShift}, 0)`}
-                        x={-this.props.sliderHeight/2}
-                        y={adjustedSliderHeight/2 - this.props.sliderHeight/2}
-                        width={this.props.sliderHeight}
-                        height={this.props.sliderHeight}
-                        strokeWidth="2"
-                        rx="1"
+                    <circle transform={`translate(${selectorShift}, 0)`}
+                        cx={0}
+                        cy={0}
+                        r={this.props.sliderRadius - 2*this.props.borderWidth}
+                        strokeWidth={this.props.borderWidth}
                         className={styles.sliderSelector}
                         ref={node => this.selectorN = node}/>
                 </g>
@@ -771,8 +817,8 @@ const Selector = React.forwardRef(function Selector(props, ref) {
 
     const labelRef = useRef(null);
     useEffect(() => {
-        if (props.visible && props.label && labelRect === null) setLabelRect(labelRef.current.getBBox());
-    }, [props.visible, props.label]);
+        if (props.visible && props.labelFormat) setLabelRect(labelRef.current.getBBox());
+    }, [props.visible, props.labelFormat]);
 
     let labelShift = 0;
     let labelButtonRect = {width: 0, height: 0};
@@ -813,7 +859,7 @@ const Selector = React.forwardRef(function Selector(props, ref) {
                         textAnchor="middle"
                         y={labelBaseline}
                         opacity={labelRect ? 1 : 0}>
-                        {props.label}
+                        {props.labelFormat(props.x)}
                     </text>
                     <polygon className={styles.selector}
                         points="0,-3 -2,-6.464 2,-6.464" fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round"/>
@@ -827,7 +873,7 @@ Selector.propTypes = {
     visible: PropTypes.bool,
     x: PropTypes.number,
     y: PropTypes.number,
-    label: PropTypes.string,
+    labelFormat: PropTypes.func,
     boundaries: PropTypes.arrayOf(PropTypes.number),
 };
 
@@ -1067,7 +1113,7 @@ function withLabel(Selector) {
         render() {
             const {scale, forwardRef, ...rest} = this.props;
 
-            return <Selector {...rest} ref={forwardRef} label={this.state.labelFormat && this.state.labelFormat(this.props.x)}/>;
+            return this.state.labelFormat && <Selector {...rest} ref={forwardRef} labelFormat={this.state.labelFormat}/>;
         }
     }
 
@@ -1121,14 +1167,16 @@ class PlaybackTimeline extends Component {
         beginTs: PropTypes.number,
         endTs: PropTypes.number,
 
-        width: PropTypes.number,
-        height: PropTypes.number,
+        axisWidth: PropTypes.number,
+        axisHeight: PropTypes.number,
         margin: PropTypes.shape({
             left: PropTypes.number,
             right: PropTypes.number,
             top: PropTypes.number,
             bottom: PropTypes.number,
         }),
+        borderWidth: PropTypes.number,
+        borderRadius: PropTypes.number,
 
         playbackPosition: PropTypes.number,
         playbackLength: PropTypes.number,
@@ -1139,12 +1187,7 @@ class PlaybackTimeline extends Component {
     constructor(props) {
         super(props);
 
-        this.state = {
-            hoverSelectorEnabled: true,
-        };
-
-        this.axisHeight = 37;
-        this.selectorBaseline = 0;
+        this.selectorBaselineShift = 0;
         this.axisHighlights = [
             {
                 begin: 0,
@@ -1154,10 +1197,14 @@ class PlaybackTimeline extends Component {
                 key: "playedHighlight",
             }
         ];
+
+        this.state = {
+            hoverSelectorEnabled: true,
+        };
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.width !== prevProps.width || this.props.margin !== prevProps.margin ||
+        if (this.props.axisWidth !== prevProps.axisWidth || this.props.margin !== prevProps.margin ||
             this.props.playbackLength !== prevProps.playbackLength) {
             this.timeScaleInit();
         }
@@ -1170,7 +1217,7 @@ class PlaybackTimeline extends Component {
     relativeScaleInit() {
         const scale = scaleLinear()
             .domain([this.props.beginTs, this.props.endTs])
-            .range([0, this.props.width])
+            .range([0, this.props.axisWidth])
             .clamp(true);
         scale.type = "relative";
 
@@ -1180,7 +1227,7 @@ class PlaybackTimeline extends Component {
     absoluteScaleInit() {
         const scale = scaleTime()
             .domain([this.props.beginTs, this.props.endTs])
-            .range([0, this.props.width])
+            .range([0, this.props.axisWidth])
             .clamp(true);
         scale.type = "absolute";
 
@@ -1204,67 +1251,63 @@ class PlaybackTimeline extends Component {
     }
 
     render() {
-        const axisTop = this.props.height - this.axisHeight;
-
         return (
             <svg className={styles.timeline} xmlns="http://www.w3.org/2000/svg"
-                width={this.props.width + this.props.margin.left + this.props.margin.right}
-                height={this.props.height + this.props.margin.bottom + this.props.margin.top}>
+                width={this.props.axisWidth + this.props.margin.left + this.props.margin.right}
+                height={this.props.axisHeight + this.props.margin.bottom + this.props.margin.top}
+                ref={node => this.containerN = node}
+                pointerEvents="bounding-box">
 
-                <g ref={node => this.containerN = node}
-                    pointerEvents="bounding-box"
-                    transform={`translate(0, ${this.props.margin.top})`}>
-                    <rect width={this.props.width + this.props.margin.left + this.props.margin.right} height={this.props.height} fill="none" />
+                { this.state.timeScale &&
+                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
+                        <TimeAxis
+                            scale={this.state.timeScale}
+                            axisWidth={this.props.axisWidth}
+                            axisHeight={this.props.axisHeight}
+                            borderWidth={this.props.borderWidth}
+                            borderRadius={this.props.borderRadius}
 
-                    { this.state.timeScale &&
-                        <g transform={`translate(${this.props.margin.left}, ${axisTop})`}>
-                            <TimeAxis
-                                scale={this.state.timeScale}
-                                axisWidth={this.props.width}
-                                axisHeight={this.axisHeight}
+                            domainRef={node => this.domainN = node}
+                            highlights={this.axisHighlights}
+                        />
 
-                                domainRef={node => this.domainN = node}
-                                highlights={this.axisHighlights}
-                            />
+                        <PlaybackPositionSelector
+                            setGlobal={::this.setPlaybackPosition}
+                            onDragStart={() => this.setState({hoverSelectorEnabled: false})}
+                            onDragEnd={() => this.setState({hoverSelectorEnabled: true})}
 
-                            <PlaybackPositionSelector
-                                setGlobal={::this.setPlaybackPosition}
-                                onDragStart={() => this.setState({hoverSelectorEnabled: false})}
-                                onDragEnd={() => this.setState({hoverSelectorEnabled: true})}
+                            enabled={true}
+                            parentNode={this.containerN}
+                            parentNodeXShift={this.props.margin.left}
 
-                                enabled={true}
-                                parentNode={this.containerN}
-                                parentNodeXShift={this.props.margin.left}
+                            getTargetNode={() => this.domainN}
 
-                                getTargetNode={() => this.domainN}
+                            x={this.state.playbackToPx(this.props.playbackPosition)}
+                            y={this.selectorBaselineShift}
 
-                                x={this.state.playbackToPx(this.props.playbackPosition)}
-                                y={this.selectorBaseline}
+                            scale={this.state.timeScale}
+                            boundaries={this.state.timeScale.range()}
+                            visible={true}
 
-                                scale={this.state.timeScale}
-                                boundaries={this.state.timeScale.range()}
-                                visible={true}
+                            getHighlightNode={() => this.playedHighlightN}
+                            highlightAttr={"width"}
 
-                                getHighlightNode={() => this.playedHighlightN}
-                                highlightAttr={"width"}
+                            className={styles.playbackPositionSelector}
+                        />
+                        <PlaybackHoverSelector
+                            enabled={this.state.hoverSelectorEnabled}
 
-                                className={styles.playbackPositionSelector}
-                            />
-                            <PlaybackHoverSelector
-                                enabled={this.state.hoverSelectorEnabled}
+                            getTargetNode={() => this.domainN}
 
-                                getTargetNode={() => this.domainN}
+                            y={this.selectorBaselineShift}
 
-                                y={this.selectorBaseline}
+                            scale={this.state.timeScale}
+                            boundaries={this.state.timeScale.range()}
 
-                                scale={this.state.timeScale}
-                                boundaries={this.state.timeScale.range()}
-
-                                className={styles.hoverSelector}
-                            />
-                        </g>
-                    }
-                </g>
+                            className={styles.hoverSelector}
+                        />
+                    </g>
+                }
             </svg>
         );
     }
@@ -1272,14 +1315,15 @@ class PlaybackTimeline extends Component {
 
 class TimeAxis extends Component {
     static propTypes = {
-        axisWidth: PropTypes.number,
         axisHeight: PropTypes.number,
+        borderRadius: PropTypes.number,
+        borderWidth: PropTypes.number,
 
         scale: PropTypes.func,
         ticks: PropTypes.arrayOf(PropTypes.shape({
             ts: PropTypes.number,
             label: PropTypes.bool,
-        })),
+        })), //TODO:
 
         domainRef: PropTypes.func,
         highlights: PropTypes.arrayOf(PropTypes.shape({
@@ -1327,7 +1371,7 @@ class TimeAxis extends Component {
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.axisWidth !== prevProps.axisWidth || this.props.axisHeight !== prevProps.axisHeight ||
+        if (this.props.axisHeight !== prevProps.axisHeight || this.props.borderWidth !== prevProps.borderWidth ||
             this.props.scale !== prevProps.scale || this.props.ticks !== prevProps.ticks) {
             this.axisInit();
         }
@@ -1499,46 +1543,48 @@ class TimeAxis extends Component {
         return ticksData.filter(d => !d.isOmitted);
     }
 
-    generateTicks(ticksData, domainHeight, labelMarginTop) {
+    generateTicks(ticksData) {
         const createTick = (sel) => {
             return sel.append("g")
                 .classed("tick", true)
                 .attr("pointer-events", "none")
-                .call(sel => sel.append("line").attr("stroke", "currentColor").attr("stroke-width", 1.2))
+                .call(sel => sel.append("line").attr("stroke", "currentColor").attr("stroke-width", this.props.borderWidth))
                 .call(sel => sel.append("text")
                     .classed(styles.tickLabel + " " + styles.label, true)
                     .attr("fill", "currentColor")
                     .attr("dy", "1em"));
         };
 
+        const labelMarginTop = 3;
+
         const config = {
             begin: {
                 updateTickMark: (sel) => sel.attr("y1", 0).attr("y2", 0),
                 updateLabel: (sel, d) => sel
-                    .attr("y", domainHeight + labelMarginTop)
+                    .attr("y", this.props.axisHeight + labelMarginTop)
                     .attr("text-anchor", "start")
                     .text(d.label),
             },
             end: {
                 updateTickMark: (sel) => sel.attr("y1", 0).attr("y2", 0),
                 updateLabel: (sel, d) => sel
-                    .attr("y", domainHeight + labelMarginTop)
+                    .attr("y", this.props.axisHeight + labelMarginTop)
                     .attr("text-anchor", "end")
                     .text(d.label),
             },
             big: {
                 updateTickMark: (sel) => sel
-                    .attr("y1", domainHeight)
-                    .attr("y2", domainHeight/2),
+                    .attr("y1", this.props.axisHeight)
+                    .attr("y2", this.props.axisHeight/2),
                 updateLabel: (sel, d) => sel
-                    .attr("y", domainHeight + labelMarginTop)
+                    .attr("y", this.props.axisHeight + labelMarginTop)
                     .attr("text-anchor", "middle")
                     .text(d.label),
             },
             small: {
                 updateTickMark: (sel) => sel
-                    .attr("y1", domainHeight)
-                    .attr("y2", domainHeight*3/4),
+                    .attr("y1", this.props.axisHeight)
+                    .attr("y2", this.props.axisHeight*3/4),
                 updateLabel: (sel) => sel.text(null),
             },
         };
@@ -1579,26 +1625,26 @@ class TimeAxis extends Component {
         const labelRect = this.getTickLabelRect(ticksData[longestLabelIdx].label);
         const filteredTicksData = this.filterTicks(ticksData, labelRect.width);
 
-        const labelMarginTop = 3;
-        const domainHeight = this.props.axisHeight - labelMarginTop - labelRect.height;
-        this.generateTicks(filteredTicksData, domainHeight, labelMarginTop);
+        this.generateTicks(filteredTicksData);
 
         this.setState({
             tickLabelFormat,
             ticks,
-            domainHeight,
         });
     }
 
     render() {
         const highlightComp = (props) => (
             <rect
-                x={props.begin}
-                width={props.end - props.begin}
+                x={props.begin + this.props.borderWidth}
+                y={this.props.borderWidth}
+                width={Math.max(0, props.end - props.begin - 2*this.props.borderWidth)}
+                height={Math.max(0, this.props.axisHeight - 2*this.props.borderWidth)}
+
+                rx={this.props.borderRadius/2}
+
                 className={props.className}
                 ref={props.ref}
-                rx="2"
-                height={this.state?.domainHeight}
                 key={props.key}/>
         );
 
@@ -1608,12 +1654,14 @@ class TimeAxis extends Component {
                 <text ref={node => this.testLabelN = node} opacity="0"/>
                 {this.props.highlights && this.props.highlights.map(highlightComp)}
                 <rect
+                    x={this.props.borderWidth/2}
+                    y={this.props.borderWidth/2}
                     fill="none"
-                    rx="2"
-                    strokeWidth="1.5"
+                    rx={this.props.borderRadius}
+                    strokeWidth={this.props.borderWidth}
                     stroke="currentColor"
-                    width={this.props.axisWidth}
-                    height={this.state.domainHeight}
+                    width={this.props.scale.range()[1] - this.props.scale.range()[0] - this.props.borderWidth}
+                    height={this.props.axisHeight - this.props.borderWidth}
                     ref={node => {
                         if(this.props.domainRef) this.props.domainRef(node);
                         this.domainN = node;
@@ -1630,19 +1678,41 @@ class AnimationTimeline extends Component {
         animControl: PropTypes.object,
         animStatus: PropTypes.object,
 
-        width: PropTypes.number,
+        axisWidth: PropTypes.number,
+        axisHeight: PropTypes.number,
+        margin: PropTypes.shape({
+            top: PropTypes.number,
+            left: PropTypes.number,
+            right: PropTypes.number,
+            bottom: PropTypes.number,
+        }),
+        borderWidth: PropTypes.number,
+        borderRadius: PropTypes.number,
     }
+
+    static defaultProps = {
+        margin: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+        },
+    };
 
     constructor(props) {
         super(props);
 
+        this.baseMargin = {
+            left: 20,
+            right: 20,
+            bottom: 10,
+            top: 30,
+        };
+
+        this.baseHeight = {
+        };
+
         this.state = {
-            margin: {
-                left: 20,
-                right: 20,
-                bottom: 10,
-                top: 30,
-            },
             playbackPosition: this.props.animStatus.position,
         };
     }
@@ -1652,16 +1722,201 @@ class AnimationTimeline extends Component {
             <>
                 <PlaybackTimeline
                     {...this.props.animConfig.timeline}
-                    width={this.props.width}
-                    height={100}
-                    margin={this.state.margin}
+                    axisWidth={this.props.axisWidth}
+                    axisHeight={this.props.axisHeight}
+                    margin={this.props.margin}
+                    borderRadius={this.props.borderRadius}
+                    borderWidth={this.props.borderWidth}
 
                     playbackPosition={this.state.playbackPosition}
                     playbackLength={this.props.animConfig.length}
 
+                    //TODO
                     setPlaybackPosition={(pos) => this.setState({playbackPosition: pos})}
                 />
             </>
+        );
+    }
+}
+
+
+class FullControlGroup extends Component {
+    static propTypes = {
+        animConfig: PropTypes.object,
+        animStatus: PropTypes.object,
+        animControl: PropTypes.object,
+    };
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            width: null,
+        };
+    }
+
+    componentDidMount() {
+        this.handleResize();
+        window.addEventListener("resize", ::this.handleResize);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener("resize", ::this.handleResize);
+    }
+
+    handleResize() {
+        const width = this.containerN.getBoundingClientRect().width;
+        this.setState({width});
+    }
+
+    render() {
+        const getButtonSize = () => this.state.width * 0.12/3;
+        const getSpace = () => this.state.width * 0.03;
+        const getSliderWidth = () => this.state.width*0.15;
+        const getTimelineWidth = () => this.state.width - Math.ceil(3*getButtonSize()) - Math.ceil(2*getSpace()) - Math.ceil(getSliderWidth());
+
+        const marginTop = defaultConfig.animationTimeline.margin.top;
+        const controlHeight = defaultConfig.animationTimeline.axisHeight;
+
+        return (
+            <div
+                className={styles.controlGroup}
+                ref={node => this.containerN = node}>
+
+                {this.state.width &&
+                <>
+                    <div className={styles.floatLeft}>
+                        <JumpBackwardButton
+                            width={getButtonSize()}
+                            height={controlHeight}
+                            margin={{
+                                top: marginTop,
+                                left: 0,
+                                bottom: 0,
+                                right: 0,
+                            }}
+                            borderWidth={defaultConfig.common.borderWidth}
+                            borderRadius={defaultConfig.common.borderRadius}
+
+
+                            isJoinedRight
+
+                            animControl={this.props.animControl}
+                            animStatus={this.props.animStatus}
+                            animConfig={this.props.animConfig} />
+                        <PlayPauseButton
+                            width={getButtonSize()}
+                            height={controlHeight}
+                            margin={{
+                                top: marginTop,
+                                left: 0,
+                                bottom: 0,
+                                right: 0,
+                            }}
+                            borderWidth={defaultConfig.common.borderWidth}
+                            borderRadius={defaultConfig.common.borderRadius}
+
+                            isJoinedLeft
+                            isJoinedRight
+
+                            animStatus={this.props.animStatus}
+                            animControl={this.props.animControl} />
+                        <JumpForwardButton
+                            width={getButtonSize()}
+                            height={controlHeight}
+                            margin={{
+                                top: marginTop,
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                            }}
+                            borderWidth={defaultConfig.common.borderWidth}
+                            borderRadius={defaultConfig.common.borderRadius}
+
+                            isJoinedLeft
+
+                            animControl={this.props.animControl}
+                            animStatus={this.props.animStatus}
+                            animConfig={this.props.animConfig} />
+                    </div>
+
+                    <AnimationTimeline
+                        axisWidth={getTimelineWidth()}
+                        axisHeight={controlHeight}
+                        margin={{
+                            top: marginTop,
+                            bottom: defaultConfig.animationTimeline.margin.bottom,
+                            left: getSpace(),
+                            right: getSpace(),
+                        }}
+
+                        borderWidth={defaultConfig.common.borderWidth}
+                        borderRadius={defaultConfig.common.borderRadius}
+
+                        animStatus={this.props.animStatus}
+                        animControl={this.props.animControl}
+                        animConfig={this.props.animConfig}/>
+
+                    <div className={styles.floatRight}>
+                        <PlaybackSpeedSlider
+                            width={getSliderWidth()}
+                            height={controlHeight}
+                            margin={{
+                                top: marginTop,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                            }}
+
+
+                            borderWidth={defaultConfig.common.borderWidth}
+                            sliderRadius={defaultConfig.playbackSpeedSlider.sliderRadius}
+
+                            animStatus={this.props.animStatus}
+                            animControl={this.props.animControl}
+                            animConfig={this.props.animConfig}/>
+                    </div>
+                    <div className={styles.clear} />
+                </>}
+            </div>
+        );
+    }
+}
+
+class PlayStopControlGroup extends Component {
+    static propTypes = {
+        animStatus: PropTypes.object,
+        animControl: PropTypes.object,
+    };
+
+    render() {
+        return (
+            <div className={styles.controlGroup}>
+                <div className={styles.floatLeft}>
+                    <PlayPauseButton
+                        width={defaultConfig.mediaButton.width}
+                        height={defaultConfig.mediaButton.height}
+
+                        borderWidth={defaultConfig.common.borderWidth}
+                        borderRadius={defaultConfig.common.borderRadius}
+
+                        isJoinedRight
+
+                        animStatus={this.props.animStatus}
+                        animControl={this.props.animControl}/>
+                    <StopButton
+                        width={defaultConfig.mediaButton.width}
+                        height={defaultConfig.mediaButton.height}
+
+                        borderWidth={defaultConfig.common.borderWidth}
+                        borderRadius={defaultConfig.common.borderRadius}
+
+                        isJoinedLeft
+
+                        animControl={this.props.animControl}/>
+                </div>
+                <div className={styles.clear} />
+            </div>
         );
     }
 }
@@ -1677,4 +1932,7 @@ export {
 
     PlaybackTimeline,
     AnimationTimeline,
+
+    FullControlGroup,
+    PlayStopControlGroup,
 };
