@@ -39,7 +39,7 @@ The recommended deployment of IVIS is to use 3 DNS entries that all points to th
 - *api.ivis.example.com* - public endpoint (CNAME record `api.ivis` under `example.com` domain that points to `ivis`)
 
 
-### Installation on fresh CentOS 7 or Ubuntu 18.04 LTS (public website secured by SSL)
+### Installation on fresh CentOS 8, CentOS 7 or Ubuntu 18.04 LTS (public website secured by SSL)
 
 This will setup a publicly accessible IVIS instance. Endpoints trusted and sandbox will provide both HTTP (on port 80)
 and HTTPS (on port 443). The HTTP ports just issue HTTP redirect to their HTTPS counterparts. The API endpoit will be 
@@ -61,12 +61,12 @@ Thus, by running this script below, you agree with the Let's Encrypt's Terms of 
 
 2. Install GIT
 
-   For Centos 8 type:
+   For CentOS 8 type:
     ```
     dnf install -y git
     ```
 
-   For Centos 7 type:
+   For CentOS 7 type:
     ```
     yum install -y git
     ```
@@ -86,12 +86,12 @@ Thus, by running this script below, you agree with the Let's Encrypt's Terms of 
 4. Run the installation script. Replace the urls and your email address with the correct values. **NOTE** that running this script you agree
    Let's Encrypt's conditions.
 
-   For Centos 8 type:
+   For CentOS 8 type:
     ```
     bash setup/install-centos8-https.sh ivis.example.com sbox.ivis.example.com api.ivis.example.com admin@example.com
     ```
 
-   For Centos 7 type:
+   For CentOS 7 type:
     ```
     bash setup/install-centos7-https.sh ivis.example.com sbox.ivis.example.com api.ivis.example.com admin@example.com
     ```
@@ -130,7 +130,12 @@ All endpoints (trusted, sandbox, public) will provide only HTTP as follows:
 
 2. Install GIT
 
-   For Centos 7 type:
+   For CentOS 8 type:
+    ```
+    dnf install -y git
+    ```
+
+   For CentOS 7 type:
     ```
     yum install -y git
     ```
@@ -149,7 +154,12 @@ All endpoints (trusted, sandbox, public) will provide only HTTP as follows:
 
 4. Run the installation script.
 
-   For Centos 7 type:
+   For CentOS 8 type:
+    ```
+    bash setup/install-centos8-local.sh
+    ```
+
+   For CentOS 7 type:
     ```
     bash setup/install-centos7-local.sh
     ```
