@@ -351,6 +351,8 @@ class InputField extends Component {
         const owner = this.getFormStateOwner();
         const id = props.id;
         const htmlId = 'form_' + id;
+        const enableOptions = !!(props.withOptions && !props.disabled);
+
 
         let type = 'text';
         if (props.type === 'password') {
@@ -369,7 +371,7 @@ class InputField extends Component {
         if (value === null || value === undefined) console.log(`Warning: InputField ${id} is ${value}`);
 
         let opts = {};
-        if (props.withOptions) {
+        if (enableOptions) {
             opts['onFocus'] = ::this.onFocus;
             opts['onBlur'] = ::this.onBlur;
         }
@@ -382,16 +384,17 @@ class InputField extends Component {
                    id={htmlId}
                    className={className}
                    aria-describedby={htmlId + '_help'}
-                   onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}
+                   onChange={evt => owner.updateFormValue(id, evt.target.value)}
+                   disabled={props.disabled}
                    {...opts}
             />
         );
 
-        if (props.withOptions) {
+        if (enableOptions) {
             inputElement = (
                 <div className="input-group">
                     {inputElement}
-                    <div className="input-group-append" onMouseDown={evt=> evt.preventDefault()}>
+                    <div className="input-group-append" onMouseDown={evt => evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
                                     ::this.toggleOptions();
@@ -402,7 +405,7 @@ class InputField extends Component {
         }
 
         let options = [];
-        if (props.withOptions && this.state.showOptions) {
+        if (enableOptions && this.state.showOptions) {
             for (const option of props.withOptions) {
                 options.push(
                     <li
@@ -417,18 +420,20 @@ class InputField extends Component {
             }
         }
 
-        const divElement =
-            <div className={styles.inputContainer}>
-                {inputElement}
-                {props.withOptions &&
+        if (enableOptions) {
+            inputElement = (
+                <div className={styles.inputContainer}>
+                    {inputElement}
+                    {enableOptions &&
                     <div className={`list-group ${styles.inputOptions}`}>
                         {options}
                     </div>
-                }
-            </div>
-        ;
+                    }
+                </div>
+            );
+        }
 
-        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help, divElement);
+        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help, inputElement);
     }
 }
 
