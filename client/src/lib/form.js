@@ -391,7 +391,7 @@ class InputField extends Component {
             inputElement = (
                 <div className="input-group">
                     {inputElement}
-                    <div className="input-group-append">
+                    <div className="input-group-append" onMouseDown={evt=> evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
                                     ::this.toggleOptions();
