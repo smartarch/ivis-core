@@ -24,6 +24,7 @@ import {Panel} from "../../lib/panel";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
+import {fromIntervalStringToSeconds, toIntervalString} from "../../lib/aggregations-parser"
 import moment from "moment";
 
 @withComponentMixins([
@@ -55,7 +56,7 @@ export default class CUD extends Component {
         if (this.props.job) {
             this.populateFormValues({
                 ts: this.props.job.params.ts,
-                interval: this.props.job.params.interval
+                interval: toIntervalString(this.props.job.params.interval)
             });
         } else {
             this.populateFormValues({
@@ -76,11 +77,17 @@ export default class CUD extends Component {
             state.setIn(['ts', 'error'], null);
         }
 
-        const intervalVal = state.getIn(['interval', 'value']);
-        if (!intervalVal) {
+        const intervalValue = state.getIn(['interval', 'value']).trim();
+        if (!intervalValue) {
             state.setIn(['interval', 'error'], t('Interval must not be empty'));
         } else {
-            // positive integer test
+            let intervalVal = intervalValue;
+            const unit = intervalValue.slice(-1);
+
+            if (['s', 'm', 'h', 'd'].includes(unit)) {
+                intervalVal = intervalValue.slice(0, -1);
+            }
+
             if (!/^([1-9]\d*)$/.test(intervalVal)) {
                 state.setIn(['interval', 'error'], t('Interval must be a positive integer'));
             } else {
@@ -91,7 +98,7 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
 
-        data.interval = Number.parseInt(data.interval);
+        data.interval = fromIntervalStringToSeconds(data.interval);
 
         const allowedKeys = [
             'interval',
@@ -187,8 +194,12 @@ export default class CUD extends Component {
 
                     {/*<DatePicker id="offset" label={t("Offset")}  />*/}
 
-                    <InputField id="interval" label={t('Interval')} help={t('Bucket interval in seconds')}
-                                withOptions={['test', 'adn', 'rest','rest2','rest3']} disabled={isEdit}/>
+                    <InputField id="interval"
+                                label={t('Interval')}
+                                help={t('Bucket interval in seconds - add m(minute), h(hour), d(day) right after numeric value to change the unit.')}
+                                withOptions={['30m', '1h', '12h', '1d', '30d']}
+                                disabled={isEdit}/>
+
 
                     <ButtonRow>
                         {isEdit &&
