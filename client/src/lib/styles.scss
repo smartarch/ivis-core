@@ -2,6 +2,7 @@
 
 .panelMenu {
   float: right;
+
   :global .btn {
     padding: 0px;
   }
@@ -117,6 +118,22 @@
   }
 }
 
+.inputContainer {
+  position: relative;
+
+  .inputOptions {
+    position: absolute;
+    border-top: 0;
+    width: 100%;
+    top: 100%;
+    z-index: 100;
+  }
+
+  .inputOption {
+    padding: 0.5rem;
+  }
+}
+
 .colorPickerSwatchWrapper {
   padding: 7px;
   background: #fff;
@@ -136,11 +153,11 @@
   text-align: right;
 }
 
-.checkboxText{
+.checkboxText {
   padding-top: 3px;
 }
 
-.dropZone{
+.dropZone {
   padding-top: 20px;
   padding-bottom: 20px;
   margin-bottom: 3px;
@@ -157,7 +174,7 @@
   }
 }
 
-.dropZoneActive{
+.dropZoneActive {
   border-color: #90EE90;
   color: #000;
   background-color: #DDFFDD;
