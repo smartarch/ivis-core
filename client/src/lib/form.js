@@ -308,6 +308,7 @@ class StaticField extends Component {
 }
 
 @withComponentMixins([
+    withTranslation,
     withFormStateOwner
 ])
 class InputField extends Component {
@@ -318,6 +319,7 @@ class InputField extends Component {
         type: PropTypes.string,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         format: PropTypes.string,
+        withOptions: PropTypes.array,
         disabled: PropTypes.bool
     }
 
@@ -325,10 +327,29 @@ class InputField extends Component {
         type: 'text'
     }
 
+    constructor() {
+        super();
+        this.state = {showOptions: false};
+        this.textInput = React.createRef();
+    }
+
+    onFocus() {
+        this.setState({showOptions: true});
+    }
+
+    onBlur() {
+        this.setState({showOptions: false});
+    }
+
+    toggleOptions() {
+        this.setState({showOptions: !this.state.showOptions})
+    }
+
     render() {
         const props = this.props;
+        const t = props.t;
         const owner = this.getFormStateOwner();
-        const id = this.props.id;
+        const id = props.id;
         const htmlId = 'form_' + id;
 
         let type = 'text';
@@ -347,11 +368,67 @@ class InputField extends Component {
         const value = owner.getFormValue(id);
         if (value === null || value === undefined) console.log(`Warning: InputField ${id} is ${value}`);
 
-        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId}
-                   className={className} aria-describedby={htmlId + '_help'}
-                   onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}/>
+        let opts = {};
+        if (props.withOptions) {
+            opts['onFocus'] = ::this.onFocus;
+            opts['onBlur'] = ::this.onBlur;
+        }
+
+        let inputElement = (
+            <input ref={this.textInput}
+                   type={type}
+                   value={owner.getFormValue(id)}
+                   placeholder={props.placeholder}
+                   id={htmlId}
+                   className={className}
+                   aria-describedby={htmlId + '_help'}
+                   onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}
+                   {...opts}
+            />
         );
+
+        if (props.withOptions) {
+            inputElement = (
+                <div className="input-group">
+                    {inputElement}
+                    <div className="input-group-append">
+                        <Button label={t('Hints')} className="btn-secondary"
+                                onClickAsync={evt => {
+                                    ::this.toggleOptions();
+                                }}/>
+                    </div>
+                </div>
+            );
+        }
+
+        let options = [];
+        if (props.withOptions && this.state.showOptions) {
+            for (const option of props.withOptions) {
+                options.push(
+                    <li
+                        key={option}
+                        className={`list-group-item list-group-item-action list-group-item-light ${styles.inputOption}`}
+                        onClick={evt => owner.updateFormValue(id, option)}
+                        onMouseDown={evt => evt.preventDefault()}
+                    >
+                        {option}
+                    </li>
+                )
+            }
+        }
+
+        const divElement =
+            <div className={styles.inputContainer}>
+                {inputElement}
+                {props.withOptions &&
+                    <div className={`list-group ${styles.inputOptions}`}>
+                        {options}
+                    </div>
+                }
+            </div>
+        ;
+
+        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help, divElement);
     }
 }
 

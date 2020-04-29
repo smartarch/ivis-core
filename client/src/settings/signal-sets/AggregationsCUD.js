@@ -60,7 +60,7 @@ export default class CUD extends Component {
         } else {
             this.populateFormValues({
                     ts: null,
-                    interval: null
+                    interval: ''
                 }
             )
         }
@@ -188,7 +188,7 @@ export default class CUD extends Component {
                     {/*<DatePicker id="offset" label={t("Offset")}  />*/}
 
                     <InputField id="interval" label={t('Interval')} help={t('Bucket interval in seconds')}
-                                disabled={isEdit}/>
+                                withOptions={['test', 'adn', 'rest','rest2','rest3']} disabled={isEdit}/>
 
                     <ButtonRow>
                         {isEdit &&
