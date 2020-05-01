@@ -120,7 +120,7 @@ router.putAsync('/signal-sets/:signalSetId', passport.loggedIn, passport.csrfPro
 });
 
 router.deleteAsync('/signal-sets/:signalSetId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    await signalSets.remove(req.context, castToInteger(req.params.signalSetId));
+    await signalSets.removeById(req.context, castToInteger(req.params.signalSetId));
     return res.json();
 });
 
