@@ -272,7 +272,7 @@ async function remove(context, id) {
 
         const owners = await tx('signal_sets_owners').where('job', id);
         for (let pair of owners) {
-            await signalSets.remove(contextHelpers.getAdminContext(), pair.set)
+            await signalSets.removeById(contextHelpers.getAdminContext(), pair.set)
         }
 
         await tx('jobs').where('id', id).del();
