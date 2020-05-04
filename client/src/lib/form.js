@@ -397,7 +397,11 @@ class InputField extends Component {
                     <div className="input-group-append" onMouseDown={evt => evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
-                                    this.toggleOptions();
+                                    if (!this.state.showHints){
+                                       this.textInput.current.focus();
+                                    } else {
+                                        this.textInput.current.blur();
+                                    }
                                 }}/>
                     </div>
                 </div>
