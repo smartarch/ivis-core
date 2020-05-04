@@ -206,7 +206,7 @@ export default class ParamTypes {
                     {data: 2, title: t('Name')},
                     {data: 3, title: t('Description')},
                     {data: 5, title: t('Created'), render: data => moment(data).fromNow()},
-                    {data: 7, title: t('Namespace')}
+                    {data: 8, title: t('Namespace')}
                 ];
 
                 return <TableSelect
