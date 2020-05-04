@@ -101,7 +101,7 @@ export default class List extends Component {
             },
             { data: 3, title: t('Description') },
             {data: 4, title: t('Type')},
-            { data: 5, title: t('Status'), render: data => this.indexingStates[data.status] },
+            { data: 5, title: t('Status'), render: data => this.indexingStates[data.indexing.status] },
             { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
             { data: 7, title: t('Namespace') },
             {

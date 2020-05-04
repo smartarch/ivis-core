@@ -78,7 +78,7 @@ async function listDTAjax(context, params) {
         [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
         params,
         builder => builder.from('signal_sets').innerJoin('namespaces', 'namespaces.id', 'signal_sets.namespace'),
-        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.indexing', 'signal_sets.created', 'namespaces.name'],
+        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.state', 'signal_sets.created', 'namespaces.name'],
         {
             mapFun: data => {
                 data[5] = JSON.parse(data[5]);
@@ -168,11 +168,13 @@ async function createTx(tx, context, entity) {
 
     const filteredEntity = filterObject(entity, allowedKeysCreate);
 
-    filteredEntity.indexing = JSON.stringify({
-        status: IndexingStatus.READY
+    filteredEntity.state = JSON.stringify({
+        indexing: {
+            status: IndexingStatus.READY
+        }
     });
 
-    if (entity.type){
+    if (entity.type) {
         enforce(!(entity.type in Object.values(SignalSetType)), `${entity.type} is not valid signal set type.`)
     }
 
@@ -236,7 +238,7 @@ async function _remove(context, key, id) {
         // TODO cant use ensure dependecies here as job doesn't have foreign key to signal-sets, but this
         // probably should be handled better, as there may be other extensions
         const exists = await tx('aggregation_jobs').where('set', existing.id).first();
-        enforce(!exists,`Signal set has aggregation ${exists ? exists.id: ''} delete it first.`);
+        enforce(!exists, `Signal set has aggregation ${exists ? exists.id : ''} delete it first.`);
 
         await tx('signals').where('set', existing.id).del();
         await tx('signal_sets').where('id', existing.id).del();
@@ -531,8 +533,8 @@ async function queryTx(tx, context, queries) {
                     shares.throwPermissionDenied({sigCid: flt.sigCid});
                 }
                 signalsToCheck.add(sig.id);
-            } else  if (flt.type === 'ids'){
-               // empty
+            } else if (flt.type === 'ids') {
+                // empty
             } else if (flt.type === 'function_score') {
                 if (!flt.function)
                     throw new Error('Function not specified for function_score query');
@@ -622,9 +624,9 @@ async function index(context, signalSetId, method = IndexMethod.FULL, from) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', signalSetId, 'reindex');
         existing = await tx('signal_sets').where('id', signalSetId).first();
 
-        const indexing = JSON.parse(existing.indexing);
-        indexing.status = IndexingStatus.SCHEDULED;
-        await tx('signal_sets').where('id', signalSetId).update('indexing', JSON.stringify(indexing));
+        const state = JSON.parse(existing.state);
+        state.indexing.status = IndexingStatus.SCHEDULED;
+        await tx('signal_sets').where('id', signalSetId).update('indexing', JSON.stringify(state));
     });
 
     return await indexer.index(existing, method, from);
