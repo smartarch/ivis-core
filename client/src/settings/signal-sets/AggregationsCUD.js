@@ -26,6 +26,7 @@ import {withTranslation} from "../../lib/i18n";
 import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
 import {fromIntervalStringToSeconds, toIntervalString} from "../../lib/aggregations-parser"
 import moment from "moment";
+import {parseDate} from "../../../../shared/date"
 
 @withComponentMixins([
     withTranslation,
@@ -192,12 +193,17 @@ export default class CUD extends Component {
                         disabled={isEdit}
                     />
 
-                    {/*<DatePicker id="offset" label={t("Offset")}  />*/}
+                    <DatePicker
+                        id={'offset'}
+                        label={t("Offset")}
+                        formatDate={date => moment(date).format('YYYY-MM-DD') + ' 00:00:00'}
+                        parseDate={str => parseDate(str)}
+                    />
 
                     <InputField id="interval"
                                 label={t('Interval')}
                                 help={t('Bucket interval in seconds - add m(minute), h(hour), d(day) right after numeric value to change the unit.')}
-                                withOptions={['30m', '1h', '12h', '1d', '30d']}
+                                withHints={['30m', '1h', '12h', '1d', '30d']}
                                 disabled={isEdit}/>
 
 

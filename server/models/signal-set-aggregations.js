@@ -55,7 +55,7 @@ async function createTx(tx, context, sigSetId, params) {
 
     const jobParams = {
         signalSet: signalSet.cid,
-        //offset: params.offset
+        offset: params.offset,
         ts: ts,
         interval: intervalInSecs
     };

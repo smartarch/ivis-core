@@ -22,6 +22,11 @@ const aggregationTask = {
             "signalSetRef": "signalSet",
             "label": "Timestamp signal",
             "help": "Timestamp for aggregation"
+        },{
+            "id": "offset",
+            "type": "string",
+            "label": "Offset",
+            "help": "Since when should aggregation be done"
         }, {
             "id": "interval",
             "type": "number",

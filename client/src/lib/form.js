@@ -319,7 +319,7 @@ class InputField extends Component {
         type: PropTypes.string,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         format: PropTypes.string,
-        withOptions: PropTypes.array,
+        withHints: PropTypes.array,
         disabled: PropTypes.bool
     }
 
@@ -329,20 +329,20 @@ class InputField extends Component {
 
     constructor() {
         super();
-        this.state = {showOptions: false};
+        this.state = {showHints: false};
         this.textInput = React.createRef();
     }
 
     onFocus() {
-        this.setState({showOptions: true});
+        this.setState({showHints: true});
     }
 
     onBlur() {
-        this.setState({showOptions: false});
+        this.setState({showHints: false});
     }
 
     toggleOptions() {
-        this.setState({showOptions: !this.state.showOptions})
+        this.setState({showHints: !this.state.showHints})
     }
 
     render() {
@@ -351,7 +351,7 @@ class InputField extends Component {
         const owner = this.getFormStateOwner();
         const id = props.id;
         const htmlId = 'form_' + id;
-        const enableOptions = !!(props.withOptions && !props.disabled);
+        const enableOptions = !!(props.withHints && !props.disabled);
 
 
         let type = 'text';
@@ -397,7 +397,11 @@ class InputField extends Component {
                     <div className="input-group-append" onMouseDown={evt => evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
-                                    ::this.toggleOptions();
+                                    if (!this.state.showHints){
+                                       this.textInput.current.focus();
+                                    } else {
+                                        this.textInput.current.blur();
+                                    }
                                 }}/>
                     </div>
                 </div>
@@ -405,13 +409,16 @@ class InputField extends Component {
         }
 
         let options = [];
-        if (enableOptions && this.state.showOptions) {
-            for (const option of props.withOptions) {
+        if (enableOptions && this.state.showHints) {
+            for (const option of props.withHints) {
                 options.push(
                     <li
                         key={option}
                         className={`list-group-item list-group-item-action list-group-item-light ${styles.inputOption}`}
-                        onClick={evt => owner.updateFormValue(id, option)}
+                        onClick={evt => {
+                            this.textInput.current.blur();
+                            owner.updateFormValue(id, option);
+                        }}
                         onMouseDown={evt => evt.preventDefault()}
                     >
                         {option}
