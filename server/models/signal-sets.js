@@ -23,7 +23,7 @@ const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/
 const dependencyHelpers = require('../lib/dependency-helpers');
 
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
-const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
+const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template', 'settings']);
 
 const handlebars = require('handlebars');
 
@@ -51,6 +51,8 @@ async function _getBy(context, key, id, withPermissions, withSignalByCidMap) {
         }
 
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.id, 'view');
+
+        entity.settings = JSON.parse(entity.settings);
 
         if (withPermissions) {
             entity.permissions = await shares.getPermissionsTx(tx, context, 'signalSet', entity.id);
@@ -209,6 +211,7 @@ async function updateWithConsistencyCheck(context, entity) {
             throw new interoperableErrors.NotFoundError();
         }
 
+        existing.settings = JSON.parse(existing.settings);
         const existingHash = hash(existing);
         if (existingHash !== entity.originalHash) {
             throw new interoperableErrors.ChangedError();
@@ -219,6 +222,7 @@ async function updateWithConsistencyCheck(context, entity) {
         await namespaceHelpers.validateMove(context, entity, existing, 'signalSet', 'createSignalSet', 'delete');
 
         const filteredEntity = filterObject(entity, allowedKeysUpdate);
+        filteredEntity.settings = JSON.stringify(filteredEntity.settings);
         await tx('signal_sets').where('id', entity.id).update(filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, {entityTypeId: 'signalSet', entityId: entity.id});
@@ -626,7 +630,7 @@ async function index(context, signalSetId, method = IndexMethod.FULL, from) {
 
         const state = JSON.parse(existing.state);
         state.indexing.status = IndexingStatus.SCHEDULED;
-        await tx('signal_sets').where('id', signalSetId).update('indexing', JSON.stringify(state));
+        await tx('signal_sets').where('id', signalSetId).update('state', JSON.stringify(state));
     });
 
     return await indexer.index(existing, method, from);

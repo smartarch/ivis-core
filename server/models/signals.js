@@ -231,7 +231,7 @@ async function updateSignalSetStatus(tx, signalSet, result) {
     if (result.reindexRequired) {
         const state = JSON.parse(signalSet.state);
         state.indexing.status = IndexingStatus.REQUIRED;
-        await tx('signal_sets').where('id', signalSet.id).update('indexing', JSON.stringify(state));
+        await tx('signal_sets').where('id', signalSet.id).update('state', JSON.stringify(state));
     }
 }
 
@@ -262,7 +262,7 @@ async function updateWithConsistencyCheck(context, entity) {
             const signalSet = await tx('signal_sets').where('id', existing.set).first();
             const state = JSON.parse(signalSet.state);
             state.indexing.status = IndexingStatus.REQUIRED;
-            await tx('signal_sets').where('id', signalSet.id).update('indexing', JSON.stringify(state));
+            await tx('signal_sets').where('id', signalSet.id).update('state', JSON.stringify(state));
         }
 
         await shares.rebuildPermissionsTx(tx, {
