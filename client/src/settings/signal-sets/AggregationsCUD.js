@@ -197,7 +197,7 @@ export default class CUD extends Component {
                     <InputField id="interval"
                                 label={t('Interval')}
                                 help={t('Bucket interval in seconds - add m(minute), h(hour), d(day) right after numeric value to change the unit.')}
-                                withOptions={['30m', '1h', '12h', '1d', '30d']}
+                                withHints={['30m', '1h', '12h', '1d', '30d']}
                                 disabled={isEdit}/>
 
 
