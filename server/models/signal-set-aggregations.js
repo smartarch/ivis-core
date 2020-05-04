@@ -22,7 +22,7 @@ async function listDTAjax(context, sigSetId, params) {
             })
             .leftJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
             .leftJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set'),
-        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.indexing', 'signal_sets.created', 'jobs.id', 'jobs.params'],
+        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.state', 'signal_sets.created', 'jobs.id', 'jobs.params'],
         {
             mapFun: data => {
                 data[4] = JSON.parse(data[4]);
