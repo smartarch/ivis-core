@@ -397,7 +397,7 @@ class InputField extends Component {
                     <div className="input-group-append" onMouseDown={evt => evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
-                                    ::this.toggleOptions();
+                                    this.toggleOptions();
                                 }}/>
                     </div>
                 </div>
@@ -411,7 +411,10 @@ class InputField extends Component {
                     <li
                         key={option}
                         className={`list-group-item list-group-item-action list-group-item-light ${styles.inputOption}`}
-                        onClick={evt => owner.updateFormValue(id, option)}
+                        onClick={evt => {
+                            this.textInput.current.blur();
+                            owner.updateFormValue(id, option);
+                        }}
                         onMouseDown={evt => evt.preventDefault()}
                     >
                         {option}
