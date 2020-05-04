@@ -10,11 +10,11 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow,
+    ButtonRow, Fieldset,
     filterData,
     Form,
     FormSendMethod,
-    InputField,
+    InputField, TableSelect,
     TextArea,
     withForm,
     withFormErrorHandlers
@@ -33,6 +33,8 @@ import em
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {SignalSetType} from "../../../../shared/signal-sets"
+import {SignalSelector} from "../../ivis/Selector";
+import {JobState} from "../../../../shared/jobs";
 
 @withComponentMixins([
     withTranslation,
@@ -106,6 +108,10 @@ export default class CUD extends Component {
             data.record_id_template = '';
         }
 
+        if (data.settings && data.settings.ts){
+            data.ts = data.settings.ts;
+        }
+
     }
 
 
@@ -138,12 +144,15 @@ export default class CUD extends Component {
             data.record_id_template = null;
         }
 
+        data.settings = {ts: data.ts};
+
         const allowedKeys = [
             'name',
             'description',
             'record_id_template',
             'namespace',
-            'cid'
+            'cid',
+            'settings'
         ];
 
         if (!this.props.entity) {
@@ -202,6 +211,11 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
+        const setsColumns = [
+            {data: 1, title: t('#')},
+            {data: 2, title: t('Name')},
+            {data: 3, title: t('Description')},
+        ];
 
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
@@ -225,6 +239,15 @@ export default class CUD extends Component {
                                 help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
+
+                    {isEdit &&
+                    <Fieldset label={'Additional settings'}>
+                        <TableSelect id="ts" label={t('Timestamp signal')} withHeader dropdown
+                                     dataUrl={`rest/signals-table/${this.props.entity.id}`} columns={setsColumns}
+                                     selectionKeyIndex={1}
+                                     selectionLabelIndex={2}/>
+                    </Fieldset>
+                    }
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>

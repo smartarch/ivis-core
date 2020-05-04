@@ -14,7 +14,7 @@ import {
     filterData,
     Form,
     FormSendMethod,
-    InputField, TableSelect, TableSelectMode,
+    InputField, StaticField, TableSelect, TableSelectMode,
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
@@ -54,14 +54,18 @@ export default class CUD extends Component {
 
 
     componentDidMount() {
-        if (this.props.job) {
+        const props = this.props;
+
+        if (props.job) {
             this.populateFormValues({
-                ts: this.props.job.params.ts,
-                interval: toIntervalString(this.props.job.params.interval)
+                ts: props.job.params.ts,
+                interval: toIntervalString(props.job.params.interval)
             });
         } else {
+            const ts = props.signalSet.settings && props.signalSet.settings.ts;
+
             this.populateFormValues({
-                    ts: null,
+                    ts: ts,
                     interval: ''
                 }
             )
@@ -162,6 +166,8 @@ export default class CUD extends Component {
             {data: 4, title: t('Type'), render: data => signalTypes[data]},
         ];
 
+        const isSignalsetTimeseries = signalSet.settings && signalSet.settings.ts;
+
         return (
             <Panel title={isEdit ? t('Edit Aggregation') : t('Create Aggregation')}>
                 {canDelete &&
@@ -190,7 +196,7 @@ export default class CUD extends Component {
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
-                        disabled={isEdit}
+                        disabled={isEdit || isSignalsetTimeseries}
                     />
 
                     <DatePicker
