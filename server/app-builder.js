@@ -140,7 +140,7 @@ function createApp(type) {
         passport.setupRegularAuth(app);
 
     } else if (type === AppType.SANDBOXED) {
-        app.use(passport.tryAuthByAccessTokenOrRestrictedAccessToken);
+        app.use(passport.tryAuthByRestrictedAccessToken);
 
     } else if (type === AppType.API) {
         app.all('/api/*', (req, res, next) => {

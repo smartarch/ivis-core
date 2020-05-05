@@ -47,20 +47,6 @@ module.exports.authBySSLCertOrToken = (req, res, next) => {
     }
 };
 
-/*
-module.exports.tryAuthByAccessToken = (req, res, next) => {
-
-    if (isAccessToken === 'access-token') {
-
-        pathComps.unshift('');
-        const url = pathComps.join('/');
-        req.url = url;
-
-
-    } else {
-        next();
-    }
-};
 module.exports.tryAuthByRestrictedAccessToken = (req, res, next) => {
     const pathComps = req.url.split('/');
 
@@ -79,34 +65,6 @@ module.exports.tryAuthByRestrictedAccessToken = (req, res, next) => {
         next();
     });
 };
- */
-
-module.exports.tryAuthByAccessTokenOrRestrictedAccessToken = (req, res, next) => {
-    const pathComps = req.url.split('/');
-
-    pathComps.shift();
-    const restrictedAccessToken = pathComps.shift();
-
-    let promise;
-    // format: /access-token/XXX_actual_access_token_hash_XXX/...
-    if (restrictedAccessToken === 'access-token') {
-        const accessToken = pathComps.shift();
-        promise = users.getByAccessToken(contextHelpers.getAdminContext(), accessToken)
-    } else {
-        promise = users.getByRestrictedAccessToken(restrictedAccessToken)
-    }
-
-    pathComps.unshift('');
-    req.url = pathComps.join('/');
-
-    promise.then(user => {
-        req.user = user;
-        next();
-    }).catch(err => {
-        next();
-    });
-};
-
 
 module.exports.setupRegularAuth = app => {
     app.use(passport.initialize());
