@@ -40,7 +40,6 @@ const typesMap = {
     [SignalSource.RAW]: [
         ...AllSignalTypes
     ],
-    // TODO check job types requirements
     [SignalSource.JOB]: [
         ...AllSignalTypes
     ],
