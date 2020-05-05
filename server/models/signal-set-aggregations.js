@@ -60,9 +60,7 @@ async function createTx(tx, context, sigSetId, params) {
         interval: intervalInSecs
     };
 
-    // TODO name isn't necessary unique, should join on aggregation_jobs and search on that
-    //const exists = tx('jobs').where('params', JSON.stringify(jobParams)).first();
-    const exists = await tx('jobs').where('name', getJobName()).first();
+    const exists = await tx('jobs').innerJoin('aggregation_jobs', 'jobs.id', 'aggregation_jobs.job').where('name', getJobName()).first();
     enforce(!exists, `Aggregation for bucket interval ${intervalInSecs} exists`);
 
     const job = {
