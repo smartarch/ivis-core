@@ -31,6 +31,7 @@ import {withPageHelpers} from "../lib/page-common";
 import {createComponentMixin, withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
+import {VIRTUAL_PANEL_ID} from "../../../shared/panels"
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
@@ -299,11 +300,14 @@ export class SaveDialog extends Component {
                 this.disableForm();
                 this.setFormStatusMessage('info', t('Saving ...'));
 
-                // FIXME id can be virtual -> panel doesn't exists so saving will result in error
-                await axios.put(getUrl(`rest/panels-config/${owner.props.panel.id}`), owner.getPanelConfig());
+                if (owner.props.panel.id !== VIRTUAL_PANEL_ID) {
+                    await axios.put(getUrl(`rest/panels-config/${owner.props.panel.id}`), owner.getPanelConfig());
+                    this.clearFormStatusMessage();
+                } else {
+                    this.setFormStatusMessage('warning', t("This panel is virtual and can't be saved."));
+                }
 
                 this.enableForm();
-                this.clearFormStatusMessage();
 
                 this.close();
 
