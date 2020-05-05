@@ -204,6 +204,7 @@ export default class CUD extends Component {
                         label={t("Offset")}
                         formatDate={date => moment(date).format('YYYY-MM-DD') + ' 00:00:00'}
                         parseDate={str => parseDate(str)}
+                        disabled={isEdit}
                     />
 
                     <InputField id="interval"
