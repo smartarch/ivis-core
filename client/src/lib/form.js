@@ -397,8 +397,8 @@ class InputField extends Component {
                     <div className="input-group-append" onMouseDown={evt => evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
-                                    if (!this.state.showHints){
-                                       this.textInput.current.focus();
+                                    if (!this.state.showHints) {
+                                        this.textInput.current.focus();
                                     } else {
                                         this.textInput.current.blur();
                                     }
@@ -713,7 +713,8 @@ class DatePicker extends Component {
         birthday: PropTypes.bool,
         dateFormat: PropTypes.string,
         formatDate: PropTypes.func,
-        parseDate: PropTypes.func
+        parseDate: PropTypes.func,
+        disabled: PropTypes.bool
     }
 
     static defaultProps = {
@@ -797,14 +798,17 @@ class DatePicker extends Component {
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
             <>
-                <div className="input-group">
+                <div className={props.disabled ? '' : "input-group"}>
                     <input type="text" value={selectedDateStr} placeholder={placeholder} id={htmlId}
                            className={className} aria-describedby={htmlId + '_help'}
-                           onChange={evt => owner.updateFormValue(id, evt.target.value)}/>
+                           onChange={evt => owner.updateFormValue(id, evt.target.value)}
+                           disabled={props.disabled}/>
+                    {!props.disabled &&
                     <div className="input-group-append">
                         <Button iconTitle={t('openCalendar')} className="btn-secondary" icon="calendar-alt"
                                 onClickAsync={::this.toggleDayPicker}/>
                     </div>
+                    }
                 </div>
                 {this.state.opened &&
                 <div className={styles.dayPickerWrapper}>
