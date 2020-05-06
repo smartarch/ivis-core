@@ -431,6 +431,8 @@ export class SectionContent extends Component {
     }
 
     navigateToWithFlashMessage(path, severity, text) {
+        // FIXME this sets message to the previous one not the one it leads to
+        // therefore you can only see the message when NOT confirming to leave
         this.props.history.push(path);
         this.setFlashMessage(severity, text);
     }

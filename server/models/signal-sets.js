@@ -80,7 +80,7 @@ async function listDTAjax(context, params) {
         [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
         params,
         builder => builder.from('signal_sets').innerJoin('namespaces', 'namespaces.id', 'signal_sets.namespace'),
-        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.state', 'signal_sets.created','signal_sets.settings', 'namespaces.name'],
+        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.state', 'signal_sets.created', 'signal_sets.settings', 'namespaces.name'],
         {
             mapFun: data => {
                 data[5] = JSON.parse(data[5]);
@@ -180,6 +180,7 @@ async function createTx(tx, context, entity) {
         enforce(!(entity.type in Object.values(SignalSetType)), `${entity.type} is not valid signal set type.`)
     }
 
+    filteredEntity.settings = JSON.stringify({...filteredEntity.settings});
     const ids = await tx('signal_sets').insert(filteredEntity);
     const id = ids[0];
 
