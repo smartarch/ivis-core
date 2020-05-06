@@ -221,7 +221,11 @@ async function updateWithConsistencyCheck(context, entity) {
 
         if (entity.kind){
             enforce(Object.values(SignalSetKind).includes(entity.kind), `'${entity.kind}' is not valid kind of signal set`);
+            if (entity.kind === SignalSetKind.TIME_SERIES){
+                   enforce(entity.settings.ts, 'Time series need timestamp signal to be specified.')
+            }
         }
+
         await _validateAndPreprocess(tx, entity, false);
 
         await namespaceHelpers.validateMove(context, entity, existing, 'signalSet', 'createSignalSet', 'delete');

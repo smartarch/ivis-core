@@ -14,7 +14,7 @@ import {
     filterData,
     Form,
     FormSendMethod,
-    InputField, TableSelect,
+    InputField, StaticField, TableSelect,
     TextArea,
     withForm,
     withFormErrorHandlers
@@ -146,12 +146,27 @@ export default class CUD extends Component {
             state.setIn(['cid', 'error'], null);
         }
 
+        const kind = state.getIn(['kind', 'value']);
+        if (kind === SignalSetKind.TIME_SERIES) {
+            if (!state.getIn(['ts', 'value'])) {
+                state.setIn(['ts', 'error'], t('Timestamp signal must be selected for time series.'));
+            } else {
+                state.setIn(['ts', 'error'], null);
+            }
+        } else {
+            state.setIn(['ts', 'error'], null);
+        }
+
         validateNamespace(t, state);
     }
 
     submitFormValuesMutator(data) {
-        if (data.record_id_template.trim() === '') {
-            data.record_id_template = null;
+        if (data.kind === SignalSetKind.TIME_SERIES) {
+            data.record_id_template = `{{toISOString ${data.ts}}}`;
+        } else {
+            if (data.record_id_template.trim() === '') {
+                data.record_id_template = null;
+            }
         }
 
         data.settings = {ts: data.ts};
@@ -223,6 +238,7 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const kind = this.getFormValue('kind');
+        const isTimeseries = kind === SignalSetKind.TIME_SERIES;
 
         const setsColumns = [
             {data: 1, title: t('#')},
@@ -248,20 +264,36 @@ export default class CUD extends Component {
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
 
-                    <InputField id="record_id_template" label={t('Record ID template')}
-                                help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
 
                     <NamespaceSelect/>
+                    {isEdit ?
+                        <Dropdown id="kind" label={t('Kind')} options={this.kindOptions}/>
+                        :
+                        <StaticField id="kind"
+                                     label={t('Kind')}>{t(`This option will be available after the signal set creation.`)}</StaticField>
+                    }
 
-                    <Dropdown id="kind" label={t('Kind')} options={this.kindOptions}/>
+                    {!isTimeseries &&
+                    <InputField id="record_id_template" label={t('Record ID template')}
+                                help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
+                    }
 
-                    {isEdit && kind === SignalSetKind.TIME_SERIES &&
-                    <Fieldset label={'Additional settings'}>
-                        <TableSelect id="ts" label={t('Timestamp signal')} withHeader dropdown
-                                     dataUrl={`rest/signals-table/${this.props.entity.id}`} columns={setsColumns}
-                                     selectionKeyIndex={1}
-                                     selectionLabelIndex={2}/>
-                    </Fieldset>
+                    {isTimeseries && (
+                        <Fieldset label={'Additional settings'}>
+                            {isEdit ? (
+                                <TableSelect id="ts" label={t('Timestamp signal')} withHeader dropdown
+                                             dataUrl={`rest/signals-table/${this.props.entity.id}`}
+                                             columns={setsColumns}
+                                             selectionKeyIndex={1}
+                                             selectionLabelIndex={2}/>
+                            ) : (
+                                <StaticField id='ts' label={t('Timestamp signal')}>Signal set must be created first
+                                    before timestamp signal selection
+                                    (none to select yet).</StaticField>
+                            )
+                            }
+                        </Fieldset>
+                    )
                     }
 
                     <ButtonRow>
