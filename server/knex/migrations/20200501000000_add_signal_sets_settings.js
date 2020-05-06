@@ -10,7 +10,7 @@ exports.up = (knex, Promise) => (async () => {
 
     await knex.schema.table('signal_sets', table => {
         table.renameColumn('indexing', 'state');
-        table.text('settings', 'longtext');
+        table.text('settings', 'longtext').notNullable();
     });
 
     await knex.raw('SET FOREIGN_KEY_CHECKS=1');
