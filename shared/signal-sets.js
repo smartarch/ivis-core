@@ -5,6 +5,12 @@ const SignalSetType = {
     COMPUTED: 'computed'
 };
 
+const SignalSetKind= {
+    GENERIC: 'generic',
+    TIME_SERIES: 'time_series'
+};
+
 module.exports = {
-    SignalSetType
+    SignalSetType,
+    SignalSetKind
 };

@@ -12,18 +12,18 @@ const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
 const {IndexingStatus, IndexMethod} = require('../../shared/signals');
 const signals = require('./signals');
-const {SignalSetType} = require('../../shared/signal-sets');
+const {SignalSetKind,SignalSetType} = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
-const {SignalType, SignalSource} = require('../../shared/signals');
+const {SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
 
 const dependencyHelpers = require('../lib/dependency-helpers');
 
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
-const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template', 'settings']);
+const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template', 'settings', 'kind']);
 
 const handlebars = require('handlebars');
 
@@ -159,6 +159,7 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
 
     const existingWithCid = await existingWithCidQuery.first();
     enforce(!existingWithCid, `Signal set's machine name (cid) '${entity.cid}' is already used for another signal set.`)
+
 }
 
 
@@ -218,6 +219,9 @@ async function updateWithConsistencyCheck(context, entity) {
             throw new interoperableErrors.ChangedError();
         }
 
+        if (entity.kind){
+            enforce(Object.values(SignalSetKind).includes(entity.kind), `'${entity.kind}' is not valid kind of signal set`);
+        }
         await _validateAndPreprocess(tx, entity, false);
 
         await namespaceHelpers.validateMove(context, entity, existing, 'signalSet', 'createSignalSet', 'delete');

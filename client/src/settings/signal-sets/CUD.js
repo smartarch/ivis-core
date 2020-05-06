@@ -10,7 +10,7 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow, Fieldset,
+    ButtonRow, Dropdown, Fieldset,
     filterData,
     Form,
     FormSendMethod,
@@ -32,9 +32,8 @@ import em
     from "../../lib/extension-manager";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {SignalSetType} from "../../../../shared/signal-sets"
-import {SignalSelector} from "../../ivis/Selector";
-import {JobState} from "../../../../shared/jobs";
+import {SignalSetType, SignalSetKind} from "../../../../shared/signal-sets"
+import {getSignalSetKindsLabels} from "../../lib/signal-sets-helpers";
 
 @withComponentMixins([
     withTranslation,
@@ -77,6 +76,15 @@ export default class CUD extends Component {
                 'Signal set saved': t('Sensor saved')
             };
         }
+
+        const signalSetKindsLabels = getSignalSetKindsLabels(t);
+        this.kindOptions = [];
+        for (const kind of Object.values(SignalSetKind)) {
+            this.kindOptions.push({
+                key: kind,
+                label: signalSetKindsLabels[kind]
+            });
+        }
     }
 
     static propTypes = {
@@ -98,6 +106,8 @@ export default class CUD extends Component {
                     description: '',
                     record_id_template: '',
                     namespace: ivisConfig.user.namespace,
+                    settings: {},
+                    kind: SignalSetKind.GENERIC
                 }
             );
         }
@@ -108,7 +118,7 @@ export default class CUD extends Component {
             data.record_id_template = '';
         }
 
-        if (data.settings && data.settings.ts){
+        if (data.settings && data.settings.ts) {
             data.ts = data.settings.ts;
         }
 
@@ -152,7 +162,8 @@ export default class CUD extends Component {
             'record_id_template',
             'namespace',
             'cid',
-            'settings'
+            'settings',
+            'kind'
         ];
 
         if (!this.props.entity) {
@@ -211,6 +222,8 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
+        const kind = this.getFormValue('kind');
+
         const setsColumns = [
             {data: 1, title: t('#')},
             {data: 2, title: t('Name')},
@@ -240,7 +253,9 @@ export default class CUD extends Component {
 
                     <NamespaceSelect/>
 
-                    {isEdit &&
+                    <Dropdown id="kind" label={t('Kind')} options={this.kindOptions}/>
+
+                    {isEdit && kind === SignalSetKind.TIME_SERIES &&
                     <Fieldset label={'Additional settings'}>
                         <TableSelect id="ts" label={t('Timestamp signal')} withHeader dropdown
                                      dataUrl={`rest/signals-table/${this.props.entity.id}`} columns={setsColumns}
