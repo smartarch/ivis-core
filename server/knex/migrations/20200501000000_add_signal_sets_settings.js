@@ -13,6 +13,9 @@ exports.up = (knex, Promise) => (async () => {
         table.text('settings', 'longtext').notNullable();
     });
 
+    // text can't have default value in MYSQL for some reason
+    await knex('signal_sets').update('settings', JSON.stringify({}));
+
     await knex.raw('SET FOREIGN_KEY_CHECKS=1');
 })();
 
