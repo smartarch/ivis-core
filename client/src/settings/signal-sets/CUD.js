@@ -270,7 +270,7 @@ export default class CUD extends Component {
                         <Dropdown id="kind" label={t('Kind')} options={this.kindOptions}/>
                         :
                         <StaticField id="kind"
-                                     label={t('Kind')}>{t(`This option will be available after the signal set creation.`)}</StaticField>
+                                     label={t('Kind')}>{t(`Generic - changing this option will be available after the signal set creation.`)}</StaticField>
                     }
 
                     {!isTimeseries &&
