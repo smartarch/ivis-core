@@ -8,6 +8,7 @@ const knex = require('../lib/knex');
 const {enforce} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const jobs = require('./jobs');
+const interoperableErrors = require('../../shared/interoperable-errors');
 
 
 async function listDTAjax(context, sigSetId, params) {
@@ -61,7 +62,9 @@ async function createTx(tx, context, sigSetId, params) {
     };
 
     const exists = await tx('jobs').innerJoin('aggregation_jobs', 'jobs.id', 'aggregation_jobs.job').where('name', getJobName()).first();
-    enforce(!exists, `Aggregation for bucket interval ${intervalInSecs} exists`);
+    if(exists) {
+        throw new interoperableErrors.ServerValidationError(`Aggregation for given interval ${intervalInSecs}s already exists.`);
+    }
 
     const job = {
         name: getJobName(),
