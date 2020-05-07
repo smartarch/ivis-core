@@ -27,6 +27,7 @@ import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
 import {fromIntervalStringToSeconds, toIntervalString} from "../../lib/aggregations-parser"
 import moment from "moment";
 import {parseDate} from "../../../../shared/date"
+import interoperableErrors from "../../../../shared/interoperable-errors";
 
 @withComponentMixins([
     withTranslation,
@@ -149,6 +150,14 @@ export default class CUD extends Component {
         }
     }
 
+    errorHandler(error){
+        if (error instanceof interoperableErrors.ServerValidationError) {
+            this.enableForm();
+            this.setFlashMessage('danger', `Creation failed - ${error.message}`);
+            this.clearFormStatusMessage();
+            return true;
+        }
+    }
 
     render() {
         const t = this.props.t;
@@ -196,7 +205,7 @@ export default class CUD extends Component {
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
-                        disabled={isEdit || isSignalsetTimeseries}
+                        disabled={!!(isEdit || isSignalsetTimeseries)}
                     />
 
                     <DatePicker
