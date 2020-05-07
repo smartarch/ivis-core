@@ -373,10 +373,10 @@ export class SectionContent extends Component {
         };
 
         this.historyUnlisten = props.history.listen((location, action) => {
-            // noinspection JSIgnoredPromiseFromCall
             if (action === "REPLACE") return;
             if (location.state && location.state.preserveFlashMessage) return;
 
+            // noinspection JSIgnoredPromiseFromCall
             this.closeFlashMessage();
         });
 
