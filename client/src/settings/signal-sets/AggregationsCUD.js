@@ -10,11 +10,14 @@ import {
 } from "../../lib/page";
 import {
     Button,
-    ButtonRow, DatePicker,
+    ButtonRow,
+    DatePicker,
     filterData,
     Form,
     FormSendMethod,
-    InputField, StaticField, TableSelect, TableSelectMode,
+    InputField,
+    TableSelect,
+    TableSelectMode,
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
@@ -150,7 +153,7 @@ export default class CUD extends Component {
         }
     }
 
-    errorHandler(error){
+    errorHandler(error) {
         if (error instanceof interoperableErrors.ServerValidationError) {
             this.enableForm();
             this.setFlashMessage('danger', `Creation failed - ${error.message}`);

@@ -341,17 +341,13 @@ class InputField extends Component {
         this.setState({showHints: false});
     }
 
-    toggleOptions() {
-        this.setState({showHints: !this.state.showHints})
-    }
-
     render() {
         const props = this.props;
         const t = props.t;
         const owner = this.getFormStateOwner();
         const id = props.id;
         const htmlId = 'form_' + id;
-        const enableOptions = !!(props.withHints && !props.disabled);
+        const enableHints = !!(props.withHints && !props.disabled);
 
 
         let type = 'text';
@@ -370,10 +366,10 @@ class InputField extends Component {
         const value = owner.getFormValue(id);
         if (value === null || value === undefined) console.log(`Warning: InputField ${id} is ${value}`);
 
-        let opts = {};
-        if (enableOptions) {
-            opts['onFocus'] = ::this.onFocus;
-            opts['onBlur'] = ::this.onBlur;
+        let hintsFuns = {};
+        if (enableHints) {
+            hintsFuns['onFocus'] = ::this.onFocus;
+            hintsFuns['onBlur'] = ::this.onBlur;
         }
 
         let inputElement = (
@@ -386,11 +382,11 @@ class InputField extends Component {
                    aria-describedby={htmlId + '_help'}
                    onChange={evt => owner.updateFormValue(id, evt.target.value)}
                    disabled={props.disabled}
-                   {...opts}
+                   {...hintsFuns}
             />
         );
 
-        if (enableOptions) {
+        if (enableHints) {
             inputElement = (
                 <div className="input-group">
                     {inputElement}
@@ -406,36 +402,37 @@ class InputField extends Component {
                     </div>
                 </div>
             );
-        }
 
-        let options = [];
-        if (enableOptions && this.state.showHints) {
-            for (const option of props.withHints) {
-                options.push(
-                    <li
-                        key={option}
-                        className={`list-group-item list-group-item-action list-group-item-light ${styles.inputOption}`}
-                        onClick={evt => {
-                            this.textInput.current.blur();
-                            owner.updateFormValue(id, option);
-                        }}
-                        onMouseDown={evt => evt.preventDefault()}
-                    >
-                        {option}
-                    </li>
+            let hintsContent = null;
+            if (this.state.showHints) {
+                const hints = [];
+                for (const hint of props.withHints) {
+                    hints.push(
+                        <li
+                            key={hint}
+                            className={`list-group-item list-group-item-action list-group-item-light ${styles.inputHint}`}
+                            onClick={evt => {
+                                this.textInput.current.blur();
+                                owner.updateFormValue(id, hint);
+                            }}
+                            onMouseDown={evt => evt.preventDefault()}
+                        >
+                            {hint}
+                        </li>
+                    )
+                }
+
+                hintsContent = (
+                    <div className={`list-group ${styles.inputHints}`}>
+                        {hints}
+                    </div>
                 )
             }
-        }
 
-        if (enableOptions) {
             inputElement = (
                 <div className={styles.inputContainer}>
                     {inputElement}
-                    {enableOptions &&
-                    <div className={`list-group ${styles.inputOptions}`}>
-                        {options}
-                    </div>
-                    }
+                    {hintsContent}
                 </div>
             );
         }
