@@ -801,6 +801,8 @@ export class HeatmapChart extends Component {
 
     /** Updates overview brushes from zoom transform values. */
     moveBrush(transform, zoomYScaleMultiplier) {
+        if (!this.defaultBrushBottom || !this.defaultBrushLeft) // no data
+            return;
         const [newBrushBottom, newBrushLeft, _] = this.getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier);
         if (newBrushBottom && this.brushBottom)
             this.overviewBottomBrushSelection.call(this.brushBottom.move, newBrushBottom);
