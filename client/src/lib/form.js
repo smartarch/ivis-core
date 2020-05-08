@@ -372,7 +372,7 @@ class InputField extends Component {
             hintsFuns['onBlur'] = ::this.onBlur;
         }
 
-        let inputElement = (
+        let inputContent = (
             <input ref={this.textInput}
                    type={type}
                    value={owner.getFormValue(id)}
@@ -387,9 +387,9 @@ class InputField extends Component {
         );
 
         if (enableHints) {
-            inputElement = (
+            inputContent = (
                 <div className="input-group">
-                    {inputElement}
+                    {inputContent}
                     <div className="input-group-append" onMouseDown={evt => evt.preventDefault()}>
                         <Button label={t('Hints')} className="btn-secondary"
                                 onClickAsync={evt => {
@@ -403,7 +403,7 @@ class InputField extends Component {
                 </div>
             );
 
-            let hintsContent = null;
+            let hintsDropdown = null;
             if (this.state.showHints) {
                 const hints = [];
                 for (const hint of props.withHints) {
@@ -422,22 +422,22 @@ class InputField extends Component {
                     )
                 }
 
-                hintsContent = (
+                hintsDropdown = (
                     <div className={`list-group ${styles.inputHints}`}>
                         {hints}
                     </div>
                 )
             }
 
-            inputElement = (
+            inputContent = (
                 <div className={styles.inputContainer}>
-                    {inputElement}
-                    {hintsContent}
+                    {inputContent}
+                    {hintsDropdown}
                 </div>
             );
         }
 
-        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help, inputElement);
+        return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help, inputContent);
     }
 }
 
