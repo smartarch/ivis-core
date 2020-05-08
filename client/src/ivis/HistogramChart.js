@@ -142,7 +142,11 @@ export class HistogramChart extends Component {
         zoomLevelMax: PropTypes.number,
 
         className: PropTypes.string,
-        style: PropTypes.object
+        style: PropTypes.object,
+
+        filter: PropTypes.object,
+        processBucket: PropTypes.func, // see HistogramChart.processBucket for reference
+        processData: PropTypes.func, // see HistogramChart.processData for reference
     };
 
     static defaultProps = {
@@ -230,7 +234,7 @@ export class HistogramChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    /** Fetches new data for the chart, processes the results using this.processData method and updates the state accordingly, so the chart is redrawn */
+    /** Fetches new data for the chart, processes the results using processData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
         const config = this.props.config;
@@ -265,6 +269,8 @@ export class HistogramChart extends Component {
                         sigCid: config.sigCid,
                         lte: this.props.xMaxValue
                     });
+                if (this.props.filter)
+                    filter.children.push(this.props.filter);
 
                 // filter by current zoom
                 if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) {
@@ -284,7 +290,8 @@ export class HistogramChart extends Component {
                 const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], maxBucketCount, minStep, filter, metrics);
 
                 if (results) { // Results is null if the results returned are not the latest ones
-                    const processedResults = this.processData(results);
+                    const processData = this.props.processData || HistogramChart.processData;
+                    const processedResults = processData(results, this.props);
                     if (processedResults.buckets.length === 0) {
                         this.setState({
                             signalSetData: null,
@@ -329,7 +336,19 @@ export class HistogramChart extends Component {
         }
     }
 
-    processData(data) {
+    /** The value returned from this function is used to determine the height of the bar corresponding to the bucket */
+    static processBucket(bucket, props) {
+        const config = props.config;
+        if (config.metric_sigCid && config.metric_type) {
+            bucket.metric = bucket.values[config.metric_sigCid][config.metric_type];
+            delete bucket.values;
+            return bucket.metric;
+        }
+        else
+            return bucket.count;
+    }
+
+    static processData(data, props) {
         if (data.buckets.length === 0)
             return {
                 buckets: data.buckets,
@@ -343,25 +362,20 @@ export class HistogramChart extends Component {
         const min = data.buckets[0].key;
         const max = data.buckets[data.buckets.length - 1].key + data.step;
 
-        let value = "count";
-        if (this.props.config.metric_sigCid && this.props.config.metric_type) {
-            for (const bucket of data.buckets) {
-                bucket.metric = bucket.values[this.props.config.metric_sigCid][this.props.config.metric_type];
-                delete bucket.values;
-            }
-            value = "metric";
-        }
+        const processBucket = props.processBucket || HistogramChart.processBucket;
+        for (const bucket of data.buckets)
+            bucket.value = processBucket(bucket, props);
 
         let maxValue = 0;
         let totalValue = 0;
         for (const bucket of data.buckets) {
-            if (bucket[value] > maxValue)
-                maxValue = bucket[value];
-            totalValue += bucket[value];
+            if (bucket.value > maxValue)
+                maxValue = bucket.value;
+            totalValue += bucket.value;
         }
 
         for (const bucket of data.buckets) {
-            bucket.prob = bucket[value] / totalValue;
+            bucket.prob = bucket.value / totalValue;
         }
         const maxProb = maxValue / totalValue;
 
