@@ -29,8 +29,7 @@ async function createIndex(sigSet, signalByCidMap) {
     const properties = {};
     for (const fieldCid in signalByCidMap) {
         const field = signalByCidMap[fieldCid];
-        // TODO similar to bellow in extendMapping, does it need to be raw?
-        if (field.source === SignalSource.RAW) {
+        if (field.source === SignalSource.RAW || field.source === SignalSource.JOB) {
             properties[getFieldName(field.id)] = {type: fieldTypes[field.type]};
         }
     }
@@ -60,7 +59,6 @@ async function extendMapping(sigSet, fields) {
     const properties = {};
     for (const fieldId in fields) {
         const fieldType = fields[fieldId];
-        // TODO check if this is good way, just need ot have mapping for given type?
         if (fieldTypes[fieldType] != null) {
             properties[getFieldName(fieldId)] = {type: fieldTypes[fieldType]};
         }
