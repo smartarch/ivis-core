@@ -10,6 +10,7 @@ const SignalSetKind= {
     TIME_SERIES: 'time_series'
 };
 
+// This value tells server it needs to choose ts signal
 const SUBSTITUTE_TS_SIGNAL = '__substitute_ts_signal__';
 const DEFAULT_TS_SIGNAL_CID = 'ts';
 
