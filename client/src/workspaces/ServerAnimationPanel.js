@@ -1,21 +1,21 @@
 "use strict";
 
 import React, {Component} from "react";
-import {ServerAnimationContext} from "../ivis/ServerAnimationContext";
-import TestWorkspacePanel
-    from "./panels/TestWorkspacePanel";
-import {linear} from "../lib/animation-interpolations";
-import {PlayStopControlGroup, FullControlGroup} from "../lib/media-controls";
+import {Animation} from "../ivis/Animation";
+import TestWorkspacePanel from "./panels/TestWorkspacePanel";
 
 
 class SampleAnimation extends Component {
     constructor(props) {
         super(props);
 
-        this.animConfig = {
+        this.config_1 = {
+            beginTs: 0,
+            endTs: 16000,
+            type: 'server',
+            realTimeDuration: 16000,
+
             timeline: {
-                beginTs: 1000*60*1.43687890679,
-                endTs: 1000*60*5,
                 relative: true,
             },
             playbackSpeedSlider: {
@@ -29,10 +29,12 @@ class SampleAnimation extends Component {
             jumpBackwardButton: {
                 jump: 10,
             },
-
-            length: 1000*60*60*20,
         };
 
+        this.config_2 = {
+            beginTs: 0,
+            endTs: 15000,
+        };
         this.animControl = {
             changeSpeed: (value) => console.log("AnimCtrl: speed changed to:", value),
             play: () => console.log("AnimCtrl: playing..."),
@@ -49,22 +51,12 @@ class SampleAnimation extends Component {
             isPlaying: true,
         };
     }
+
     render() {
         return (
             <>
-                <ServerAnimationContext interpolFunc={linear} >
-                    <div>
-                        <FullControlGroup
-                            animConfig={this.animConfig}
-                            animStatus={this.animStatus}
-                            animControl={this.animControl}
-                        />
-                        <PlayStopControlGroup
-                            animStatus={this.animStatus}
-                            animControl={this.animControl}
-                        />
-                    </div>
-                </ServerAnimationContext>
+                <Animation>
+                </Animation>
             </>
         );
     }
@@ -76,17 +68,23 @@ export default class SamplePanel extends Component {
     }
 
     render() {
-        const panelParams = {};
+        const panelParams = {
+            controlGroup: 'full',
+            controlsPlacement: 'before',
+
+            controls: {
+                jumpForward: {
+                    enabled: false
+                },
+            },
+        };
 
         return (
             <TestWorkspacePanel
                 title="Server Animation Panel"
-                panel={{
-                    id: 1,
-                    template: 1
-                }}
+                panel={{}}
                 params={panelParams}
-                content={SampleAnimation}
+                content={Animation}
             />
         );
     }

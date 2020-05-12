@@ -4,6 +4,7 @@ import {PropTypes} from "prop-types";
 export class Debug extends Component {
     static propTypes = {
         funcs: PropTypes.array,
+        name: PropTypes.string,
     }
 
     stringifyProp(prop, key) {
@@ -46,17 +47,19 @@ export class Debug extends Component {
     render() {
         const functionsDisplay = (
             <>
-                <h2> Functions </h2>
+                <h3> Functions </h3>
                 {this.props.funcs && this.props.funcs.map(func => this.displayFunc(func))}
             </>
         );
 
         const propsToPrint = {...this.props};
         delete propsToPrint.funcs;
+        delete propsToPrint.name;
 
         return (
             <div>
-                <h2> Debug </h2>
+                <h2>{ this.props.name }</h2>
+
                 { this.props.funcs && functionsDisplay }
                 <ul>
                     <li>

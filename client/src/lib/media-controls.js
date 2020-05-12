@@ -6,16 +6,10 @@ import {select, mouse} from "d3-selection";
 import {scaleTime, scaleLinear} from "d3-scale";
 import {timeFormat} from "d3-time-format";
 import {scan} from "d3-array";
-import {AnimationStatusContext, AnimationControlContext} from "../ivis/ServerAnimationContext";
 import styles from "./media-controls.scss";
-import {withComponentMixins, createComponentMixin} from "./decorator-helpers";
+import {withAnimationControl} from "./animation-helpers";
+import {withComponentMixins} from "./decorator-helpers";
 
-const withAnimationControl = createComponentMixin({
-    contexts: [
-        {context: AnimationStatusContext, propName: 'animStatus'},
-        {context: AnimationControlContext, propName: 'animControl'}
-    ]
-});
 
 const defaultConfig = {
     animationTimeline: {
@@ -39,7 +33,6 @@ const defaultConfig = {
         borderRadius: 3,
     }
 };
-
 
 class MediaButtonBase extends Component {
     static propTypes = {
@@ -136,6 +129,7 @@ class MediaButtonBase extends Component {
         const innerProps = {
             width: innerWidth,
             height: innerHeight,
+            enabled: this.props.enabled,
             ...this.state
         };
 
@@ -172,7 +166,7 @@ class MediaButtonBase extends Component {
             <svg xmlns="http://www.w3.org/2000/svg"
                 width={this.props.margin.left + this.props.margin.right + this.props.width}
                 height={this.props.margin.top + this.props.margin.bottom + this.props.height}
-                className={styles.button}>
+                className={styles.button + " " + (this.props.enabled ? "" : styles.disabled)}>
 
                 <g ref={node => this.frameN = node}
                     className={styles.buttonFrame + " " +
@@ -206,6 +200,7 @@ class PlayPauseButton extends Component {
     static propTypes = {
         animStatus: PropTypes.object,
         animControl: PropTypes.object,
+        animConfig: PropTypes.object,
 
         width: PropTypes.number,
         height: PropTypes.number,
@@ -285,7 +280,7 @@ class PlayPauseButton extends Component {
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
-                enabled={this.props.animControl.play && this.props.animControl.pause && true || false}
+                enabled={!!this.props.animControl.play && this.props.animConfig.controls.playPause.enabled}
                 innerRender={innerRender}
                 onClick={::this.handleClick}
             />
@@ -296,6 +291,7 @@ class PlayPauseButton extends Component {
 class StopButton extends Component {
     static propTypes = {
         animControl: PropTypes.object,
+        animConfig: PropTypes.object,
 
         width: PropTypes.number,
         height: PropTypes.number,
@@ -336,7 +332,7 @@ class StopButton extends Component {
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
-                enabled={this.props.animControl.stop && true || false}
+                enabled={!!this.props.animControl.stop && this.props.animConfig.controls.stop.enabled}
                 innerRender={innerRender}
                 onClick={this.props.animControl.stop}
             />
@@ -393,9 +389,9 @@ class JumpForwardButton extends Component {
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
-                enabled={this.props.animControl.jumpForward && true || false}
+                enabled={!!this.props.animControl.jumpForward && this.props.animConfig.controls.jumpForward.enabled}
                 innerRender={innerRender}
-                onClick={this.props.animControl.jumpForward.bind(null, this.props.animConfig.jumpForwardButton.jump)}
+                onClick={this.props.animControl.jumpForward && this.props.animControl.jumpForward.bind(null, this.props.animConfig.controls.jumpForward.shiftMs)}
             />
         );
     }
@@ -450,9 +446,9 @@ class JumpBackwardButton extends Component {
                 isJoinedRight={this.props.isJoinedRight}
                 isJoinedLeft={this.props.isJoinedLeft}
 
-                enabled={this.props.animControl.jumpBackward && true || false}
+                enabled={!!this.props.animControl.jumpBackward && this.props.animConfig.controls.jumpBackward.enabled}
                 innerRender={innerRender}
-                onClick={this.props.animControl.jumpBackward.bind(null, this.props.animConfig.jumpBackwardButton.jump)}
+                onClick={this.props.animControl.jumpBackward && this.props.animControl.jumpBackward.bind(null, this.props.animConfig.controls.jumpBackward.shiftMs)}
             />
         );
     }
@@ -492,7 +488,7 @@ class PlaybackSpeedSlider extends Component {
     }
 
     snapTo(factor) {
-        const step = this.props.animConfig.playbackSpeedSlider.step;
+        const step = this.props.animConfig.controls.playbackSpeed.step;
 
         return Math.floor(factor/step) * step;
     }
@@ -507,8 +503,8 @@ class PlaybackSpeedSlider extends Component {
                 borderWidth={this.props.borderWidth}
                 sliderRadius={this.props.sliderRadius}
 
-                enabled={this.props.animConfig.playbackSpeedSlider.enabled}
-                domain={this.props.animConfig.playbackSpeedSlider.limits}
+                enabled={!!this.props.animControl.changeSpeed && this.props.animConfig.controls.playbackSpeed.enabled}
+                domain={this.props.animConfig.controls.playbackSpeed.limits}
 
                 value={this.props.animStatus.playbackSpeedFactor}
                 setValue={this.props.animControl.changeSpeed}
@@ -596,6 +592,7 @@ class Slider extends Component {
 
         const endSliding = () => {
             this.sliding = false;
+            selectorSel.classed(styles.sliderSelectorOnMouseHover, false);
             containerSel.on("mousemove mouseup mouseleave", null);
         };
 
@@ -623,7 +620,7 @@ class Slider extends Component {
 
         selectorSel
             .on("mouseenter", () => selectorSel.classed(styles.sliderSelectorOnMouseHover, true))
-            .on("mouseleave", () => selectorSel.classed(styles.sliderSelectorOnMouseHover, false))
+            .on("mouseleave", () => !this.sliding && selectorSel.classed(styles.sliderSelectorOnMouseHover, false))
             .on("mousedown", startSliding)
             .attr("cursor", "pointer");
 
@@ -670,7 +667,7 @@ class Slider extends Component {
             <svg xmlns="http://www.w3.org/2000/svg"
                 width={this.props.width + this.props.margin.left + this.props.margin.right}
                 height={this.props.height + this.props.margin.top + this.props.margin.bottom}
-                className={styles.slider}
+                className={styles.slider + " " + (this.props.enabled ? "" : styles.disabled)}
                 ref={node => this.domainContainerN = node}>
 
                 <text className={styles.label}
@@ -685,22 +682,24 @@ class Slider extends Component {
 
                 <g transform={`translate(${this.props.margin.left + this.props.sliderRadius}, ${domainTop})`}>
                     <line
+                        className={styles.sliderDomain}
                         x1="0"
                         y1="0"
                         x2={domainWidth}
                         y2="0"
                         strokeWidth={this.props.borderWidth*2}
+                        stroke="currentColor"
                         strokeLinecap="round"
-                        className={styles.sliderDomain}
                         ref={node => this.domainN = node}/>
 
 
                     <circle transform={`translate(${selectorShift}, 0)`}
+                        className={styles.sliderSelector}
                         cx={0}
                         cy={0}
                         r={this.props.sliderRadius - 2*this.props.borderWidth}
                         strokeWidth={this.props.borderWidth}
-                        className={styles.sliderSelector}
+                        stroke="currentColor"
                         ref={node => this.selectorN = node}/>
                 </g>
             </svg>
@@ -975,6 +974,7 @@ function withDrag(Selector) {
         }
 
         componentDidUpdate(prevProps, prevState) {
+            //TODO: questionable, why should i check?
             if (this.props.getTargetNode && this.props.getTargetNode() !== this.state.targetNode) {
                 this.setState({targetNode: this.props.getTargetNode()});
                 return;
@@ -1179,9 +1179,8 @@ class PlaybackTimeline extends Component {
         borderRadius: PropTypes.number,
 
         playbackPosition: PropTypes.number,
-        playbackLength: PropTypes.number,
-
         setPlaybackPosition: PropTypes.func,
+        enabled: PropTypes.bool,
     };
 
     constructor(props) {
@@ -1204,8 +1203,8 @@ class PlaybackTimeline extends Component {
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.axisWidth !== prevProps.axisWidth || this.props.margin !== prevProps.margin ||
-            this.props.playbackLength !== prevProps.playbackLength) {
+        if (this.props.beginTs !== prevProps.beginTs || this.props.endTs !== prevProps.endTs ||
+            this.props.axisWidth !== prevProps.axisWidth || this.props.margin !== prevProps.margin) {
             this.timeScaleInit();
         }
     }
@@ -1237,17 +1236,7 @@ class PlaybackTimeline extends Component {
     timeScaleInit() {
         const timeScale = this.props.relative ? this.relativeScaleInit() : this.absoluteScaleInit();
 
-        const playbackToPx = scaleLinear()
-            .domain([0, this.props.playbackLength])
-            .range([timeScale.range()[0], timeScale.range()[1]])
-            .clamp(true);
-
-        this.setState({timeScale, playbackToPx});
-    }
-
-    setPlaybackPosition(px) {
-        const playbackPosition = this.state.playbackToPx.invert(px);
-        this.props.setPlaybackPosition(playbackPosition);
+        this.setState({timeScale});
     }
 
     render() {
@@ -1272,17 +1261,17 @@ class PlaybackTimeline extends Component {
                         />
 
                         <PlaybackPositionSelector
-                            setGlobal={::this.setPlaybackPosition}
+                            setGlobal={(px) => this.props.setPlaybackPosition(this.state.timeScale.invert(px).valueOf())}
                             onDragStart={() => this.setState({hoverSelectorEnabled: false})}
                             onDragEnd={() => this.setState({hoverSelectorEnabled: true})}
 
-                            enabled={true}
+                            enabled={this.props.enabled}
                             parentNode={this.containerN}
                             parentNodeXShift={this.props.margin.left}
 
                             getTargetNode={() => this.domainN}
 
-                            x={this.state.playbackToPx(this.props.playbackPosition)}
+                            x={this.state.timeScale(this.props.playbackPosition)}
                             y={this.selectorBaselineShift}
 
                             scale={this.state.timeScale}
@@ -1636,10 +1625,10 @@ class TimeAxis extends Component {
     render() {
         const highlightComp = (props) => (
             <rect
-                x={props.begin + this.props.borderWidth}
-                y={this.props.borderWidth}
-                width={Math.max(0, props.end - props.begin - 2*this.props.borderWidth)}
-                height={Math.max(0, this.props.axisHeight - 2*this.props.borderWidth)}
+                x={props.begin}
+                y={0}
+                width={Math.max(0, props.end - props.begin)}
+                height={Math.max(0, this.props.axisHeight)}
 
                 rx={this.props.borderRadius/2}
 
@@ -1654,14 +1643,14 @@ class TimeAxis extends Component {
                 <text ref={node => this.testLabelN = node} opacity="0"/>
                 {this.props.highlights && this.props.highlights.map(highlightComp)}
                 <rect
-                    x={this.props.borderWidth/2}
-                    y={this.props.borderWidth/2}
+                    x={0}
+                    y={0}
                     fill="none"
                     rx={this.props.borderRadius}
                     strokeWidth={this.props.borderWidth}
                     stroke="currentColor"
-                    width={this.props.scale.range()[1] - this.props.scale.range()[0] - this.props.borderWidth}
-                    height={this.props.axisHeight - this.props.borderWidth}
+                    width={this.props.scale.range()[1] - this.props.scale.range()[0]}
+                    height={this.props.axisHeight}
                     ref={node => {
                         if(this.props.domainRef) this.props.domainRef(node);
                         this.domainN = node;
@@ -1699,40 +1688,22 @@ class AnimationTimeline extends Component {
         },
     };
 
-    constructor(props) {
-        super(props);
-
-        this.baseMargin = {
-            left: 20,
-            right: 20,
-            bottom: 10,
-            top: 30,
-        };
-
-        this.baseHeight = {
-        };
-
-        this.state = {
-            playbackPosition: this.props.animStatus.position,
-        };
-    }
-
     render() {
         return (
             <>
                 <PlaybackTimeline
-                    {...this.props.animConfig.timeline}
+                    beginTs={this.props.animConfig.beginTs}
+                    endTs={this.props.animConfig.endTs}
+                    {...this.props.animConfig.controls.timeline}
                     axisWidth={this.props.axisWidth}
                     axisHeight={this.props.axisHeight}
                     margin={this.props.margin}
                     borderRadius={this.props.borderRadius}
                     borderWidth={this.props.borderWidth}
 
-                    playbackPosition={this.state.playbackPosition}
-                    playbackLength={this.props.animConfig.length}
-
-                    //TODO
-                    setPlaybackPosition={(pos) => this.setState({playbackPosition: pos})}
+                    playbackPosition={this.props.animStatus.position}
+                    setPlaybackPosition={(pos) => this.props.animControl.seek(pos)}
+                    enabled={!!this.props.animControl.seek && this.props.animConfig.controls.timeline.enabled}
                 />
             </>
         );
@@ -1740,11 +1711,12 @@ class AnimationTimeline extends Component {
 }
 
 
+@withComponentMixins([withAnimationControl])
 class FullControlGroup extends Component {
     static propTypes = {
-        animConfig: PropTypes.object,
-        animStatus: PropTypes.object,
-        animControl: PropTypes.object,
+        animationConf: PropTypes.object,
+        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object,
     };
 
     constructor(props) {
@@ -1801,9 +1773,9 @@ class FullControlGroup extends Component {
 
                             isJoinedRight
 
-                            animControl={this.props.animControl}
-                            animStatus={this.props.animStatus}
-                            animConfig={this.props.animConfig} />
+                            animControl={this.props.animationControl}
+                            animStatus={this.props.animationStatus}
+                            animConfig={this.props.animationConf} />
                         <PlayPauseButton
                             width={getButtonSize()}
                             height={controlHeight}
@@ -1819,8 +1791,9 @@ class FullControlGroup extends Component {
                             isJoinedLeft
                             isJoinedRight
 
-                            animStatus={this.props.animStatus}
-                            animControl={this.props.animControl} />
+                            animStatus={this.props.animationStatus}
+                            animControl={this.props.animationControl}
+                            animConfig={this.props.animationConf} />
                         <JumpForwardButton
                             width={getButtonSize()}
                             height={controlHeight}
@@ -1835,9 +1808,9 @@ class FullControlGroup extends Component {
 
                             isJoinedLeft
 
-                            animControl={this.props.animControl}
-                            animStatus={this.props.animStatus}
-                            animConfig={this.props.animConfig} />
+                            animControl={this.props.animationControl}
+                            animStatus={this.props.animationStatus}
+                            animConfig={this.props.animationConf} />
                     </div>
 
                     <AnimationTimeline
@@ -1853,9 +1826,9 @@ class FullControlGroup extends Component {
                         borderWidth={defaultConfig.common.borderWidth}
                         borderRadius={defaultConfig.common.borderRadius}
 
-                        animStatus={this.props.animStatus}
-                        animControl={this.props.animControl}
-                        animConfig={this.props.animConfig}/>
+                        animStatus={this.props.animationStatus}
+                        animControl={this.props.animationControl}
+                        animConfig={this.props.animationConf}/>
 
                     <div className={styles.floatRight}>
                         <PlaybackSpeedSlider
@@ -1872,9 +1845,9 @@ class FullControlGroup extends Component {
                             borderWidth={defaultConfig.common.borderWidth}
                             sliderRadius={defaultConfig.playbackSpeedSlider.sliderRadius}
 
-                            animStatus={this.props.animStatus}
-                            animControl={this.props.animControl}
-                            animConfig={this.props.animConfig}/>
+                            animStatus={this.props.animationStatus}
+                            animControl={this.props.animationControl}
+                            animConfig={this.props.animationConf}/>
                     </div>
                     <div className={styles.clear} />
                 </>}
@@ -1883,10 +1856,11 @@ class FullControlGroup extends Component {
     }
 }
 
+@withComponentMixins([withAnimationControl])
 class PlayStopControlGroup extends Component {
     static propTypes = {
-        animStatus: PropTypes.object,
-        animControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object,
     };
 
     render() {
@@ -1902,8 +1876,8 @@ class PlayStopControlGroup extends Component {
 
                         isJoinedRight
 
-                        animStatus={this.props.animStatus}
-                        animControl={this.props.animControl}/>
+                        animStatus={this.props.animationStatus}
+                        animControl={this.props.animationControl}/>
                     <StopButton
                         width={defaultConfig.mediaButton.width}
                         height={defaultConfig.mediaButton.height}
@@ -1913,13 +1887,18 @@ class PlayStopControlGroup extends Component {
 
                         isJoinedLeft
 
-                        animControl={this.props.animControl}/>
+                        animControl={this.props.animationControl}/>
                 </div>
                 <div className={styles.clear} />
             </div>
         );
     }
 }
+
+const controlGroups = {
+    full: FullControlGroup,
+    playStop: PlayStopControlGroup,
+};
 
 export {
     MediaButtonBase,
@@ -1935,4 +1914,6 @@ export {
 
     FullControlGroup,
     PlayStopControlGroup,
+
+    controlGroups
 };

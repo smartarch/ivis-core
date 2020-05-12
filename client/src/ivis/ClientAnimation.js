@@ -3,29 +3,29 @@ import axios from "../lib/axios";
 import {getUrl} from "../lib/urls";
 import {Debug} from "./Debug";
 import PropTypes from "prop-types";
-import {AnimationStatusContext, AnimationControlContext} from "./Animation";
+import {AnimationStatusContext, AnimationControlContext} from "../lib/animation-helpers";
 import {AnimatedBase} from "./AnimatedBase";
+import {interpolFuncs} from "../lib/animation-interpolations";
 
 
 class ClientAnimation extends Component {
     static propTypes = {
         config: PropTypes.object,
-        interpolFunc: PropTypes.func,
         children: PropTypes.node,
     }
 
     constructor(props) {
         super(props);
 
-        this.dataAccess = new KeyframeAccess(this.props.config);
+        this.dataAccess = new KeyframeAccess(props.config);
 
         this.state = {
             initialized: false,
             status: {
                 isPlaying: false,
                 isBuffering: true,
-                position: this.props.config.beginTs,
-                speedFactor: 1,
+                position: props.config.beginTs,
+                playbackSpeedFactor: 1,
             },
             controls: {
                 play: ::this.playHandler,
@@ -39,7 +39,6 @@ class ClientAnimation extends Component {
             keyframes: {},
         };
 
-        this.refreshRate = 1000;
         this.baseJump = 50;
         this.keyframes = [];
 
@@ -53,7 +52,7 @@ class ClientAnimation extends Component {
 
     playHandler() {
         this.setStatus({isPlaying: true});
-        this.playLoop = setInterval(::this.positionRefresh, this.refreshRate);
+        this.playLoop = setInterval(::this.positionRefresh, this.props.config.refreshRate);
     }
 
     pauseHandler() {
@@ -87,12 +86,12 @@ class ClientAnimation extends Component {
         this.keyframes = await this.dataAccess.reset(clampedTs);
 
         this.setStatus({isBuffering: false, position: clampedTs});
-        if (shouldPlayAfter) this.playLoop = setInterval(::this.positionRefresh, this.refreshRate);
+        if (shouldPlayAfter) this.playLoop = setInterval(::this.positionRefresh, this.props.config.refreshRate);
     }
 
     changePlaybackSpeed(factor) {
         this.dataAccess.changePlaybackSpeed(factor);
-        this.setStatus({speedFactor: factor});
+        this.setStatus({playbackSpeedFactor: factor});
     }
 
 
@@ -110,7 +109,7 @@ class ClientAnimation extends Component {
     }
 
     positionRefresh() {
-        const nextPosition = this.state.status.position + (this.state.status.speedFactor * this.baseJump);
+        const nextPosition = this.state.status.position + (this.state.status.playbackSpeedFactor * this.baseJump);
         if (nextPosition >= this.props.config.endTs) {
             this.setStatus({position: this.props.config.endTs});
             this.pauseHandler();
@@ -132,7 +131,7 @@ class ClientAnimation extends Component {
             this.setStatus({isBuffering: true});
             nextKf = await nextKf.promise;
             this.setStatus({isBuffering: false});
-            this.playLoop = setInterval(::this.positionRefresh, this.refreshRate);
+            this.playLoop = setInterval(::this.positionRefresh, this.props.config.refreshRate);
         }
 
         this.keyframes.push(nextKf.keyframe);
@@ -163,16 +162,17 @@ class ClientAnimation extends Component {
             },
             {
                 name: "double speed",
-                call: this.changePlaybackSpeed.bind(this, this.state.status.speedFactor * 2),
+                call: this.changePlaybackSpeed.bind(this, this.state.status.playbackSpeedFactor * 2),
             },
         ];
 
+        const interpolFunc = interpolFuncs[this.props.config.interpolFunc];
         return (
             <>
                 <AnimationStatusContext.Provider value={this.state.status}>
                     <AnimationControlContext.Provider value={this.state.controls}>
                         <AnimatedBase
-                            interpolFunc={this.props.interpolFunc}
+                            interpolFunc={interpolFunc}
                             status={this.state.status}
                             keyframes={this.state.keyframes}>
 
@@ -182,6 +182,7 @@ class ClientAnimation extends Component {
                 </AnimationStatusContext.Provider>
 
                 <Debug
+                    name={"Client Animation"}
                     status={this.state.status}
                     funcs={functions}
                     thisKeyframes={this.keyframes}

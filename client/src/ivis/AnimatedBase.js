@@ -1,8 +1,7 @@
 import React, {Component} from "react";
 import {Debug} from "./Debug";
 import PropTypes from "prop-types";
-
-const AnimationDataContext = React.createContext(null);
+import {AnimationDataContext} from "../lib/animation-helpers";
 
 class AnimatedBase extends Component {
     static propTypes = {
@@ -21,7 +20,7 @@ class AnimatedBase extends Component {
     interpolate(left, right, f, ratio) {
         const currValues = {};
 
-        for (let mutableId of Object.keys(left.mutables)) {
+        for (let mutableId in left.mutables) {
             const leftValue = left.mutables[mutableId];
             const rightValue = right.mutables[mutableId];
 
@@ -40,26 +39,35 @@ class AnimatedBase extends Component {
         const kfCurr = this.props.keyframes.curr;
         const kfNext = this.props.keyframes.next;
 
-        const ratio = 1 - ((this.props.status.position - kfCurr.ts) / (kfNext.ts - kfCurr.ts));
-        console.log("Refreshing", {ratio});
+        if (kfNext === undefined) {
+            this.setState({animData: kfCurr.data});
+            return;
+        }
 
-        const newData = this.interpolate(
+        const ratio = (this.props.status.position - kfCurr.ts) / (kfNext.ts - kfCurr.ts);
+        // console.log("Refreshing", {ratio, current: kfCurr.ts, next: kfNext.ts, position: this.props.status.position});
+
+        const mutables = this.interpolate(
             kfCurr.data,
             kfNext.data,
             this.props.interpolFunc,
             ratio
         );
 
-        this.setState({animData: newData});
+        this.setState({animData: {base: kfCurr.data.base, mutables}});
     }
 
     componentDidUpdate(prevProps) {
-        if (prevProps.status.position != this.props.status.position) {
-            if (this.props.status.isPlaying)
-                this.refresh();
-            else
-                this.setState({animData: this.props.keyframes.curr.data.mutables});
+        if (!this.props.status.isBuffering &&
+            (prevProps.status.position !== this.props.status.position || prevProps.status.isBuffering)) {
+
+            this.refresh();
+            // console.log("AnimatedBase: position refresh", this.props.keyframes);
         }
+    }
+
+    componentDidMount() {
+        if (!this.props.status.isBuffering) this.refresh();
     }
 
     render() {
@@ -70,6 +78,7 @@ class AnimatedBase extends Component {
                 </AnimationDataContext.Provider>
 
                 <Debug
+                    name={"Animated Base"}
                     status={this.props.status}
                     keyframes={this.props.keyframes}
                     animationData={this.state.animData}
@@ -79,4 +88,4 @@ class AnimatedBase extends Component {
     }
 }
 
-export {AnimationDataContext, AnimatedBase};
+export {AnimatedBase};
