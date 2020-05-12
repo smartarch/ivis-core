@@ -793,13 +793,13 @@ class QueryProcessor {
             total: elsResp.hits.total
         };
 
-        const withId = query.params && query.params.withId && query.params.withId === true;
+        const withId = query.params &&  query.params.withId === true;
         for (const hit of elsResp.hits.hits) {
             const doc = {};
 
             if (withId) {
-                // FIXME possible overwrite for signal named 'id'
-                doc.id = hit._id;
+                // FIXME possible overwrite by signal named '_id'
+                doc._id = hit._id;
             }
 
             for (const sig of query.docs.signals) {

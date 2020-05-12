@@ -106,7 +106,7 @@ function fromQueryResultToDTFormat(queryResult, signals) {
     const data = [];
     for (let doc of queryResult.docs) {
         const record = [];
-        record.push(doc['id']);
+        record.push(doc['_id']);
         for (let signal of signals) {
             record.push(doc[signal.cid]);
         }
