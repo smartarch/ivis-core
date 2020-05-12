@@ -874,7 +874,7 @@ async function onRunRequest(jobId, requestStr) {
                 }
                 break;
             default:
-                response.error = "Type not recognized";
+                response.error = `Type ${request.type} not recognized`;
                 break;
         }
     } catch (error) {
