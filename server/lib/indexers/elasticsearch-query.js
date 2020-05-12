@@ -145,10 +145,12 @@ class QueryProcessor {
     constructor(query) {
         this.query = query;
         this.signalMap = query.signalMap;
+        this.indexName = getIndexName(query.sigSet);
+
+        // We need to tell client what ts signal is used
         if (query.sigSet.kind === SignalSetKind.TIME_SERIES) {
             this.tsSigCid = query.sigSet.settings.ts;
         }
-        this.indexName = getIndexName(query.sigSet);
     }
 
     createElsScript(field) {
