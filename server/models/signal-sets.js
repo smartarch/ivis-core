@@ -12,7 +12,7 @@ const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
 const {IndexingStatus, IndexMethod} = require('../../shared/signals');
 const signals = require('./signals');
-const {SignalSetKind,SignalSetType} = require('../../shared/signal-sets');
+const {SignalSetKind, SignalSetType, SUBSTITUTE_TS_SIGNAL, DEFAULT_TS_SIGNAL_CID} = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
@@ -112,6 +112,7 @@ async function listRecordsDTAjax(context, sigSetId, params) {
 }
 
 async function listRecordsESAjax(tx, context, sigSet, params, signals) {
+    // Elasticsearch is a distributed system therefore deep pagination gets very costly
     enforce(params.length + params.start < MAX_RESULTS_WINDOW, `Pagination over ${MAX_RESULTS_WINDOW} not supported.`);
     return await fromQueryResultToDTInput(
         await queryTx(tx, context, [
@@ -219,10 +220,10 @@ async function updateWithConsistencyCheck(context, entity) {
             throw new interoperableErrors.ChangedError();
         }
 
-        if (entity.kind){
+        if (entity.kind) {
             enforce(Object.values(SignalSetKind).includes(entity.kind), `'${entity.kind}' is not valid kind of signal set`);
-            if (entity.kind === SignalSetKind.TIME_SERIES){
-                   enforce(entity.settings.ts, 'Time series need timestamp signal to be specified.')
+            if (entity.kind === SignalSetKind.TIME_SERIES) {
+                enforce(entity.settings.ts, 'Time series need timestamp signal to be specified.')
             }
         }
 
@@ -517,10 +518,13 @@ async function query(context, queries) {
 
 async function queryTx(tx, context, queries) {
     for (const sigSetQry of queries) {
+
+        // TODO here will be probably possible change of sigSet to its aggregation if necessary
         const sigSet = await tx('signal_sets').where('cid', sigSetQry.sigSetCid).first();
         if (!sigSet) {
             shares.throwPermissionDenied();
         }
+        sigSet.settings = JSON.parse(sigSet.settings);
 
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
 
@@ -535,12 +539,20 @@ async function queryTx(tx, context, queries) {
 
         const signalsToCheck = new Set();
 
+        function mutateSignalCid(sigCid) {
+            if (sigCid === SUBSTITUTE_TS_SIGNAL) {
+                return sigSet.kind === SignalSetKind.TIME_SERIES ? sigSet.settings.ts : DEFAULT_TS_SIGNAL_CID;
+            }
+            return sigCid;
+        }
+
         const checkFilter = flt => {
             if (flt.type === 'and' || flt.type === 'or') {
                 for (const fltChild of flt.children) {
                     checkFilter(fltChild);
                 }
             } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
+                flt.sigCid = mutateSignalCid(flt.sigCid);
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
                     shares.throwPermissionDenied();
@@ -561,10 +573,11 @@ async function queryTx(tx, context, queries) {
         }
 
         const checkSignals = signals => {
-            for (const sigCid of signals) {
-                const sig = signalMap[sigCid];
+            for (const [i, sigCid] of signals.entries()) {
+                signals[i] = mutateSignalCid(sigCid);
+                const sig = signalMap[signals[i]];
                 if (!sig) {
-                    log.verbose(`unknown signal ${sigSet.cid}.${sigCid}`);
+                    log.verbose(`unknown signal ${sigSet.cid}.${signals[i]}`);
                     shares.throwPermissionDenied();
                 }
 
@@ -574,6 +587,7 @@ async function queryTx(tx, context, queries) {
 
         const checkAggs = aggs => {
             for (const agg of aggs) {
+                agg.sigCid = mutateSignalCid(agg.sigCid);
                 const sig = signalMap[agg.sigCid];
                 if (!sig) {
                     shares.throwPermissionDenied();
@@ -594,6 +608,7 @@ async function queryTx(tx, context, queries) {
                 for (const srt of sort) {
                     // Ignores other types of sorts
                     if (sort.sigCid) {
+                        srt.sigCid = mutateSignalCid(srt.sigCid);
                         const sig = signalMap[srt.sigCid];
                         if (!sig) {
                             shares.throwPermissionDenied();
@@ -627,7 +642,13 @@ async function queryTx(tx, context, queries) {
         sigSetQry.signalMap = signalMap;
     }
 
-    return await indexer.query(queries);
+    function mutateQueryResponse(resp){
+
+    }
+
+    const resp = await indexer.query(queries);
+    mutateQueryResponse(resp) ;
+    return resp;
 }
 
 async function index(context, signalSetId, method = IndexMethod.FULL, from) {

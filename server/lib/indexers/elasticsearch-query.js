@@ -3,6 +3,7 @@
 const moment = require('moment');
 const elasticsearch = require('../elasticsearch');
 const {SignalType, SignalSource} = require('../../../shared/signals');
+const {SignalSetKind} = require('../../../shared/signal-sets');
 const {getIndexName, getFieldName} = require('./elasticsearch-common');
 
 const handlebars = require('handlebars');
@@ -144,6 +145,9 @@ class QueryProcessor {
     constructor(query) {
         this.query = query;
         this.signalMap = query.signalMap;
+        if (query.sigSet.kind === SignalSetKind.TIME_SERIES) {
+            this.tsSigCid = query.sigSet.settings.ts;
+        }
         this.indexName = getIndexName(query.sigSet);
     }
 
@@ -742,6 +746,7 @@ class QueryProcessor {
         const elsResp = await executeElsQry(this.indexName, elsQry);
 
         return {
+            tsSigCid: this.tsSigCid,
             aggs: this.processElsAggs(query.aggs, elsResp.aggregations)
         };
     }
@@ -789,6 +794,7 @@ class QueryProcessor {
         const elsResp = await executeElsQry(this.indexName, elsQry);
 
         const result = {
+            tsSigCid: this.tsSigCid,
             docs: [],
             total: elsResp.hits.total
         };
