@@ -39,6 +39,7 @@ function toQuery(sigSet, signals, params) {
                 continue;
             }
 
+            // search allowed only on these types as there is no easy way to do in similarly on other types in ES
             if (signals[i - 1].type === SignalType.TEXT || signals[i - 1].type === SignalType.KEYWORD) {
                 filter.children.push({
                     type: 'wildcard',
