@@ -101,7 +101,7 @@ export default class AggregationsList extends Component {
         ];
 
         return (
-            <Panel title={t('Signal Sets')}>
+            <Panel title={t('Aggregations')}>
                 {tableRestActionDialogRender(this)}
                 {this.state.createPermitted &&
                 <Toolbar>
