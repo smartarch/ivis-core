@@ -90,7 +90,7 @@ export default class CUD extends Component {
         if (!intervalStr) {
             state.setIn(['interval', 'error'], t('Interval must not be empty'));
         } else {
-            if (isSignalSetAggregationIntervalValid(intervalStr)) {
+            if (!isSignalSetAggregationIntervalValid(intervalStr)) {
                 state.setIn(['interval', 'error'], t('Interval must be a positive integer and have a unit.'));
             } else {
                 state.setIn(['interval', 'error'], null);
