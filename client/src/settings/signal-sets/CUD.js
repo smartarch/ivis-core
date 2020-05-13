@@ -238,7 +238,7 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const kind = this.getFormValue('kind');
-        const isTimeseries = kind === SignalSetKind.TIME_SERIES;
+        const isTimeSeries = kind === SignalSetKind.TIME_SERIES;
 
         const setsColumns = [
             {data: 1, title: t('#')},
@@ -246,6 +246,9 @@ export default class CUD extends Component {
             {data: 3, title: t('Description')},
         ];
 
+
+        const tsLabel = t('Timestamp signal');
+        const kindLabel = t('Kind');
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
                 {canDelete &&
@@ -267,29 +270,30 @@ export default class CUD extends Component {
 
                     <NamespaceSelect/>
                     {isEdit ?
-                        <Dropdown id="kind" label={t('Kind')} options={this.kindOptions}/>
+                        <Dropdown id="kind" label={kindLabel} options={this.kindOptions}/>
                         :
                         <StaticField id="kind"
-                                     label={t('Kind')}>{t(`Generic - changing this option will be available after the signal set creation.`)}</StaticField>
+                                     label={kindLabel}>{t(`Generic - changing this option will be available after the signal set creation.`)}</StaticField>
                     }
 
-                    {!isTimeseries &&
                     <InputField id="record_id_template" label={t('Record ID template')}
-                                help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}/>
-                    }
+                                help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}
+                                disabled={isTimeSeries}/>
 
-                    {isTimeseries && (
-                        <Fieldset label={'Additional settings'}>
+
+                    {isTimeSeries && (
+                        <Fieldset label={t('Additional settings')}>
                             {isEdit ? (
-                                <TableSelect id="ts" label={t('Timestamp signal')} withHeader dropdown
+                                <TableSelect id="ts" label={tsLabel} withHeader dropdown
                                              dataUrl={`rest/signals-table/${this.props.entity.id}`}
                                              columns={setsColumns}
                                              selectionKeyIndex={1}
                                              selectionLabelIndex={2}/>
                             ) : (
-                                <StaticField id='ts' label={t('Timestamp signal')}>Signal set must be created first
-                                    before timestamp signal selection
-                                    (none to select yet).</StaticField>
+                                <StaticField id='ts'
+                                             label={tsLabel}>
+                                    {t('Signal set must be created first before timestamp signal selection (none to select yet).')}
+                                </StaticField>
                             )
                             }
                         </Fieldset>

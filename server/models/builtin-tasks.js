@@ -29,9 +29,9 @@ const aggregationTask = {
             "help": "Since when should aggregation be done"
         }, {
             "id": "interval",
-            "type": "number",
+            "type": "string",
             "label": "Interval",
-            "help": "Bucket interval in seconds"
+            "help": "Bucket interval"
         }],
         code: `from ivis import ivis
 
