@@ -10,6 +10,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const jobs = require('./jobs');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const {isSignalSetAggregationIntervalValid} = require('../../shared/validators');
+const moment = require('moment');
 
 async function listDTAjax(context, sigSetId, params) {
     //return
@@ -35,29 +36,9 @@ async function listDTAjax(context, sigSetId, params) {
 }
 
 function intervalStrToMiliseconds(intervalStr) {
-
     const unit = intervalStr.slice(-1);
     const value = parseInt(intervalStr.slice(0, -1));
-    let intervalms;
-    switch (unit) {
-        case "s":
-            intervalms = value * 1000;
-            break;
-
-        case "m":
-            intervalms = value * 1000 * 60;
-            break;
-
-        case "h":
-            intervalms = value * 1000 * 60 * 60;
-            break;
-
-        case "d":
-            intervalms = value * 1000 * 60 * 60 * 24;
-            break;
-    }
-
-    return intervalms;
+    return moment.duration(value, unit).asMilliseconds();
 }
 
 
