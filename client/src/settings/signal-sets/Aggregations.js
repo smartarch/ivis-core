@@ -76,7 +76,7 @@ export default class AggregationsList extends Component {
             {data: 3, title: t('Description')},
             {data: 4, title: t('Status'), render: data => data ? this.indexingStates[data.indexing.status] : ''},
             {data: 5, title: t('Created'), render: data => data ? moment(data).fromNow() : ''},
-            {data: 7, title: t('Interval'), render: data => `${data.interval} s`},
+            {data: 7, title: t('Interval'), render: data => `${data.interval}`},
             {
                 actions: data => {
                     const actions = [];
