@@ -47,7 +47,7 @@ ts = entities['signals'][sig_set_cid][params['ts']]
 interval = params['interval']
 #offset = params['offset']
 
-agg_set_cid =  f"aggregation_{interval}s_{sig_set_cid}"
+agg_set_cid =  f"aggregation_{interval}_{sig_set_cid}"
 
 numeric_signals = { cid: signal for (cid,signal) in entities['signals'][sig_set_cid].items() if (signal['type'] in ['integer','long','float','double']) }
 
@@ -72,7 +72,7 @@ if state is None or state.get(agg_set_cid) is None:
       signal.update({
         "cid": f"{signal_base['cid']}_{stat}",
         "name": f"{stat} of {signal_base['cid']}",
-        "description": f"Stat {stat} for aggregation of signal {signal_base['cid']}"
+        "description": f"Stat {stat} for aggregation of signal '{signal_base['cid']}'"
       })
       signals.append(signal)
 
@@ -90,7 +90,7 @@ if state is None or state.get(agg_set_cid) is None:
     agg_set_cid,
     ns,
     agg_set_cid,
-    f"aggregation with interval {interval}s for signal set {sig_set_cid}",
+    f"aggregation with interval '{interval}' for signal set '{sig_set_cid}'",
     None,
     signals)
     
@@ -135,7 +135,7 @@ query = {
     "sig_set_aggs": {
       "date_histogram": {
         "field": ts['field'],
-        "interval": f"{interval}s"
+        "interval": interval
       },
       "aggs": avg_aggs
     }

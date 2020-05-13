@@ -95,7 +95,7 @@ async function createTx(tx, context, sigSetId, params) {
 
     const job = {
         name: aggregationJobName,
-        description: `Aggregation for signal set ${signalSet.name} with bucket interval ${intervalStr}`,
+        description: `Aggregation for signal set '${signalSet.name}' with bucket interval '${intervalStr}'`,
         namespace: signalSet.namespace,
         task: task.id,
         state: JobState.ENABLED,
