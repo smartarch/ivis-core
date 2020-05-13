@@ -34,6 +34,33 @@ async function listDTAjax(context, sigSetId, params) {
     return res;
 }
 
+function intervalStrToMiliseconds(intervalStr) {
+
+    const unit = intervalStr.slice(-1);
+    const value = parseInt(intervalStr.slice(0, -1));
+    let intervalms;
+    switch (unit) {
+        case "s":
+            intervalms = value * 1000;
+            break;
+
+        case "m":
+            intervalms = value * 1000 * 60;
+            break;
+
+        case "h":
+            intervalms = value * 1000 * 60 * 60;
+            break;
+
+        case "d":
+            intervalms = value * 1000 * 60 * 60 * 24;
+            break;
+    }
+
+    return intervalms;
+}
+
+
 async function createTx(tx, context, sigSetId, params) {
     const intervalStr = params.interval;
     const ts = params.ts;
@@ -49,10 +76,6 @@ async function createTx(tx, context, sigSetId, params) {
 
     enforce(isSignalSetAggregationIntervalValid(intervalStr), 'Interval must be a positive integer and have a unit.');
 
-    function getJobName() {
-        return `aggregation_${intervalStr}s_${signalSet.cid}`;
-    }
-
     const jobParams = {
         signalSet: signalSet.cid,
         offset: params.offset,
@@ -60,14 +83,19 @@ async function createTx(tx, context, sigSetId, params) {
         interval: intervalStr
     };
 
-    const exists = await tx('jobs').innerJoin('aggregation_jobs', 'jobs.id', 'aggregation_jobs.job').where('name', getJobName()).first();
+
+    const intervalms = intervalStrToMiliseconds(intervalStr);
+    const aggregationJobName = `aggregation_${intervalms}ms_${signalSet.cid}`;
+
+    // Job name contains interval in ms and that is used to check for existence
+    const exists = await tx('jobs').innerJoin('aggregation_jobs', 'jobs.id', 'aggregation_jobs.job').where('name', aggregationJobName).first();
     if (exists) {
-        throw new interoperableErrors.ServerValidationError(`Aggregation for given interval ${intervalStr}s already exists.`);
+        throw new interoperableErrors.ServerValidationError(`Aggregation for given interval '${intervalStr}' already exists.`);
     }
 
     const job = {
-        name: getJobName(),
-        description: `Aggregation for signal set ${signalSet.name} with bucket interval ${intervalStr} s`,
+        name: aggregationJobName,
+        description: `Aggregation for signal set ${signalSet.name} with bucket interval ${intervalStr}`,
         namespace: signalSet.namespace,
         task: task.id,
         state: JobState.ENABLED,
