@@ -27,10 +27,10 @@ import {Panel} from "../../lib/panel";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
-import {fromIntervalStringToSeconds, toIntervalString} from "../../lib/aggregations-parser"
 import moment from "moment";
 import {parseDate} from "../../../../shared/date"
 import interoperableErrors from "../../../../shared/interoperable-errors";
+import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators"
 
 @withComponentMixins([
     withTranslation,
@@ -63,7 +63,7 @@ export default class CUD extends Component {
         if (props.job) {
             this.populateFormValues({
                 ts: props.job.params.ts,
-                interval: toIntervalString(props.job.params.interval)
+                interval: props.job.params.interval
             });
         } else {
             const ts = props.signalSet.settings && props.signalSet.settings.ts;
@@ -86,19 +86,12 @@ export default class CUD extends Component {
             state.setIn(['ts', 'error'], null);
         }
 
-        const intervalValue = state.getIn(['interval', 'value']).trim();
-        if (!intervalValue) {
+        const intervalStr = state.getIn(['interval', 'value']).trim();
+        if (!intervalStr) {
             state.setIn(['interval', 'error'], t('Interval must not be empty'));
         } else {
-            let intervalVal = intervalValue;
-            const unit = intervalValue.slice(-1);
-
-            if (['s', 'm', 'h', 'd'].includes(unit)) {
-                intervalVal = intervalValue.slice(0, -1);
-            }
-
-            if (!/^([1-9]\d*)$/.test(intervalVal)) {
-                state.setIn(['interval', 'error'], t('Interval must be a positive integer'));
+            if (isSignalSetAggregationIntervalValid(intervalStr)) {
+                state.setIn(['interval', 'error'], t('Interval must be a positive integer and have a unit.'));
             } else {
                 state.setIn(['interval', 'error'], null);
             }
@@ -107,7 +100,7 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
 
-        data.interval = fromIntervalStringToSeconds(data.interval);
+        data.interval = data.interval.trim();
 
         const allowedKeys = [
             'interval',
@@ -221,7 +214,7 @@ export default class CUD extends Component {
 
                     <InputField id="interval"
                                 label={t('Interval')}
-                                help={t('Bucket interval in seconds - add m(minute), h(hour), d(day) right after numeric value to change the unit.')}
+                                help={t('Bucket interval - add s(seconds), m(minute), h(hour), d(day) right after numeric value to select the unit.')}
                                 placeholder={t(`type interval or select from the hints`)}
                                 withHints={['30m', '1h', '12h', '1d', '30d']}
                                 disabled={isEdit}/>

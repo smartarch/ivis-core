@@ -9,7 +9,7 @@ const {enforce} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const jobs = require('./jobs');
 const interoperableErrors = require('../../shared/interoperable-errors');
-
+const {isSignalSetAggregationIntervalValid} = require('../../shared/validators');
 
 async function listDTAjax(context, sigSetId, params) {
     //return
@@ -35,7 +35,7 @@ async function listDTAjax(context, sigSetId, params) {
 }
 
 async function createTx(tx, context, sigSetId, params) {
-    const intervalInSecs = params.interval;
+    const intervalStr = params.interval;
     const ts = params.ts;
 
     const signalSet = await tx('signal_sets').where('id', sigSetId).first();
@@ -47,28 +47,27 @@ async function createTx(tx, context, sigSetId, params) {
     const tsExists = tx('signals').where({set: sigSetId, cid: ts}).first();
     enforce(tsExists, `Timestamp signal not found in ${sigSetId}`);
 
-    enforce(Number.isInteger(intervalInSecs) && intervalInSecs > 0, 'Interval must be a positive integer');
-
+    enforce(isSignalSetAggregationIntervalValid(intervalStr), 'Interval must be a positive integer and have a unit.');
 
     function getJobName() {
-        return `aggregation_${intervalInSecs}s_${signalSet.cid}`;
+        return `aggregation_${intervalStr}s_${signalSet.cid}`;
     }
 
     const jobParams = {
         signalSet: signalSet.cid,
         offset: params.offset,
         ts: ts,
-        interval: intervalInSecs
+        interval: intervalStr
     };
 
     const exists = await tx('jobs').innerJoin('aggregation_jobs', 'jobs.id', 'aggregation_jobs.job').where('name', getJobName()).first();
-    if(exists) {
-        throw new interoperableErrors.ServerValidationError(`Aggregation for given interval ${intervalInSecs}s already exists.`);
+    if (exists) {
+        throw new interoperableErrors.ServerValidationError(`Aggregation for given interval ${intervalStr}s already exists.`);
     }
 
     const job = {
         name: getJobName(),
-        description: `Aggregation for signal set ${signalSet.name} with bucket interval ${intervalInSecs} s`,
+        description: `Aggregation for signal set ${signalSet.name} with bucket interval ${intervalStr} s`,
         namespace: signalSet.namespace,
         task: task.id,
         state: JobState.ENABLED,
