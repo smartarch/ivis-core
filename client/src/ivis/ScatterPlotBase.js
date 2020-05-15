@@ -417,7 +417,7 @@ export class ScatterPlotBase extends Component {
 
         withBrush: PropTypes.bool,
         withCursor: PropTypes.bool,
-        withTooltip: PropTypes.bool, // prop will get copied to state in constructor, changing it later will not update it, use setSettings to update it
+        withTooltip: PropTypes.bool, // prop will get copied to state in constructor, changing it later will not update it, use setWithTooltip to update it
         withZoom: PropTypes.bool,
         withTransition: PropTypes.bool,
         withRegressionCoefficients: PropTypes.bool,
@@ -432,7 +432,11 @@ export class ScatterPlotBase extends Component {
         zoomLevelStepFactor: PropTypes.number,
 
         className: PropTypes.string,
-        style: PropTypes.object
+        style: PropTypes.object,
+
+        filter: PropTypes.object,
+        getQueries: PropTypes.func,
+        getQueriesForSignalSet: PropTypes.func,
     };
 
     static defaultProps = {
@@ -557,141 +561,169 @@ export class ScatterPlotBase extends Component {
     }
     //</editor-fold>
 
-    /** Creates the queries for this.fetchData method
-     * @returns {[[query], boolean, [integer]]} { tupple: queries, isZoomedIn, indices of signalSet configs for aggs queries } */
-    getQueries(xMin, xMax, yMin, yMax) {
-        const config = this.props.config;
+    /** Creates the queries for fetchData method
+     * @returns {[query], boolean, [object]}
+     *  array of queries,
+     *  updateGlobals,
+     *  additionalInformation (indices of signalSet configs for aggs queries) */
+    static getQueries(self, xMin, xMax, yMin, yMax) {
+        const config = self.props.config;
         const queries = [];
         let isZoomedIn = !isNaN(xMin) || !isNaN(xMax) || !isNaN(yMin) || !isNaN(yMax);
-        const aggsQueriesSignalSetIndices = [];
+        const additionalInformation = [];
+
+        // update limits with current zoom - check if zoomTransform is almost equal to identity
+        if (Math.abs(self.state.zoomTransform.k - 1) > 0.01 ||
+            Math.abs(self.state.zoomYScaleMultiplier - 1) > 0.01 ||
+            Math.abs(self.state.zoomTransform.x) > 3 ||
+            Math.abs(self.state.zoomTransform.y) > 3) {
+
+            isZoomedIn = true;
+
+            // update limits with current zoom (if not set yet)
+            if (xMin === undefined && !isNaN(self.state.xMin))
+                xMin = self.state.xMin;
+            if (xMax === undefined && !isNaN(self.state.xMax))
+                xMax = self.state.xMax;
+            if (yMin === undefined && !isNaN(self.state.yMin))
+                yMin = self.state.yMin;
+            if (yMax === undefined && !isNaN(self.state.yMax))
+                yMax = self.state.yMax;
+        }
+
+        // set limits to props (if not set yet)
+        if (xMin === undefined && !isNaN(self.props.xMinValue))
+            xMin = self.props.xMinValue;
+        if (xMax === undefined && !isNaN(self.props.xMaxValue))
+            xMax = self.props.xMaxValue;
+        if (yMin === undefined && !isNaN(self.props.yMinValue))
+            yMin = self.props.yMinValue;
+        if (yMax === undefined && !isNaN(self.props.yMaxValue))
+            yMax = self.props.yMaxValue;
+
+        const updateGlobals = !isZoomedIn;
 
         for (const [i, signalSet] of config.signalSets.entries()) {
-            let filter = {
-                type: 'and',
-                children: [
-                    {
-                        type: "function_score",
-                        function: {
-                            "random_score": {}
-                        }
+            const getQueriesForSignalSet = self.props.getQueriesForSignalSet || ScatterPlotBase.getQueriesForSignalSet;
+            const [qrys, additional] = getQueriesForSignalSet(self, signalSet, xMin, xMax, yMin, yMax, updateGlobals, i);
+            queries.push(...qrys);
+            additionalInformation.push(additional);
+        }
+
+        return [ queries, updateGlobals, additionalInformation ];
+    }
+
+    /** Creates the queries for one signalSet
+     * If 'updateGlobals' is false, only 'docs' query is retured. If it is true, additional queries to get extent of data are also returned.
+     * @returns {[query], object}
+     *  array of queries,
+     *  additionalInformation (index of signalSet config for agg query) */
+    static getQueriesForSignalSet(self, signalSetConfig, xMin, xMax, yMin, yMax, updateGlobals = false, signalSetIndex = 0) {
+        const qrys = [];
+        let additional = undefined;
+        let filter = {
+            type: 'and',
+            children: [
+                {
+                    type: "function_score",
+                    function: {
+                        "random_score": {}
                     }
-                ]
-            };
-
-            if (signalSet.tsSigCid) {
-                const abs = this.getIntervalAbsolute();
-                filter.children.push({
-                    type: 'range',
-                    sigCid: signalSet.tsSigCid,
-                    gte: abs.from.toISOString(),
-                    lt: abs.to.toISOString()
-                });
-            }
-
-            if (Math.abs(this.state.zoomTransform.k - 1) > 0.01 ||
-                Math.abs(this.state.zoomYScaleMultiplier - 1) > 0.01 ||
-                Math.abs(this.state.zoomTransform.x) > 3 ||
-                Math.abs(this.state.zoomTransform.y) > 3) {
-
-                isZoomedIn = true;
-
-                // update limits with current zoom (if not set yet)
-                if (xMin === undefined && !isNaN(this.state.xMin))
-                    xMin = this.state.xMin;
-                if (xMax === undefined && !isNaN(this.state.xMax))
-                    xMax = this.state.xMax;
-                if (yMin === undefined && !isNaN(this.state.yMin))
-                    yMin = this.state.yMin;
-                if (yMax === undefined && !isNaN(this.state.yMax))
-                    yMax = this.state.yMax;
-            }
-
-            // set limits to props (if not set yet)
-            if (xMin === undefined && !isNaN(this.props.xMinValue))
-                xMin = this.props.xMinValue;
-            if (xMax === undefined && !isNaN(this.props.xMaxValue))
-                xMax = this.props.xMaxValue;
-            if (yMin === undefined && !isNaN(this.props.yMinValue))
-                yMin = this.props.yMinValue;
-            if (yMax === undefined && !isNaN(this.props.yMaxValue))
-                yMax = this.props.yMaxValue;
-
-            // add x and y filters
-            if (!isNaN(xMin))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.x_sigCid,
-                    gte: xMin
-                });
-            if (!isNaN(xMax))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.x_sigCid,
-                    lte: xMax
-                });
-            if (!isNaN(yMin))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.y_sigCid,
-                    gte: yMin
-                });
-            if (!isNaN(yMax))
-                filter.children.push({
-                    type: "range",
-                    sigCid: signalSet.y_sigCid,
-                    lte: yMax
-                });
-
-            let limit = undefined;
-            if (this.state.maxDotCount >= 0) {
-                limit = this.state.maxDotCount;
-            }
-
-            let signals = [signalSet.x_sigCid, signalSet.y_sigCid];
-            if (signalSet.dotSize_sigCid)
-                signals.push(signalSet.dotSize_sigCid);
-            if (signalSet.colorContinuous_sigCid)
-                signals.push(signalSet.colorContinuous_sigCid);
-            if (signalSet.colorDiscrete_sigCid) {
-                signals.push(signalSet.colorDiscrete_sigCid);
-                if (!isZoomedIn) {
-                    const aggs = [{
-                        sigCid: signalSet.colorDiscrete_sigCid,
-                        agg_type: "terms"
-                    }];
-                    queries.push({
-                        type: "aggs",
-                        args: [signalSet.cid, filter, aggs]
-                    });
-                    aggsQueriesSignalSetIndices.push(i);
                 }
-            }
-            if (signalSet.label_sigCid)
-                signals.push(signalSet.label_sigCid);
+            ]
+        };
 
-            queries.push({
-                type: "docs",
-                args: [ signalSet.cid, signals, filter, undefined, limit ]
+        if (signalSetConfig.tsSigCid) {
+            const abs = self.getIntervalAbsolute();
+            filter.children.push({
+                type: 'range',
+                sigCid: signalSetConfig.tsSigCid,
+                gte: abs.from.toISOString(),
+                lt: abs.to.toISOString()
+            });
+        }
+
+        // add x and y filters
+        if (!isNaN(xMin))
+            filter.children.push({
+                type: "range",
+                sigCid: signalSetConfig.x_sigCid,
+                gte: xMin
+            });
+        if (!isNaN(xMax))
+            filter.children.push({
+                type: "range",
+                sigCid: signalSetConfig.x_sigCid,
+                lte: xMax
+            });
+        if (!isNaN(yMin))
+            filter.children.push({
+                type: "range",
+                sigCid: signalSetConfig.y_sigCid,
+                gte: yMin
+            });
+        if (!isNaN(yMax))
+            filter.children.push({
+                type: "range",
+                sigCid: signalSetConfig.y_sigCid,
+                lte: yMax
+            });
+        // custom filter
+        if (self.props.filter)
+            filter.children.push(self.props.filter);
+
+        let limit = undefined;
+        if (self.state.maxDotCount >= 0) {
+            limit = self.state.maxDotCount;
+        }
+
+        // set signals
+        let signals = [signalSetConfig.x_sigCid, signalSetConfig.y_sigCid];
+        if (signalSetConfig.dotSize_sigCid)
+            signals.push(signalSetConfig.dotSize_sigCid);
+        if (signalSetConfig.colorContinuous_sigCid)
+            signals.push(signalSetConfig.colorContinuous_sigCid);
+        if (signalSetConfig.colorDiscrete_sigCid)
+            signals.push(signalSetConfig.colorDiscrete_sigCid);
+        if (signalSetConfig.label_sigCid)
+            signals.push(signalSetConfig.label_sigCid);
+
+        // main docs query
+        qrys.push({
+            type: "docs",
+            args: [ signalSetConfig.cid, signals, filter, undefined, limit ]
+        });
+
+        // additional queries to get the extent of data
+        if (updateGlobals) {
+            const summary = {
+                signals: {}
+            };
+            summary.signals[signalSetConfig.x_sigCid] = ["min", "max"];
+            summary.signals[signalSetConfig.y_sigCid] = ["min", "max"];
+            if (signalSetConfig.dotSize_sigCid)
+                summary.signals[signalSetConfig.dotSize_sigCid] = ["min", "max"];
+            if (signalSetConfig.colorContinuous_sigCid)
+                summary.signals[signalSetConfig.colorContinuous_sigCid] = ["min", "max"];
+            qrys.push({
+                type: "summary",
+                args: [ signalSetConfig.cid, filter, summary ]
             });
 
-            if (!isZoomedIn) {
-                const summary = {
-                    signals: {}
-                };
-                summary.signals[signalSet.x_sigCid] = ["min", "max"];
-                summary.signals[signalSet.y_sigCid] = ["min", "max"];
-                if (signalSet.dotSize_sigCid)
-                    summary.signals[signalSet.dotSize_sigCid] = ["min", "max"];
-                if (signalSet.colorContinuous_sigCid)
-                    summary.signals[signalSet.colorContinuous_sigCid] = ["min", "max"];
-                queries.push({
-                    type: "summary",
-                    args: [ signalSet.cid, filter, summary ]
+            if (signalSetConfig.colorDiscrete_sigCid) {
+                const aggs = [{
+                    sigCid: signalSetConfig.colorDiscrete_sigCid,
+                    agg_type: "terms"
+                }];
+                qrys.push({
+                    type: "aggs",
+                    args: [signalSetConfig.cid, filter, aggs]
                 });
+                additional = signalSetIndex;
             }
         }
 
-        return [ queries, isZoomedIn, aggsQueriesSignalSetIndices ];
+        return [qrys, additional];
     }
 
     /** Fetches new data for the chart and processes the results (updates the chart accordingly) */
@@ -699,13 +731,15 @@ export class ScatterPlotBase extends Component {
     async fetchData(xMin, xMax, yMin, yMax) {
         this.setState({statusMsg: this.props.t('Loading...')});
         try {
-            const [queries, isZoomedIn, aggsQueriesSignalSetIndices] = this.getQueries(xMin, xMax, yMin, yMax);
+            const getQueries = this.props.getQueries || ScatterPlotBase.getQueries;
+            const [queries, updateGlobals, additionalInformation] = getQueries(this, xMin, xMax, yMin, yMax);
             const results = await this.dataAccessSession.getLatestMixed(queries);
+            const aggsQueriesSignalSetIndices = additionalInformation;
 
             if (results) { // Results is null if the results returned are not the latest ones
                 const processedResults = this.processData(results.filter((_, i) => queries[i].type === "docs"));
 
-                if (!isZoomedIn) { // zoomed completely out
+                if (updateGlobals) { // zoomed completely out
                     if (!processedResults.some(d => d.length > 0)) {
                         this.clearChart();
                         this.setState({
@@ -799,16 +833,16 @@ export class ScatterPlotBase extends Component {
                     statusMsg: "",
                     noData: false
                 };
-                if (!isZoomedIn)
+                if (updateGlobals)
                     newState.globalSignalSetsData = processedResults;
 
                 this.setState(newState, () => {
-                    if (!isZoomedIn)
+                    if (updateGlobals)
                         // call callViewChangeCallback when data new data without range filter are loaded as the xExtent might got updated (even though this.state.zoomTransform is the same)
                         this.callViewChangeCallback();
                 });
 
-                if (!isZoomedIn) { // zoomed completely out
+                if (updateGlobals) { // zoomed completely out
                     this.globalRegressions = await this.createRegressions(processedResults);
                 }
 
