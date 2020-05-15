@@ -196,7 +196,7 @@ export class HeatmapChart extends Component {
 
         filter: PropTypes.object,
         processBucket: PropTypes.func, // see HeatmapChart.processBucket for reference
-        processData: PropTypes.func, // see HeatmapChart.processData for reference
+        prepareData: PropTypes.func, // see HeatmapChart.prepareData for reference
     };
 
     static defaultProps = {
@@ -292,7 +292,7 @@ export class HeatmapChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    /** Fetches new data for the chart, processes the results using this.processData method and updates the state accordingly, so the chart is redrawn */
+    /** Fetches new data for the chart, processes the results using this.prepareData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
         const config = this.props.config;
@@ -359,8 +359,8 @@ export class HeatmapChart extends Component {
                 const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.x_sigCid, config.y_sigCid], [maxBucketCountX, maxBucketCountY], [this.props.minStepX, this.props.minStepY], filter, metrics);
 
                 if (results) { // Results is null if the results returned are not the latest ones
-                    const processData = this.props.processData || HeatmapChart.processData;
-                    const [processedResults, xType, yType, xExtent, yExtent] = processData(results, this.props);
+                    const prepareData = this.props.prepareData || HeatmapChart.prepareData;
+                    const [processedResults, xType, yType, xExtent, yExtent] = prepareData(this, results);
                     this.xType = xType;
                     this.yType = yType;
                     this.xExtent = xExtent;
@@ -388,8 +388,8 @@ export class HeatmapChart extends Component {
         }
     }
 
-    static processBucket(bucket, props) {
-        const config = props.config;
+    static processBucket(self, bucket) {
+        const config = self.props.config;
         if (config.metric_sigCid && config.metric_type) {
             if (!bucket.hasOwnProperty("values"))
                 return 0;
@@ -403,7 +403,8 @@ export class HeatmapChart extends Component {
 
     /** Processes the results of queries and returns the data and xType, yType, xExtent and yExtent
      * @return {{}} data in form which can be directly passed to the setState function */
-    static processData(data, props) {
+    static prepareData(self, data) {
+        const props = self.props;
         let xType = data.agg_type === "histogram" ? DataType.NUMBER : DataType.KEYWORD;
         const xBucketsCount = data.buckets.length;
         let xExtent = null;
@@ -466,7 +467,7 @@ export class HeatmapChart extends Component {
         const processBucket = props.processBucket || HeatmapChart.processBucket;
         for (const column of data.buckets)
             for (const bucket of column.buckets) {
-                bucket.value = processBucket(bucket, props);
+                bucket.value = processBucket(self, bucket);
                 if (bucket.value > maxValue)
                     maxValue = bucket.value;
                 totalValue += bucket.value;

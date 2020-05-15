@@ -146,7 +146,7 @@ export class HistogramChart extends Component {
 
         filter: PropTypes.object,
         processBucket: PropTypes.func, // see HistogramChart.processBucket for reference
-        processData: PropTypes.func, // see HistogramChart.processData for reference
+        prepareData: PropTypes.func, // see HistogramChart.prepareData for reference
     };
 
     static defaultProps = {
@@ -234,7 +234,7 @@ export class HistogramChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    /** Fetches new data for the chart, processes the results using processData method and updates the state accordingly, so the chart is redrawn */
+    /** Fetches new data for the chart, processes the results using prepareData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
         const config = this.props.config;
@@ -290,8 +290,8 @@ export class HistogramChart extends Component {
                 const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], maxBucketCount, minStep, filter, metrics);
 
                 if (results) { // Results is null if the results returned are not the latest ones
-                    const processData = this.props.processData || HistogramChart.processData;
-                    const processedResults = processData(results, this.props);
+                    const prepareData = this.props.prepareData || HistogramChart.prepareData;
+                    const processedResults = prepareData(this, results);
                     if (processedResults.buckets.length === 0) {
                         this.setState({
                             signalSetData: null,
@@ -337,8 +337,8 @@ export class HistogramChart extends Component {
     }
 
     /** The value returned from this function is used to determine the height of the bar corresponding to the bucket */
-    static processBucket(bucket, props) {
-        const config = props.config;
+    static processBucket(self, bucket) {
+        const config = self.props.config;
         if (config.metric_sigCid && config.metric_type) {
             bucket.metric = bucket.values[config.metric_sigCid][config.metric_type];
             delete bucket.values;
@@ -348,7 +348,7 @@ export class HistogramChart extends Component {
             return bucket.count;
     }
 
-    static processData(data, props) {
+    static prepareData(self, data) {
         if (data.buckets.length === 0)
             return {
                 buckets: data.buckets,
@@ -362,9 +362,9 @@ export class HistogramChart extends Component {
         const min = data.buckets[0].key;
         const max = data.buckets[data.buckets.length - 1].key + data.step;
 
-        const processBucket = props.processBucket || HistogramChart.processBucket;
+        const processBucket = self.props.processBucket || HistogramChart.processBucket;
         for (const bucket of data.buckets)
-            bucket.value = processBucket(bucket, props);
+            bucket.value = processBucket(self, bucket);
 
         let maxValue = 0;
         let totalValue = 0;
@@ -476,7 +476,7 @@ export class HistogramChart extends Component {
 
     // noinspection JSCommentMatchesSignature
     /**
-     * @param data                  data in format as produces by this.processData
+     * @param data                  data in format as produces by this.prepareData
      * @param selection             d3 selection to which the data will get assigned and drawn
      * @param disableTransitions    animations when bars are created or modified
      */
