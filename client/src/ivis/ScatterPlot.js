@@ -51,10 +51,10 @@ export class ScatterPlot extends Component {
             })).isRequired
         }).isRequired,
 
-        maxDotCount: PropTypes.number, // set to negative number for unlimited; prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
+        maxDotCount: PropTypes.number, // prop will get copied to state in constructor, changing it later will not update it, use setMaxDotCount method to update it
         dotSize: PropTypes.number,
         highlightDotSize: PropTypes.number, // radius multiplier
-        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color_sigCid and config.signalSets[*].color is not array
+        colors: PropTypes.arrayOf(PropType_d3Color_Required()), // if specified, uses same cScale for all signalSets that have color*_sigCid and config.signalSets[*].color is not array
 
         xMinValue: PropTypes.number,
         xMaxValue: PropTypes.number,
@@ -95,7 +95,14 @@ export class ScatterPlot extends Component {
         zoomLevelStepFactor: PropTypes.number,
 
         className: PropTypes.string,
-        style: PropTypes.object
+        style: PropTypes.object,
+
+        filter: PropTypes.object,
+        getQueries: PropTypes.func,
+        getQueriesForSignalSet: PropTypes.func,
+        prepareData: PropTypes.func,
+        computeExtents: PropTypes.func,
+        processDocs: PropTypes.func,
     };
 
     setView(...args) {
@@ -114,4 +121,10 @@ export class ScatterPlot extends Component {
             <ScatterPlotBase ref={node => this.scatterPlotBase = node} {...this.props} />
         );
     }
+
+    static getQueries = ScatterPlotBase.getQueries;
+    static getQueriesForSignalSet = ScatterPlotBase.getQueriesForSignalSet;
+    static prepareData = ScatterPlotBase.prepareData;
+    static computeExtents = ScatterPlotBase.computeExtents;
+    static processDocs = ScatterPlotBase.processDocs;
 }

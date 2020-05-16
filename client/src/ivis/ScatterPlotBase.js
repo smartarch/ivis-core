@@ -437,6 +437,9 @@ export class ScatterPlotBase extends Component {
         filter: PropTypes.object,
         getQueries: PropTypes.func,
         getQueriesForSignalSet: PropTypes.func,
+        prepareData: PropTypes.func,
+        computeExtents: PropTypes.func,
+        processDocs: PropTypes.func,
     };
 
     static defaultProps = {
@@ -734,107 +737,20 @@ export class ScatterPlotBase extends Component {
             const getQueries = this.props.getQueries || ScatterPlotBase.getQueries;
             const [queries, updateGlobals, additionalInformation] = getQueries(this, xMin, xMax, yMin, yMax);
             const results = await this.dataAccessSession.getLatestMixed(queries);
-            const aggsQueriesSignalSetIndices = additionalInformation;
 
             if (results) { // Results is null if the results returned are not the latest ones
-                const processedResults = this.processData(results.filter((_, i) => queries[i].type === "docs"));
+                const prepareData = this.props.prepareData || ScatterPlotBase.prepareData;
+                const [newState, xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents] = prepareData(this, results, queries, updateGlobals, additionalInformation);
 
-                if (updateGlobals) { // zoomed completely out
-                    if (!processedResults.some(d => d.length > 0)) {
-                        this.clearChart();
-                        this.setState({
-                            signalSetsData: null,
-                            globalSignalSetsData: null,
-                            noData: true,
-                            statusMsg: this.props.t("No data.")
-                        });
-                        return;
-                    }
-
-                    // update extents of axes
-                    const summaries = results.filter((_, i) => queries[i].type === "summary");
-                    //<editor-fold desc="Y extent">
-                    if (this.props.yAxisExtentFromSampledData)
-                        this.yExtent = getExtent(processedResults, function (d) {  return d.y });
-                    else {
-                        const yMin = d3Array.min(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
-                            return summary[this.props.config.signalSets[i].y_sigCid].min;
-                        });
-                        const yMax = d3Array.max(results.filter((_, i) => queries[i].type === "summary"), (summary, i) => {
-                            return summary[this.props.config.signalSets[i].y_sigCid].max;
-                        });
-                        this.yExtent = [yMin, yMax];
-                    }
-                    this.yExtent = extentWithMargin(this.yExtent, 0.05);
-                    if (!isNaN(this.props.yMinValue)) this.yExtent[0] = this.props.yMinValue;
-                    if (!isNaN(this.props.yMaxValue)) this.yExtent[1] = this.props.yMaxValue;
-                    //</editor-fold>
-                    //<editor-fold desc="X extent">
-                    if (this.props.xAxisExtentFromSampledData)
-                        this.xExtent = getExtent(processedResults, function (d) {  return d.x });
-                    else {
-                        const xMin = d3Array.min(summaries, (summary, i) => {
-                            return summary[this.props.config.signalSets[i].x_sigCid].min;
-                        });
-                        const xMax = d3Array.max(summaries, (summary, i) => {
-                            return summary[this.props.config.signalSets[i].x_sigCid].max;
-                        });
-                        this.xExtent = [xMin, xMax];
-                    }
-                    this.xExtent = extentWithMargin(this.xExtent, 0.05);
-                    if (!isNaN(this.props.xMinValue)) this.xExtent[0] = this.props.xMinValue;
-                    if (!isNaN(this.props.xMaxValue)) this.xExtent[1] = this.props.xMaxValue;
-                    //</editor-fold>
-                    //<editor-fold desc="Size extent">
-                    const sMin = d3Array.min(summaries, (summary, i) => {
-                        if (this.props.config.signalSets[i].hasOwnProperty("dotSize_sigCid"))
-                            return summary[this.props.config.signalSets[i].dotSize_sigCid].min;
-                    });
-                    const sMax = d3Array.max(summaries, (summary, i) => {
-                        if (this.props.config.signalSets[i].hasOwnProperty("dotSize_sigCid"))
-                            return summary[this.props.config.signalSets[i].dotSize_sigCid].max;
-                    });
-                    this.sExtent = this.updateSExtent([sMin, sMax]);
-                    //</editor-fold>
-                    //<editor-fold desc="Color (continuous) extent">
-                    this.cExtents = [];
-                    for (let i = 0; i < processedResults.length; i++) {
-                        const signalSetConfig = this.props.config.signalSets[i];
-                        if (signalSetConfig.hasOwnProperty("colorContinuous_sigCid")) {
-                            const signal = summaries[i][signalSetConfig.colorContinuous_sigCid];
-                            this.cExtents[i] = this.updateCExtent([signal.min, signal.max]);
-                        }
-                    }
-                    this.cExtent = [ d3Array.min(this.cExtents, ex => ex[0]), d3Array.max(this.cExtents, ex => ex[1]) ];
-                    //</editor-fold>
-                    //<editor-fold desc="Color (discrete) extent">
-                    this.dExtents = [];
-                    for (const [j, res] of results.filter((_, i) => queries[i].type === "aggs").entries()) {
-                        const buckets = res[0].buckets;
-                        const i = aggsQueriesSignalSetIndices[j];
-                        const signalSetConfig = this.props.config.signalSets[i];
-                        if (this.props.colorValues && this.props.colorValues.length)
-                            this.dExtents[i] = this.props.colorValues;
-                        else
-                            this.dExtents[i] = buckets.map(b => b.key);
-
-                        if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
-                            if (this.dExtents[i].length > signalSetConfig.color.length)
-                                this.setFlashMessage("warning", "More values than colors in signal set config at index " + i + ". Colors will be repeated.");
-                    }
-                    this.dExtent = [...new Set(this.dExtents.flat())]; // get all keys in extents and then keeps only unique values
-                    if (this.props.config.signalSets.some(s => !Array.isArray(s.color)) && this.dExtent.length > this.props.colors.length)
-                        this.setFlashMessage("warning", "More values than colors in props. Colors will be repeated.");
-                    //</editor-fold>
+                if (updateGlobals) {
+                    this.xExtent = xExtent;
+                    this.yExtent = yExtent;
+                    this.sExtent = sExtent;
+                    this.cExtent = cExtent;
+                    this.cExtents = cExtents;
+                    this.dExtent = dExtent;
+                    this.dExtents = dExtents;
                 }
-
-                const newState = {
-                    signalSetsData: processedResults,
-                    statusMsg: "",
-                    noData: false
-                };
-                if (updateGlobals)
-                    newState.globalSignalSetsData = processedResults;
 
                 this.setState(newState, () => {
                     if (updateGlobals)
@@ -842,17 +758,145 @@ export class ScatterPlotBase extends Component {
                         this.callViewChangeCallback();
                 });
 
-                if (updateGlobals) { // zoomed completely out
-                    this.globalRegressions = await this.createRegressions(processedResults);
+                if (updateGlobals && newState.noData === true) {
+                    this.clearChart();
+                    return;
                 }
 
-                this.regressions = await this.createRegressions(processedResults);
+                if (updateGlobals) { // zoomed completely out
+                    this.globalRegressions = await this.createRegressions(newState.signalSetsData);
+                }
+                this.regressions = await this.createRegressions(newState.signalSetsData);
                 this.createChart(true);
             }
         } catch (err) {
             this.setState({statusMsg: this.props.t("Error loading data.")});
             throw err;
         }
+    }
+
+    /** returns newState (with signalSetsData containing processed results) and extents of signals */
+    static prepareData(self, results, queries, updateGlobals, additionalInformation) {
+        const docsResults = results.filter((_, i) => queries[i].type === "docs");
+        const processDocs = self.props.processDocs || ScatterPlotBase.processDocs;
+        const processedResults = processDocs(self, docsResults);
+
+        let xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents;
+        if (updateGlobals) { // zoomed completely out
+            if (!processedResults.some(d => d.length > 0)) {
+                return [{
+                    signalSetsData: null,
+                    globalSignalSetsData: null,
+                    noData: true,
+                    statusMsg: self.props.t("No data.")
+                }, xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents]; // extents are intentionally undefined here
+            }
+
+            const computeExtents = self.props.computeExtents || ScatterPlotBase.computeExtents;
+            [xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents] = computeExtents(self, processedResults, results, queries, additionalInformation);
+        }
+
+        const newState = {
+            signalSetsData: processedResults,
+            statusMsg: "",
+            noData: false
+        };
+        if (updateGlobals)
+            newState.globalSignalSetsData = processedResults;
+
+        return [newState, xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents];
+    }
+
+    static computeExtents(self, processedResults, results, queries, additionalInformation) {
+        let xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents;
+        const SignalSetsConfigs = self.props.config.signalSets;
+
+        const summaryResults = results.filter((_, i) => queries[i].type === "summary");
+
+        //<editor-fold desc="Y extent">
+        if (self.props.yAxisExtentFromSampledData)
+            yExtent = getExtent(processedResults, d => d.y);
+        else {
+            const yMin = d3Array.min(summaryResults, (summary, i) => {
+                return summary[SignalSetsConfigs[i].y_sigCid].min;
+            });
+            const yMax = d3Array.max(summaryResults, (summary, i) => {
+                return summary[SignalSetsConfigs[i].y_sigCid].max;
+            });
+            yExtent = [yMin, yMax];
+        }
+        yExtent = extentWithMargin(yExtent, 0.05);
+        if (!isNaN(self.props.yMinValue)) yExtent[0] = self.props.yMinValue;
+        if (!isNaN(self.props.yMaxValue)) yExtent[1] = self.props.yMaxValue;
+        //</editor-fold>
+
+        //<editor-fold desc="X extent">
+        if (self.props.xAxisExtentFromSampledData)
+            xExtent = getExtent(processedResults, d => d.x);
+        else {
+            const xMin = d3Array.min(summaryResults, (summary, i) => {
+                return summary[SignalSetsConfigs[i].x_sigCid].min;
+            });
+            const xMax = d3Array.max(summaryResults, (summary, i) => {
+                return summary[SignalSetsConfigs[i].x_sigCid].max;
+            });
+            xExtent = [xMin, xMax];
+        }
+        xExtent = extentWithMargin(xExtent, 0.05);
+        if (!isNaN(self.props.xMinValue)) xExtent[0] = self.props.xMinValue;
+        if (!isNaN(self.props.xMaxValue)) xExtent[1] = self.props.xMaxValue;
+        //</editor-fold>
+
+        //<editor-fold desc="Size extent">
+        const sMin = d3Array.min(summaryResults, (summary, i) => {
+            if (SignalSetsConfigs[i].hasOwnProperty("dotSize_sigCid"))
+                return summary[SignalSetsConfigs[i].dotSize_sigCid].min;
+        });
+        const sMax = d3Array.max(summaryResults, (summary, i) => {
+            if (SignalSetsConfigs[i].hasOwnProperty("dotSize_sigCid"))
+                return summary[SignalSetsConfigs[i].dotSize_sigCid].max;
+        });
+        sExtent = [sMin, sMax];
+        if (self.props.hasOwnProperty("minDotRadiusValue")) sExtent[0] = self.props.minDotSizeValue;
+        if (self.props.hasOwnProperty("maxDotRadiusValue")) sExtent[1] = self.props.maxDotSizeValue;
+        //</editor-fold>
+
+        //<editor-fold desc="Color (continuous) extent">
+        cExtents = [];
+        for (let i = 0; i < processedResults.length; i++) {
+            if (SignalSetsConfigs[i].hasOwnProperty("colorContinuous_sigCid")) {
+                const signal = summaryResults[i][SignalSetsConfigs[i].colorContinuous_sigCid];
+                cExtents[i] = [signal.min, signal.max];
+                if (self.props.hasOwnProperty("minColorValue")) cExtents[i][0] = self.props.minColorValue;
+                if (self.props.hasOwnProperty("maxColorValue")) cExtents[i][1] = self.props.maxColorValue;
+            }
+        }
+        cExtent = [ d3Array.min(cExtents, ex => ex[0]), d3Array.max(cExtents, ex => ex[1]) ];
+        //</editor-fold>
+
+        //<editor-fold desc="Color (discrete) extent">
+        dExtents = [];
+        const aggsQueriesSignalSetIndices = additionalInformation;
+        const aggResults = results.filter((_, i) => queries[i].type === "aggs");
+        for (const [j, res] of aggResults.entries()) {
+            const buckets = res[0].buckets;
+            const i = aggsQueriesSignalSetIndices[j];
+            const signalSetConfig = SignalSetsConfigs[i];
+            if (self.props.colorValues && self.props.colorValues.length)
+                dExtents[i] = self.props.colorValues;
+            else
+                dExtents[i] = buckets.map(b => b.key);
+
+            if (Array.isArray(signalSetConfig.color) && signalSetConfig.color.length > 0)
+                if (dExtents[i].length > signalSetConfig.color.length)
+                    self.setFlashMessage("warning", "More values than colors in signal set config at index " + i + ". Colors will be repeated.");
+        }
+        dExtent = [...new Set(dExtents.flat())]; // get all keys in extents and then keeps only unique values
+        if (self.props.config.signalSets.some(s => !Array.isArray(s.color)) && dExtent.length > self.props.colors.length)
+            self.setFlashMessage("warning", "More values than colors in props. Colors will be repeated.");
+        //</editor-fold>
+
+        return [xExtent, yExtent, sExtent, cExtent, cExtents, dExtent, dExtents];
     }
 
     /** Creates (or updates) the chart with current data.
@@ -999,8 +1043,8 @@ export class ScatterPlotBase extends Component {
 
     //<editor-fold desc="Data processing">
     /** Renames data from all signalSets to be in format [{ x, y, s?, c?, d?, label? }] ('?' marks optional property). */
-    processData(signalSetsData) {
-        const config = this.props.config;
+    static processDocs(self, signalSetsData) {
+        const config = self.props.config;
         let ret = [];
 
         for (let i = 0; i < config.signalSets.length; i++) {
@@ -1578,6 +1622,8 @@ export class ScatterPlotBase extends Component {
      * @return {{xMin: number, xMax: number, yMin: number, yMax: number }} left, right, bottom, top boundary
      */
     getView() {
+        if (this.state.noData)
+            return undefined, undefined, undefined, undefined;
         const [xMin, xMax] = this.xScale.domain();
         const [yMin, yMax] = this.yScale.domain();
         return {xMin, xMax, yMin, yMax};
