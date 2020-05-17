@@ -434,7 +434,7 @@ export class ScatterPlotBase extends Component {
         className: PropTypes.string,
         style: PropTypes.object,
 
-        filter: PropTypes.object,
+        filter: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
         getQueries: PropTypes.func,
         getQueriesForSignalSet: PropTypes.func,
         prepareData: PropTypes.func,
@@ -677,7 +677,10 @@ export class ScatterPlotBase extends Component {
             });
         // custom filter
         if (self.props.filter)
-            filter.children.push(self.props.filter);
+            if (typeof(self.props.filter) === "function")
+                filter.children.push(self.props.filter(signalSetConfig));
+            else
+                filter.children.push(self.props.filter);
 
         let limit = undefined;
         if (self.state.maxDotCount >= 0) {

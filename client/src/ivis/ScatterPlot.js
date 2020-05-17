@@ -97,7 +97,7 @@ export class ScatterPlot extends Component {
         className: PropTypes.string,
         style: PropTypes.object,
 
-        filter: PropTypes.object,
+        filter: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
         getQueries: PropTypes.func,
         getQueriesForSignalSet: PropTypes.func,
         prepareData: PropTypes.func,
