@@ -440,6 +440,10 @@ export class ScatterPlotBase extends Component {
         prepareData: PropTypes.func,
         computeExtents: PropTypes.func,
         processDocs: PropTypes.func,
+        filterData: PropTypes.func,
+        drawChart: PropTypes.func,
+        drawDots: PropTypes.func,
+        drawHighlightDot: PropTypes.func,
     };
 
     static defaultProps = {
@@ -955,8 +959,9 @@ export class ScatterPlotBase extends Component {
         //</editor-fold>
 
         // data filtering
-        const filteredData = this.filterData(signalSetsData, xScale.domain(), yScale.domain());
-        const filteredGlobalData = this.filterData(globalSignalSetsData, xScale.domain(), yScale.domain());
+        const filterData = this.props.filterData || ScatterPlotBase.filterData;
+        const filteredData = filterData(this, signalSetsData, xScale.domain(), yScale.domain(), false);
+        const filteredGlobalData = filterData(this, globalSignalSetsData, xScale.domain(), yScale.domain(), true);
 
         //<editor-fold desc="Size and Color Scales">
         // s Scale (dot size)
@@ -1011,11 +1016,8 @@ export class ScatterPlotBase extends Component {
         //</editor-fold>
 
         // draw data
-        for (let i = 0; i < filteredData.length; i++) {
-            const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
-            this.drawDots(filteredData[i], this.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
-            this.drawDots(filteredGlobalData[i], this.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].globalDotShape || ScatterPlotBase.defaultGlobalDotShape, SignalSetsConfigs[i].getGlobalDotColor || ScatterPlotBase.defaultGetGlobalDotColor);
-        }
+        const drawChart = this.props.drawChart || ScatterPlotBase.drawChart;
+        drawChart(this, filteredData, filteredGlobalData, xScale, yScale, sScale, cScales);
         this.drawRegressions(xScale, yScale, cScales);
 
         this.createChartCursor(xScale, yScale, sScale, cScales, filteredData);
@@ -1106,9 +1108,16 @@ export class ScatterPlotBase extends Component {
         }
     }
 
-    filterData(setsData, xExtent, yExtent) {
+    /**
+     * Filters data to show only the visible ones (inside the rendered rectangle)
+     * @param setsData     data for all signal sets in format [[{ x, y, ... }]] (as produces by this.processData)
+     * @param xExtent      extent of vertical axis: [xMin, xMax]
+     * @param yExtent      extent of horizontal axis: [yMin, yMax]
+     * @param {boolean} global  true if filtering global dots
+     */
+    static filterData(self, setsData, xExtent, yExtent, global) {
         return setsData.map((data, i) => {
-            if (!isSignalVisible(this.props.config.signalSets[i]))
+            if (!isSignalVisible(self.props.config.signalSets[i]))
                 return [];
             return data.filter(d => isInExtent(d.x, xExtent) && isInExtent(d.y, yExtent))
         });
@@ -1126,17 +1135,32 @@ export class ScatterPlotBase extends Component {
             return d3Color.color(color);
     }
 
+    /**
+     * Draws data for all signal sets in format [[{ x, y, s?, c?, d? }]] (as produces by this.processData)
+     */
+    static drawChart(self, filteredData, filteredGlobalData, xScale, yScale, sScale, cScales) {
+        const SignalSetsConfigs = self.props.config.signalSets;
+
+        for (let i = 0; i < filteredData.length; i++) {
+            const cidIndex = SignalSetsConfigs[i].cid + "-" + i;
+
+            const drawDots = self.props.drawDots || ScatterPlotBase.drawDots;
+            drawDots(self, filteredData[i], self.dotsSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].dotShape || ScatterPlotBase.defaultDotShape);
+            drawDots(self, filteredGlobalData[i], self.dotsGlobalSelection[cidIndex], xScale, yScale, sScale, cScales[i], SignalSetsConfigs[i], SignalSetsConfigs[i].globalDotShape || ScatterPlotBase.defaultGlobalDotShape, SignalSetsConfigs[i].getGlobalDotColor || ScatterPlotBase.defaultGetGlobalDotColor);
+        }
+    }
+
     // noinspection JSCommentMatchesSignature
     /**
-     * @param data          data in format [{ x, y, s?, c?, d? }] (as produces by this.processData)
+     * @param data          data for one signal set in format [{ x, y, s?, c?, d? }] (as produces by this.processData)
      * @param selection     d3 selection to which the data will get assigned and drawn
      * @param dotShape      svg id (excl. '#')
      * @param modifyColor   function to modify dot color after getting it from cScale
      */
-    drawDots(data, selection, xScale, yScale, sScale, cScale, signalSetConfig, dotShape, modifyColor) {
-        const size = (signalSetConfig.dotSize ? signalSetConfig.dotSize : this.props.dotSize);
+    static drawDots(self, data, selection, xScale, yScale, sScale, cScale, signalSetConfig, dotShape, modifyColor) {
+        const size = (signalSetConfig.dotSize ? signalSetConfig.dotSize : self.props.dotSize);
         const constantSize = !signalSetConfig.hasOwnProperty("dotSize_sigCid");
-        const s = d => constantSize ? size : sScale(d.s);
+        const s = constantSize ? _ => size : d => sScale(d.s);
         if (modifyColor === undefined)
             modifyColor = c => c;
 
@@ -1163,7 +1187,7 @@ export class ScatterPlotBase extends Component {
             .style("transform-origin", d => `${xScale(d.x)}px ${yScale(d.y)}px`);
 
         // update
-        (this.props.withTransition ? allDots.transition() : allDots)
+        (self.props.withTransition ? allDots.transition() : allDots)
             .attr('transform', d => `scale(${s(d)})`)
             .attr('fill', d => modifyColor(d3Color.color(cScale(d.c || d.d))))
             .attr('stroke', d => modifyColor(d3Color.color(cScale(d.c || d.d))));
@@ -1374,35 +1398,9 @@ export class ScatterPlotBase extends Component {
                     }
                 }
 
-                if (selections && selections[signalSetCidIndex] !== newSelection) {
-                    self.dotHighlightSelections[signalSetCidIndex]
-                        .selectAll('use')
-                        .remove();
-                }
-
-                if (newSelection) {
-                    const signalSetConfig = self.props.config.signalSets[i];
-                    let size = self.props.dotSize;
-                    if (signalSetConfig.dotSize)
-                        size = signalSetConfig.dotSize;
-                    if (signalSetConfig.hasOwnProperty("dotSize_sigCid"))
-                        // noinspection JSUnresolvedVariable
-                        size = sScale(newSelection.s);
-
-                    // noinspection JSUnresolvedVariable
-                    self.dotHighlightSelections[signalSetCidIndex]
-                        .append('use')
-                        .attr('href', "#" + (signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape))
-                        .attr('x', xScale(newSelection.x))
-                        .attr('y', yScale(newSelection.y))
-                        .attr('transform', `scale(${self.props.highlightDotSize * size})`)
-                        .style("transform-origin", `${xScale(newSelection.x)}px ${yScale(newSelection.y)}px`)
-                        .attr("fill", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker())
-                        .attr("stroke", d3Color.color(cScales[i](newSelection.c || newSelection.d)).darker());
-                    /*self.dotHighlightSelections[signalSetCidIndex]
-                        .attr('stroke', "black")
-                        .attr("stroke-width", "1px");*/
-                }
+                const signalSetConfig = self.props.config.signalSets[i];
+                const drawHighlightDot = self.props.drawHighlightDot || ScatterPlotBase.drawDots;
+                drawHighlightDot(self, [newSelection], self.dotHighlightSelections[signalSetCidIndex], xScale, yScale, sScale, cScales[i], signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape, c => c.darker());
 
                 newSelections[signalSetCidIndex] = newSelection;
             }
@@ -1813,7 +1811,7 @@ export class ScatterPlotBase extends Component {
                                 {/* dot shape definitions */}
                                 {dotShapes}
                             </defs>
-                            <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                            <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" ref={node => this.chartSelection = select(node)} >
                                 <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
                                 <g name={"dots_global"}>{dotsGlobalSelectionGroups}</g>
                                 <g name={"dots"}>{dotsSelectionGroups}</g>

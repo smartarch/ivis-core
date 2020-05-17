@@ -56,6 +56,20 @@ export default class HansRoslingBubblePlot extends Component {
         return extents;
     }
 
+    drawHighlightDot(base, data, selection, xScale, yScale, sScale, cScale) {
+        selection.selectAll("circle").remove();
+        if (data.length > 0) {
+            const record = data[0];
+            selection.append("circle")
+                .attr('cx', xScale(record.x))
+                .attr('cy', yScale(record.y))
+                .attr("r", sScale(record.s))
+                .attr("stroke", "#3d3d3d")
+                .attr("stroke-width", 1)
+                .attr('fill', cScale(record.d));
+        }
+    }
+
     render() {
         const cnf = {
             signalSets: [{
@@ -100,6 +114,7 @@ export default class HansRoslingBubblePlot extends Component {
                     zoomLevelMax={3}
                     highlightDotSize={1}
                     computeExtents={::this.computeExtents}
+                    drawHighlightDot={::this.drawHighlightDot}
                 />
 
                 <h5>Population:</h5>

@@ -103,6 +103,10 @@ export class ScatterPlot extends Component {
         prepareData: PropTypes.func,
         computeExtents: PropTypes.func,
         processDocs: PropTypes.func,
+        filterData: PropTypes.func,
+        drawChart: PropTypes.func,
+        drawDots: PropTypes.func,
+        drawHighlightDot: PropTypes.func,
     };
 
     setView(...args) {
@@ -127,4 +131,8 @@ export class ScatterPlot extends Component {
     static prepareData = ScatterPlotBase.prepareData;
     static computeExtents = ScatterPlotBase.computeExtents;
     static processDocs = ScatterPlotBase.processDocs;
+    static filterData = ScatterPlotBase.filterData;
+    static drawChart = ScatterPlotBase.drawChart;
+    static drawDots = ScatterPlotBase.drawDots;
+    static drawHighlightDot = ScatterPlotBase.drawDots;
 }
