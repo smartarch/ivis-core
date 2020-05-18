@@ -207,7 +207,7 @@ class DataAccess {
             const sigSetRes = responseData[idx];
             const sigSet = sigSets[sigSetCid];
             // When using time series, and tsSigCId is not specified, we get ts cid by server
-            const tsSig =  sigSet.tsSigCid || sigSetRes.tsSigCid;
+            const tsSig = sigSet.tsSigCid || sigSetRes.tsSigCid;
 
             if (sigSetRes.docs.length > 0) {
                 const doc = sigSetRes.docs[0];
@@ -247,8 +247,13 @@ class DataAccess {
             const sigSet = sigSets[sigSetCid];
             const tsSig = getTsSignalCid(sigSet);
 
-            const prevQry = {
+            const queryBase = {
                 sigSetCid,
+                substitutionOpts: sigSet.substitutionOpts
+            };
+
+            const prevQry = {
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -257,7 +262,7 @@ class DataAccess {
             };
 
             const mainQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -267,7 +272,7 @@ class DataAccess {
             };
 
             const nextQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -388,7 +393,7 @@ class DataAccess {
             const sigSetResNext = responseData[idx + 2];
 
             const sigSet = sigSets[sigSetCid];
-            const tsSig =  sigSet.tsSigCid || sigSetResMain.tsSigCid;
+            const tsSig = sigSet.tsSigCid || sigSetResMain.tsSigCid;
 
             const processDoc = doc => {
                 const data = {};
@@ -564,7 +569,6 @@ class DataAccess {
     }
 
 
-
     /*
       signals = [ sigCid1, sigCid2 ]
     */
@@ -581,10 +585,10 @@ class DataAccess {
 
         let bucketGroups = {};
         signals.map((sigCid, index) => {
-           bucketGroups[sigCid + ":" + index] = {
-               maxBucketCount: maxBucketCounts[index],
-               minStep: minSteps[index]
-           };
+            bucketGroups[sigCid + ":" + index] = {
+                maxBucketCount: maxBucketCounts[index],
+                minStep: minSteps[index]
+            };
         });
 
         const qry = {
@@ -611,7 +615,7 @@ class DataAccess {
     }
 
     processHistogramResults(responseData, sigSetCid, signals) {
-        const processBucketsRecursive = function(bucket) {
+        const processBucketsRecursive = function (bucket) {
             if (bucket.aggs && bucket.aggs.length > 0) {
                 let buckets = bucket.aggs[0].buckets.map(processBucketsRecursive);
                 return {
@@ -621,8 +625,7 @@ class DataAccess {
                     key: bucket.key,
                     count: bucket.count
                 }
-            }
-            else
+            } else
                 return {
                     key: bucket.key,
                     count: bucket.count
@@ -761,7 +764,7 @@ export class DataAccessSession {
     }
 
     async _getLatestOne(type, ...args) {
-        const results = await this._getLatestMultiple(type, [{ type, args }]);
+        const results = await this._getLatestMultiple(type, [{type, args}]);
         if (results) {
             return results[0];
         } else {

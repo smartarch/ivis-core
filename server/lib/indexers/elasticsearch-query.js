@@ -190,7 +190,7 @@ class QueryProcessor {
                 }
 
                 const sigFldName = getFieldName(sigFld.id);
-
+                // TODO field used should be min_ max_ accordingly, maybe jsut put this in agg handler
                 aggs[`${aggHandler.id}_${sigFldName}`] = aggHandler.getAgg(this.getField(sigFld));
             }
         }
@@ -247,6 +247,7 @@ class QueryProcessor {
             if (field.type === SignalType.KEYWORD) // min and max don't make sense for keyword
                 return { min: undefined, max: undefined };
 
+            // TODO here will be probably substitutionn for min_ max_ aggs
             const minMaxQry = {
                 query: this.createElsFilter(query.filter),
                 size: 0,
@@ -510,6 +511,7 @@ class QueryProcessor {
         const signalMap = this.signalMap;
         const result = [];
 
+        // TODO should the count here account for the aggregations count?
         const _processTermsAgg = (aggResp, buckets, additionalResponses) => {
             for (const elsBucket of aggResp.buckets) {
                 buckets.push({
