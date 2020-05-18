@@ -156,7 +156,7 @@ export default class CUD extends Component {
 
         const kind = state.getIn(['kind', 'value']);
         if (kind === SignalSetKind.TIME_SERIES) {
-            if (!state.getIn(['ts', 'value'])) {
+            if (this.props.entity && !state.getIn(['ts', 'value'])) {
                 state.setIn(['ts', 'error'], t('Timestamp signal must be selected for time series.'));
             } else {
                 state.setIn(['ts', 'error'], null);
