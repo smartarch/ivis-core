@@ -98,15 +98,15 @@ export class ScatterPlot extends Component {
         style: PropTypes.object,
 
         filter: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
-        getQueries: PropTypes.func,
-        getQueriesForSignalSet: PropTypes.func,
-        prepareData: PropTypes.func,
-        computeExtents: PropTypes.func,
-        processDocs: PropTypes.func,
-        filterData: PropTypes.func,
-        drawChart: PropTypes.func,
-        drawDots: PropTypes.func,
-        drawHighlightDot: PropTypes.func,
+        getQueries: PropTypes.func, // see ScatterPlotBase.getQueries for reference
+        getQueriesForSignalSet: PropTypes.func, // see ScatterPlotBase.getQueriesForSignalSet for reference
+        prepareData: PropTypes.func, // see ScatterPlotBase.prepareData for reference
+        computeExtents: PropTypes.func, // see ScatterPlotBase.computeExtents for reference
+        processDocs: PropTypes.func, // see ScatterPlotBase.processDocs for reference
+        filterData: PropTypes.func, // see ScatterPlotBase.filterData for reference
+        drawChart: PropTypes.func, // see ScatterPlotBase.drawChart for reference
+        drawDots: PropTypes.func, // see ScatterPlotBase.drawDots for reference
+        drawHighlightDot: PropTypes.func, // see ScatterPlotBase.drawDots for reference
     };
 
     setView(...args) {
@@ -134,5 +134,5 @@ export class ScatterPlot extends Component {
     static filterData = ScatterPlotBase.filterData;
     static drawChart = ScatterPlotBase.drawChart;
     static drawDots = ScatterPlotBase.drawDots;
-    static drawHighlightDot = ScatterPlotBase.drawDots;
+    static drawHighlightDot = ScatterPlotBase.drawHighlightDot;
 }
