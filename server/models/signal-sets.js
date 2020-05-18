@@ -10,7 +10,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {IndexingStatus, IndexMethod} = require('../../shared/signals');
+const {IndexingStatus, IndexMethod, SignalType} = require('../../shared/signals');
 const signals = require('./signals');
 const {
     SignalSetKind,
@@ -29,7 +29,7 @@ const {list: sigSetAggsList} = require('./signal-set-aggregations');
 
 const dependencyHelpers = require('../lib/dependency-helpers');
 
-const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
+const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template', 'kind']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template', 'settings', 'kind']);
 
 const handlebars = require('handlebars');
@@ -200,8 +200,19 @@ async function createTx(tx, context, entity) {
         await indexer.onCreateStorage(entity);
     }
 
-
     await shares.rebuildPermissionsTx(tx, {entityTypeId: 'signalSet', entityId: id});
+
+    if (filteredEntity.kind === SignalSetKind.TIME_SERIES) {
+        await signals.createTx(tx, context, id, {
+            cid: 'ts',
+            name: 'Timestamp',
+            description: 'Timestamp of data measurements',
+            namespace: entity.namespace,
+            type: SignalType.DATE_TIME,
+            set: id,
+            source:  SignalSource.RAW
+        });
+    }
 
     return id;
 }
@@ -542,14 +553,15 @@ async function queryTx(tx, context, queries) {
         if (!substitutionOpts || (substitutionOpts && substitutionOpts.allow !== false)) {
             const {
                 minSubaggsBuckets = DEFAULT_MIN_SUBAGGS_BUCKETS
-            } =  substitutionOpts || {};
+            } = substitutionOpts || {};
 
             substitutionOpts = sigSetQry.substitutionOpts;
             const setAggs = await sigSetAggsList(sigSet.id);
+
             //setAggs.find(isFittingInterval);
 
-            function isFittingInterval(jobRecord){
-                return (moment.duration() / moment.duration(jobRecord.interval).asMilliseconds()) >  minSubaggsBuckets;
+            function isFittingInterval(jobRecord) {
+                return (moment.duration() / moment.duration(jobRecord.interval).asMilliseconds()) > minSubaggsBuckets;
             }
         } else {
             substitutionOpts = null;
