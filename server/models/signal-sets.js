@@ -17,7 +17,7 @@ const {
     SignalSetType,
     SUBSTITUTE_TS_SIGNAL,
     DEFAULT_TS_SIGNAL_CID,
-    DEFAULT_MIN_PER_BUCKET
+    DEFAULT_MIN_SUBAGGS_BUCKETS
 } = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
 const log = require('../lib/log');
@@ -457,8 +457,8 @@ async function getLastId(context, sigSet) {
         sigSetCid: <sigSetCid>,
 
         substitutionOpts: {
-            allowed: <false forbids usage of aggregation sets>,
-            minPerBucket: <minimum of an aggregation set intervals per bucket>
+            allow: <false forbids usage of aggregation sets>,
+            minSubaggsBuckets: <minimum of an aggregation set intervals per bucket>
         },
 
         signals: [<sigCid>, ...],
@@ -541,7 +541,7 @@ async function queryTx(tx, context, queries) {
         let substitutionOpts = sigSetQry.substitutionOpts;
         if (!substitutionOpts || (substitutionOpts && substitutionOpts.allow !== false)) {
             const {
-                minPerBucket = DEFAULT_MIN_PER_BUCKET
+                minSubaggsBuckets = DEFAULT_MIN_SUBAGGS_BUCKETS
             } =  substitutionOpts || {};
 
             substitutionOpts = sigSetQry.substitutionOpts;
@@ -549,7 +549,7 @@ async function queryTx(tx, context, queries) {
             //setAggs.find(isFittingInterval);
 
             function isFittingInterval(jobRecord){
-                return (moment.duration() / moment.duration(jobRecord.interval).asMilliseconds()) >  minPerBucket;
+                return (moment.duration() / moment.duration(jobRecord.interval).asMilliseconds()) >  minSubaggsBuckets;
             }
         } else {
             substitutionOpts = null;

@@ -15,12 +15,12 @@ const SUBSTITUTE_TS_SIGNAL = '__substitute_ts_signal__';
 const DEFAULT_TS_SIGNAL_CID = 'ts';
 
 // Computed Aggregation set selection
-const DEFAULT_MIN_PER_BUCKET = 10;
+const DEFAULT_MIN_SUBAGGS_BUCKETS = 10;
 
 module.exports = {
     SignalSetType,
     SignalSetKind,
     SUBSTITUTE_TS_SIGNAL,
     DEFAULT_TS_SIGNAL_CID,
-    DEFAULT_MIN_PER_BUCKET
+    DEFAULT_MIN_SUBAGGS_BUCKETS
 };
