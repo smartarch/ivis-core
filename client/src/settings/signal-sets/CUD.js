@@ -54,6 +54,14 @@ export default class CUD extends Component {
                 url: 'rest/signal-sets-validate',
                 changed: ['cid'],
                 extra: ['id']
+            },
+            onChangeBeforeValidation: (mutStateData, key, oldValue, newValue) => {
+                if (key === 'kind') {
+                    const kind = mutStateData.getIn(['kind', 'value']);
+                    if(kind === SignalSetKind.TIME_SERIES) {
+                        mutStateData.setIn(['record_id_template', 'value'], '{{toISOString ts}}');
+                    }
+                }
             }
         });
 
@@ -269,12 +277,9 @@ export default class CUD extends Component {
 
 
                     <NamespaceSelect/>
-                    {isEdit ?
-                        <Dropdown id="kind" label={kindLabel} options={this.kindOptions}/>
-                        :
-                        <StaticField id="kind"
-                                     label={kindLabel}>{t(`Generic - changing this option will be available after the signal set creation.`)}</StaticField>
-                    }
+
+                    <Dropdown id="kind" label={kindLabel} options={this.kindOptions}/>
+
 
                     <InputField id="record_id_template" label={t('Record ID template')}
                                 help={t('useHandlebars', {interpolation: {prefix: '[[', suffix: ']]'}})}
@@ -292,7 +297,7 @@ export default class CUD extends Component {
                             ) : (
                                 <StaticField id='ts'
                                              label={tsLabel}>
-                                    {t('Signal set must be created first before timestamp signal selection (none to select yet).')}
+                                    {t('Signal "ts" will be created automatically.')}
                                 </StaticField>
                             )
                             }
