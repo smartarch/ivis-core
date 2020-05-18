@@ -680,7 +680,8 @@ export class LineChartBase extends Component {
 
             signalSets[setSpec.cid] = {
                 tsSigCid: setSpec.tsSigCid,
-                signals
+                signals,
+                substitutionOpts: config.substitutionOpts
             };
         }
 

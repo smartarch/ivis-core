@@ -13,8 +13,7 @@ const {isSignalSetAggregationIntervalValid} = require('../../shared/validators')
 const moment = require('moment');
 
 async function listDTAjax(context, sigSetId, params) {
-    //return
-    const res = await dtHelpers.ajaxListWithPermissions(
+    return await dtHelpers.ajaxListWithPermissions(
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
@@ -32,7 +31,20 @@ async function listDTAjax(context, sigSetId, params) {
             }
         }
     );
-    return res;
+}
+
+async function listSetAggs(sigSetId) {
+    const setAggs = await knex('aggregation_jobs')
+        .where('aggregation_jobs.set', sigSetId)
+        .innerJoin('jobs', 'aggregation_jobs.job', 'jobs.id')
+        .innerJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
+        .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set');
+    setAggs.forEach(parseParams);
+    return setAggs;
+
+    function parseParams(record) {
+        record.params = JSON.parse(record.params);
+    }
 }
 
 function intervalStrToMiliseconds(intervalStr) {
@@ -104,5 +116,6 @@ async function create(context, sigSetId, params) {
 module.exports.create = create;
 module.exports.createTx = createTx;
 module.exports.listDTAjax = listDTAjax;
+module.exports.list = listSetAggs;
 
 

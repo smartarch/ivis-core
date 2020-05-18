@@ -12,13 +12,20 @@ const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
 const {IndexingStatus, IndexMethod} = require('../../shared/signals');
 const signals = require('./signals');
-const {SignalSetKind, SignalSetType, SUBSTITUTE_TS_SIGNAL, DEFAULT_TS_SIGNAL_CID} = require('../../shared/signal-sets');
+const {
+    SignalSetKind,
+    SignalSetType,
+    SUBSTITUTE_TS_SIGNAL,
+    DEFAULT_TS_SIGNAL_CID,
+    DEFAULT_MIN_PER_BUCKET
+} = require('../../shared/signal-sets');
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
 const {SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
+const {list: sigSetAggsList} = require('./signal-set-aggregations');
 
 const dependencyHelpers = require('../lib/dependency-helpers');
 
@@ -449,6 +456,11 @@ async function getLastId(context, sigSet) {
         },
         sigSetCid: <sigSetCid>,
 
+        substitutionOpts: {
+            allowed: <false forbids usage of aggregation sets>,
+            minPerBucket: <minimum of an aggregation set intervals per bucket>
+        },
+
         signals: [<sigCid>, ...],
 
         filter: {
@@ -518,8 +530,6 @@ async function query(context, queries) {
 
 async function queryTx(tx, context, queries) {
     for (const sigSetQry of queries) {
-
-        // TODO here will be probably possible change of sigSet to its aggregation if necessary
         const sigSet = await tx('signal_sets').where('cid', sigSetQry.sigSetCid).first();
         if (!sigSet) {
             shares.throwPermissionDenied({sigSetCid: sigSetQry.sigSetCid});
@@ -527,6 +537,23 @@ async function queryTx(tx, context, queries) {
         sigSet.settings = JSON.parse(sigSet.settings);
 
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
+
+        let substitutionOpts = sigSetQry.substitutionOpts;
+        if (!substitutionOpts || (substitutionOpts && substitutionOpts.allow !== false)) {
+            const {
+                minPerBucket = DEFAULT_MIN_PER_BUCKET
+            } =  substitutionOpts || {};
+
+            substitutionOpts = sigSetQry.substitutionOpts;
+            const setAggs = await sigSetAggsList(sigSet.id);
+            //setAggs.find(isFittingInterval);
+
+            function isFittingInterval(jobRecord){
+                return (moment.duration() / moment.duration(jobRecord.interval).asMilliseconds()) >  minPerBucket;
+            }
+        } else {
+            substitutionOpts = null;
+        }
 
         // Map from signal cid to signal
         const signalMap = {};
@@ -594,7 +621,7 @@ async function queryTx(tx, context, queries) {
                 }
 
                 signalsToCheck.add(sig.id);
-
+                // TODO agg.step check fit for aggregations
                 if (agg.signals) {
                     checkSignals(Object.keys(agg.signals));
                 } else if (agg.aggs) {
@@ -642,12 +669,7 @@ async function queryTx(tx, context, queries) {
         sigSetQry.signalMap = signalMap;
     }
 
-    function mutateQueryResponse(resp){
-
-    }
-
     const resp = await indexer.query(queries);
-    mutateQueryResponse(resp) ;
     return resp;
 }
 
