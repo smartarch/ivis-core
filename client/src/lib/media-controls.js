@@ -109,8 +109,10 @@ class MediaButtonBase extends Component {
         const frameSel = select(this.frameN);
 
         frameSel
-            .attr("cursor", "pointer")
+            .attr("cursor", "not-allowed")
             .on("mouseenter mouseleave mousedown mouseup", null);
+
+        this.setState({mouseDown: false, mouseHover: false});
     }
 
     render() {
@@ -680,7 +682,8 @@ class Slider extends Component {
                     {this.props.labelFormat(this.state.value)}
                 </text>
 
-                <g transform={`translate(${this.props.margin.left + this.props.sliderRadius}, ${domainTop})`}>
+                <g transform={`translate(${this.props.margin.left + this.props.sliderRadius}, ${domainTop})`}
+                    color="currentColor">
                     <line
                         className={styles.sliderDomain}
                         x1="0"
@@ -691,7 +694,6 @@ class Slider extends Component {
                         stroke="currentColor"
                         strokeLinecap="round"
                         ref={node => this.domainN = node}/>
-
 
                     <circle transform={`translate(${selectorShift}, 0)`}
                         className={styles.sliderSelector}
@@ -1859,6 +1861,7 @@ class FullControlGroup extends Component {
 @withComponentMixins([withAnimationControl])
 class PlayStopControlGroup extends Component {
     static propTypes = {
+        animationConf: PropTypes.object,
         animationStatus: PropTypes.object,
         animationControl: PropTypes.object,
     };
@@ -1877,7 +1880,8 @@ class PlayStopControlGroup extends Component {
                         isJoinedRight
 
                         animStatus={this.props.animationStatus}
-                        animControl={this.props.animationControl}/>
+                        animControl={this.props.animationControl}
+                        animConfig={this.props.animationConf}/>
                     <StopButton
                         width={defaultConfig.mediaButton.width}
                         height={defaultConfig.mediaButton.height}
@@ -1887,7 +1891,8 @@ class PlayStopControlGroup extends Component {
 
                         isJoinedLeft
 
-                        animControl={this.props.animationControl}/>
+                        animControl={this.props.animationControl}
+                        animConfig={this.props.animationConf}/>
                 </div>
                 <div className={styles.clear} />
             </div>

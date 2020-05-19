@@ -32,18 +32,17 @@ class Animation extends Component {
         // const res = await axios.get(getUrl('/rest/animation/' + this.props.params.animationId));
         const conf = {
             type: 'server',
-            id: 1,
-            beginTs: 0,
-            endTs: 60000,
+            // id: 1,
+            beginTs: 20000,
+            endTs: 50000,
 
-            //TODO
-            realtimeDuration: 30000,
 
             interpolFunc: 'linear',
             refreshRate: 45,
 
             //server-specific
             pollRate: 800,
+            id: 'test',
 
             //server-specific
 
@@ -86,10 +85,8 @@ class Animation extends Component {
             return animConf;
         };
 
-        setTimeout(() => {
-            const config = incorporatePanelConf(conf);
-            this.setState({animationConf: config});
-        }, 1000);
+        const config = incorporatePanelConf(conf);
+        this.setState({animationConf: config});
     }
 
     render() {

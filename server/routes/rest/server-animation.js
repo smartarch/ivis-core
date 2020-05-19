@@ -2,134 +2,51 @@
 
 const router = require('../../lib/router-async').create();
 const log = require('../../lib/log');
+const em = require('../../lib/extension-manager');
 
-class AnimationTest {
-    constructor() {
-        this.refreshRate = 1000/25;
-        this.jump = 1/60;
-        this.endTs = 1000 * 60;
+const seeks = new Map();
 
-        this._animationReset();
-    }
+function recordSeek(animationName, seekPosition) {
+    const {count} = seeks.get(animationName) || {count: 0};
+    seeks.set(animationName, {last: seekPosition, count: count + 1});
 
-    _refresh() {
-        this.status.position = Math.min(this.endTs, this.status.position + (this.refreshRate * this.status.playbackSpeedFactor));
-        this._updateData();
-
-        if (this.iteration % 500) log.info(this.status.position);
-
-        if (this.status.position === this.endTs) {
-            this.pause();
-        }
-    }
-
-    _updateData() {
-        this.status.realtimePosition = this.status.position / this.status.playbackSpeedFactor;
-        this.status.data.mutables.circleCx = this.status.position * this.jump;
-    }
-
-    _animationReset() {
-        this.status = {
-            isPlaying: false,
-            position: 0,
-            realtimePosition: 0,
-            playbackSpeedFactor: 1,
-            data: {
-                base: {
-                    circle: { cx: {valueId: "circleCx"} }
-                },
-                mutables: {
-                    circleCx: 0
-                }
-            }
-        };
-    }
-
-    getStatus() {
-        return this.status;
-    }
-
-    play() {
-        if (!this.status.isPlaying && this.status.position !== this.endTs) {
-            this.refreshInterval = setInterval(
-                this._refresh.bind(this),
-                this.refreshRate
-            );
-
-            this.status.isPlaying = true;
-        }
-    }
-
-    pause() {
-        if (this.status.isPlaying) {
-            clearInterval(this.refreshInterval);
-            this.status.isPlaying = false;
-        }
-    }
-
-    reset() {
-        clearInterval(this.refreshInterval);
-        this._animationReset();
-    }
-
-    seek(toMs) {
-        const wasPlaying = this.status.isPlaying;
-        if (wasPlaying) {
-            clearInterval(this.refreshInterval);
-        }
-
-        const toMsLimited = Math.max(
-            0, Math.min(this.endTs, toMs)
-        );
-
-        log.info("Debug", "Seek intended to:", toMs, "limited to:", toMsLimited);
-        this.status.position = toMsLimited;
-
-        this._updateData();
-
-        if (wasPlaying) {
-            this.refreshInterval = setInterval(
-                this._refresh.bind(this),
-                this.refreshRate
-            );
-        }
-    }
-
-    changeSpeed(factor) {
-        this.status.playbackSpeedFactor = factor;
-    }
+    log.info(`Storing new seek for ${animationName}, old count: ${count}, new count: ${count + 1}`);
+    log.info(`Stored: ${JSON.stringify(seeks.get(animationName))}`);
 }
 
-let currentAnimation = new AnimationTest();
+function getSeekInfo(animationName) {
+    return seeks.get(animationName) || {last: 0, count: 0};
+}
 
-router.get('/animation/server/1/status', (req, res) => {
-    res.status(200).json(currentAnimation.getStatus());
+router.use('/animation/:animationName', (req, res, next) => {
+    const service = em.get('animation.' + req.params.animationName, null);
+    if (!service) {
+        res.status(404).send(`Animation named '${req.params.animationName}' not found`);
+    } else {
+        req.animationInstance = service;
+        next();
+    }
 });
 
-router.post('/animation/server/1/play', (req, res) => {
-    currentAnimation.play();
-    res.sendStatus(200);
+router.get('/animation/:animationName/status', (req, res) => {
+    const currentStatus = req.animationInstance.getStatus();
+    currentStatus.seek = getSeekInfo(req.params.animationName);
+    res.status(200).json(currentStatus);
 });
 
-router.post('/animation/server/1/pause', (req, res) => {
-    currentAnimation.pause();
-    res.sendStatus(200);
-});
+router.post('/animation/:animationName/:control(play|pause|seek|changeSpeed)', (req, res) => {
+    try {
+        req.animationInstance[req.params.control](req.body);
 
-router.post('/animation/server/1/reset', (req, res) => {
-    currentAnimation.reset();
-    res.sendStatus(200);
-});
+        if (req.params.control === 'seek') {
+            recordSeek(req.params.animationName, req.body.position);
+        }
+    } catch (error) {
+        log.error(`Animation ${req.params.control}`, error);
+        res.sendStatus(500);
+        return;
+    }
 
-router.post('/animation/server/1/changeSpeed', (req, res) => {
-    log.info("Debug", `Change of speed to ${JSON.stringify(req.body)}`);
-    currentAnimation.changeSpeed(req.body.to);
-    res.sendStatus(200);
-});
-
-router.post('/animation/server/1/seek', (req, res) => {
-    log.info("Debug", `Seek to ${JSON.stringify(req.body)}`);
-    currentAnimation.seek(req.body.to);
     res.sendStatus(200);
 });
 

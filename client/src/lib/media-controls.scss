@@ -58,16 +58,16 @@ $secondary: #c8ced3;
 }
 
 .slider {
+    color: $black;
+
     .label {
         font-weight: bold;
     }
     .sliderDomain {
-        stroke: $black;
     }
 
     .sliderSelector {
         fill: #fff;
-        stroke: $black;
     }
 
     .sliderSelectorOnMouseHover {

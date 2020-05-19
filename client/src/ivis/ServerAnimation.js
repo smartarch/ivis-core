@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import {AnimationStatusContext, AnimationControlContext} from "../lib/animation-helpers";
 import {AnimatedBase} from "./AnimatedBase";
 import {interpolFuncs} from "../lib/animation-interpolations";
+import {withAsyncErrorHandler} from "../lib/error-handling";
 
 const statusChanges = {
     POSITION: 0,
@@ -13,6 +14,7 @@ const statusChanges = {
     STOPED_PLAYING: 2,
     PLAYBACK_SPEED: 3,
     SEEK: 4,
+    REACHED_END: 5,
 };
 
 class KeyframeBuffer {
@@ -31,14 +33,14 @@ class KeyframeBuffer {
             this.storedDuration += keyframe.realtimeTs - this.innerBuffer[this.innerBuffer.length - 1].realtimeTs;
         }
 
-        this.reachedEnd = keyframe.ts === this.endTs;
+        this.reachedEnd = keyframe.ts >= this.endTs;
 
         this.innerBuffer.push(keyframe);
     }
 
     shift() {
-        this.storedDuration -= this.innerBuffer[1].realtimeTs - this.innerBuffer[0].realtimeTs;
-        this.innerBuffer.shift();
+        if (this.innerBuffer.length > 1) this.storedDuration -= this.innerBuffer[1].realtimeTs - this.innerBuffer[0].realtimeTs;
+        return this.innerBuffer.shift();
     }
 
     invalidateExceptLast() {
@@ -60,12 +62,16 @@ class KeyframeBuffer {
         return this.reachedEnd ? this.innerBuffer.length > 1 : (this.storedDuration >= this.minStoredDuration);
     }
 
-    current() {
+    get current() {
         return this.innerBuffer[0];
     }
 
-    next() {
+    get next() {
         return this.innerBuffer[1];
+    }
+
+    get length() {
+        return this.innerBuffer.length;
     }
 
     didReachEnd() {
@@ -83,23 +89,24 @@ class ServerAnimation extends Component {
         config: PropTypes.object,
         lastFetchedStatus: PropTypes.object,
         lastFetchedKeyframe: PropTypes.object,
+        statusFetchError: PropTypes.object,
     }
 
     constructor(props) {
         super(props);
 
-        this.baseUrl = "rest/animation/server/" + props.config.id + "/";
+        this.baseUrl = "rest/animation/" + props.config.id + "/";
 
         this.buffer = new KeyframeBuffer(3*props.config.pollRate, props.config.endTs);
 
-        this.localStatusDiff = new Set();
+        this.localPlayControl = false;
 
         this.animControls = {
             play: ::this.play,
             pause: ::this.pause,
             stop: ::this.stop,
-            jumpForward: (shiftMs) => this.seek(this.state.status.position + shiftMs),
-            jumpBackward: (shiftMs) => this.seek(this.state.status.position - shiftMs),
+            jumpForward: (shiftMs) => this.seek(Math.min(props.config.endTs, this.state.status.position + shiftMs)),
+            jumpBackward: (shiftMs) => this.seek(Math.max(props.config.beginTs, this.state.status.position - shiftMs)),
             seek: ::this.seek,
             changeSpeed: ::this.changePlaybackSpeed,
         };
@@ -128,68 +135,158 @@ class ServerAnimation extends Component {
                 this.setState({controls: this.animControls});
             }
         } else if (prevProps.lastFetchedKeyframe !== this.props.lastFetchedKeyframe) {
-            console.log("New keyframe", {old: prevProps.lastFetchedKeyframe, new: this.props.lastFetchedKeyframe});
+            // console.log("New keyframe", {old: prevProps.lastFetchedKeyframe, new: this.props.lastFetchedKeyframe});
             this.buffer.push(this.props.lastFetchedKeyframe);
+        }
+
+        if (this.props.statusFetchError && !prevProps.statusFetchError) {
+            this.errorHandler(this.props.statusFetchError);
         }
     }
 
-    componendDidUnmount() {
+    componentDidMount() {
+        this.seek(this.props.config.beginTs);
+    }
+
+    componentWillUnmount() {
         clearInterval(this.playInterval);
     }
+
 
     handleStatusChange(optionalCurrKeyframe) {
         const newStatus = this.props.lastFetchedStatus.status;
         const diffLog = this.props.lastFetchedStatus.diffLog;
         const nextStatus = {};
 
-        if (diffLog.has(statusChanges.SEEK)) {
-            if (this.localStatusDiff.has(statusChanges.SEEK) && this.state.status.position === newStatus.position) this.localStatusDiff.delete(statusChanges.SEEK);
-            else this.handleSeek(newStatus.position, nextStatus);
+        console.log("Status change", {current: this.state.status, new: newStatus, newDiff: diffLog});
+
+        if (this.localPlayControl) {
+            this.synchronize(newStatus);
         }
 
-        if (diffLog.has(statusChanges.PLAYBACK_SPEED)) {
-            console.log("seeing new speed", optionalCurrKeyframe);
-            if (this.localStatusDiff.has(statusChanges.PLAYBACK_SPEED) && this.state.status.playbackSpeedFactor === newStatus.playbackSpeedFactor)
-                this.localStatusDiff.delete(statusChanges.PLAYBACK_SPEED);
-            else
-                this.handlePlaybackSpeedChange(newStatus.playbackSpeedFactor, nextStatus);
+        if (diffLog.has(statusChanges.SEEK) && this.lastSeekTo !== newStatus.seek.last) {
+            this.handleSeek(newStatus.position, nextStatus);
         }
 
-        if (diffLog.has(statusChanges.STARTED_PLAYING)) {
-            if (this.localStatusDiff.has(statusChanges.STARTED_PLAYING)) this.localStatusDiff.delete(statusChanges.STARTED_PLAYING);
-            else this.handlePlay(nextStatus);
+        if (diffLog.has(statusChanges.PLAYBACK_SPEED) && this.state.status.playbackSpeedFactor !== newStatus.playbackSpeedFactor) {
+            this.handlePlaybackSpeedChange(newStatus.playbackSpeedFactor, nextStatus);
         }
 
-        if (diffLog.has(statusChanges.STOPED_PLAYING) && newStatus.position !== this.props.config.endTs) {
-            if (this.localStatusDiff.has(statusChanges.STOPED_PLAYING)) this.localStatusDiff.delete(statusChanges.STOPED_PLAYING);
-            else this.handlePause(nextStatus);
+        if (diffLog.has(statusChanges.STARTED_PLAYING) && !this.isPlaying) {
+            this.handlePlay(nextStatus);
+        }
+
+        if (diffLog.has(statusChanges.STOPED_PLAYING) && !diffLog.has(statusChanges.REACHED_END) && this.isPlaying) {
+            this.handlePause(nextStatus);
+        }
+
+        if (diffLog.has(statusChanges.REACHED_END)) {
+            this.localPlayControl = true;
         }
 
         if (optionalCurrKeyframe) {
             this.buffer.push(optionalCurrKeyframe);
+            if (!this.isPlaying) nextStatus.isBuffering = false;
         }
 
-        this.pushStatus(nextStatus);
+        if (Object.keys(nextStatus).length > 0) this.setStatus(nextStatus);
     }
 
-    pushStatus(status) {
+    setStatus(status) {
         this.setState((prevState) => {
             const newStatus = Object.assign({}, prevState.status, status);
-            const newKeyframes = {curr: this.buffer.current(), next: this.buffer.next()};
+            const newKeyframes = {curr: this.buffer.current, next: this.buffer.next};
 
-            console.log({"pushed status": newStatus});
+            newStatus.reachedEnd = newStatus.position === this.props.config.endTs;
+
+            // console.log({"pushed status": newStatus});
             return { status: newStatus, keyframes: newKeyframes };
         });
     }
 
+    refresh() {
+        // console.log("Refreshing");
+        const getPositionJump = () => {
+            const jumpPerMs = (this.buffer.next.ts - this.buffer.current.ts)/(this.buffer.next.realtimeTs - this.buffer.current.realtimeTs);
+            return jumpPerMs*this.props.config.refreshRate;
+        };
+
+        if (this.state.status.position === this.props.config.endTs) {
+            // console.log("reached end");
+            this.localPlayControl = true;
+            this.pause();
+
+            return;
+        }
+
+        if (this.isBuffering && this.buffer.hasStartingDuration()) {
+            // console.log("Buffering finished");
+            this.isBuffering = false;
+            this.setStatus({isBuffering: false});
+        }
+
+        if (!this.isBuffering && !this.buffer.hasMinimalDuration()) {
+            // console.log("Buffering started");
+            this.isBuffering = true;
+            this.setStatus({isBuffering: true});
+        } else if (!this.isBuffering && this.buffer.hasMinimalDuration()) {
+            // console.log("Continue playing");
+
+            const nextPosition = Math.min(
+                this.props.config.endTs,
+                Math.max(this.buffer.current.ts, this.state.status.position + getPositionJump())
+            );
+
+
+            if (nextPosition >= this.buffer.next.ts) {
+                this.buffer.shift();
+            }
+
+            this.setStatus({ position: nextPosition });
+        }
+    }
+
+    synchronize(serverStatus) {
+        const localStatus = this.state.status;
+
+        console.log("Synchronizing", {local: localStatus, server: serverStatus});
+
+        if (localStatus.isPlaying && !serverStatus.isPlaying) {
+            this.controlRequest("play", {});
+        } else if (!localStatus.isPlaying && serverStatus.isPlaying) {
+            this.play();
+        }
+
+        this.localPlayControl = false;
+    }
+
+    errorHandler(error) {
+        clearInterval(this.playInterval);
+        this.setState({controls: {}});
+        this.setStatus({error, isBuffering: true});
+
+        return true;
+    }
+
+
     handlePlay(nextStatus) {
-        this.isBuffering = this.buffer.hasStartingDuration();
+        if (this.isPlaying) {
+            //TODO: Remove after testing
+            console.log("Playing twice");
+            return;
+        }
+
+        this.isPlaying = true;
+        this.isBuffering = !this.buffer.hasStartingDuration();
+
         nextStatus.isPlaying = true;
         nextStatus.isBuffering = this.isBuffering;
         this.playInterval = setInterval(::this.refresh, this.props.config.refreshRate);
     }
 
     handlePause(nextStatus) {
+        this.isPlaying = false;
+
         clearInterval(this.playInterval);
         nextStatus.isPlaying = false;
         nextStatus.isBuffering = false;
@@ -198,108 +295,68 @@ class ServerAnimation extends Component {
     handleSeek(position, nextStatus) {
         this.buffer.invalidate();
         nextStatus.position = position;
-        nextStatus.isBuffering = this.state.status.isPlaying ? !this.buffer.hasMinimalDuration() : false;
+        nextStatus.isBuffering = true;
     }
 
     handlePlaybackSpeedChange(factor, nextStatus) {
         this.buffer.invalidate();
-        nextStatus.isBuffering = this.state.status.isPlaying ? !this.buffer.hasMinimalDuration() : false;
+        nextStatus.isBuffering = true;
         nextStatus.playbackSpeedFactor = factor;
     }
 
-    refresh() {
-        console.log("Refreshing");
-        const getPositionJump = () => {
-            const jumpPerMs = (this.buffer.next().ts - this.buffer.current().ts)/(this.buffer.next().realtimeTs - this.buffer.current().realtimeTs);
-            return jumpPerMs*this.props.config.refreshRate;
-        };
-
-        if (this.state.status.position === this.props.config.endTs) {
-            console.log("reached end");
-            clearInterval(this.playInterval);
-            this.pushStatus({isPlaying: false});
-            return;
-        }
-
-        if (this.isBuffering && this.buffer.hasStartingDuration()) {
-            console.log("Buffering finished");
-            this.isBuffering = false;
-            this.pushStatus({isBuffering: false});
-        }
-
-        if (!this.isBuffering && !this.buffer.hasMinimalDuration()) {
-            console.log("Buffering started");
-            this.isBuffering = true;
-            this.pushStatus({isBuffering: true});
-        } else if (!this.isBuffering && this.buffer.hasMinimalDuration()) {
-            console.log("Continue playing");
-
-            const nextPosition = Math.min(
-                this.props.config.endTs,
-                Math.max(this.buffer.current().ts, this.state.status.position + getPositionJump())
-            );
-
-
-            if (nextPosition >= this.buffer.next().ts) {
-                this.buffer.shift();
-            }
-
-            this.pushStatus({ position: nextPosition });
-        }
-    }
-
+    @withAsyncErrorHandler
     async play() {
-        this.localStatusDiff.add(statusChanges.STARTED_PLAYING);
-
         const nextStatus = {};
         this.handlePlay(nextStatus);
-        this.pushStatus(nextStatus);
+        this.setStatus(nextStatus);
 
-        await axios.post(getUrl(this.baseUrl + "play"));
+        if (!this.localPlayControl) await this.controlRequest("play", {});
     }
 
+    @withAsyncErrorHandler
     async pause() {
-        this.localStatusDiff.add(statusChanges.STOPED_PLAYING);
-
         const nextStatus = {};
         this.handlePause(nextStatus);
-        this.pushStatus(nextStatus);
+        this.setStatus(nextStatus);
 
-        await axios.post(getUrl(this.baseUrl + "pause"));
+        if (!this.localPlayControl) await this.controlRequest("pause", {});
     }
 
+    @withAsyncErrorHandler
     async stop() {
-        this.localStatusDiff.add(statusChanges.STOPED_PLAYING);
-        this.localStatusDiff.add(statusChanges.SEEK);
-
-        const nextStatus = {};
-        this.handlePause(nextStatus);
-        this.handleSeek(this.props.config.beginTs, nextStatus);
-        this.pushStatus(nextStatus);
-
-        await axios.post(getUrl(this.baseUrl + "reset"));
+        if (this.state.status.isPlaying) this.pause();
+        this.seek(this.props.config.beginTs);
     }
 
+    @withAsyncErrorHandler
     async seek(position) {
-        this.localStatusDiff.add(statusChanges.SEEK);
-
         const nextStatus = {};
         this.handleSeek(position, nextStatus);
+        this.setStatus(nextStatus);
 
-        const targetPosition = this.state.status.isPlaying ? position - this.props.config.pollRate/2 : position;
-        await axios.post(getUrl(this.baseUrl + "seek"), {to: targetPosition});
+        this.lastSeekTo = this.state.status.isPlaying ? Math.max(0, position - this.props.config.pollRate/4 * this.state.status.playbackSpeedFactor) : position;
+        await this.controlRequest("seek", {position: this.lastSeekTo});
     }
 
+    @withAsyncErrorHandler
     async changePlaybackSpeed(newFactor) {
-        this.localStatusDiff.add(statusChanges.PLAYBACK_SPEED);
-
+        const isPlaying = this.state.status.isPlaying;
         const nextStatus = {};
+        const currKeyframe = isPlaying ? null : this.buffer.shift();
 
         this.handlePlaybackSpeedChange(newFactor, nextStatus);
-        this.pushStatus(nextStatus);
+        if (currKeyframe) {
+            this.buffer.push(currKeyframe);
+            nextStatus.isBuffering = false;
+        }
+        this.setStatus(nextStatus);
 
-        axios.post(getUrl(this.baseUrl + "changeSpeed"), {to: newFactor});
-        if (this.state.status.isPlaying) this.seek(this.state.status.position);
+        this.controlRequest("changeSpeed", {factor: newFactor});
+        if (isPlaying) this.seek(this.state.status.position);
+    }
+
+    async controlRequest(controlName, params) {
+        await axios.post(getUrl(this.baseUrl + controlName), params);
     }
 
 
@@ -342,15 +399,27 @@ function withStatusPoll(AnimationComp) {
         constructor(props) {
             super(props);
 
-            this.url = "rest/animation/server/" + props.config.id + "/status";
-            this.lastStatusId = -1;
+            this.url = "rest/animation/" + props.config.id + "/status";
+
+            this.accumulatedStatus = null;
+            this.beforeFirstStatus = null;
 
             this.state = {
                 lastFetchedStatus: {
                     status: {},
                 },
                 lastFetchedKeyframe: {},
+                error: null,
             };
+        }
+
+        componentDidUpdate(prevProps, prevState) {
+            if (prevState.lastFetchedStatus !== this.state.lastFetchedStatus && this.accumulatedStatus) {
+                console.log("processing accumulated:", this.accumulatedStatus.position);
+                const accumulatedStatus = this.accumulatedStatus;
+                this.accumulatedStatus = null;
+                this.processStatus(accumulatedStatus);
+            }
         }
 
         componentDidMount() {
@@ -362,16 +431,41 @@ function withStatusPoll(AnimationComp) {
             clearInterval(this.fetchInterval);
         }
 
+        @withAsyncErrorHandler
         async fetchStatus() {
             const res = await axios.get(getUrl(this.url));
+            // console.log("Fetched status:", res.data);
 
             const {data, ...status} = res.data;
+            if (status.position > this.props.config.endTs && this.state.lastFetchedStatus.status.position >= this.props.config.endTs) return;
+            if (status.position < this.props.config.beginTs) {
+                console.log("assigning beforeFirstStatus:", status.position);
+                this.beforeFirstStatus = res.data;
+                return;
+            }
+
+            let dataToProcess = res.data;
+            if (status.position === this.props.config.beginTs) {
+                this.beforeFirstStatus = null;
+            } else if (status.position > this.props.config.beginTs && this.beforeFirstStatus) {
+                console.log("Using beforeFirstStatus, storing:", status.position);
+                this.accumulatedStatus = res.data;
+                dataToProcess = this.beforeFirstStatus;
+                this.beforeFirstStatus = null;
+            }
+
+            this.processStatus(dataToProcess);
+        }
+
+        processStatus(statusData) {
+            const {data, ...status} = statusData;
             const diffLog = this.runStatusDiff(status);
 
             if (diffLog.size === 0) return;
 
+
             const nextState = {};
-            if (diffLog.has(statusChanges.POSITION)) {
+            if (diffLog.has(statusChanges.POSITION) || diffLog.has(statusChanges.SEEK)) {
                 nextState.lastFetchedKeyframe = {
                     ts: status.position,
                     realtimeTs: status.realtimePosition,
@@ -398,30 +492,6 @@ function withStatusPoll(AnimationComp) {
             const oldStatus = this.state.lastFetchedStatus.status;
             const diffLog = new Set();
 
-            const didSeek = () => {
-                if (!oldStatus.isPlaying && !newStatus.isPlaying)
-                    return diffLog.has(statusChanges.POSITION);
-
-                if (this.lastRealtimePosition === undefined) return true;
-                const timingError = this.props.config.pollRate;
-                const estimated = this.lastRealtimePosition + this.props.config.pollRate;
-
-                console.log({
-                    estimated,
-                    pos: newStatus.position,
-                    real: newStatus.realtimePosition,
-                    lastReal: this.lastRealtimePosition,
-                    difference: Math.abs(estimated - newStatus.realtimePosition),
-                    "allowed difference":timingError,
-                });
-
-                if (newStatus.position === this.props.config.endTs) {
-                    return this.lastRealtimePosition > newStatus.realtimePosition || newStatus.realtimePosition > estimated + timingError/2;
-                } else {
-                    return Math.abs(estimated - newStatus.realtimePosition) > timingError;
-                }
-            };
-
             if (this.lastPosition !== newStatus.position) {
                 diffLog.add(statusChanges.POSITION);
             }
@@ -433,15 +503,25 @@ function withStatusPoll(AnimationComp) {
             }
 
             if (oldStatus.playbackSpeedFactor !== newStatus.playbackSpeedFactor) {
-                console.log("new speed");
                 diffLog.add(statusChanges.PLAYBACK_SPEED);
             }
 
-            if (didSeek()) {
+            if (!oldStatus.seek || newStatus.seek.count !== oldStatus.seek.count) {
                 diffLog.add(statusChanges.SEEK);
             }
 
+            if (!oldStatus.reachedEnd && newStatus.reachedEnd) {
+                diffLog.add(statusChanges.REACHED_END);
+            }
+
             return diffLog;
+        }
+
+        errorHandler(error) {
+            clearInterval(this.fetchInterval);
+            this.setState({error});
+
+            return true;
         }
 
         render() {
@@ -453,6 +533,7 @@ function withStatusPoll(AnimationComp) {
                     ref={forwardRef}
                     lastFetchedStatus={this.state.lastFetchedStatus}
                     lastFetchedKeyframe={this.state.lastFetchedKeyframe}
+                    statusFetchError={this.state.error}
                 />
             );
         }
