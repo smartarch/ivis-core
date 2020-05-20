@@ -33,6 +33,19 @@ async function listDTAjax(context, sigSetId, params) {
     );
 }
 
+async function getMaxFittingAggSet(sigSetId ,maxInterval){
+    const res =await knex('aggregation_jobs')
+        .where('aggregation_jobs.set', sigSetId)
+        .andWhere('aggregation_jobs.interval', '<=', maxInterval)
+        .innerJoin('jobs', 'aggregation_jobs.job', 'jobs.id')
+        .innerJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
+        .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set')
+        .orderBy('interval', 'desc')
+        .first();
+
+    return res;
+}
+
 async function listSetAggs(sigSetId) {
     const setAggs = await knex('aggregation_jobs')
         .where('aggregation_jobs.set', sigSetId)
@@ -78,10 +91,9 @@ async function createTx(tx, context, sigSetId, params) {
 
 
     const intervalms = intervalStrToMiliseconds(intervalStr);
-    const aggregationJobName = `aggregation_${intervalms}ms_${signalSet.cid}`;
+    const aggregationJobName = `aggregation_${intervalStr}_${signalSet.cid}`;
 
-    // Job name contains interval in ms and that is used to check for existence
-    const exists = await tx('jobs').innerJoin('aggregation_jobs', 'jobs.id', 'aggregation_jobs.job').where('name', aggregationJobName).first();
+    const exists = await tx('aggregation_jobs').where('interval', intervalms).first();
     if (exists) {
         throw new interoperableErrors.ServerValidationError(`Aggregation for given interval '${intervalStr}' already exists.`);
     }
@@ -100,7 +112,7 @@ async function createTx(tx, context, sigSetId, params) {
     };
     const jobId = await jobs.create(context, job);
 
-    await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id});
+    await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id, interval: intervalms});
 
     jobs.run(context, jobId).catch(error => log.error('signal-set-aggregations', error));
 
@@ -116,6 +128,8 @@ async function create(context, sigSetId, params) {
 module.exports.create = create;
 module.exports.createTx = createTx;
 module.exports.listDTAjax = listDTAjax;
-module.exports.list = listSetAggs;
+module.exports.listSetAggs= listSetAggs;
+module.exports.getMaxFittingAggSet = getMaxFittingAggSet;
+
 
 
