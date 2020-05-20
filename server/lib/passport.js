@@ -6,7 +6,6 @@ const LocalStrategy = require('passport-local').Strategy;
 const csrf = require('csurf');
 
 const users = require('../models/users');
-const panels = require('../models/panels');
 const { nodeifyFunction, nodeifyPromise } = require('./nodeify');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const contextHelpers = require('./context-helpers');

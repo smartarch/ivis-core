@@ -25,7 +25,7 @@ const synchronized = require('../lib/synchronized');
 const {SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
-const {list: sigSetAggsList} = require('./signal-set-aggregations');
+const signalSetAggregations = require('./signal-set-aggregations');
 
 const dependencyHelpers = require('../lib/dependency-helpers');
 
@@ -210,7 +210,7 @@ async function createTx(tx, context, entity) {
             namespace: entity.namespace,
             type: SignalType.DATE_TIME,
             set: id,
-            source:  SignalSource.RAW
+            source: SignalSource.RAW
         });
     }
 
@@ -550,19 +550,13 @@ async function queryTx(tx, context, queries) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
 
         let substitutionOpts = sigSetQry.substitutionOpts;
-        if (!substitutionOpts || (substitutionOpts && substitutionOpts.allow !== false)) {
-            const {
-                minSubaggsBuckets = DEFAULT_MIN_SUBAGGS_BUCKETS
-            } = substitutionOpts || {};
+        if (!substitutionOpts) {
+            substitutionOpts = {
+                minSubaggsBuckets: DEFAULT_MIN_SUBAGGS_BUCKETS
+            };
 
-            substitutionOpts = sigSetQry.substitutionOpts;
-            const setAggs = await sigSetAggsList(sigSet.id);
-
-            //setAggs.find(isFittingInterval);
-
-            function isFittingInterval(jobRecord) {
-                return (moment.duration() / moment.duration(jobRecord.interval).asMilliseconds()) > minSubaggsBuckets;
-            }
+        } else if (substitutionOpts.allow !== false) {
+            substitutionOpts.minSubaggsBuckets = substitutionOpts.minSubaggsBuckets || DEFAULT_MIN_SUBAGGS_BUCKETS;
         } else {
             substitutionOpts = null;
         }
@@ -633,11 +627,18 @@ async function queryTx(tx, context, queries) {
                 }
 
                 signalsToCheck.add(sig.id);
-                // TODO agg.step check fit for aggregations
                 if (agg.signals) {
                     checkSignals(Object.keys(agg.signals));
                 } else if (agg.aggs) {
                     checkAggs(agg.aggs);
+                }
+
+                // Find lowest step for aggregation selection
+                if (substitutionOpts) {
+                    let aggStep = moment.duration(agg.step).asMilliseconds();
+                    if (!substitutionOpts.minStep || aggStep < substitutionOpts.minStep) {
+                        substitutionOpts.minStep = aggStep;
+                    }
                 }
             }
         };
@@ -675,6 +676,14 @@ async function queryTx(tx, context, queries) {
 
         for (const sigId of signalsToCheck) {
             await shares.enforceEntityPermissionTx(tx, context, 'signal', sigId, 'query');
+        }
+
+        if (substitutionOpts && substitutionOpts.minStep) {
+            const maxInterval = substitutionOpts.minStep / substitutionOpts.minSubaggsBuckets;
+            const set = await signalSetAggregations.getMaxFittingAggSet(sigSet.id, maxInterval);
+            if (set){
+               // TODO we got aggregation
+            }
         }
 
         sigSetQry.sigSet = sigSet;

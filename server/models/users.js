@@ -21,8 +21,6 @@ const mailer = require('../lib/mailer');
 const mailerSendMail = bluebird.promisify(mailer.sendMail.bind(mailer));
 */
 
-const passport = require('../lib/passport');
-
 const namespaceHelpers = require('../lib/namespace-helpers');
 
 const allowedKeys = new Set(['username', 'name', 'email', 'password', 'phone_cell', 'address', 'namespace', 'role']);
