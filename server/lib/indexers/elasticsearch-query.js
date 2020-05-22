@@ -42,6 +42,7 @@ const aggHandlers = {
         getAgg: field => ({
             min: field
         }),
+        getAggSigCid: sigCid => `_${sigCid}_min`,
         processResponse: resp => resp.value
     }),
     avg: aggSpec => ({
@@ -56,6 +57,7 @@ const aggHandlers = {
         getAgg: field => ({
             max: field
         }),
+        getAggSigCid: sigCid => `_${sigCid}_max`,
         processResponse: resp => resp.value
     }),
     percentiles: aggSpec => ({
@@ -151,10 +153,24 @@ class QueryProcessor {
         if (query.sigSet.kind === SignalSetKind.TIME_SERIES) {
             this.tsSigCid = query.sigSet.settings.ts;
         }
+
+        if (query.aggSigSet) {
+            this.aggSigSetIndexName = getIndexName(query.aggSigSet.sigSet);
+            this.aggSigSetSignalMap = query.aggSigSet.signalMap;
+        }
     }
 
+    selectIndex() {
+        return this.aggSigSetIndexName || this.indexName;
+    }
+
+    selectSignalMap() {
+        return this.aggSigSetSignalMap || this.signalMap;
+    }
+
+
     createElsScript(field) {
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const fieldNamesMap = {};
         for (const sigCid in signalMap) {
             fieldNamesMap[sigCid] = getFieldName(signalMap[sigCid].id);
@@ -177,21 +193,30 @@ class QueryProcessor {
     }
 
     createSignalAggs(signals) {
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const aggs = {};
 
         for (const sig in signals) {
             for (const aggSpec of signals[sig]) {
                 const aggHandler = getAggHandler(aggSpec);
-                const sigFld = signalMap[sig];
+
+                let sigFld = signalMap[sig];
 
                 if (!sigFld) {
                     throw new Error(`Unknown signal ${sig}`);
                 }
 
+                // Using aggregation signals for specific stats
+                let aggSigFld;
+                if (this.aggSigSetSignalMap && aggHandler.getAggSigCid) {
+                    aggSigFld = signalMap[aggHandler.getAggSigCid(sig)];
+                    if (!aggSigFld) {
+                        throw new Error(`Aggregation signal for stat ${aggHandler.id} not found for signal ${sig}`);
+                    }
+                }
+
                 const sigFldName = getFieldName(sigFld.id);
-                // TODO field used should be min_ max_ accordingly, maybe jsut put this in agg handler
-                aggs[`${aggHandler.id}_${sigFldName}`] = aggHandler.getAgg(this.getField(sigFld));
+                aggs[`${aggHandler.id}_${sigFldName}`] = aggHandler.getAgg(this.getField(aggSigFld ? aggSigFld : sigFld));
             }
         }
 
@@ -201,7 +226,7 @@ class QueryProcessor {
     createElsSort(sort) {
         const allowedSortFields = ['_doc', 'id'];
 
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const elsSort = [];
         for (const srt of sort) {
             if (srt.sigCid) {
@@ -235,7 +260,7 @@ class QueryProcessor {
 
 
     async computeStepAndOffset() {
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const bucketGroups = new Map();
         const query = this.query;
 
@@ -245,7 +270,7 @@ class QueryProcessor {
                 throw new Error(`Unknown signal ${agg.sigCid}`);
             }
             if (field.type === SignalType.KEYWORD) // min and max don't make sense for keyword
-                return { min: undefined, max: undefined };
+                return {min: undefined, max: undefined};
 
             // TODO here will be probably substitutionn for min_ max_ aggs
             const minMaxQry = {
@@ -261,7 +286,7 @@ class QueryProcessor {
                 }
             };
 
-            const minMaxResp = await executeElsQry(this.indexName, minMaxQry);
+            const minMaxResp = await executeElsQry(this.selectIndex(), minMaxQry);
 
             return {
                 min: minMaxResp.aggregations.min_value.value,
@@ -312,7 +337,7 @@ class QueryProcessor {
             } else if (fieldType === SignalType.INTEGER || fieldType === SignalType.LONG || fieldType === SignalType.FLOAT || fieldType === SignalType.DOUBLE) {
                 return getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue);
             } else if (fieldType === SignalType.KEYWORD) {
-                return { step: undefined, offset: undefined, maxBucketCount: maxBucketCount };
+                return {step: undefined, offset: undefined, maxBucketCount: maxBucketCount};
             } else {
                 throw new Error(`Field type ${fieldType} is not supported in aggregations`);
             }
@@ -399,7 +424,7 @@ class QueryProcessor {
     }
 
     createElsAggs(aggs) {
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const elsAggs = {};
         let aggNo = 0;
         for (const agg of aggs) {
@@ -412,13 +437,11 @@ class QueryProcessor {
 
             if (agg.agg_type) {
                 if (agg.agg_type === "terms") {
-                    elsAgg.terms = { ...this.getField(field) };
-                }
-                else {
+                    elsAgg.terms = {...this.getField(field)};
+                } else {
                     throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
                 }
-            }
-            else {
+            } else {
                 if (field.type === SignalType.DATE_TIME) {
                     // TODO: add processing of range buckets
 
@@ -438,15 +461,14 @@ class QueryProcessor {
                     };
 
                     if (agg.hasOwnProperty("computedMin") && Number.isFinite(agg.computedMin) &&
-                        agg.hasOwnProperty("computedMax") && Number.isFinite(agg.computedMax))
-                    {
+                        agg.hasOwnProperty("computedMax") && Number.isFinite(agg.computedMax)) {
                         elsAgg.histogram.extended_bounds = {
                             min: agg.computedMin,
                             max: agg.computedMax
                         }
                     }
                 } else if (field.type === SignalType.KEYWORD) {
-                    elsAgg.terms = { ...this.getField(field) };
+                    elsAgg.terms = {...this.getField(field)};
                     if (agg.maxBucketCount)
                         elsAgg.terms.size = agg.maxBucketCount;
                 } else {
@@ -489,7 +511,7 @@ class QueryProcessor {
     }
 
     processSignalAggs(signals, elsSignalsResp) {
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const result = {};
 
         for (const sig in signals) {
@@ -508,7 +530,7 @@ class QueryProcessor {
     }
 
     processElsAggs(aggs, elsAggsResp) {
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
         const result = [];
 
         // TODO should the count here account for the aggregations count?
@@ -533,12 +555,10 @@ class QueryProcessor {
             if (agg.agg_type) {
                 if (agg.agg_type === "terms") {
                     _processTermsAgg(elsAggResp, buckets, additionalResponses);
-                }
-                else {
+                } else {
                     throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
                 }
-            }
-            else {
+            } else {
                 const field = signalMap[agg.sigCid];
                 if (field.type === SignalType.DATE_TIME) {
                     // TODO: add processing of range buckets
@@ -596,7 +616,7 @@ class QueryProcessor {
 
     createElsFilter(flt) {
         const query = this.query;
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
 
         if (!flt) return;
 
@@ -665,7 +685,7 @@ class QueryProcessor {
                             attrCond = 'result.isBefore(ZonedDateTime.parse(params.lt))';
                         }
                         rngCond += ' && ' + attrCond;
-                    // TODO check if this condition is allowed for all types, previously was for type painless
+                        // TODO check if this condition is allowed for all types, previously was for type painless
                     } else if (field.source === SignalSource.DERIVED) {
                         const rngOp = {gte: '>=', gt: '>', lte: '<=', lt: '<'};
                         rngCond += ' && result' + rngOp[rngAttr] + 'params.' + rngAttr;
@@ -747,7 +767,7 @@ class QueryProcessor {
             aggs: this.createElsAggs(query.aggs)
         };
 
-        const elsResp = await executeElsQry(this.indexName, elsQry);
+        const elsResp = await executeElsQry(this.selectIndex(), elsQry);
 
         return {
             tsSigCid: this.tsSigCid,
@@ -758,7 +778,7 @@ class QueryProcessor {
 
     async processQueryDocs() {
         const query = this.query;
-        const signalMap = this.signalMap;
+        const signalMap = this.selectSignalMap();
 
         const elsQry = {
             query: this.createElsFilter(query.filter),
@@ -795,7 +815,7 @@ class QueryProcessor {
             elsQry.sort = this.createElsSort(query.docs.sort);
         }
 
-        const elsResp = await executeElsQry(this.indexName, elsQry);
+        const elsResp = await executeElsQry(this.selectIndex(), elsQry);
 
         const result = {
             tsSigCid: this.tsSigCid,
@@ -803,7 +823,7 @@ class QueryProcessor {
             total: elsResp.hits.total
         };
 
-        const withId = query.params &&  query.params.withId === true;
+        const withId = query.params && query.params.withId === true;
         for (const hit of elsResp.hits.hits) {
             const doc = {};
 
@@ -842,7 +862,7 @@ class QueryProcessor {
             aggs: this.createSignalAggs(query.summary.signals)
         };
 
-        const elsResp = await executeElsQry(this.indexName, elsQry);
+        const elsResp = await executeElsQry(this.selectIndex(), elsQry);
 
         return {
             summary: this.processSignalAggs(query.summary.signals, elsResp.aggregations)

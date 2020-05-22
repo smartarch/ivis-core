@@ -20,6 +20,10 @@ if (Object.freeze) {
 
 const AllSignalTypes = new Set(Object.values(SignalType));
 
+function isAggregatedType(type) {
+    return [SignalType.DOUBLE, SignalType.FLOAT, SignalType.INTEGER, SignalType.LONG].includes(type);
+}
+
 const SignalSource = {
     RAW: 'raw',
     DERIVED: 'derived',
@@ -94,5 +98,6 @@ module.exports = {
     IndexingStatus,
     IndexMethod,
     deserializeFromDb,
-    serializeToDb
+    serializeToDb,
+    isAggregatedType
 };

@@ -10,7 +10,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {IndexingStatus, IndexMethod, SignalType} = require('../../shared/signals');
+const {IndexingStatus, IndexMethod, SignalType, isAggregatedType} = require('../../shared/signals');
 const signals = require('./signals');
 const {
     SignalSetKind,
@@ -614,6 +614,11 @@ async function queryTx(tx, context, queries) {
                     shares.throwPermissionDenied();
                 }
 
+                // Can't mix aggregated types with non
+                if (!isAggregatedType(sig.type)) {
+                    substitutionOpts = null;
+                }
+
                 signalsToCheck.add(sig.id);
             }
         };
@@ -680,9 +685,17 @@ async function queryTx(tx, context, queries) {
 
         if (substitutionOpts && substitutionOpts.minStep) {
             const maxInterval = substitutionOpts.minStep / substitutionOpts.minSubaggsBuckets;
-            const set = await signalSetAggregations.getMaxFittingAggSet(sigSet.id, maxInterval);
-            if (set){
-               // TODO we got aggregation
+            const aggSigSet = await signalSetAggregations.getMaxFittingAggSet(sigSet.id, maxInterval);
+            if (aggSigSet) {
+                sigSetQry.aggSigSet = {
+                    sigSet: aggSigSet,
+                    signalMap: {}
+                };
+                const sigs = await tx('signals').where('set', aggSigSet.id);
+                for (const sig of sigs) {
+                    sig.settings = JSON.parse(sig.settings);
+                    sigSetQry.aggSigSet.signalMap[sig.cid] = sig;
+                }
             }
         }
 
