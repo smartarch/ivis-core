@@ -33,8 +33,9 @@ async function listDTAjax(context, sigSetId, params) {
     );
 }
 
-async function getMaxFittingAggSet(sigSetId ,maxInterval){
-    const res =await knex('aggregation_jobs')
+async function getMaxFittingAggSet(sigSetId, maxInterval) {
+    const sigSet = await knex('aggregation_jobs')
+        .select('signal_sets.*')
         .where('aggregation_jobs.set', sigSetId)
         .andWhere('aggregation_jobs.interval', '<=', maxInterval)
         .innerJoin('jobs', 'aggregation_jobs.job', 'jobs.id')
@@ -42,8 +43,10 @@ async function getMaxFittingAggSet(sigSetId ,maxInterval){
         .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set')
         .orderBy('interval', 'desc')
         .first();
-
-    return res;
+    if (sigSet) {
+        sigSet.settings = JSON.parse(sigSet.settings);
+    }
+    return sigSet;
 }
 
 async function listSetAggs(sigSetId) {
@@ -128,7 +131,7 @@ async function create(context, sigSetId, params) {
 module.exports.create = create;
 module.exports.createTx = createTx;
 module.exports.listDTAjax = listDTAjax;
-module.exports.listSetAggs= listSetAggs;
+module.exports.listSetAggs = listSetAggs;
 module.exports.getMaxFittingAggSet = getMaxFittingAggSet;
 
 

@@ -67,10 +67,11 @@ if state is None or state.get(agg_set_cid) is None:
     }
     signals.append(signal_base)
   
+  # Cid is important it is used in the system to identify related signals
     for stat in ['min', 'max', 'count']:
       signal = signal_base.copy()
       signal.update({
-        "cid": f"{signal_base['cid']}_{stat}",
+        "cid": f"_{signal_base['cid']}_{stat}",
         "name": f"{stat} of {signal_base['cid']}",
         "description": f"Stat {stat} for aggregation of signal '{signal_base['cid']}'"
       })
@@ -148,10 +149,10 @@ for hit in res['aggregations']['sig_set_aggs']['buckets']:
   last = hit['key_as_string']
   doc = {}
   for cid in numeric_signals.keys():
-    doc[state[agg_set_cid]['fields'][f"{cid}_min"]]= hit[cid]['min']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_min"]]= hit[cid]['min']
     doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['avg']
-    doc[state[agg_set_cid]['fields'][f"{cid}_max"]]= hit[cid]['max']
-    doc[state[agg_set_cid]['fields'][f"{cid}_count"]]= hit[cid]['count']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_max"]]= hit[cid]['max']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_count"]]= hit[cid]['count']
   
   doc[state[agg_set_cid]['fields'][ts['cid']]] = last
   res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
