@@ -44,7 +44,6 @@ export default class HansRoslingBubblePlot extends Component {
     }
 
     computeExtents(base, processedResults, results, queries, additionalInformation) {
-        // call the default implementation and then work with the results
         const extents = BubblePlot.computeExtents(base, processedResults, results, queries, additionalInformation);
 
         const sizeExtent = extents[2];
@@ -56,10 +55,9 @@ export default class HansRoslingBubblePlot extends Component {
         return extents;
     }
 
-    drawHighlightDot(base, data, selection, xScale, yScale, sScale, cScale) {
+    drawHighlightDot(base, record, selection, xScale, yScale, sScale, cScale) {
         selection.selectAll("circle").remove();
-        if (data.length > 0) {
-            const record = data[0];
+        if (record) {
             selection.append("circle")
                 .attr('cx', xScale(record.x))
                 .attr('cy', yScale(record.y))
