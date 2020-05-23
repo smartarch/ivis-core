@@ -126,17 +126,17 @@ class DataAccess {
             const sigSet = sigSets[sigSetCid];
             const tsSig = sigSet.tsSigCid || 'ts';
 
+            const tsRange = {
+                type: 'range',
+                sigCid: tsSig,
+                [timeSeriesPointType]: ts.toISOString()
+            };
+
             const qry = {
                 sigSetCid,
                 filter: {
                     type: 'and',
-                    children: [
-                        {
-                            type: 'range',
-                            sigCid: tsSig,
-                            [timeSeriesPointType]: ts.toISOString()
-                        }
-                    ]
+                    children: [ tsRange ]
                 }
             };
 
