@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import {AnimationStatusContext, AnimationControlContext} from "../lib/animation-helpers";
 import {AnimatedBase} from "./AnimatedBase";
 import {interpolFuncs} from "../lib/animation-interpolations";
+import {withAsyncErrorHandler} from "../lib/error-handling";
 
 
 class ClientAnimation extends Component {
@@ -17,7 +18,7 @@ class ClientAnimation extends Component {
     constructor(props) {
         super(props);
 
-        this.dataAccess = new KeyframeAccess(props.config);
+        this.dataAccess = new KeyframeAccess(props.config, ::this.errorHandler);
 
         this.state = {
             initialized: false,
@@ -49,6 +50,14 @@ class ClientAnimation extends Component {
         this.seekHandler(this.props.config.beginTs);
     }
 
+    errorHandler(error) {
+        clearInterval(this.playLoop);
+        this.setState({controls: {}});
+        this.setStatus({isBuffering: true, error});
+
+        return true;
+    }
+
 
     playHandler() {
         this.setStatus({isPlaying: true});
@@ -73,6 +82,7 @@ class ClientAnimation extends Component {
         this.seekHandler(this.state.status.position - shiftMs);
     }
 
+    @withAsyncErrorHandler
     async seekHandler(ts) {
         const clampedTs = this.clampPosition(ts);
         this.setStatus({isBuffering: true});
@@ -120,6 +130,7 @@ class ClientAnimation extends Component {
         this.setStatus({position: nextPosition});
     }
 
+    @withAsyncErrorHandler
     async shiftKeyframes() {
         this.keyframes.shift();
         if (this.keyframes[1].ts === this.props.config.endTs) return;
@@ -195,8 +206,10 @@ class ClientAnimation extends Component {
 }
 
 class KeyframeAccess {
-    constructor(animationConfig) {
+    constructor(animationConfig, errorHandler) {
         this.baseUrl = 'rest/animation/client/keyframes';
+
+        this.errorHandler = errorHandler;
 
         this.endTs = animationConfig.endTs;
 
@@ -244,7 +257,7 @@ class KeyframeAccess {
     }
 
 
-
+    @withAsyncErrorHandler
     async _fillDataQueue() {
         while(!this._hasEnoughCached()) {
             await this._fetchNextChunk();
