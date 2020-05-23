@@ -8,7 +8,7 @@ const builtinTemplates = {};
 Sample builtin template:
 'id': {
     name: 'XXX',
-    params: 'XXX'
+    params: []
 }
  */
 

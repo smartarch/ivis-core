@@ -4,6 +4,11 @@ function getGlobalNamespaceId() {
     return 1;
 }
 
+function getVirtualNamespaceId() {
+    return -1;
+}
+
 module.exports = {
-    getGlobalNamespaceId
+    getGlobalNamespaceId,
+    getVirtualNamespaceId
 };

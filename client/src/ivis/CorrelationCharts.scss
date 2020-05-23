@@ -1,0 +1,48 @@
+@import "../scss/variables";
+
+.scatterPlotToolbar {
+  max-width: 300px;
+  float: right;
+}
+
+.scatterPlotToolbarOpened {
+  width: 100%;
+  float: right;
+}
+
+.headingButtons {
+  float: right;
+
+  & > * {
+    margin-right: 15px;
+  }
+
+  & > *:last-child {
+    margin-right: 0px;
+  }
+}
+
+a.active {
+  color: $success;
+}
+
+.brush .selection {
+  stroke: #434343;
+}
+
+.touchActionNone {
+  touch-action: none;
+}
+
+.touchActionPanY {
+  touch-action: pan-y;
+}
+
+.clearBoth {
+  clear: both;
+}
+
+.regressionsCoefficients i {
+  padding-right: 3px;
+  padding-left: 5px;
+}

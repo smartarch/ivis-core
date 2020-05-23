@@ -22,7 +22,7 @@ export class NamespaceSelect extends Component {
 
 export function validateNamespace(t, state) {
     if (!state.getIn(['namespace', 'value'])) {
-        state.setIn(['namespace', 'error'], t('namespacemustBeSelected'));
+        state.setIn(['namespace', 'error'], t('namespaceMustBeSelected'));
     } else {
         state.setIn(['namespace', 'error'], null);
     }

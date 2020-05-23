@@ -19,4 +19,9 @@ export * from './Legend';
 export * from './SVG';
 export * from './Records';
 export * from './Selector';
-
+export * from './ScatterPlot';
+export * from './BubblePlot';
+export * from './HeatmapChart';
+export * from './BarChart';
+export * from './MinMaxLoader';
+export * from './dot_shapes';

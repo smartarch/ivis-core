@@ -88,8 +88,11 @@ async function listDTAjax(context, params) {
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
-        builder => builder.from('jobs').innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
-        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name']
+        builder => builder
+            .from('jobs')
+            .innerJoin('tasks', 'tasks.id', 'jobs.task')
+            .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
+        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name']
     );
 }
 
@@ -201,7 +204,7 @@ function parseTriggerStr(triggerStr) {
  * @returns {Promise<void>}
  */
 async function updateSetTriggersTx(tx, id, sets) {
-
+    sets = sets.filter(s => s != null);
     await tx('job_triggers').where('job', id).whereNotIn('signal_set', sets).del();
 
     for (let i = 0; i < sets.length; i++) {
@@ -269,7 +272,7 @@ async function remove(context, id) {
 
         const owners = await tx('signal_sets_owners').where('job', id);
         for (let pair of owners) {
-            await signalSets.remove(contextHelpers.getAdminContext(), pair.set)
+            await signalSets.removeById(contextHelpers.getAdminContext(), pair.set)
         }
 
         await tx('jobs').where('id', id).del();
@@ -289,6 +292,13 @@ async function removeRun(context, jobId, runId) {
 
         await stop(context, runId);
         await tx('job_runs').where({id: runId, job: jobId}).del();
+    });
+}
+
+async function removeAllRuns(context, jobId) {
+    await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'delete');
+        await tx('job_runs').where({job: jobId}).del();
     });
 }
 
@@ -344,6 +354,7 @@ module.exports.create = create;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.remove = remove;
 module.exports.removeRun = removeRun;
+module.exports.removeAllRuns = removeAllRuns;
 module.exports.run = run;
 module.exports.stop = stop;
 

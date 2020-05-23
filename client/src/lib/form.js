@@ -34,6 +34,8 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
+import cudStyles from "../settings/jobs/CUD.scss";
+import ParamTypes from "../settings/ParamTypes";
 
 
 const FormState = {
@@ -60,7 +62,7 @@ const withFormStateOwner = createComponentMixin({
 export function withFormErrorHandlers(target, name, descriptor) {
     const asyncFn = descriptor.value;
 
-    descriptor.value = async function(...args) {
+    descriptor.value = async function (...args) {
         await this.formHandleErrors(async () => await asyncFn.apply(this, args));
     };
 
@@ -139,7 +141,8 @@ class Form extends Component {
                         </fieldset>
                         {!props.noStatus && statusMessageText &&
                         <AlignedRow format={props.format} htmlId="form-status-message">
-                            <div className={`alert alert-${statusMessageSeverity} ${styles.formStatus}`} role="alert">{statusMessageText}</div>
+                            <div className={`alert alert-${statusMessageSeverity} ${styles.formStatus}`}
+                                 role="alert">{statusMessageText}</div>
                         </AlignedRow>
                         }
                     </FormStateOwnerContext.Provider>
@@ -181,7 +184,8 @@ class Fieldset extends Component {
         if (id) {
             const validationMsg = id && owner.getFormValidationMessage(id);
             if (validationMsg) {
-                validationBlock = <small className="form-text text-muted" id={htmlId + '_help_validation'}>{validationMsg}</small>;
+                validationBlock =
+                    <small className="form-text text-muted" id={htmlId + '_help_validation'}>{validationMsg}</small>;
             }
         }
 
@@ -248,7 +252,7 @@ function wrapInput(id, htmlId, owner, format, rightContainerClass, label, help, 
 
     if (format === 'inline') {
         return (
-            <div className={className} >
+            <div className={className}>
                 {labelBlock}{input}
                 {helpBlock}
                 {validationBlock}
@@ -256,7 +260,7 @@ function wrapInput(id, htmlId, owner, format, rightContainerClass, label, help, 
         );
     } else {
         return (
-            <div className={className} >
+            <div className={className}>
                 {labelBlock}
                 <div className={`${colRight} ${rightContainerClass}`}>
                     {input}
@@ -344,7 +348,9 @@ class InputField extends Component {
         if (value === null || value === undefined) console.log(`Warning: InputField ${id} is ${value}`);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId} className={className} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}/>
+            <input type={type} value={owner.getFormValue(id)} placeholder={props.placeholder} id={htmlId}
+                   className={className} aria-describedby={htmlId + '_help'}
+                   onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}/>
         );
     }
 }
@@ -372,7 +378,9 @@ class CheckBox extends Component {
 
                         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                             <div className={`form-group form-check my-2 ${this.props.className}`}>
-                                <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)} id={htmlId} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
+                                <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)}
+                                       id={htmlId} aria-describedby={htmlId + '_help'}
+                                       onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
                                 <label className={styles.checkboxText} htmlFor={htmlId}>{props.text}</label>
                             </div>
                         );
@@ -428,7 +436,8 @@ class CheckBoxGroup extends Component {
 
             let number = options.push(
                 <div key={option.key} className="form-group form-check my-2">
-                    <input id={optId} type="checkbox" className={optClassName} checked={selection.includes(option.key)} onChange={evt => this.onChange(option.key)}/>
+                    <input id={optId} type="checkbox" className={optClassName} checked={selection.includes(option.key)}
+                           onChange={evt => this.onChange(option.key)}/>
                     <label className="form-check-label" htmlFor={optId}>{option.label}</label>
                 </div>
             );
@@ -476,7 +485,8 @@ class RadioGroup extends Component {
 
             let number = options.push(
                 <div key={option.key} className="form-group form-check my-2">
-                    <input id={optId} type="radio" className={optClassName} name={htmlId} checked={value === option.key} onChange={evt => owner.updateFormValue(id, option.key)}/>
+                    <input id={optId} type="radio" className={optClassName} name={htmlId} checked={value === option.key}
+                           onChange={evt => owner.updateFormValue(id, option.key)}/>
                     <label className="form-check-label" htmlFor={optId}>{option.label}</label>
                 </div>
             );
@@ -522,10 +532,11 @@ class TextArea extends Component {
         const owner = this.getFormStateOwner();
         const id = props.id;
         const htmlId = 'form_' + id;
-        const className = owner.addFormValidationClass('form-control ' + (props.className || '') , id);
+        const className = owner.addFormValidationClass('form-control ' + (props.className || ''), id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <textarea id={htmlId} placeholder={props.placeholder} value={owner.getFormValue(id) || ''} className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}></textarea>
+            <textarea id={htmlId} placeholder={props.placeholder} value={owner.getFormValue(id) || ''}
+                      className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}></textarea>
         );
     }
 }
@@ -578,12 +589,13 @@ class ColorPicker extends Component {
             <div>
                 <div className="input-group">
                     <div className={styles.colorPickerSwatchWrapper} onClick={::this.toggle}>
-                        <div className={styles.colorPickerSwatchColor} style={{background: `rgba(${ color.r }, ${ color.g }, ${ color.b }, ${ color.a })`}}/>
+                        <div className={styles.colorPickerSwatchColor}
+                             style={{background: `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`}}/>
                     </div>
                 </div>
                 {this.state.opened &&
                 <div className={styles.colorPickerWrapper}>
-                    <SketchPicker color={color} onChange={::this.selected} />
+                    <SketchPicker color={color} onChange={::this.selected}/>
                 </div>
                 }
             </div>
@@ -648,7 +660,7 @@ class DatePicker extends Component {
         const htmlId = 'form_' + id;
         const t = props.t;
 
-        function BirthdayPickerCaption({ date, localeUtils, onChange }) {
+        function BirthdayPickerCaption({date, localeUtils, onChange}) {
             const months = localeUtils.getMonths();
             return (
                 <div className="DayPicker-Caption">
@@ -697,9 +709,12 @@ class DatePicker extends Component {
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
             <>
                 <div className="input-group">
-                    <input type="text" value={selectedDateStr} placeholder={placeholder} id={htmlId} className={className} aria-describedby={htmlId + '_help'} onChange={evt => owner.updateFormValue(id, evt.target.value)}/>
+                    <input type="text" value={selectedDateStr} placeholder={placeholder} id={htmlId}
+                           className={className} aria-describedby={htmlId + '_help'}
+                           onChange={evt => owner.updateFormValue(id, evt.target.value)}/>
                     <div className="input-group-append">
-                        <Button iconTitle={t('openCalendar')} className="btn-secondary" icon="calendar-alt" onClickAsync={::this.toggleDayPicker}/>
+                        <Button iconTitle={t('openCalendar')} className="btn-secondary" icon="calendar-alt"
+                                onClickAsync={::this.toggleDayPicker}/>
                     </div>
                 </div>
                 {this.state.opened &&
@@ -756,10 +771,11 @@ class Dropdown extends Component {
             }
         }
 
-        const className = owner.addFormValidationClass('form-control ' + (props.className || '') , id);
+        const className = owner.addFormValidationClass('form-control ' + (props.className || ''), id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)} onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}>
+            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)}
+                    onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}>
                 {options}
             </select>
         );
@@ -808,6 +824,283 @@ class ButtonRow extends Component {
     }
 }
 
+@withComponentMixins([
+    withTranslation,
+    withFormStateOwner
+])
+class ParamsLoader extends Component {
+
+    static propTypes = {
+        id: PropTypes.string,
+        label: PropTypes.string,
+        prefix: PropTypes.string,
+        taskId: PropTypes.number,
+        taskParams: PropTypes.oneOfType([PropTypes.object, PropTypes.arrayOf(PropTypes.object)]),
+        paramTypesRef: PropTypes.func,
+        help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+        format: PropTypes.string
+    };
+
+    constructor(props) {
+        super(props);
+        this.paramTypes = new ParamTypes(props.t);
+
+        if (props.paramTypesRef) {
+            props.paramTypesRef(this.paramTypes);
+        }
+
+        const params = props.taskParams ? props.taskParams : null;
+
+        this.state = {
+            params: params
+        };
+    }
+
+    componentDidMount() {
+        if (this.props.taskId) {
+            this.fetchTaskParams(this.props.taskId);
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.taskId !== prevProps.taskId) {
+            this.setState({
+                params: null
+            });
+            this.fetchTaskParams(this.props.taskId);
+        }
+    }
+
+    /*
+    onChangeBeforeValidation(mutStateData, key, oldVal, newVal) {
+        const configSpec = this.state.params;
+        if (configSpec) {
+            this.paramTypes.onChange(configSpec, mutStateData, key, oldVal, newVal)
+        }
+    }
+     */
+
+    @withAsyncErrorHandler
+    async fetchTaskParams(taskId) {
+        const result = await axios.get(getUrl(`rest/task-params/${taskId}`));
+        if (this.props.taskId === taskId) {
+            const taskParams = result.data;
+            this.getFormStateOwner().updateForm(mutData => {
+                mutData.setIn([this.props.prefix, 'value'], taskParams);
+                this.paramTypes.adopt(taskParams, mutData);
+            });
+            this.setState({params: result.data});
+        }
+    }
+
+    render() {
+        const props = this.props;
+        const t = props.t;
+        const htmlId = 'form_' + this.props.id;
+        const owner = this.getFormStateOwner();
+
+        const taskParams = this.state.params;
+        const paramsRender = taskParams ? this.paramTypes.render(taskParams, owner) : null;
+        return (
+            <>
+                {taskParams ?
+                    paramsRender &&
+                    <Fieldset label={t('Task parameters')}>
+                        {paramsRender}
+                    </Fieldset>
+                    :
+                    props.taskId &&
+                    <div className="alert alert-info" role="alert">{t('Loading task...')}</div>
+                }
+            </>
+        );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+    withFormStateOwner
+], null, ['submitFormValuesMutator', 'getFormValueIdForPicker'])
+class ListCreator extends Component {
+    static propTypes = {
+        id: PropTypes.string.isRequired,
+        label: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+        help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+        flat: PropTypes.bool,
+        className: PropTypes.string,
+        entryElement: PropTypes.element.isRequired,
+        withOrder: PropTypes.bool,
+        initValues: PropTypes.array
+    };
+
+    constructor(props) {
+        super(props);
+
+        this._nextEntryId = 0;
+    }
+
+    componentDidMount() {
+        const values = this.props.initValues;
+        if (values && values.length > 0) {
+            this.getFormStateOwner().updateForm(mutState => {
+                let entryIds = mutState.getIn([this.props.id, 'value']);
+
+                if (!entryIds) {
+                    entryIds = [];
+                }
+
+                for (const entryValue of values) {
+                    const entryId = this.getNextEntryId();
+                    mutState.setIn([this.getFormValueId(entryId), 'value'], entryValue);
+                    entryIds.push(entryId);
+                }
+
+                mutState.setIn([this.props.id, 'value'], entryIds);
+            });
+        }
+    }
+
+    static submitFormValuesMutator(pickerId, data) {
+        const entryValues = [];
+        const entryIds = data[pickerId];
+
+        if (!entryIds) {
+            return entryValues;
+        }
+
+        for (const entryId of entryIds) {
+            const entryFormId = ListCreator.getFormValueIdForPicker(pickerId, entryId);
+            const value = data[entryFormId];
+            entryValues.push(value);
+            delete data[entryFormId]
+        }
+
+        data[pickerId] = entryValues;
+    }
+
+    static getFormValueIdForPicker(pickerId, entryId) {
+        return `${pickerId}_${entryId}`;
+    }
+
+    getFormValueId(entryId) {
+        return ListCreator.getFormValueIdForPicker(this.props.id, entryId);
+    }
+
+    getNextEntryId() {
+        return this._nextEntryId++;
+    }
+
+    onAddListEntry(positionBefore) {
+        this.getFormStateOwner().updateForm(mutState => {
+            let entryIds = mutState.getIn([this.props.id, 'value']);
+
+            if (!entryIds) {
+                entryIds = [];
+            }
+
+            if (positionBefore == null) {
+                positionBefore = entryIds.length;
+            }
+
+            const entryId = this.getNextEntryId();
+
+            mutState.setIn([this.getFormValueId(entryId), 'value'], null);
+            mutState.setIn([this.props.id, 'value'], [...entryIds.slice(0, positionBefore), entryId, ...entryIds.slice(positionBefore)]);
+        });
+    }
+
+    onRemoveSetEntry(entryId) {
+        this.getFormStateOwner().updateForm(mutState => {
+            const entryIds = mutState.getIn([this.props.id, 'value']);
+
+            mutState.delete(this.getFormValueId(entryId));
+
+            mutState.setIn([this.props.id, 'value'], entryIds.filter(id => id !== entryId));
+        });
+    }
+
+    onListEntryMoveUp(position) {
+        const owner = this.getFormStateOwner();
+        const entryIds = owner.getFormValue(this.props.id);
+        owner.updateFormValue(this.props.id, [...entryIds.slice(0, position - 1), entryIds[position], entryIds[position - 1], ...entryIds.slice(position + 1)]);
+    }
+
+    onListEntryMoveDown(position) {
+        const owner = this.getFormStateOwner();
+        const entryIds = owner.getFormValue(this.props.id);
+        owner.updateFormValue(this.props.id, [...entryIds.slice(0, position), entryIds[position + 1], entryIds[position], ...entryIds.slice(position + 2)]);
+    }
+
+    render() {
+        const props = this.props;
+        const owner = this.getFormStateOwner();
+        const id = props.id;
+        const t = props.t;
+        const withOrder = props.withOrder;
+        const entries = [];
+        const entryIds = owner.getFormValue(id) || [];
+
+        const entryButtonsStyles = withOrder ? cudStyles.entryButtonsWithOrder : cudStyles.entryButtons;
+        for (let pos = 0; pos < entryIds.length; pos++) {
+            const entryId = entryIds[pos];
+            const elementId = this.getFormValueId(entryId);
+            entries.push(
+                <div key={entryId}
+                     className={cudStyles.entry + (withOrder ? ' ' + cudStyles.withOrder : '') + ' ' + cudStyles.entryWithButtons}>
+                    <div className={entryButtonsStyles}>
+                        <Button
+                            className="btn-secondary"
+                            icon={`trash-alt ${withOrder ? "" : "fa-2x"}`}
+                            title={t('remove')}
+                            onClickAsync={() => this.onRemoveSetEntry(entryId)}
+                        />
+                        {withOrder &&
+                        <Button
+                            className="btn-secondary"
+                            icon="plus"
+                            title={t('Insert new entry before this one')}
+                            onClickAsync={() => this.onAddListEntry(pos)}
+                        />
+                        }
+                        {withOrder && pos > 0 &&
+                        <Button
+                            className="btn-secondary"
+                            icon="chevron-up"
+                            title={t('Move up')}
+                            onClickAsync={() => this.onListEntryMoveUp(pos)}
+                        />
+                        }
+                        {withOrder && pos < entryIds.length - 1 &&
+                        <Button
+                            className="btn-secondary"
+                            icon="chevron-down"
+                            title={t('Move down')}
+                            onClickAsync={() => this.onListEntryMoveDown(pos)}
+                        />
+                        }
+                    </div>
+                    <div className={cudStyles.entryContent}>
+                        {React.cloneElement(this.props.entryElement, {id: elementId})}
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <Fieldset id={id} className={props.classname} help={props.help} flat={props.flat} label={props.label}>
+                {entries}
+                <div key="newEntry" className={cudStyles.newEntry}>
+                    <Button
+                        className="btn-secondary"
+                        icon="plus"
+                        label={t('Add entry')}
+                        onClickAsync={() => this.onAddListEntry(entryIds.length)}
+                    />
+                </div>
+            </Fieldset>
+        );
+    }
+}
 
 @withComponentMixins([
     withFormStateOwner
@@ -833,10 +1126,12 @@ class TreeTableSelect extends Component {
         const id = this.props.id;
         const htmlId = 'form_' + id;
 
-        const className = owner.addFormValidationClass('' , id);
+        const className = owner.addFormValidationClass('', id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <TreeTable className={className} data={props.data} dataUrl={props.dataUrl} selectMode={TreeSelectMode.SINGLE} selection={owner.getFormValue(id)} onSelectionChangedAsync={::this.onSelectionChangedAsync} />
+            <TreeTable className={className} data={props.data} dataUrl={props.dataUrl}
+                       selectMode={TreeSelectMode.SINGLE} selection={owner.getFormValue(id)}
+                       onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
         );
     }
 }
@@ -928,20 +1223,27 @@ class TableSelect extends Component {
         const t = props.t;
 
         if (props.dropdown) {
-            const className = owner.addFormValidationClass('form-control' , id);
+            const className = owner.addFormValidationClass('form-control', id);
 
             return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                 <div>
                     <div className={(props.disabled ? '' : 'input-group ') + styles.tableSelectDropdown}>
-                        <input type="text" className={className} value={this.state.selectedLabel} onClick={::this.toggleOpen} readOnly={!props.disabled} disabled={props.disabled}/>
+                        <input type="text" className={className} value={this.state.selectedLabel}
+                               onClick={::this.toggleOpen} readOnly={!props.disabled} disabled={props.disabled}/>
                         {!props.disabled &&
                         <div className="input-group-append">
                             <Button label={t('select')} className="btn-secondary" onClickAsync={::this.toggleOpen}/>
                         </div>
                         }
                     </div>
-                    <div className={styles.tableSelectTable + (this.state.open ? '' : ' ' + styles.tableSelectTableHidden)}>
-                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl} columns={props.columns} selectMode={props.selectMode} selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader} selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)} onSelectionDataAsync={::this.onSelectionDataAsync} onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
+                    <div
+                        className={styles.tableSelectTable + (this.state.open ? '' : ' ' + styles.tableSelectTableHidden)}>
+                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
+                               columns={props.columns} selectMode={props.selectMode}
+                               selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
+                               selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
+                               onSelectionDataAsync={::this.onSelectionDataAsync}
+                               onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
                     </div>
                 </div>
             );
@@ -949,7 +1251,11 @@ class TableSelect extends Component {
             return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                 <div>
                     <div>
-                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl} columns={props.columns} pageLength={props.pageLength} selectMode={props.selectMode} selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader} selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)} onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
+                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
+                               columns={props.columns} pageLength={props.pageLength} selectMode={props.selectMode}
+                               selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
+                               selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
+                               onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
                     </div>
                 </div>
             );
@@ -1281,9 +1587,24 @@ const withForm = createComponentMixin({
             scheduleValidateForm(this);
         };
 
+        proto.addOnChangeBeforeValidationListener = function (listener) {
+            this.setState(previousState => {
+                const formSettings = Object.assign({}, previousState.formSettings);
+                let listeners = formSettings.onChangeBeforeValidationListeners;
+                if (listeners) {
+                    listeners = [];
+                    formSettings.onChangeBeforeValidationListeners = listeners;
+                }
+
+                listeners.push(listener);
+                return {formSettings};
+            })
+        };
+
         proto.updateForm = function (mutator) {
             this.setState(previousState => {
                 const onChangeBeforeValidationCallback = this.state.formSettings.onChangeBeforeValidation || {};
+                const onChangeBeforeValidationListeners = this.state.formSettings.onChangeBeforeValidationListeners || [];
 
                 const formState = previousState.formState.withMutations(mutState => {
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
@@ -1297,6 +1618,18 @@ const withForm = createComponentMixin({
                             }
                         } else {
                             onChangeBeforeValidationCallback(mutStateData);
+                        }
+
+                        for (const changeListener of onChangeBeforeValidationListeners) {
+                            if (typeof changeListener === 'object') {
+                                for (const key in changeListener) {
+                                    const oldValue = previousState.formState.getIn(['data', key, 'value']);
+                                    const newValue = mutStateData.getIn([key, 'value']);
+                                    changeListener[key](mutStateData, key, oldValue, newValue);
+                                }
+                            } else {
+                                changeListener(mutStateData);
+                            }
                         }
                     }));
 
@@ -1329,6 +1662,7 @@ const withForm = createComponentMixin({
                 const oldValue = previousState.formState.getIn(['data', key, 'value']);
 
                 const onChangeBeforeValidationCallback = this.state.formSettings.onChangeBeforeValidation || {};
+                const onChangeBeforeValidationListeners = this.state.formSettings.onChangeBeforeValidationListeners || [];
 
                 const formState = previousState.formState.withMutations(mutState => {
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
@@ -1340,6 +1674,16 @@ const withForm = createComponentMixin({
                             }
                         } else {
                             onChangeBeforeValidationCallback(mutStateData, key, oldValue, value);
+                        }
+
+                        for (const listener of onChangeBeforeValidationListeners) {
+                            if (typeof listener === 'object') {
+                                if (listener[key]) {
+                                    listener[key](mutStateData, key, oldValue, value);
+                                }
+                            } else {
+                                listener(mutStateData, key, oldValue, value);
+                            }
                         }
                     }));
 
@@ -1403,7 +1747,7 @@ const withForm = createComponentMixin({
                         }
                     }
                 } else if (data1 !== data2) {
-                    // console.log(prefix);
+                    // console.log(idPrefix);
                     return true;
                 }
                 return false;
@@ -1607,6 +1951,8 @@ export {
     AlignedRow,
     ButtonRow,
     Button,
+    ListCreator,
+    ParamsLoader,
     TreeTableSelect,
     TableSelect,
     TableSelectMode,

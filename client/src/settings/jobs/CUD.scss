@@ -4,9 +4,31 @@
   min-height: 51px;
   position: relative;
 
+  &.withOrder{
+    min-height: 91px;
+  }
+
   &:last-child {
     border-bottom: 0px none;
     margin-bottom: 0px;
+  }
+
+  .entryButtonsWithOrder {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 19px;
+
+    button {
+      padding: 2px 3px;
+      font-size: 11px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    button:last-child {
+      margin-bottom: 0px;
+    }
   }
 
   .entryButtons {
