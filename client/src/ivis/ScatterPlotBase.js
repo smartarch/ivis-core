@@ -1033,6 +1033,7 @@ export class ScatterPlotBase extends Component {
                 .domain(sExtent)
                 .range([this.props.minDotSize, this.props.maxDotSize]);
         }
+        this.sScale = sScale;
 
         // c Scales (color) - separate for each signalSet
         let cScales = [];
@@ -1067,6 +1068,7 @@ export class ScatterPlotBase extends Component {
                 cScales.push(_ => color);
             }
         }
+        this.cScales = cScales;
         //</editor-fold>
 
         // draw data
@@ -1281,10 +1283,10 @@ export class ScatterPlotBase extends Component {
     }
 
     /**
-     * Draws the highlight dot (the dot closest to the cursor) for one signal sets.
+     * Draws the highlight dot (the dot closest to the cursor) for one signal sets. If the record is null, no highlight dot should be drawn (all existing highlight dots should be removed).
      *
      * @param {ScatterPlotBase} self - this ScatterPlotBase object
-     * @param {{ x, y, s?, c?, d?, label? }} record - the data point for highlight dot
+     * @param {{ x, y, s?, c?, d?, label? } | null} record - the data point for highlight dot
      * @param selection - d3 selection to which the data will be assigned and drawn
      * @param xScale - scale which converts x values to pixels along horizontal axis
      * @param yScale - scale which converts y values to pixels along vertical axis
@@ -1295,7 +1297,7 @@ export class ScatterPlotBase extends Component {
      */
     static drawHighlightDot(self, record, selection, xScale, yScale, sScale, cScale, signalSetConfig, dotShape) {
         const drawDots = self.props.drawDots || ScatterPlotBase.drawDots;
-        drawDots(self, [record], selection, xScale, yScale, sScale, cScale, signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape, c => c.darker());
+        drawDots(self, record !== null ? [record] : [], selection, xScale, yScale, sScale, cScale, signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape, c => c.darker());
     }
     //</editor-fold>
 
@@ -1485,7 +1487,7 @@ export class ScatterPlotBase extends Component {
 
             let newSelections = {};
 
-            for (let i = 0; i < signalSetsData.length && i <self.props.config.signalSets.length; i++) {
+            for (let i = 0; i < signalSetsData.length && i < self.props.config.signalSets.length; i++) {
                 const signalSetCidIndex = self.props.config.signalSets[i].cid + "-" + i;
 
                 const data = signalSetsData[i];
@@ -1546,10 +1548,12 @@ export class ScatterPlotBase extends Component {
         this.cursorSelectionX.attr('visibility', 'hidden');
         this.cursorSelectionY.attr('visibility', 'hidden');
 
-        for (const cid in this.dotHighlightSelections) {
-            this.dotHighlightSelections[cid]
-                .selectAll('use')
-                .remove();
+        for (let i = 0; i < this.props.config.signalSets.length; i++) {
+            const signalSetCidIndex = this.props.config.signalSets[i].cid + "-" + i;
+            const signalSetConfig = this.props.config.signalSets[i];
+
+            const drawHighlightDot = this.props.drawHighlightDot || ScatterPlotBase.drawHighlightDot;
+            drawHighlightDot(this, null, this.dotHighlightSelections[signalSetCidIndex], this.xScale, this.yScale, this.sScale, this.cScales[i], signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape);
         }
 
         this.setState({
