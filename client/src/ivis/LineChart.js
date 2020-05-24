@@ -77,6 +77,8 @@ export class LineChart extends Component {
         margin: PropTypes.object,
         withTooltip: PropTypes.bool,
         withBrush: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -98,6 +100,7 @@ export class LineChart extends Component {
         height: 500,
         withTooltip: true,
         withBrush: true,
+        withZoom: true,
         lineVisibility: pointsOnNoAggregation,
         controlTimeIntervalChartWidth: true,
         lineCurve: d3Shape.curveLinear
@@ -188,6 +191,8 @@ export class LineChart extends Component {
                 getSignalGraphContent={(base, sigSetCid, sigCid) => <path ref={node => this.areaPathSelection[sigSetCid][sigCid] = select(node)}/>}
                 withTooltip={props.withTooltip}
                 withBrush={props.withBrush}
+                withZoom={props.withZoom}
+                zoomUpdateReloadInterval={props.zoomUpdateReloadInterval}
                 contentComponent={props.contentComponent}
                 contentRender={props.contentRender}
                 tooltipContentComponent={this.props.tooltipContentComponent}

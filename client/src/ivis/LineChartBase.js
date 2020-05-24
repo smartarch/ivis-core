@@ -130,6 +130,8 @@ export class LineChartBase extends Component {
         margin: PropTypes.object,
         withTooltip: PropTypes.bool,
         withBrush: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -718,6 +720,8 @@ export class LineChartBase extends Component {
                 compareConfigs={props.compareConfigs}
                 withTooltip={props.withTooltip}
                 withBrush={props.withBrush}
+                withZoom={props.withZoom}
+                zoomUpdateReloadInterval={props.zoomUpdateReloadInterval}
                 contentComponent={props.contentComponent}
                 contentRender={props.contentRender}
                 tooltipContentComponent={this.props.tooltipContentComponent}
