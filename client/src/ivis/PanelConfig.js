@@ -635,7 +635,7 @@ export class PdfExportDialog extends Component {
 
 
 export const panelConfigMixin = createComponentMixin({
-    deps: [withErrorHandling, panelMenuMixin, withTranslation],
+    deps: [withErrorHandling, panelMenuMixin, withTranslation, withPageHelpers],
     decoratorFn: (TargetClass, InnerClass) => {
         const inst = InnerClass.prototype;
 
@@ -723,6 +723,16 @@ export const panelConfigMixin = createComponentMixin({
                     action: () => openPermanentLinkDialog(this, true),
                     weight: 13
                 };
+
+                if (savePermitted) {
+                    const panelId = this.props.panel.id;
+                    const workspaceId = this.props.panel.workspace;
+                    menuUpdates['settings'] = {
+                        label: t('Edit settings'),
+                        action: () => this.navigateTo(`/settings/workspaces/${workspaceId}/panels/${panelId}/edit`),
+                        weight: 14
+                    };
+                }
 
                 this.updatePanelMenu(menuUpdates);
             });
