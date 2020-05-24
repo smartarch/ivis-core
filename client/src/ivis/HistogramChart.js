@@ -336,7 +336,12 @@ export class HistogramChart extends Component {
         }
     }
 
-    /** The value returned from this function is used to determine the height of the bar corresponding to the bucket */
+    /**
+     * The value returned from this function is used to determine the height of the bar corresponding to the bucket.
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} bucket - the record from server; contains 'count' field, and also 'values' field if metrics were specified
+     */
     static processBucket(self, bucket) {
         const config = self.props.config;
         if (config.metric_sigCid && config.metric_type) {
@@ -348,6 +353,19 @@ export class HistogramChart extends Component {
             return bucket.count;
     }
 
+    /**
+     * Processes the data returned from the server and returns new signalSetData object.
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} data - the data from server; contains at least 'buckets', 'step' and 'offset' fields
+     *
+     * @returns {object} - signalSetData to be saved to state; must contain:
+     *
+     *   - 'buckets' - array of objects with 'key' (left boundary of the bucket) and 'prob' (frequency; height of the bucket)
+     *   - 'step' - width of the bucket
+     *   - 'min' and 'max' (along the x-axis)
+     *   - 'maxProb' - frequency (probability) of the highest bar
+     */
     static prepareData(self, data) {
         if (data.buckets.length === 0)
             return {

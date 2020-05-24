@@ -388,6 +388,12 @@ export class HeatmapChart extends Component {
         }
     }
 
+    /**
+     * The value returned from this function is used to determine the height of the bar corresponding to the bucket.
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} bucket - the record from server; contains 'count' field, and also 'values' field if metrics were specified
+     */
     static processBucket(self, bucket) {
         const config = self.props.config;
         if (config.metric_sigCid && config.metric_type) {
@@ -401,8 +407,18 @@ export class HeatmapChart extends Component {
             return bucket.count;
     }
 
-    /** Processes the results of queries and returns the data and xType, yType, xExtent and yExtent
-     * @return {{}} data in form which can be directly passed to the setState function */
+    /**
+     * Processes the results of queries and returns the data and xType, yType, xExtent and yExtent
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} data - the data from server; contains at least 'buckets', 'step', 'offset' and 'agg_type' fields
+     *
+     * @returns {[object]} - tuple of 5 values:
+     *
+     *   - newState - data in form which can be directly passed to this.setState() function; should contain at least 'signalSetData', 'xBucketsCount', 'yBucketsCount' and 'maxProb' (frequency of highest bar) fields
+     *   - xType, yType - numeric or keyword type of data along each axis (one of DataType)
+     *   - xExtent, yExtent - [min, max] of x-axis and y-axis signal
+     */
     static prepareData(self, data) {
         const props = self.props;
         let xType = data.agg_type === "histogram" ? DataType.NUMBER : DataType.KEYWORD;
