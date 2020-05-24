@@ -3,8 +3,8 @@
 import React, {Component, useState, useEffect, useRef} from "react";
 import PropTypes from "prop-types";
 import {select, mouse} from "d3-selection";
-import {scaleTime, scaleLinear} from "d3-scale";
-import {timeFormat} from "d3-time-format";
+import {scaleUtc, scaleLinear} from "d3-scale";
+import {utcFormat} from "d3-time-format";
 import {scan} from "d3-array";
 import styles from "./media-controls.scss";
 import {withAnimationControl} from "./animation-helpers";
@@ -765,7 +765,7 @@ function generateTimestampLabelFormat(maxTimeDiff, precision) {
     ];
 
     const formatStr = grammarRules.reduce((str, func) => func(str), usedUnits).replace(new RegExp(delim, 'g'), '\u00A0');
-    return timeFormat(formatStr);
+    return utcFormat(formatStr);
 }
 
 function generateDurationLabelFormat(durLenght, precision) {
@@ -1226,7 +1226,7 @@ class PlaybackTimeline extends Component {
     }
 
     absoluteScaleInit() {
-        const scale = scaleTime()
+        const scale = scaleUtc()
             .domain([this.props.beginTs, this.props.endTs])
             .range([0, this.props.axisWidth])
             .clamp(true);

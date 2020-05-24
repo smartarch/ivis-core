@@ -4,8 +4,6 @@ import {ServerAnimation} from "./ServerAnimation";
 import {ClientAnimation} from "./ClientAnimation";
 import {controlGroups} from "../lib/media-controls";
 import {TranslationContext} from "../lib/i18n";
-import axios from "axios";
-import {getUrl} from "../lib/urls";
 
 
 class Animation extends Component {
@@ -31,14 +29,22 @@ class Animation extends Component {
     async fetchAnimationConfig() {
         // const res = await axios.get(getUrl('/rest/animation/' + this.props.params.animationId));
         const conf = {
-            type: 'server',
-            // id: 1,
-            beginTs: 20000,
-            endTs: 50000,
-
+            type: 'client',
+            beginTs: Date.parse('2017-01-01T01:00:00.000Z'),
+            endTs: Date.parse('2017-01-01T03:59:50.000Z'),
 
             interpolFunc: 'linear',
             refreshRate: 45,
+
+            //client-specific
+            minBufferedKeyframeCount: 3,
+            maxBufferedKeyframeCount: 24,
+
+            defaultPlaybackSpeedFactor: 1,
+
+            sigSetCid: 'process1',
+            signals: ['s1', 's2', 's3', 's4'],
+            //client-specific
 
             //server-specific
             pollRate: 800,
@@ -68,6 +74,7 @@ class Animation extends Component {
                 },
                 timeline: {
                     enabled: true,
+                    relative: false,
                 }
             },
         };

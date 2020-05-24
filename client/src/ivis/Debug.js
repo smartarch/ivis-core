@@ -13,7 +13,7 @@ export class Debug extends Component {
                 <li key={key.toString()}>
                     <b>{key.toString()}:</b>
                     <ul>
-                        {this.stringifyProps(prop[key])}
+                        {this.stringifyObject(prop[key])}
                     </ul>
                 </li>
             );
@@ -32,8 +32,12 @@ export class Debug extends Component {
         }
     }
 
-    stringifyProps(props) {
-        return Object.keys(props).map(key => this.stringifyProp(props, key));
+    stringifyObject(obj) {
+        if (Object.keys(obj).length === 0) {
+            return this.stringifyProp({"_empty object": String(obj)}, "_empty object");
+        }
+
+        return Object.keys(obj).map(key => this.stringifyProp(obj, key));
     }
 
     displayFunc(func) {
@@ -52,9 +56,7 @@ export class Debug extends Component {
             </>
         );
 
-        const propsToPrint = {...this.props};
-        delete propsToPrint.funcs;
-        delete propsToPrint.name;
+        const {funcs, name, ...propsToPrint} = {...this.props};
 
         return (
             <div>
@@ -66,7 +68,7 @@ export class Debug extends Component {
                         <h3> Props </h3>
 
                         <ol>
-                            {this.stringifyProps(propsToPrint)}
+                            {this.stringifyObject(propsToPrint)}
                         </ol>
                     </li>
                 </ul>

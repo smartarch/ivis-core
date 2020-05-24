@@ -18,21 +18,15 @@ class AnimatedBase extends Component {
         };
     }
     interpolate(left, right, f, ratio) {
-        const currValues = {};
+        const interpolated = {};
 
-        for (let mutableId in left.mutables) {
-            const leftValue = left.mutables[mutableId];
-            const rightValue = right.mutables[mutableId];
+        for (let key in left) {
+            const shouldInterpolate = right[key] != undefined && typeof right[key] === "number" && typeof left[key] === "number";
 
-            if (rightValue === undefined ||
-                typeof leftValue !== "number" || typeof rightValue !== "number") {
-                currValues[mutableId] = leftValue;
-            } else {
-                currValues[mutableId] = f(leftValue, rightValue, ratio);
-            }
+            interpolated[key] = shouldInterpolate ? f(left[key], right[key], ratio) : left[key];
         }
 
-        return currValues;
+        return interpolated;
     }
 
     refresh() {
@@ -47,14 +41,14 @@ class AnimatedBase extends Component {
         const ratio = (this.props.status.position - kfCurr.ts) / (kfNext.ts - kfCurr.ts);
         // console.log("Refreshing", {ratio, current: kfCurr.ts, next: kfNext.ts, position: this.props.status.position});
 
-        const mutables = this.interpolate(
+        const interpolated = this.interpolate(
             kfCurr.data,
             kfNext.data,
             this.props.interpolFunc,
             ratio
         );
 
-        this.setState({animData: {base: kfCurr.data.base, mutables}});
+        this.setState({animData: interpolated});
     }
 
     componentDidUpdate(prevProps) {

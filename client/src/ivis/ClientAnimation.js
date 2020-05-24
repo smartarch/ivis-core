@@ -7,6 +7,8 @@ import {AnimationStatusContext, AnimationControlContext} from "../lib/animation-
 import {AnimatedBase} from "./AnimatedBase";
 import {interpolFuncs} from "../lib/animation-interpolations";
 import {withAsyncErrorHandler} from "../lib/error-handling";
+import {dataAccess, TimeSeriesPointType} from "./DataAccess";
+import moment from "moment";
 
 
 class ClientAnimation extends Component {
@@ -21,12 +23,11 @@ class ClientAnimation extends Component {
         this.dataAccess = new KeyframeAccess(props.config, ::this.errorHandler);
 
         this.state = {
-            initialized: false,
             status: {
                 isPlaying: false,
                 isBuffering: true,
                 position: props.config.beginTs,
-                playbackSpeedFactor: 1,
+                playbackSpeedFactor: props.config.defaultPlaybackSpeedFactor,
             },
             controls: {
                 play: ::this.playHandler,
@@ -35,12 +36,11 @@ class ClientAnimation extends Component {
                 stop: ::this.stopHandler,
                 jumpForward: ::this.jumpForwardHandler,
                 jumpBackward: ::this.jumpBackwardHandler,
-                changeSpeed: ::this.changePlaybackSpeed,
+                changeSpeed: ::this.changePlaybackSpeedHandler,
             },
             keyframes: {},
         };
 
-        this.baseJump = 50;
         this.keyframes = [];
 
         this.playLoop = null;
@@ -50,14 +50,15 @@ class ClientAnimation extends Component {
         this.seekHandler(this.props.config.beginTs);
     }
 
+
     errorHandler(error) {
+        console.error(error);
         clearInterval(this.playLoop);
         this.setState({controls: {}});
         this.setStatus({isBuffering: true, error});
 
         return true;
     }
-
 
     playHandler() {
         this.setStatus({isPlaying: true});
@@ -90,16 +91,17 @@ class ClientAnimation extends Component {
 
         let shouldPlayAfter = false;
         if (this.state.status.isPlaying) {
-            clearInterval(this.playLoop);
             shouldPlayAfter = true;
+            clearInterval(this.playLoop);
         }
+
         this.keyframes = await this.dataAccess.reset(clampedTs);
 
         this.setStatus({isBuffering: false, position: clampedTs});
         if (shouldPlayAfter) this.playLoop = setInterval(::this.positionRefresh, this.props.config.refreshRate);
     }
 
-    changePlaybackSpeed(factor) {
+    changePlaybackSpeedHandler(factor) {
         this.dataAccess.changePlaybackSpeed(factor);
         this.setStatus({playbackSpeedFactor: factor});
     }
@@ -119,7 +121,8 @@ class ClientAnimation extends Component {
     }
 
     positionRefresh() {
-        const nextPosition = this.state.status.position + (this.state.status.playbackSpeedFactor * this.baseJump);
+        const nextPosition = this.state.status.position + (this.state.status.playbackSpeedFactor * this.props.config.refreshRate);
+
         if (nextPosition >= this.props.config.endTs) {
             this.setStatus({position: this.props.config.endTs});
             this.pauseHandler();
@@ -136,11 +139,12 @@ class ClientAnimation extends Component {
         if (this.keyframes[1].ts === this.props.config.endTs) return;
 
         let nextKf = this.dataAccess.getNext();
-
         if (nextKf.promise) {
             clearInterval(this.playLoop);
             this.setStatus({isBuffering: true});
+
             nextKf = await nextKf.promise;
+
             this.setStatus({isBuffering: false});
             this.playLoop = setInterval(::this.positionRefresh, this.props.config.refreshRate);
         }
@@ -173,13 +177,21 @@ class ClientAnimation extends Component {
             },
             {
                 name: "double speed",
-                call: this.changePlaybackSpeed.bind(this, this.state.status.playbackSpeedFactor * 2),
+                call: this.changePlaybackSpeedHandler.bind(this, this.state.status.playbackSpeedFactor * 2),
             },
         ];
 
         const interpolFunc = interpolFuncs[this.props.config.interpolFunc];
         return (
             <>
+                <Debug
+                    name={"Client Animation"}
+                    status={this.state.status}
+                    funcs={functions}
+                    thisKeyframes={this.keyframes}
+                    keyframes={this.state.keyframes}
+                />
+
                 <AnimationStatusContext.Provider value={this.state.status}>
                     <AnimationControlContext.Provider value={this.state.controls}>
                         <AnimatedBase
@@ -192,13 +204,6 @@ class ClientAnimation extends Component {
                     </AnimationControlContext.Provider>
                 </AnimationStatusContext.Provider>
 
-                <Debug
-                    name={"Client Animation"}
-                    status={this.state.status}
-                    funcs={functions}
-                    thisKeyframes={this.keyframes}
-                    keyframes={this.state.keyframes}
-                />
 
             </>
         );
@@ -207,44 +212,42 @@ class ClientAnimation extends Component {
 
 class KeyframeAccess {
     constructor(animationConfig, errorHandler) {
-        this.baseUrl = 'rest/animation/client/keyframes';
-
         this.errorHandler = errorHandler;
 
-        this.endTs = animationConfig.endTs;
+        this.config = animationConfig;
 
-        this.chunkTime = 2000;
-        this.startKeyframesCount = 3;
-
-        //TODO: Better computations?
-        this.avgFetchTime = null;
-        this.fetchTimeMult = 3;
+        this.maxFetchTime = null;
+        this.fetchTimeMult = 2;
 
         this.timeCached = 0;
-        this.timeSpeedMult = 1;
+        this.timeSpeedMult = animationConfig.defaultPlaybackSpeedFactor;
 
-        this.maxKeyframeDuration = 2000;
-
-        this.dataQueue = [];
+        this.kfQueue = [];
         this.nextChunkPromise = null;
+        this.nextChunkBeginTs = null;
+        this.nextKeyframeCount = 0;
     }
 
     async reset(startingTs) {
-        this.dataQueue = [];
-        const startingKeyframes = await this._fetchStartingKeyframes(startingTs);
+        this.kfQueue = [];
+        this.nextChunkBeginTs = startingTs;
+        this.nextKeyframeCount = this.config.minBufferedKeyframeCount;
 
-        await this._fillDataQueue();
+        const chunkData = await this._fetchNextChunk(true);
+        console.log({chunkData});
 
-        return startingKeyframes;
+        this._fillDataQueue();
+
+        return chunkData;
     }
 
     getNext() {
-        if (this.dataQueue.length === 0 && this.nextChunkPromise) {
+        if (this.kfQueue.length === 0 && this.nextChunkPromise) {
             const promise = this.nextChunkPromise.then(() => this.getNext());
             return { keyframe: null, promise };
         }
 
-        const nextKf = this.dataQueue.pop();
+        const nextKf = this.kfQueue.shift();
 
         this._fillDataQueue();
         return {keyframe: nextKf, promise: null};
@@ -260,65 +263,95 @@ class KeyframeAccess {
     @withAsyncErrorHandler
     async _fillDataQueue() {
         while(!this._hasEnoughCached()) {
-            await this._fetchNextChunk();
+            console.log("Filling queue");
+            const chunkData = await this._fetchNextChunk(false);
+            this._addKeyframes(chunkData);
         }
     }
 
     _hasEnoughCached() {
-        return (this.nextChunkBeginTs > this.endTs) ||
-            this.dataQueue.length >= 1 && (this.timeCached - this.dataQueue[this.dataQueue.length - 1].duration) * this.timeSpeedMult > this.avgFetchTime * this.fetchTimeMult;
+        return (this.nextChunkBeginTs >= this.config.endTs) ||
+            this.kfQueue.length >= 1 && (this.timeCached - this.kfQueue[0].duration) * this.timeSpeedMult > this.maxFetchTime * this.fetchTimeMult;
     }
 
-    async _fetchStartingKeyframes(startingTs) {
-        const res = await axios.get(this._getStartingKeyframesUrl(startingTs));
+    async _fetchNextChunk(withFirstKeyframe) {
+        const queries = [];
+        if (withFirstKeyframe) queries.push(this._getFirstKfQuery());
 
-        this.nextChunkBeginTs = res.data[res.data.length - 1].ts + 1;
+        queries.push(this._getNextChunkQuery(withFirstKeyframe));
 
-        const startingKeyframes = res.data.slice(0, this.startKeyframesCount);
-        if (startingKeyframes.length < res.data.length) {
-            const extraKfs = res.data.slice(this.startKeyframesCount, res.data.length);
-            this._addKeyframes(extraKfs);
-        }
-
-        return startingKeyframes;
-    }
-
-    async _fetchNextChunk() {
         const fetchBeginTs = Date.now();
-
-        this.nextChunkPromise = axios.get(this._getNextChunkUrl());
+        this.nextChunkPromise = dataAccess.query(queries);
         const data = await this.nextChunkPromise;
         this.nextChunkPromise = null;
-
         const fetchTime = Date.now() - fetchBeginTs;
 
-        this.avgFetchTime = this.avgFetchTime === null ? fetchTime : this.avgFetchTime + fetchTime/2;
+        this.maxFetchTime = Math.max(this.maxFetchTime, fetchTime);
 
-        this._addKeyframes(data.data);
+        this.nextKeyframeCount = Math.min(this.nextKeyframeCount * 2, this.config.maxBufferedKeyframeCount);
+        console.log({data});
+
+        return [].concat(...data).map(::this._processData);
     }
 
-    _addKeyframes(keyframes) {
-        let lastTs = this.dataQueue[0] ? this.dataQueue[0].ts : keyframes[0].ts;
-        for(let kf of keyframes) {
+    _processData(keyframeData) {
+        const {ts, ...data} = keyframeData;
+        const kf = {
+            ts: moment.utc(ts).valueOf(),
+            data
+        };
+        this.nextChunkBeginTs = kf.ts;
+
+        return kf;
+    }
+
+    _addKeyframes(kfs) {
+        let lastTs = this.kfQueue.length > 0 ? this.kfQueue[this.kfQueue.length - 1].ts : kfs[0].ts;
+        for (let kf of kfs) {
             kf.duration = kf.ts - lastTs;
             lastTs = kf.ts;
 
+            this.kfQueue.push(kf);
             this.timeCached += kf.duration;
-            this.dataQueue.unshift(kf);
         }
-        this.nextChunkBeginTs = lastTs + 1;
-
-        console.log(this.dataQueue);
     }
 
-    _getNextChunkUrl() {
-        const chunkEndTs = Math.min(this.endTs, this.nextChunkBeginTs + this.chunkTime);
-        return getUrl(this.baseUrl + '/ts/' + this.nextChunkBeginTs + '-' + chunkEndTs);
+    _getNextChunkQuery(withFirstKeyframe) {
+        return {
+            type: "docs",
+            args: [
+                this.config.sigSetCid,
+                ["ts", ...this.config.signals],
+                {
+                    type: "range",
+                    sigCid: "ts",
+                    gt: moment.utc(this.nextChunkBeginTs).toISOString(),
+                },
+                [
+                    {sigCid: "ts", order: "asc" }
+                ],
+                withFirstKeyframe ? this.nextKeyframeCount - 1 : this.nextKeyframeCount,
+            ]
+        };
     }
 
-    _getStartingKeyframesUrl(ts) {
-        const endTs = Math.min(this.endTs, ts + this.maxKeyframeDuration * this.startKeyframesCount);
-        return getUrl(this.baseUrl + '/ts/' + ts + '-' + endTs);
+    _getFirstKfQuery() {
+        return {
+            type: "docs",
+            args: [
+                this.config.sigSetCid,
+                ["ts", ...this.config.signals],
+                {
+                    type: "range",
+                    sigCid: "ts",
+                    lte: moment.utc(this.nextChunkBeginTs).toISOString(),
+                },
+                [
+                    { sigCid: "ts", order: "desc", }
+                ],
+                1
+            ]
+        };
     }
 }
 
