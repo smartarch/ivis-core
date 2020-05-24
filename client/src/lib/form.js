@@ -35,6 +35,7 @@ import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
 import cudStyles from "../settings/jobs/CUD.scss";
+import ParamTypes from "../settings/ParamTypes";
 
 
 const FormState = {
@@ -827,6 +828,99 @@ class ButtonRow extends Component {
     withTranslation,
     withFormStateOwner
 ])
+class ParamsLoader extends Component {
+
+    static propTypes = {
+        id: PropTypes.string,
+        label: PropTypes.string,
+        prefix: PropTypes.string,
+        taskId: PropTypes.number,
+        taskParams: PropTypes.oneOfType([PropTypes.object, PropTypes.arrayOf(PropTypes.object)]),
+        paramTypesRef: PropTypes.func,
+        help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+        format: PropTypes.string
+    };
+
+    constructor(props) {
+        super(props);
+        this.paramTypes = new ParamTypes(props.t);
+
+        if (props.paramTypesRef) {
+            props.paramTypesRef(this.paramTypes);
+        }
+
+        const params = props.taskParams ? props.taskParams : null;
+
+        this.state = {
+            params: params
+        };
+    }
+
+    componentDidMount() {
+        if (this.props.taskId) {
+            this.fetchTaskParams(this.props.taskId);
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.taskId !== prevProps.taskId) {
+            this.setState({
+                params: null
+            });
+            this.fetchTaskParams(this.props.taskId);
+        }
+    }
+
+    /*
+    onChangeBeforeValidation(mutStateData, key, oldVal, newVal) {
+        const configSpec = this.state.params;
+        if (configSpec) {
+            this.paramTypes.onChange(configSpec, mutStateData, key, oldVal, newVal)
+        }
+    }
+     */
+
+    @withAsyncErrorHandler
+    async fetchTaskParams(taskId) {
+        const result = await axios.get(getUrl(`rest/task-params/${taskId}`));
+        if (this.props.taskId === taskId) {
+            const taskParams = result.data;
+            this.getFormStateOwner().updateForm(mutData => {
+                mutData.setIn([this.props.prefix, 'value'], taskParams);
+                this.paramTypes.adopt(taskParams, mutData);
+            });
+            this.setState({params: result.data});
+        }
+    }
+
+    render() {
+        const props = this.props;
+        const t = props.t;
+        const htmlId = 'form_' + this.props.id;
+        const owner = this.getFormStateOwner();
+
+        const taskParams = this.state.params;
+        const paramsRender = taskParams ? this.paramTypes.render(taskParams, owner) : null;
+        return (
+            <>
+                {taskParams ?
+                    paramsRender &&
+                    <Fieldset label={t('Task parameters')}>
+                        {paramsRender}
+                    </Fieldset>
+                    :
+                    props.taskId &&
+                    <div className="alert alert-info" role="alert">{t('Loading task...')}</div>
+                }
+            </>
+        );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+    withFormStateOwner
+], null, ['submitFormValuesMutator', 'getFormValueIdForPicker'])
 class ListCreator extends Component {
     static propTypes = {
         id: PropTypes.string.isRequired,
@@ -951,7 +1045,8 @@ class ListCreator extends Component {
             const entryId = entryIds[pos];
             const elementId = this.getFormValueId(entryId);
             entries.push(
-                <div key={entryId} className={cudStyles.entry + (withOrder? ' ' + cudStyles.withOrder : '') + ' ' + cudStyles.entryWithButtons}>
+                <div key={entryId}
+                     className={cudStyles.entry + (withOrder ? ' ' + cudStyles.withOrder : '') + ' ' + cudStyles.entryWithButtons}>
                     <div className={entryButtonsStyles}>
                         <Button
                             className="btn-secondary"
@@ -1492,9 +1587,24 @@ const withForm = createComponentMixin({
             scheduleValidateForm(this);
         };
 
+        proto.addOnChangeBeforeValidationListener = function (listener) {
+            this.setState(previousState => {
+                const formSettings = Object.assign({}, previousState.formSettings);
+                let listeners = formSettings.onChangeBeforeValidationListeners;
+                if (listeners) {
+                    listeners = [];
+                    formSettings.onChangeBeforeValidationListeners = listeners;
+                }
+
+                listeners.push(listener);
+                return {formSettings};
+            })
+        };
+
         proto.updateForm = function (mutator) {
             this.setState(previousState => {
                 const onChangeBeforeValidationCallback = this.state.formSettings.onChangeBeforeValidation || {};
+                const onChangeBeforeValidationListeners = this.state.formSettings.onChangeBeforeValidationListeners || [];
 
                 const formState = previousState.formState.withMutations(mutState => {
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
@@ -1508,6 +1618,18 @@ const withForm = createComponentMixin({
                             }
                         } else {
                             onChangeBeforeValidationCallback(mutStateData);
+                        }
+
+                        for (const changeListener of onChangeBeforeValidationListeners) {
+                            if (typeof changeListener === 'object') {
+                                for (const key in changeListener) {
+                                    const oldValue = previousState.formState.getIn(['data', key, 'value']);
+                                    const newValue = mutStateData.getIn([key, 'value']);
+                                    changeListener[key](mutStateData, key, oldValue, newValue);
+                                }
+                            } else {
+                                changeListener(mutStateData);
+                            }
                         }
                     }));
 
@@ -1540,6 +1662,7 @@ const withForm = createComponentMixin({
                 const oldValue = previousState.formState.getIn(['data', key, 'value']);
 
                 const onChangeBeforeValidationCallback = this.state.formSettings.onChangeBeforeValidation || {};
+                const onChangeBeforeValidationListeners = this.state.formSettings.onChangeBeforeValidationListeners || [];
 
                 const formState = previousState.formState.withMutations(mutState => {
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
@@ -1551,6 +1674,16 @@ const withForm = createComponentMixin({
                             }
                         } else {
                             onChangeBeforeValidationCallback(mutStateData, key, oldValue, value);
+                        }
+
+                        for (const listener of onChangeBeforeValidationListeners) {
+                            if (typeof listener === 'object') {
+                                if (listener[key]) {
+                                    listener[key](mutStateData, key, oldValue, value);
+                                }
+                            } else {
+                                listener(mutStateData, key, oldValue, value);
+                            }
                         }
                     }));
 
@@ -1614,7 +1747,7 @@ const withForm = createComponentMixin({
                         }
                     }
                 } else if (data1 !== data2) {
-                    // console.log(prefix);
+                    // console.log(idPrefix);
                     return true;
                 }
                 return false;
@@ -1819,6 +1952,7 @@ export {
     ButtonRow,
     Button,
     ListCreator,
+    ParamsLoader,
     TreeTableSelect,
     TableSelect,
     TableSelectMode,

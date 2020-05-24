@@ -11,7 +11,7 @@ export function createComponentMixin(opts) {
     };
 }
 
-export function withComponentMixins(mixins, delegateFuns) {
+export function withComponentMixins(mixins, delegateFuns, delegateStaticFuns) {
     const mixinsClosure = new Set();
     for (const mixin of mixins) {
         console.assert(mixin);
@@ -62,19 +62,16 @@ export function withComponentMixins(mixins, delegateFuns) {
             TargetClassWithCtors[attr] = TargetClass[attr];
         }
 
-        function addStaticMethods(clazz) {
-            // This dynamically gets all properties in a new class, as we want just target class specific
-            const newClassPropNames = Object.getOwnPropertyNames(class _ {
-            });
-            const propNames = Object.getOwnPropertyNames(TargetClass)
-                .filter(name => !newClassPropNames.includes(name) && typeof TargetClass[name] === 'function');
-            for (const name of propNames) {
-                if (!clazz[name]) {
-                    Object.defineProperty(
-                        clazz,
-                        name,
-                        Object.getOwnPropertyDescriptor(TargetClass, name)
-                    );
+        function addStaticMethodsToClass(clazz) {
+            if (delegateStaticFuns) {
+                for (const staticFuncName of delegateStaticFuns) {
+                    if (!clazz[staticFuncName]) {
+                        Object.defineProperty(
+                            clazz,
+                            staticFuncName,
+                            Object.getOwnPropertyDescriptor(TargetClass, staticFuncName)
+                        );
+                    }
                 }
             }
         }
@@ -155,7 +152,7 @@ export function withComponentMixins(mixins, delegateFuns) {
                 }
             }
 
-            addStaticMethods(ComponentMixinsOuter);
+            addStaticMethodsToClass(ComponentMixinsOuter);
             return ComponentMixinsOuter;
 
         } else {
@@ -183,7 +180,7 @@ export function withComponentMixins(mixins, delegateFuns) {
                 return innerFn(props);
             }
 
-            addStaticMethods(ComponentContextProvider);
+            addStaticMethodsToClass(ComponentContextProvider);
             return ComponentContextProvider;
         }
 

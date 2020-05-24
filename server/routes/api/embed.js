@@ -10,11 +10,33 @@ router.postAsync('/embedded-panel-token', passport.loggedIn, async (req, res) =>
     const renewableBySandbox = !!req.body.renewableBySandbox;
     const impersonateUserId = req.body.impersonateUserId;
 
-    const restrictedAccessToken = await users.getRestrictedAccessToken(req.context, 'panel', {panelId, renewableBySandbox}, impersonateUserId);
+    const restrictedAccessToken = await users.getRestrictedAccessToken(req.context, 'panel', {
+        panelId,
+        renewableBySandbox
+    }, impersonateUserId);
     return res.json(restrictedAccessToken);
 });
 
 router.putAsync('/embedded-panel-token', passport.loggedIn, async (req, res) => {
+    await users.refreshRestrictedAccessToken(req.context, req.body.token);
+    return res.json();
+});
+
+router.postAsync('/embedded-template-token', passport.loggedIn, async (req, res) => {
+    const templateId = req.body.templateId;
+    const params = req.body.params;
+    const renewableBySandbox = !!req.body.renewableBySandbox;
+    const impersonateUserId = req.body.impersonateUserId;
+
+    const restrictedAccessToken = await users.getRestrictedAccessToken(req.context, 'template', {
+        templateId,
+        params,
+        renewableBySandbox
+    }, impersonateUserId);
+    return res.json(restrictedAccessToken);
+});
+
+router.putAsync('/embedded-template-token', passport.loggedIn, async (req, res) => {
     await users.refreshRestrictedAccessToken(req.context, req.body.token);
     return res.json();
 });

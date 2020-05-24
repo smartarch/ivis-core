@@ -60,7 +60,7 @@ www:
 
 # Enable to use Redis session cache or disable if Redis is not installed
 redis:
-  enabled: false
+  enabled: true
   host: localhost
   port: 6379
   db: 5
@@ -169,5 +169,5 @@ roles:
     master:
       name: "Master"
       description: "All permissions"
-      # Note that the ability to "manageScripts" means that one circumvent the "query" permission on a signal because a script has always access to all signals in the signal set.
+      # Note that the ability to "manageScripts" means that one can circumvent the "query" permission on a signal because a script has always access to all signals in the signal set.
       permissions: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts"]

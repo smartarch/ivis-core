@@ -92,7 +92,7 @@ async function listDTAjax(context, params) {
             .from('jobs')
             .innerJoin('tasks', 'tasks.id', 'jobs.task')
             .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
-        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name']
+        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name']
     );
 }
 
@@ -272,7 +272,7 @@ async function remove(context, id) {
 
         const owners = await tx('signal_sets_owners').where('job', id);
         for (let pair of owners) {
-            await signalSets.remove(contextHelpers.getAdminContext(), pair.set)
+            await signalSets.removeById(contextHelpers.getAdminContext(), pair.set)
         }
 
         await tx('jobs').where('id', id).del();

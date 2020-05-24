@@ -7,7 +7,7 @@ import {LinkButton, requiresAuthenticatedUser, Toolbar, withPageHelpers} from ".
 import {Icon} from "../../lib/bootstrap-components";
 import {withErrorHandling} from "../../lib/error-handling";
 import moment from "moment";
-import {SignalType} from "../../../../shared/signals";
+import {SignalType, SignalSource} from "../../../../shared/signals";
 import {SignalSetType} from "../../../../shared/signal-sets";
 import {tableAddDeleteButton, tableRestActionDialogInit, tableRestActionDialogRender,} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
@@ -47,6 +47,7 @@ export default class RecordsList extends Component {
         const editPermitted = !isComputed && signalSet.permissions.includes('editRecord');
         const deletePermitted = !isComputed && signalSet.permissions.includes('deleteRecord');
 
+        const notShowedSignals = [];
         const columns = [];
 
         columns.push({
@@ -56,24 +57,30 @@ export default class RecordsList extends Component {
         });
 
         let dataIdx = 1;
+        // TODO
         for (const signal of this.props.signalsVisibleForList) {
-            columns.push({
-                data: dataIdx,
-                title: signal.name,
-                render: data => {
-                    if (data !== null) {
-                        if (signal.type === SignalType.DATE_TIME) {
-                            return moment(data).toLocaleString();
+            if ((signal.source === SignalSource.JOB && signalSet.type === SignalSetType.COMPUTED)
+                || (signal.source === SignalSource.RAW && signalSet.type === SignalSetType.NORMAL)) {
+                columns.push({
+                    data: dataIdx,
+                    title: signal.name,
+                    render: data => {
+                        if (data !== null) {
+                            if (signal.type === SignalType.DATE_TIME) {
+                                return moment(data).toLocaleString();
+                            } else {
+                                return data.toString();
+                            }
                         } else {
-                            return data.toString();
+                            return <code>{t('N/A')}</code>;
                         }
-                    } else {
-                        return <code>{t('N/A')}</code>;
                     }
-                }
-            });
+                });
 
-            dataIdx += 1;
+                dataIdx += 1;
+            } else {
+                notShowedSignals.push(signal.cid);
+            }
         }
 
         if (!isComputed) {
@@ -113,6 +120,7 @@ export default class RecordsList extends Component {
                 {
                     //TODO make pretty message
                 }
+                {notShowedSignals.length > 0 && `Showing mixed sourced signals not supported. Not showing: ${notShowedSignals.join(', ')}`}
                 {isComputed && 'sorting auto-generated ids sorts on index order (as lowest priority) instead'}
                 <Table ref={node => this.table = node} withHeader dataUrl={`rest/signal-set-records-table/${sigSetId}`}
                        columns={columns}/>

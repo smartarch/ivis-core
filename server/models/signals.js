@@ -164,7 +164,7 @@ async function _validateAndPreprocess(context, tx, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
 
     enforce(entity.source != null && AllSignalSources.has(entity.source), 'Unknown source type');
-    enforce(getTypesBySource(entity.source).includes(entity.type), 'Unknown signal type');
+    enforce(getTypesBySource(entity.source).includes(entity.type), `Unknown signal type "${entity.type}"`);
 
     if (entity.source === SignalSource.DERIVED) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.set, 'manageScripts');

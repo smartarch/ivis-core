@@ -13,11 +13,11 @@ import {
     ButtonRow,
     filterData,
     Form,
-    ListCreator,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm, withFormErrorHandlers, TableSelect
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {
@@ -82,6 +82,7 @@ export default class CUD extends Component {
         entity: PropTypes.object
     }
 
+
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
@@ -90,12 +91,13 @@ export default class CUD extends Component {
             }
         } else {
             this.populateFormValues({
-                cid: '',
-                name: '',
-                description: '',
-                record_id_template: '',
-                namespace: ivisConfig.user.namespace
-            });
+                    cid: '',
+                    name: '',
+                    description: '',
+                    record_id_template: '',
+                    namespace: ivisConfig.user.namespace,
+                }
+            );
         }
     }
 
@@ -103,7 +105,9 @@ export default class CUD extends Component {
         if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
             data.record_id_template = '';
         }
+
     }
+
 
     localValidateFormValues(state) {
         const t = this.props.t;
@@ -133,8 +137,6 @@ export default class CUD extends Component {
         if (data.record_id_template.trim() === '') {
             data.record_id_template = null;
         }
-
-        ListCreator.submitFormValuesMutator('multi', data);
 
         const allowedKeys = [
             'name',
@@ -193,17 +195,13 @@ export default class CUD extends Component {
         }
     }
 
+
     render() {
         const t = this.props.t;
         const labels = this.labels;
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
-        const setsColumns = [
-            {data: 1, title: t('#')},
-            {data: 2, title: t('Name')},
-            {data: 3, title: t('Description')},
-        ];
 
         return (
             <Panel title={isEdit ? labels['Edit Signal Set'] : labels['Create Signal Set']}>
@@ -228,12 +226,6 @@ export default class CUD extends Component {
 
                     <NamespaceSelect/>
 
-                    <ListCreator id="multi" label={t('Multi')} entryElement={
-                        <TableSelect  label={t('Trigger on')} withHeader dropdown
-                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
-                                     selectionLabelIndex={2}/>
-                    }/>
-
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
@@ -246,3 +238,4 @@ export default class CUD extends Component {
         );
     }
 }
+
