@@ -47,7 +47,7 @@ async function _getBy(context, key, id, withPermissions, withSignalByCidMap) {
         const entity = await tx('signal_sets').where(key, id).first();
 
         if (!entity) {
-            shares.throwPermissionDenied();
+            shares.throwPermissionDenied({sigSetCid: id});
         }
 
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.id, 'view');
@@ -504,7 +504,7 @@ async function queryTx(tx, context, queries) {
     for (const sigSetQry of queries) {
         const sigSet = await tx('signal_sets').where('cid', sigSetQry.sigSetCid).first();
         if (!sigSet) {
-            shares.throwPermissionDenied();
+            shares.throwPermissionDenied({sigSetCid: sigSetQry.sigSetCid});
         }
 
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
@@ -528,7 +528,7 @@ async function queryTx(tx, context, queries) {
             } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
-                    shares.throwPermissionDenied();
+                    shares.throwPermissionDenied({sigCid: flt.sigCid});
                 }
                 signalsToCheck.add(sig.id);
             } else  if (flt.type === 'ids'){
@@ -561,7 +561,7 @@ async function queryTx(tx, context, queries) {
             for (const agg of aggs) {
                 const sig = signalMap[agg.sigCid];
                 if (!sig) {
-                    shares.throwPermissionDenied();
+                    shares.throwPermissionDenied({sigCid: agg.sigCid});
                 }
 
                 signalsToCheck.add(sig.id);
@@ -581,7 +581,7 @@ async function queryTx(tx, context, queries) {
                     if (sort.sigCid) {
                         const sig = signalMap[srt.sigCid];
                         if (!sig) {
-                            shares.throwPermissionDenied();
+                            shares.throwPermissionDenied({sigCid: srt.sigCid});
                         }
 
                         signalsToCheck.add(sig.id);
