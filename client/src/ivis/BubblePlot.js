@@ -12,7 +12,7 @@ import {dotShapeNames} from "./dot_shapes";
 @withComponentMixins([
     withTranslation,
     withErrorHandling
-], ["setMaxDotCount", "setWithTooltip", "getView", "setView"])
+], ["setMaxDotCount", "setWithTooltip", "getView", "setView"], ["getQueries", "getQueriesForSignalSet", "prepareData", "computeExtents", "processDocs", "filterData", "drawChart", "drawDots", "drawHighlightDot"])
 export class BubblePlot extends Component {
     constructor(props) {
         super(props);

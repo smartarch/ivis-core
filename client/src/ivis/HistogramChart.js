@@ -79,7 +79,7 @@ class TooltipContent extends Component {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-], ["getView", "setView"])
+], ["getView", "setView"], ["processBucket", "prepareData"])
 export class HistogramChart extends Component {
     constructor(props){
         super(props);

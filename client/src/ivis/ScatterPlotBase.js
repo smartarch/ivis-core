@@ -309,7 +309,7 @@ class ScatterPlotToolbar extends Component {
     withErrorHandling,
     withPageHelpers,
     intervalAccessMixin()
-], ["setMaxDotCount", "setWithTooltip", "getView", "setView"])
+], ["setMaxDotCount", "setWithTooltip", "getView", "setView"], ["getQueries", "getQueriesForSignalSet", "prepareData", "computeExtents", "processDocs", "filterData", "drawChart", "drawDots", "drawHighlightDot"])
 export class ScatterPlotBase extends Component {
     //<editor-fold desc="React methods, constructor">
     constructor(props) {

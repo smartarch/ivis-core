@@ -110,7 +110,7 @@ const DataType = {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-], ["getView", "setView"])
+], ["getView", "setView"], ["processBucket", "prepareData", "getKeywordExtent", "getKeys"])
 export class HeatmapChart extends Component {
     constructor(props){
         super(props);
