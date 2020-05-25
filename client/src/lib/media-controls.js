@@ -492,7 +492,10 @@ class PlaybackSpeedSlider extends Component {
     snapTo(factor) {
         const step = this.props.animConfig.controls.playbackSpeed.step;
 
-        return Math.floor(factor/step) * step;
+        const lowerBoundary = this.props.animConfig.controls.playbackSpeed.limits[0];
+        const factorShifted = factor - lowerBoundary;
+
+        return lowerBoundary + (Math.floor(factorShifted/step) * step);
     }
 
     render() {

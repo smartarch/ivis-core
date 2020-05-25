@@ -1,13 +1,11 @@
 import React, {Component} from "react";
-import axios from "../lib/axios";
-import {getUrl} from "../lib/urls";
 import {Debug} from "./Debug";
 import PropTypes from "prop-types";
 import {AnimationStatusContext, AnimationControlContext} from "../lib/animation-helpers";
 import {AnimatedBase} from "./AnimatedBase";
 import {interpolFuncs} from "../lib/animation-interpolations";
 import {withAsyncErrorHandler} from "../lib/error-handling";
-import {dataAccess, TimeSeriesPointType} from "./DataAccess";
+import {dataAccess} from "./DataAccess";
 import moment from "moment";
 
 
@@ -184,14 +182,6 @@ class ClientAnimation extends Component {
         const interpolFunc = interpolFuncs[this.props.config.interpolFunc];
         return (
             <>
-                <Debug
-                    name={"Client Animation"}
-                    status={this.state.status}
-                    funcs={functions}
-                    thisKeyframes={this.keyframes}
-                    keyframes={this.state.keyframes}
-                />
-
                 <AnimationStatusContext.Provider value={this.state.status}>
                     <AnimationControlContext.Provider value={this.state.controls}>
                         <AnimatedBase
@@ -200,10 +190,16 @@ class ClientAnimation extends Component {
                             keyframes={this.state.keyframes}>
 
                             {this.props.children}
+                            <Debug
+                                name={"Client Animation"}
+                                status={this.state.status}
+                                funcs={functions}
+                                thisKeyframes={this.keyframes}
+                                keyframes={this.state.keyframes}
+                            />
                         </AnimatedBase>
                     </AnimationControlContext.Provider>
                 </AnimationStatusContext.Provider>
-
 
             </>
         );
@@ -234,7 +230,6 @@ class KeyframeAccess {
         this.nextKeyframeCount = this.config.minBufferedKeyframeCount;
 
         const chunkData = await this._fetchNextChunk(true);
-        console.log({chunkData});
 
         this._fillDataQueue();
 
@@ -263,7 +258,7 @@ class KeyframeAccess {
     @withAsyncErrorHandler
     async _fillDataQueue() {
         while(!this._hasEnoughCached()) {
-            console.log("Filling queue");
+            // console.log("Filling queue");
             const chunkData = await this._fetchNextChunk(false);
             this._addKeyframes(chunkData);
         }
@@ -289,7 +284,7 @@ class KeyframeAccess {
         this.maxFetchTime = Math.max(this.maxFetchTime, fetchTime);
 
         this.nextKeyframeCount = Math.min(this.nextKeyframeCount * 2, this.config.maxBufferedKeyframeCount);
-        console.log({data});
+        // console.log({data});
 
         return [].concat(...data).map(::this._processData);
     }

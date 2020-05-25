@@ -6,52 +6,6 @@ import TestWorkspacePanel from "./panels/TestWorkspacePanel";
 
 
 class SampleAnimation extends Component {
-    constructor(props) {
-        super(props);
-
-        this.config_1 = {
-            beginTs: 0,
-            endTs: 16000,
-            type: 'server',
-            realTimeDuration: 16000,
-
-            timeline: {
-                relative: true,
-            },
-            playbackSpeedSlider: {
-                enabled: true,
-                limits: [0.25, 5],
-                step: 0.25,
-            },
-            jumpForwardButton: {
-                jump: 10,
-            },
-            jumpBackwardButton: {
-                jump: 10,
-            },
-        };
-
-        this.config_2 = {
-            beginTs: 0,
-            endTs: 15000,
-        };
-        this.animControl = {
-            changeSpeed: (value) => console.log("AnimCtrl: speed changed to:", value),
-            play: () => console.log("AnimCtrl: playing..."),
-            pause: () => console.log("AnimCtrl: pausing..."),
-
-            stop: () => console.log("AnimCtrl: stopping..."),
-            jumpForward: (value) => console.log("AnimCtrl jumping forward by:", value),
-            jumpBackward: (value) => console.log("AnimCtrl jumping backward by:", value),
-        };
-
-        this.animStatus = {
-            position: 1000*60*60*5,
-            playbackSpeedFactor: 1,
-            isPlaying: true,
-        };
-    }
-
     render() {
         return (
             <>
@@ -63,19 +17,57 @@ class SampleAnimation extends Component {
 }
 
 export default class SamplePanel extends Component {
-    constructor(props) {
-        super(props);
-    }
-
     render() {
         const panelParams = {
+            type: 'client',
+            beginTs: Date.parse('2017-01-01T01:00:00.000Z'),
+            endTs: Date.parse('2017-01-01T03:59:50.000Z'),
+
+            interpolFunc: 'linear',
+            refreshRate: 45,
+
+            //client-specific
+            minBufferedKeyframeCount: 3,
+            maxBufferedKeyframeCount: 24,
+
+            defaultPlaybackSpeedFactor: 2.5,
+
+            sigSetCid: 'process1',
+            signals: ['s1', 's2', 's3', 's4'],
+            //client-specific
+
+
+            //server-specific
+            pollRate: 800,
+            id: 'test',
+            //server-specific
+
             controlGroup: 'full',
             controlsPlacement: 'before',
-
             controls: {
-                jumpForward: {
-                    enabled: false
+                jumpBackward: {
+                    shiftMs: 2000,
+                    enabled: true,
                 },
+                jumpForward: {
+                    shiftMs: 2000,
+                    enabled: true,
+                },
+                playPause: {
+                    enabled: true,
+                },
+                stop: {
+                    enabled: true,
+                },
+                playbackSpeed: {
+                    enabled: true,
+                    step: 2.5,
+                    limits: [0.5, 10.5]
+                },
+                timeline: {
+                    enabled: true,
+                    relative: false,
+                }
             },
         };
 

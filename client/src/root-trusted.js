@@ -60,6 +60,10 @@ import SettingsSidebar from './settings/Sidebar';
 import ServerAnimationPanel from './workspaces/ServerAnimationPanel.js';
 import SamplePanel from './workspaces/SamplePanel';
 import SamplePanel2 from './workspaces/SamplePanel2';
+import AnimationSamplePanel1 from './workspaces/panel1';
+import AnimationSamplePanel2 from './workspaces/panel2';
+import AnimationSamplePanel3 from './workspaces/panel3';
+import AnimationSamplePanel4 from './workspaces/panel4';
 
 import MainMenuAuthenticated from './MainMenuAuthenticated';
 import MainMenuAnonymous from './MainMenuAnonymous';
@@ -181,7 +185,27 @@ const getStructure = t => {
                         title: t('Server-side animation'),
                         link: '/workspaces/animation/server',
                         panelComponent: ServerAnimationPanel,
-                    }
+                    },
+                    panel1: {
+                        title: t('Animation sample panel 1'),
+                        link: '/workspaces/animation/panel1',
+                        panelComponent: AnimationSamplePanel1,
+                    },
+                    panel2: {
+                        title: t('Animation sample panel 2'),
+                        link: '/workspaces/animation/panel2',
+                        panelComponent: AnimationSamplePanel2,
+                    },
+                    panel3: {
+                        title: t('Animation sample panel 3'),
+                        link: '/workspaces/animation/panel3',
+                        panelComponent: AnimationSamplePanel3,
+                    },
+                    panel4: {
+                        title: t('Animation sample panel 4'),
+                        link: '/workspaces/animation/panel4',
+                        panelComponent: AnimationSamplePanel4,
+                    },
                 }
             },
             "fullscreen-panel": {

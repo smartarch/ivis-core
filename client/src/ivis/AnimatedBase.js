@@ -14,9 +14,10 @@ class AnimatedBase extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            animData: {},
+            animData: null,
         };
     }
+
     interpolate(left, right, f, ratio) {
         const interpolated = {};
 
@@ -57,6 +58,10 @@ class AnimatedBase extends Component {
 
             this.refresh();
             // console.log("AnimatedBase: position refresh", this.props.keyframes);
+        }
+
+        if (this.props.status.isBuffering && !prevProps.status.isBuffering) {
+            this.setState({animData: null});
         }
     }
 
