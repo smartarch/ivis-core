@@ -4,7 +4,7 @@ import {ServerAnimation} from "./ServerAnimation";
 import {ClientAnimation} from "./ClientAnimation";
 import {controlGroups} from "../lib/media-controls";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withAnimationData} from "../lib/animation-helpers";
+import {withAnimationData, withAnimationStatus} from "../lib/animation-helpers";
 
 
 class Animation extends Component {
@@ -27,7 +27,7 @@ class Animation extends Component {
     }
 }
 
-@withComponentMixins([withAnimationData])
+@withComponentMixins([withAnimationData, withAnimationStatus])
 class AnimationContent extends Component {
     static propTypes = {
         width: PropTypes.string,
@@ -38,10 +38,12 @@ class AnimationContent extends Component {
         message: PropTypes.string,
         render: PropTypes.func,
         animationData: PropTypes.object,
+        animationStatus: PropTypes.object,
     }
 
     render() {
         const isLoading = this.props.animationData === null;
+        const message = !!this.props.animationStatus.error ? String(this.props.animationStatus.error) : this.props.message;
 
         return (
             <div
@@ -50,16 +52,17 @@ class AnimationContent extends Component {
                     width: this.props.width,
                     height: this.props.height,
                     margin: this.props.margin,
-                    textAling: "center",
                 }}>
 
                 { isLoading
                     &&
                         <h3
                             style={{
-                                width: "100%"
+                                width: "100%",
+                                textAlign: "center",
+                                lineHeight: this.props.height,
                             }}>
-                            {this.props.message}
+                            {message}
                         </h3>
                     ||
                         this.props.render({animationData: this.props.animationData})

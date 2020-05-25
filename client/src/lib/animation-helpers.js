@@ -13,12 +13,18 @@ const withAnimationControl = createComponentMixin({
     ]
 });
 
+const withAnimationStatus = createComponentMixin({
+    contexts: [
+        {context: AnimationStatusContext, propName: 'animationStatus'},
+    ]
+});
 
 const withAnimationData = createComponentMixin({
     contexts: [ {context: AnimationDataContext, propName: 'animationData'} ]
 });
 
 export {
+    withAnimationStatus,
     withAnimationControl,
     withAnimationData,
 

@@ -25,7 +25,7 @@ class AnimationTest {
     _updateData() {
         this.status.reachedEnd = this.status.position === this.endTs;
         this.status.realtimePosition = this.status.position / this.status.playbackSpeedFactor;
-        this.status.data.mutables.circleCx = this.status.position * this.jump;
+        this.status.data.s1 = this.status.position * this.jump;
     }
 
     _animationReset() {
@@ -36,12 +36,7 @@ class AnimationTest {
             playbackSpeedFactor: 1,
             reachedEnd: false,
             data: {
-                base: {
-                    circle: { cx: {valueId: "circleCx"} }
-                },
-                mutables: {
-                    circleCx: 0
-                }
+                s1: 0,
             }
         };
     }
