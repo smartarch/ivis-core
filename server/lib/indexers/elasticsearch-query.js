@@ -36,6 +36,7 @@ function getElsInterval(duration) {
     return duration.as('d') + 'd';
 }
 
+
 const aggHandlers = {
     min: aggSpec => ({
         id: 'min',
@@ -60,6 +61,14 @@ const aggHandlers = {
         getAggSigCid: sigCid => `_${sigCid}_max`,
         processResponse: resp => resp.value
     }),
+    sum: aggSpec => ({
+        id: 'sum',
+        getAgg: field => ({
+            sum: field
+        }),
+        getAggSigCid: sigCid => `_${sigCid}_sum`,
+        processResponse: resp => resp.value
+    }),
     percentiles: aggSpec => ({
         id: 'percentiles',
         getAgg: field => ({
@@ -70,7 +79,20 @@ const aggHandlers = {
         }),
         processResponse: resp => resp.values
     }),
+    bucket_script: aggSpec => ({
+        id: 'bucket_script',
+        getAgg: field => ({
+            bucket_script: {
+                buckets_path: {
+                    ...aggSpec.buckets_path
+                },
+                script: aggSpec.script
+            }
+        }),
+        processResponse: resp => resp.value
+    }),
 };
+
 
 function getAggHandler(aggSpec) {
     let aggHandler;
@@ -146,10 +168,10 @@ function getMinStepAndOffset(maxBucketCount, minStep, minValue, maxValue) {
 class QueryProcessor {
     constructor(query) {
         this.query = query;
-        this.signalMap = query.signalMap;
-        this.indexName = getIndexName(query.sigSet);
+        this.origSigSetSignalMap = query.signalMap;
+        this.origSigSetindexName = getIndexName(query.sigSet);
 
-        // We need to tell client what ts signal is used
+        // We need to tell client once finished what ts signal is used
         if (query.sigSet.kind === SignalSetKind.TIME_SERIES) {
             this.tsSigCid = query.sigSet.settings.ts;
         }
@@ -157,20 +179,16 @@ class QueryProcessor {
         if (query.aggSigSet) {
             this.aggSigSetIndexName = getIndexName(query.aggSigSet.sigSet);
             this.aggSigSetSignalMap = query.aggSigSet.signalMap;
+            this.hasAggSigSet = true;
         }
-    }
 
-    selectIndex() {
-        return this.aggSigSetIndexName || this.indexName;
+        // Complete substitution when possible
+        this.indexName = this.aggSigSetIndexName || this.origSigSetindexName;
+        this.signalMap = this.aggSigSetSignalMap || this.origSigSetSignalMap;
     }
-
-    selectSignalMap() {
-        return this.aggSigSetSignalMap || this.signalMap;
-    }
-
 
     createElsScript(field) {
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const fieldNamesMap = {};
         for (const sigCid in signalMap) {
             fieldNamesMap[sigCid] = getFieldName(signalMap[sigCid].id);
@@ -184,39 +202,61 @@ class QueryProcessor {
         return {source: scriptSubstituted};
     }
 
-    getField(field) {
-        if (field.source === SignalSource.DERIVED) {
-            return {script: this.createElsScript(field)};
+    getField(signal) {
+        if (signal.source === SignalSource.DERIVED) {
+            return {script: this.createElsScript(signal)};
         } else {
-            return {field: getFieldName(field.id)};
+            return {field: getFieldName(signal.id)};
         }
     }
 
     createSignalAggs(signals) {
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const aggs = {};
 
-        for (const sig in signals) {
-            for (const aggSpec of signals[sig]) {
+        for (const sigCid in signals) {
+            for (const aggSpec of signals[sigCid]) {
                 const aggHandler = getAggHandler(aggSpec);
 
-                let sigFld = signalMap[sig];
+                let signal = signalMap[sigCid];
 
-                if (!sigFld) {
-                    throw new Error(`Unknown signal ${sig}`);
+                if (!signal) {
+                    throw new Error(`Unknown signal ${sigCid}`);
                 }
 
                 // Using aggregation signals for specific stats
                 let aggSigFld;
-                if (this.aggSigSetSignalMap && aggHandler.getAggSigCid) {
-                    aggSigFld = signalMap[aggHandler.getAggSigCid(sig)];
+                if (this.hasAggSigSet && aggHandler.getAggSigCid) {
+                    aggSigFld = signalMap[aggHandler.getAggSigCid(sigCid)];
                     if (!aggSigFld) {
-                        throw new Error(`Aggregation signal for stat ${aggHandler.id} not found for signal ${sig}`);
+                        throw new Error(`Aggregation signal for stat ${aggHandler.id} not found for signal ${sigCid}`);
                     }
                 }
 
-                const sigFldName = getFieldName(sigFld.id);
-                aggs[`${aggHandler.id}_${sigFldName}`] = aggHandler.getAgg(this.getField(aggSigFld ? aggSigFld : sigFld));
+                const sigFldName = getFieldName(signal.id);
+                if (this.hasAggSigSet) {
+                    // For aggregated sets we need to calculate avg on query,
+                    // otherwise we would get avg on avg
+                    const sumHandler = getAggHandler('sum');
+                    const sumSignal = signalMap[sumHandler.getAggSigCid(sigCid)];
+                    const countSignal = signalMap[`${sigCid}_count`];
+                    if (!sumSignal || !countSignal) {
+                        throw new Error(`Avg aggregation on aggregated signal of ${sigCid} requires both sum and count aggregation present for it`);
+                    }
+                    aggs[`_${sigCid}_sum_sum`] = sumHandler.getAgg(this.getField(sumSignal));
+                    aggs[`_${sigCid}_count_sum`] = sumHandler.getAgg(this.getField(countSignal));
+                    const avgHandler = getAggHandler(
+                        {
+                            params: {
+                                sum: `_${sigCid}_sum_sum`,
+                                count: `_${sigCid}_count_sum`
+                            },
+                            script: "params.sum / params.count"
+                        });
+                    aggs[`${aggHandler.id}_${sigFldName}`] = avgHandler.getAgg();
+                } else {
+                    aggs[`${aggHandler.id}_${sigFldName}`] = aggHandler.getAgg(this.getField(aggSigFld ? aggSigFld : signal));
+                }
             }
         }
 
@@ -224,35 +264,33 @@ class QueryProcessor {
     }
 
     createElsSort(sort) {
+        // Here are all the others non-signal tied fields available for sorting
         const allowedSortFields = ['_doc', 'id'];
 
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const elsSort = [];
         for (const srt of sort) {
+            let field;
             if (srt.sigCid) {
-                const field = signalMap[srt.sigCid];
+                const signal = signalMap[srt.sigCid];
 
-                if (!field) {
-                    throw new Error('Unknown field ' + srt.sigCid);
+                if (!signal) {
+                    throw new Error('Unknown signal' + srt.sigCid);
                 }
-
-                elsSort.push({
-                    [getFieldName(field.id)]: {
-                        order: srt.order
-                    }
-                });
+                field = getFieldName(signal.id);
             } else {
-                // check for other allowed fields
                 if (allowedSortFields.includes(srt.field)) {
-                    elsSort.push({
-                        [srt.field]: {
-                            order: srt.order
-                        }
-                    });
+                    field = srt.field;
                 } else {
                     throw new Error('Unknown field ' + srt.field);
                 }
             }
+
+            elsSort.push({
+                [field]: {
+                    order: srt.order
+                }
+            });
         }
 
         return elsSort;
@@ -260,7 +298,7 @@ class QueryProcessor {
 
 
     async computeStepAndOffset() {
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const bucketGroups = new Map();
         const query = this.query;
 
@@ -286,7 +324,7 @@ class QueryProcessor {
                 }
             };
 
-            const minMaxResp = await executeElsQry(this.selectIndex(), minMaxQry);
+            const minMaxResp = await executeElsQry(this.indexName, minMaxQry);
 
             return {
                 min: minMaxResp.aggregations.min_value.value,
@@ -424,7 +462,7 @@ class QueryProcessor {
     }
 
     createElsAggs(aggs) {
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const elsAggs = {};
         let aggNo = 0;
         for (const agg of aggs) {
@@ -511,7 +549,7 @@ class QueryProcessor {
     }
 
     processSignalAggs(signals, elsSignalsResp) {
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const result = {};
 
         for (const sig in signals) {
@@ -530,7 +568,7 @@ class QueryProcessor {
     }
 
     processElsAggs(aggs, elsAggsResp) {
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
         const result = [];
 
         // TODO should the count here account for the aggregations count?
@@ -616,7 +654,7 @@ class QueryProcessor {
 
     createElsFilter(flt) {
         const query = this.query;
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
 
         if (!flt) return;
 
@@ -767,7 +805,7 @@ class QueryProcessor {
             aggs: this.createElsAggs(query.aggs)
         };
 
-        const elsResp = await executeElsQry(this.selectIndex(), elsQry);
+        const elsResp = await executeElsQry(this.indexName, elsQry);
 
         return {
             tsSigCid: this.tsSigCid,
@@ -778,7 +816,7 @@ class QueryProcessor {
 
     async processQueryDocs() {
         const query = this.query;
-        const signalMap = this.selectSignalMap();
+        const signalMap = this.signalMap;
 
         const elsQry = {
             query: this.createElsFilter(query.filter),
@@ -815,7 +853,7 @@ class QueryProcessor {
             elsQry.sort = this.createElsSort(query.docs.sort);
         }
 
-        const elsResp = await executeElsQry(this.selectIndex(), elsQry);
+        const elsResp = await executeElsQry(this.indexName, elsQry);
 
         const result = {
             tsSigCid: this.tsSigCid,
@@ -862,7 +900,7 @@ class QueryProcessor {
             aggs: this.createSignalAggs(query.summary.signals)
         };
 
-        const elsResp = await executeElsQry(this.selectIndex(), elsQry);
+        const elsResp = await executeElsQry(this.indexName, elsQry);
 
         return {
             summary: this.processSignalAggs(query.summary.signals, elsResp.aggregations)

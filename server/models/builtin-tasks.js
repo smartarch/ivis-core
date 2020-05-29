@@ -68,7 +68,7 @@ if state is None or state.get(agg_set_cid) is None:
     signals.append(signal_base)
   
   # Cid is important it is used in the system to identify related signals
-    for stat in ['min', 'max', 'count']:
+    for stat in ['min', 'max', 'count', 'sum']:
       signal = signal_base.copy()
       signal.update({
         "cid": f"_{signal_base['cid']}_{stat}",
@@ -153,6 +153,7 @@ for hit in res['aggregations']['sig_set_aggs']['buckets']:
     doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['avg']
     doc[state[agg_set_cid]['fields'][f"_{cid}_max"]]= hit[cid]['max']
     doc[state[agg_set_cid]['fields'][f"_{cid}_count"]]= hit[cid]['count']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_sum"]]= hit[cid]['sum']
   
   doc[state[agg_set_cid]['fields'][ts['cid']]] = last
   res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
