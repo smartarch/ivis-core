@@ -2,7 +2,7 @@
 
 const moment = require('moment');
 const elasticsearch = require('../elasticsearch');
-const {SignalType, SignalSource} = require('../../../shared/signals');
+const {SignalType, SignalSource,getSigCidForAggSigStat} = require('../../../shared/signals');
 const {SignalSetKind} = require('../../../shared/signal-sets');
 const {getIndexName, getFieldName} = require('./elasticsearch-common');
 
@@ -43,7 +43,7 @@ const aggHandlers = {
         getAgg: field => ({
             min: field
         }),
-        getAggSigCid: sigCid => `_${sigCid}_min`,
+        getAggSigCid: sigCid => getSigCidForAggSigStat(sigCid,'min'),
         processResponse: resp => resp.value
     }),
     avg: aggSpec => ({
@@ -58,7 +58,7 @@ const aggHandlers = {
         getAgg: field => ({
             max: field
         }),
-        getAggSigCid: sigCid => `_${sigCid}_max`,
+        getAggSigCid: sigCid => getSigCidForAggSigStat(sigCid,'max'),
         processResponse: resp => resp.value
     }),
     sum: aggSpec => ({
@@ -66,7 +66,7 @@ const aggHandlers = {
         getAgg: field => ({
             sum: field
         }),
-        getAggSigCid: sigCid => `_${sigCid}_sum`,
+        getAggSigCid: sigCid => getSigCidForAggSigStat(sigCid,'sum'),
         processResponse: resp => resp.value
     }),
     percentiles: aggSpec => ({
@@ -234,20 +234,23 @@ class QueryProcessor {
                 }
 
                 const sigFldName = getFieldName(signal.id);
-                if (this.hasAggSigSet) {
-                    // For aggregated sets we need to calculate avg on query,
-                    // otherwise we would get avg on avg
+                if (this.hasAggSigSet && aggSpec==='avg') {
+                    // For aggregated sets we need to calculate avg of signal for each bucket on query,
+                    // when using just signal with avg value in aggregation set we would get avg on avg for query
                     const sumHandler = getAggHandler('sum');
                     const sumSignal = signalMap[sumHandler.getAggSigCid(sigCid)];
-                    const countSignal = signalMap[`${sigCid}_count`];
+                    const countSignal = signalMap[getSigCidForAggSigStat(sigCid,'count')];
                     if (!sumSignal || !countSignal) {
                         throw new Error(`Avg aggregation on aggregated signal of ${sigCid} requires both sum and count aggregation present for it`);
                     }
+
+                    // These two aggregations are used just for the average calculation
                     aggs[`_${sigCid}_sum_sum`] = sumHandler.getAgg(this.getField(sumSignal));
                     aggs[`_${sigCid}_count_sum`] = sumHandler.getAgg(this.getField(countSignal));
                     const avgHandler = getAggHandler(
                         {
-                            params: {
+                            type: 'bucket_script',
+                            buckets_path: {
                                 sum: `_${sigCid}_sum_sum`,
                                 count: `_${sigCid}_count_sum`
                             },
