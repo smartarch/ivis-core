@@ -24,6 +24,13 @@ function isAggregatedType(type) {
     return [SignalType.DOUBLE, SignalType.FLOAT, SignalType.INTEGER, SignalType.LONG].includes(type);
 }
 
+/**
+ * Naming usage needs to be consistent between aggregation creating job and query processor
+ */
+function getSigCidForAggSigStat (aggSigCid, stat){
+    return `_${aggSigCid}_${stat}`;
+}
+
 const SignalSource = {
     RAW: 'raw',
     DERIVED: 'derived',
@@ -99,5 +106,6 @@ module.exports = {
     IndexMethod,
     deserializeFromDb,
     serializeToDb,
-    isAggregatedType
+    isAggregatedType,
+    getSigCidForAggSigStat
 };
