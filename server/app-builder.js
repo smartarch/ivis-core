@@ -192,7 +192,6 @@ function createApp(type) {
         app.use('/rest', panelsRest);
         app.use('/rest', settingsRest);
         app.use('/rest', serverAnimationRest);
-        // app.use('/rest', clientAnimationRest);
 
         if (type === AppType.SANDBOXED) {
             app.use('/rest', embedRest);

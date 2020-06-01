@@ -19,4 +19,5 @@ export * from './Legend';
 export * from './SVG';
 export * from './Records';
 export * from './Selector';
+export * from './Animation';
 
