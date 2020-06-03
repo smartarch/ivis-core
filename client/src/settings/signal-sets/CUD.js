@@ -16,7 +16,8 @@ import {
     FormSendMethod,
     InputField,
     TextArea,
-    withForm, withFormErrorHandlers
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
 import {
@@ -81,6 +82,7 @@ export default class CUD extends Component {
         entity: PropTypes.object
     }
 
+
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
@@ -89,12 +91,13 @@ export default class CUD extends Component {
             }
         } else {
             this.populateFormValues({
-                cid: '',
-                name: '',
-                description: '',
-                record_id_template: '',
-                namespace: ivisConfig.user.namespace
-            });
+                    cid: '',
+                    name: '',
+                    description: '',
+                    record_id_template: '',
+                    namespace: ivisConfig.user.namespace,
+                }
+            );
         }
     }
 
@@ -102,7 +105,9 @@ export default class CUD extends Component {
         if (data.record_id_template === null) { // If the signal set is created automatically, the record_id_template is not set and thus it is null
             data.record_id_template = '';
         }
+
     }
+
 
     localValidateFormValues(state) {
         const t = this.props.t;
@@ -137,11 +142,12 @@ export default class CUD extends Component {
             'name',
             'description',
             'record_id_template',
-            'namespace'
+            'namespace',
+            'cid'
         ];
 
-        if (!this.props.entity){
-            allowedKeys.push('cid', 'type');
+        if (!this.props.entity) {
+            allowedKeys.push('type');
         }
 
         return filterData(data, allowedKeys);
@@ -189,6 +195,7 @@ export default class CUD extends Component {
         }
     }
 
+
     render() {
         const t = this.props.t;
         const labels = this.labels;
@@ -231,3 +238,4 @@ export default class CUD extends Component {
         );
     }
 }
+

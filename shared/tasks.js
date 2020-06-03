@@ -1,15 +1,41 @@
 'use strict';
 
-
 const TaskType = {
-    NUMPY: 'numpy',
     PYTHON: 'python',
-    ENERGY_PLUS: 'energy_plus'
 };
 
 if (Object.freeze) {
     Object.freeze(TaskType)
 }
+
+const PythonSubtypes = {
+    ENERGY_PLUS: 'energy_plus',
+    NUMPY: 'numpy'
+};
+
+if (Object.freeze) {
+    Object.freeze(PythonSubtypes)
+}
+
+const subtypesByType = {
+    [TaskType.PYTHON]: PythonSubtypes
+};
+
+const defaultPythonLibs = ['elasticsearch'];
+
+const taskSubtypeSpecs = {
+    [TaskType.PYTHON]: {
+        libs: defaultPythonLibs,
+        [PythonSubtypes.ENERGY_PLUS]: {
+            label: 'EnergyPlus task',
+            libs: [...defaultPythonLibs, 'eppy', 'requests']
+        },
+        [PythonSubtypes.NUMPY]: {
+            label: 'Numpy task',
+            libs: [...defaultPythonLibs, 'numpy', 'dtw']
+        }
+    }
+};
 
 const BuildState = {
     SCHEDULED: 0,
@@ -24,8 +50,18 @@ if (Object.freeze) {
     Object.freeze(BuildState)
 }
 
+const TaskSource = {
+    USER: 'user',
+    BUILTIN: 'builtin',
+    BUILTIN_ADJACENT: 'builtin_adjacent'
+};
+
+if (Object.freeze) {
+    Object.freeze(BuildState)
+}
+
 function getFinalStates() {
-    return [BuildState.FINISHED, BuildState.FAILED, BuildState.UNINITIALIZED, BuildState.MAX];
+    return [BuildState.FINISHED, BuildState.FAILED, BuildState.UNINITIALIZED];
 }
 
 function getTransitionStates() {
@@ -36,9 +72,26 @@ function isTransitionState(state) {
     return getTransitionStates().includes(state);
 }
 
+function getSpecsForType(type, subtype = null) {
+    const spec = taskSubtypeSpecs[type];
+
+    if (!spec) {
+        return null;
+    }
+
+    if (subtype) {
+        return spec[subtype] ? spec[subtype] : null;
+    }
+
+    return spec;
+}
+
 module.exports = {
     TaskType,
+    subtypesByType,
+    taskSubtypeSpecs,
     BuildState,
+    TaskSource,
     getFinalStates,
     getTransitionStates,
     isTransitionState

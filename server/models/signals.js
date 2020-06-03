@@ -164,7 +164,7 @@ async function _validateAndPreprocess(context, tx, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
 
     enforce(entity.source != null && AllSignalSources.has(entity.source), 'Unknown source type');
-    enforce(getTypesBySource(entity.source).includes(entity.type), 'Unknown signal type');
+    enforce(getTypesBySource(entity.source).includes(entity.type), `Unknown signal type "${entity.type}"`);
 
     if (entity.source === SignalSource.DERIVED) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.set, 'manageScripts');
@@ -187,39 +187,43 @@ async function _validateAndPreprocess(context, tx, entity, isCreate) {
 
 async function create(context, signalSetId, entity) {
     return await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createSignal');
-        await shares.enforceEntityPermissionTx(tx, context, 'signalSet', signalSetId, 'createSignal');
-
-        entity.set = signalSetId;
-        await _validateAndPreprocess(context, tx, entity, true);
-
-        const signalSet = await tx('signal_sets').where('id', signalSetId).first();
-
-        const filteredEntity = filterObject(entity, allowedKeysCreate);
-        const ids = await tx('signals').insert(filteredEntity);
-        const id = ids[0];
-
-        await shares.rebuildPermissionsTx(tx, {
-            entityTypeId: 'signal',
-            entityId: id
-        });
-
-        const fieldAdditions = {
-            [id]: entity.type
-        };
-
-        switch (entity.source) {
-            case SignalSource.RAW:
-                await signalStorage.extendSchema(signalSet, fieldAdditions);
-                break;
-
-            case SignalSource.JOB:
-                await indexer.onExtendSchema(signalSet, fieldAdditions);
-                break;
-        }
-
-        return id;
+        return await createTx(tx, context, signalSetId, entity);
     });
+}
+
+async function createTx(tx, context, signalSetId, entity) {
+    await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createSignal');
+    await shares.enforceEntityPermissionTx(tx, context, 'signalSet', signalSetId, 'createSignal');
+
+    entity.set = signalSetId;
+    await _validateAndPreprocess(context, tx, entity, true);
+
+    const signalSet = await tx('signal_sets').where('id', signalSetId).first();
+
+    const filteredEntity = filterObject(entity, allowedKeysCreate);
+    const ids = await tx('signals').insert(filteredEntity);
+    const id = ids[0];
+
+    await shares.rebuildPermissionsTx(tx, {
+        entityTypeId: 'signal',
+        entityId: id
+    });
+
+    const fieldAdditions = {
+        [id]: entity.type
+    };
+
+    switch (entity.source) {
+        case SignalSource.RAW:
+            await signalStorage.extendSchema(signalSet, fieldAdditions);
+            break;
+
+        case SignalSource.JOB:
+            await indexer.onExtendSchema(signalSet, fieldAdditions);
+            break;
+    }
+
+    return id;
 }
 
 
@@ -290,6 +294,7 @@ module.exports.getById = getById;
 module.exports.listDTAjax = listDTAjax;
 module.exports.listByCidDTAjax = listByCidDTAjax;
 module.exports.create = create;
+module.exports.createTx = createTx;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.remove = remove;
 module.exports.serverValidate = serverValidate;

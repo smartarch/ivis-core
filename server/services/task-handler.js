@@ -11,9 +11,9 @@ const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-comm
 const moment = require('moment');
 const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputDir;
 const {getAdminContext} = require('../lib/context-helpers');
-const createSigSet = require('../models/signal-sets').create;
-const createSignal = require('../models/signals').create;
-const {resolveAbs, getFieldsetPrefix} = require('../../shared/templates');
+const createSigSet = require('../models/signal-sets').createTx;
+const createSignal = require('../models/signals').createTx;
+const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helpers');
 
 const es = require('../lib/elasticsearch');
 const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
@@ -39,19 +39,6 @@ const checkInterval = config.tasks.checkInterval * 1000;
 
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
-
-const numpyHandler = {
-    ...pythonHandler,
-    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail)
-};
-
-const energyHandler= {
-    ...pythonHandler,
-    init: (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.ENERGY_PLUS, id, code, destDir, onSuccess, onFail)
-};
-
-handlers.set(TaskType.NUMPY, numpyHandler);
-handlers.set(TaskType.ENERGY_PLUS, energyHandler);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
@@ -183,11 +170,12 @@ async function afterDelay(msg, task, job) {
 
 /**
  * Prepare entities specifications for a job, like index name in es.
+ * @param job
  * @param jobParams Stored job parameters
  * @param taskParams Set task parameters
  * @returns {Promise<void>}
  */
-async function getEntitiesFromParams(jobParams, taskParams) {
+async function getEntitiesFromParams(job, jobParams, taskParams) {
     const entities = {
         signalSets: {},
         signals: {}
@@ -220,10 +208,40 @@ async function getEntitiesFromParams(jobParams, taskParams) {
         return walker;
     }
 
-    // Walks all subtrees of params and gets info for signals and signalSets found
-    async function loadFromParams(prefix, jobParamSpec, params) {
+    async function addAllSignalsOfSignalSet(signalSet) {
 
-        for (let param of params) {
+        if (!entities.signals[signalSet.cid]) {
+            entities.signals[signalSet.cid] = {};
+        }
+
+        const signals = await knex('signals').where({set: signalSet.id});
+        for (const signal of signals) {
+            if (entities.signals[signalSet.cid][signal.cid]) {
+                // info already stored
+                continue;
+            }
+            entities.signals[signalSet.cid][signal.cid] = getSignalEntitySpec(signal);
+        }
+    }
+
+    function getSignalEntitySpec(signal) {
+        return {
+            ...signal,
+            field: getFieldName(signal.id),
+        };
+    }
+
+    function getSignalSetEntitySpec(signalSet) {
+        return {
+            ...signalSet,
+            index: getIndexName(signalSet),
+        };
+    }
+
+    // Walks all subtrees of params and gets info for signals and signalSets found
+    async function loadFromParams(prefix, jobParamsSpec, taskParamsSpec) {
+
+        for (let param of taskParamsSpec) {
 
             /* TODO check whether param can be undefined, if not throw error here for unspecified one
             let paramValue = jobParams[param.id];
@@ -235,27 +253,30 @@ async function getEntitiesFromParams(jobParams, taskParams) {
             switch (param.type) {
                 case 'signalSet': {
 
-                    const cid = jobParamSpec[param.id];
+                    const signalSetCid = jobParamsSpec[param.id];
 
-                    if (!cid) {
+                    if (!signalSetCid) {
                         throw new Error(`Job doesn't specify parameter ${param.id}.`);
                     }
 
-                    if (entities.signalSets[cid]) {
+                    if (entities.signalSets[signalSetCid]) {
                         // info already stored
                         continue;
                     }
 
-                    const sigSet = await knex('signal_sets').where({cid: cid}).first();
-                    if (!sigSet) {
-                        throw new Error(`Set with cid ${cid} not found.`);
+                    const signalSet = await knex('signal_sets').where({cid: signalSetCid}).first();
+                    if (!signalSet) {
+                        throw new Error(`Set with cid ${signalSetCid} not found.`);
                     }
 
-                    entities.signalSets[cid] = {
-                        index: getIndexName(sigSet),
-                        name: sigSet.name,
-                        namespace: sigSet.namespace
-                    };
+
+                    entities.signalSets[signalSetCid] = getSignalSetEntitySpec(signalSet);
+
+
+                    if (param.includeSignals === true) {
+                        await addAllSignalsOfSignalSet(signalSet);
+                    }
+
                     break;
                 }
 
@@ -266,13 +287,13 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                         throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
                     }
 
-                    const sigCid = jobParamSpec[param.id];
-                    if (!sigCid) {
+                    const signalCid = jobParamsSpec[param.id];
+                    if (!signalCid) {
                         throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
                     }
 
                     if (entities.signals[signalSetCid]) {
-                        if (entities.signals[signalSetCid][sigCid]) {
+                        if (entities.signals[signalSetCid][signalCid]) {
                             // info already stored
                             continue;
                         }
@@ -280,29 +301,25 @@ async function getEntitiesFromParams(jobParams, taskParams) {
                         entities.signals[signalSetCid] = {};
                     }
 
-                    const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                    if (!sigSet) {
+                    const signalSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                    if (!signalSet) {
                         throw new Error(`Signal set with cid ${param.cid} not found.`);
                     }
 
 
-                    const sig = await knex('signals').where({cid: sigCid, set: sigSet.id}).first();
-                    if (!sig) {
-                        throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
+                    const signal = await knex('signals').where({cid: signalCid, set: signalSet.id}).first();
+                    if (!signal) {
+                        throw new Error(`Signal with cid ${signalCid} in set ${signalSet.id} not found.`);
                     }
 
-                    entities.signals[signalSetCid][sigCid] = {
-                        field: getFieldName(sig.id),
-                        name: sig.name,
-                        namespace: sig.namespace
-                    };
+                    entities.signals[signalSetCid][signalCid] = getSignalEntitySpec(signal);
                     break;
                 }
 
                 case 'fieldset': {
                     if (param.children) {
                         let idx = 0;
-                        for (const child of jobParamSpec[param.id]) {
+                        for (const child of jobParamsSpec[param.id]) {
                             await loadFromParams(getFieldsetPrefix(prefix, param, idx), child, param.children);
                             idx++;
                         }
@@ -319,7 +336,22 @@ async function getEntitiesFromParams(jobParams, taskParams) {
     }
 
     await loadFromParams('/', jobParams, taskParams);
+    // Load all owned signal sets
+    const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
+    for (const signalSet of ownedSignalSets) {
+        if (!entities.signalSets[signalSet.cid]) {
+            entities.signalSets[signalSet.cid] = getSignalSetEntitySpec(signalSet);
+        }
+        await addAllSignalsOfSignalSet(signalSet);
+    }
+
     return entities;
+}
+
+async function getSignalSetsOwnedByJob(jobId) {
+    return await knex('signal_sets_owners').select('signal_sets.*').innerJoin('signal_sets', function () {
+        this.on('signal_sets_owners.set', '=', 'signal_sets.id').andOn('signal_sets_owners.job', '=', jobId);
+    });
 }
 
 /**
@@ -339,6 +371,20 @@ async function checkAndSetMsgRunStatus(runId, status, output) {
     }
 }
 
+async function getOwnedEntities(job) {
+    const owned = {};
+    const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
+    for (const signalSet of ownedSignalSets) {
+        if (!owned.signalSets) {
+            owned.signalSets = [];
+        }
+
+        owned.signalSets.push(signalSet.cid);
+    }
+
+    return owned;
+}
+
 /**
  * This is a core of run msg handling process, where msg always ends up being in the work queue.
  * @param msg
@@ -350,7 +396,8 @@ async function processRunMsg(msg, task, job) {
     const spec = msg.spec;
     try {
         spec.params = JSON.parse(job.params);
-        spec.entities = await getEntitiesFromParams(spec.params, JSON.parse(task.settings).params);
+        spec.entities = await getEntitiesFromParams(job, spec.params, JSON.parse(task.settings).params);
+        spec.owned = await getOwnedEntities(job);
     } catch (error) {
         return void await onRunFail(job.id, spec.runId, null, error.message);
     }
@@ -637,9 +684,11 @@ async function handleBuild(workEntry) {
             await setState(id, BuildState.PROCESSING);
 
             await handler.build(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onBuildFail(id, warnings, errors));
         } catch (err) {
@@ -679,10 +728,15 @@ async function handleInit(workEntry) {
     } else {
         try {
             await setState(id, BuildState.INITIALIZING);
+            const task = await knex.table('tasks').where('id', id).first();
+            const subtype = JSON.parse(task.settings).subtype;
             await handler.init(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id: id,
+                    subtype: subtype,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onInitFail(id, warnings, errors));
         } catch (err) {
@@ -766,36 +820,66 @@ function parseRequest(req) {
 /**
  * This function processes all requests coming from the type handlers.
  * @param jobId
- * @param request
+ * @param requestStr
  * @returns {Promise<Object>}
  */
-async function onRunRequest(jobId, request) {
+async function onRunRequest(jobId, requestStr) {
     let response = {};
-    if (request) {
-        let req = {};
-        try {
-            req = parseRequest(request);
-        } catch (err) {
-            response.error = `Request parsing failed: ${err.message}`;
-            return response;
+
+    if (!requestStr) {
+        response.error = "Request not specified";
+        return response;
+    }
+
+    let request = {};
+    try {
+        request = parseRequest(requestStr);
+
+        if (request.id) {
+            response.id = request.id;
         }
 
-        if (req.type) {
-            switch (req.type) {
-                case JobMsgType.CREATE_SIGNALS:
-                    if (req.sigSet) {
-                        return await processSetReq(jobId, req.sigSet);
-                    }
-                    break;
-                case  JobMsgType.STORE_STATE:
-                    if (req[STATE_FIELD]) {
-                        await storeRunState(jobId, req[STATE_FIELD]);
-                    }
-                    break;
-                default:
-                    break;
-            }
+    } catch (err) {
+        response.error = `Request parsing failed: ${err.message}`;
+        return response;
+    }
+
+    if (!request.type) {
+        response.error = "Type not specified";
+        return response;
+    }
+
+    try {
+        switch (request.type) {
+            case JobMsgType.CREATE_SIGNALS:
+                if (request.signalSets || request.signals) {
+                    const reqResult = await processCreateRequest(jobId, request.signalSets, request.signals);
+                    response = {
+                        ...response,
+                        ...reqResult
+                    };
+                } else {
+                    response.error = `Either signalSets or signals have to be specified`;
+                }
+                break;
+            case  JobMsgType.STORE_STATE:
+                if (request[STATE_FIELD]) {
+                    const reqResult = await storeRunState(jobId, request[STATE_FIELD]);
+                    response = {
+                        ...response,
+                        ...reqResult
+                    };
+                } else {
+                    response.error(`${STATE_FIELD} not specified`)
+                }
+                break;
+            default:
+                response.error = "Type not recognized";
+                break;
         }
+    } catch (error) {
+        log.warn(LOG_ID, error);
+        response.error = error.message;
     }
     return response;
 }
@@ -813,42 +897,97 @@ async function onRunRequest(jobId, request) {
  * Signals are specified in sigSet.signals
  * Uses same data format as web creation
  * @param jobId
- * @param sigSet
+ * @param signalSets
  * @returns {Promise<IndexInfo>} Created indices and mapping
  */
-async function processSetReq(jobId, sigSet) {
-    const indexInfo = {};
+async function processCreateRequest(jobId, signalSets, signalsSpec) {
+    const esInfo = {};
 
-    const signals = sigSet.signals;
-    delete sigSet.signals;
+    async function createSignalSetWithSignals(tx, signalSet) {
 
-    sigSet.type = SignalSetType.COMPUTED;
+        const esSetInfo = {};
+
+        let signals = signalSet.signals;
+        delete signalSet.signals;
+
+        signalSet.type = SignalSetType.COMPUTED;
+
+        signalSet.id = await createSigSet(tx, getAdminContext(), signalSet);
+        esSetInfo.index = getIndexName(signalSet);
+        esSetInfo.type = TYPE_JOBS;
+
+        esSetInfo.fields = {};
+        if (signals) {
+            if (!Array.isArray(signals)) {
+                signals = [signals];
+            }
+
+            for (const signal of signals) {
+                // Here are possible overwrites of input from job
+                signal.weight_list = 0;
+                signal.weight_edit = null;
+                signal.source = SignalSource.JOB;
+                const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
+                esSetInfo['fields'][signal.cid] = getFieldName(sigId);
+            }
+        }
+
+        await tx('signal_sets_owners').insert({job: jobId, set: signalSet.id});
+        return esSetInfo;
+    }
+
+    async function createComputedSignal(tx, signalSetId, signal) {
+        // Here are possible overwrites of input form job
+        signal.weight_list = 0;
+        signal.weight_edit = null;
+        signal.source = SignalSource.JOB;
+        const sigId = await createSignal(tx, getAdminContext(), signalSetId, signal);
+
+        // TODO should add something like signal_sets_owners for signals probably
+        return getFieldName(sigId);
+    }
 
     try {
         await knex.transaction(async (tx) => {
-                sigSet.id = await createSigSet(getAdminContext(), sigSet);
-                indexInfo.index = getIndexName(sigSet);
-                indexInfo.type = '_doc';
-
-                indexInfo.fields = {};
-                for (const signal of signals) {
-                    // Here are possible overwrites of input form job
-                    signal.weight_list = 0;
-                    signal.weight_edit = null;
-                    signal.source = SignalSource.JOB;
-                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal);
-                    indexInfo.fields[signal.cid] = getFieldName(sigId);
+            if (signalSets) {
+                if (Array.isArray(signalSets)) {
+                    for (let signalSet of signalSets) {
+                        esInfo[signalSet.cid] = await createSignalSetWithSignals(tx, signalSet);
+                    }
+                } else {
+                    esInfo[signalSets.cid] = await createSignalSetWithSignals(tx, signalSets);
                 }
-
-                await tx('signal_sets_owners').insert({job: jobId, set: sigSet.id});
             }
-        );
+
+            if (signalsSpec) {
+                for (let [sigSetCid, signals] of Object.entries(signalsSpec)) {
+                    const sigSet = await tx('signal_sets').where('cid', sigSetCid).first();
+                    if (!sigSet) {
+                        throw new Error(`Signal set with cid ${sigSetCid} not found`);
+                    }
+
+                    esInfo[sigSetCid] = {};
+                    esInfo[sigSetCid]['index'] = getIndexName(sigSet);
+                    esInfo[sigSetCid]['type'] = TYPE_JOBS;
+                    esInfo[sigSetCid]['fields'] = {};
+
+                    if (!Array.isArray(signals)) {
+                        signals = [signals];
+                    }
+
+                    for (let signal of signals) {
+                        esInfo[sigSetCid]['fields'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
+                    }
+
+                }
+            }
+        });
     } catch (error) {
         log.warn(LOG_ID, error);
-        indexInfo.error = error.message;
+        esInfo.error = error.message;
     }
 
-    return indexInfo;
+    return esInfo;
 }
 
 /**
@@ -857,7 +996,6 @@ async function processSetReq(jobId, sigSet) {
  * @returns {Promise<void>} config field retrieved from ES
  */
 async function loadJobState(id) {
-    let jobState = null;
     try {
         const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
 
@@ -885,8 +1023,8 @@ async function storeRunState(id, state) {
     jobBody[STATE_FIELD] = state;
     try {
         await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
-    } catch (error) {
-        log.warn(LOG_ID, error);
+    } catch (err) {
+        return {error: err.message};
     }
 }
 
@@ -909,16 +1047,22 @@ async function handleRun(workEntry) {
         await updateRun(runId, {status: RunStatus.RUNNING});
         runData.started_at = new Date();
         inProcessMsgs.set(runId, handler);
+
+        const runConfig = {
+            jobId: jobId,
+            runId: runId,
+            taskDir: spec.taskDir,
+            inputData: {
+                params: spec.params,
+                entities: spec.entities,
+                owned: spec.owned,
+                state: await loadJobState(jobId)
+            }
+        };
+
         handler.run(
-            jobId,
-            runId,
-            spec.params,
-            spec.entities,
-            await loadJobState(jobId),
-            spec.taskDir,
-            async (request) => {
-                return await onRunRequest(jobId, request);
-            },
+            runConfig,
+            async (request) => await onRunRequest(jobId, request),
             (output, config) => onRunSuccess(jobId, runId, runData, output, config),
             (error) => onRunFail(jobId, runId, runData, error)
         );
@@ -1054,7 +1198,7 @@ async function runTimeTriggers() {
 }
 
 function logErr(err) {
-    log.info(LOG_ID, err.stack);
+    log.error(LOG_ID, err.stack);
 }
 
 // This line starts the time trigger functionality

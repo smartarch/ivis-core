@@ -64,6 +64,14 @@ class DataAccess {
             histogram: {
                 getQueries: ::this.getHistogramQueries,
                 processResults: ::this.processHistogramResults
+            },
+            aggs: {
+                getQueries: ::this.getAggsQueries,
+                processResults: ::this.processAggsResults
+            },
+            summary: {
+                getQueries: ::this.getSummaryQueries,
+                processResults: ::this.processSummaryResults
             }
         };
     }
@@ -554,38 +562,72 @@ class DataAccess {
     /*
       signals = [ sigCid1, sigCid2 ]
     */
-    getHistogramQueries(sigSetCid, signals, maxBucketCount, minStep, filter) {
+    getHistogramQueries(sigSetCid, signals, maxBucketCounts, minSteps, filter) {
+        if (Number.isInteger(maxBucketCounts) || maxBucketCounts === undefined)
+            maxBucketCounts = signals.map(x => maxBucketCounts); // copy numeric value for each signal
+        else if (signals.length !== maxBucketCounts.length)
+            throw new Error("maxBucketCounts should be a single integer or an array with same length as signals");
+
+        if (Number.isFinite(minSteps) || minSteps === undefined)
+            minSteps = signals.map(x => minSteps); // copy numeric value for each signal
+        else if (signals.length !== minSteps.length)
+            throw new Error("minSteps should be a single number or an array with same length as signals");
+
+        let bucketGroups = {};
+        signals.map((sigCid, index) => {
+           bucketGroups[sigCid + ":" + index] = {
+               maxBucketCount: maxBucketCounts[index],
+               minStep: minSteps[index]
+           };
+        });
+
         const qry = {
             sigSetCid,
             filter,
-            bucketGroups: {
-                bucket: {
-                    maxBucketCount,
-                    minStep
-                }
-            },
+            bucketGroups: bucketGroups,
             aggs: []
         };
 
-        for (const sigCid of signals) {
-            qry.aggs.push(
+        let aggs = qry.aggs;
+        for (const [index, sigCid] of signals.entries()) {
+            aggs.push(
                 {
                     sigCid,
-                    bucketGroup: 'bucket',
-                    minDocCount: 0
+                    bucketGroup: sigCid + ":" + index,
+                    minDocCount: 0,
+                    aggs: []
                 }
             );
+            aggs = aggs[0].aggs;
         }
 
         return [qry];
     }
 
     processHistogramResults(responseData, sigSetCid, signals) {
+        const processBucketsRecursive = function(bucket) {
+            if (bucket.aggs && bucket.aggs.length > 0) {
+                let buckets = bucket.aggs[0].buckets.map(processBucketsRecursive);
+                return {
+                    step: bucket.aggs[0].step,     // step of the inner aggregation
+                    offset: bucket.aggs[0].offset, // offset of the inner aggregation
+                    buckets: buckets,
+                    key: bucket.key,
+                    count: bucket.count
+                }
+            }
+            else
+                return {
+                    key: bucket.key,
+                    count: bucket.count
+                };
+        };
+
         if (signals.length > 0) {
             return {
                 step: responseData[0].aggs[0].step,
                 offset: responseData[0].aggs[0].offset,
-                buckets: responseData[0].aggs.map(x => x.buckets)
+                buckets: responseData[0].aggs[0].buckets.map(b => processBucketsRecursive(b))
             };
         } else {
             return {
@@ -614,6 +656,44 @@ class DataAccess {
 
     processDocsResults(responseData, sigSetCid, signals) {
         return responseData[0].docs;
+    }
+
+
+    /*
+        aggs = [ { sigCid, agg_type } ]
+    */
+    getAggsQueries(sigSetCid, filter, aggs) {
+        const qry = {
+            sigSetCid,
+            filter,
+            aggs
+        };
+
+        return [qry];
+    }
+
+    processAggsResults(responseData) {
+        return responseData[0].aggs;
+    }
+
+
+    /*
+        summary: {
+            signals: [sigCid: ['min', 'max', 'avg']]
+        }
+     */
+    getSummaryQueries(sigSetCid, filter, summary) {
+        const qry = {
+            sigSetCid,
+            filter,
+            summary
+        };
+
+        return [qry];
+    }
+
+    processSummaryResults(responseData) {
+        return responseData[0].summary;
     }
 
 

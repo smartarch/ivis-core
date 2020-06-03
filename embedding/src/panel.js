@@ -1,18 +1,50 @@
 'use strict';
+const {VIRTUAL_WORKSPACE_ID, VIRTUAL_PANEL_ID} = require('../../shared/panels');
 
 export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToken, callbacks) {
-    function restCall(method, url, data, callback) {
-        const xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = () => {
-            if (xhttp.readyState === 4 && xhttp.status === 200) {
-                callback(xhttp.responseText ? JSON.parse(xhttp.responseText) : undefined);
-            }
-        };
-        xhttp.open(method, url);
-        xhttp.setRequestHeader("Content-type", "application/json");
+    const entityParams = {
+        type: 'panel',
+        id: panelId
+    };
 
-        xhttp.send(data ? JSON.stringify(data) : null);
-    }
+    embedEntity(domElementId, ivisSandboxUrlBase, entityParams, accessToken, callbacks);
+}
+
+/***
+ *
+ * @param domElementId
+ * @param ivisSandboxUrlBase
+ * @param templateId
+ * @param config With possible properties: {name, description, params}
+ * @param accessToken
+ * @param callbacks
+ */
+export function embedTemplate(domElementId, ivisSandboxUrlBase, templateId, config, accessToken, callbacks) {
+    const entityParams = {
+        type: 'template',
+        id: templateId,
+        config: config
+    };
+
+    embedEntity(domElementId, ivisSandboxUrlBase, entityParams, accessToken, callbacks);
+}
+
+function restCall(method, url, data, callback) {
+    const xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = () => {
+        if (xhttp.readyState === 4 && xhttp.status === 200) {
+            callback(xhttp.responseText ? JSON.parse(xhttp.responseText) : undefined);
+        }
+    };
+
+    xhttp.open(method, url);
+    xhttp.setRequestHeader("Content-type", "application/json");
+
+    xhttp.send(data ? JSON.stringify(data) : null);
+}
+
+function embedEntity(domElementId, ivisSandboxUrlBase, entityParams, accessToken, callbacks) {
 
     function getAnonymousSandboxUrl(path) {
         return ivisSandboxUrlBase + 'anonymous/' + (path || '');
@@ -22,10 +54,12 @@ export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToke
         return ivisSandboxUrlBase + accessToken + '/' + (path || '');
     }
 
+    const {type, id} = entityParams;
+
     let refreshAccessTokenTimeout = null;
     const scheduleRefreshAccessToken = () => {
         refreshAccessTokenTimeout = setTimeout(() => {
-            restCall('PUT', getSandboxUrl('rest/embedded-panel-renew-restricted-access-token'), { token: accessToken }, () => {
+            restCall('PUT', getSandboxUrl('rest/embedded-entity-renew-restricted-access-token'), {token: accessToken}, () => {
                 scheduleRefreshAccessToken();
             });
         }, 30 * 1000);
@@ -33,7 +67,7 @@ export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToke
     scheduleRefreshAccessToken();
 
 
-    restCall('GET', getSandboxUrl(`rest/panels/${panelId}`), null, panel => {
+    restCall('GET', getSandboxUrl(`rest/${type}s/${id}`), null, entity => {
         let contentNodeIsLoaded = false;
 
         const sendMessage = (type, data) => {
@@ -49,11 +83,35 @@ export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToke
                 // It seems that sometime the message that the content node does not arrive. However if the content root notifies us, we just proceed
                 contentNodeIsLoaded = true;
 
+                let panel;
+                if (type === 'template') {
+                    panel = {
+                        "id": VIRTUAL_PANEL_ID,
+                        "name": entityParams.config.name || "",
+                        "description": entityParams.config.description || "",
+                        "workspace": VIRTUAL_WORKSPACE_ID,
+                        "template": id,
+                        "builtin_template": null,
+                        "params": entityParams.config.params || {},
+                        "namespace": entity.namespace,
+                        "order": null,
+                        "templateParams": entity.settings.params,
+                        "templateElevatedAccess": entity.elevated_access,
+                        "permissions": [
+                            "edit",
+                            "view"
+                        ],
+                        "orderBefore": 'none'
+                    };
+                } else {
+                    panel = entity;
+                }
+
                 const contentProps = {
                     panel: panel
                 };
 
-                sendMessage('init', { accessToken, contentProps });
+                sendMessage('init', {accessToken, contentProps});
 
             } else if (msg.type === 'rpcRequest') {
                 const method = msg.data.method;

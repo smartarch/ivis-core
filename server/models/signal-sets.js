@@ -13,12 +13,14 @@ const shares = require('./shares');
 const {IndexingStatus, IndexMethod} = require('../../shared/signals');
 const signals = require('./signals');
 const {SignalSetType} = require('../../shared/signal-sets');
-const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/templates');
+const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
 const {SignalType, SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
+
+const dependencyHelpers = require('../lib/dependency-helpers');
 
 const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template']);
 const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template']);
@@ -119,7 +121,6 @@ async function listRecordsESAjax(tx, context, sigSet, params, signals) {
     );
 }
 
-
 async function list() {
     return await knex('signal_sets');
 }
@@ -159,7 +160,7 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
 }
 
 
-async function _createTx(tx, context, entity) {
+async function createTx(tx, context, entity) {
     shares.enforceGlobalPermission(context, 'allocateSignalSet');
     await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createSignalSet');
 
@@ -193,7 +194,7 @@ async function _createTx(tx, context, entity) {
 
 async function create(context, entity) {
     return await knex.transaction(async tx => {
-        return await _createTx(tx, context, entity);
+        return await createTx(tx, context, entity);
     });
 }
 
@@ -222,14 +223,23 @@ async function updateWithConsistencyCheck(context, entity) {
     });
 }
 
-async function remove(context, id) {
+async function _remove(context, key, id) {
     await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'signalSet', id, 'delete');
+        const existing = await tx('signal_sets').where(key, id).first();
 
-        const existing = await tx('signal_sets').where('id', id).first();
+        if (!existing) {
+            shares.throwPermissionDenied();
+        }
 
-        await tx('signals').where('set', id).del();
-        await tx('signal_sets').where('id', id).del();
+        await shares.enforceEntityPermissionTx(tx, context, 'signalSet', existing.id, 'delete');
+
+        // TODO cant use ensure dependecies here as job doesn't have foreign key to signal-sets, but this
+        // probably should be handled better, as there may be other extensions
+        const exists = await tx('aggregation_jobs').where('set', existing.id).first();
+        enforce(!exists,`Signal set has aggregation ${exists ? exists.id: ''} delete it first.`);
+
+        await tx('signals').where('set', existing.id).del();
+        await tx('signal_sets').where('id', existing.id).del();
 
         if (existing.type !== SignalSetType.COMPUTED) {
             await signalStorage.removeStorage(existing);
@@ -237,6 +247,14 @@ async function remove(context, id) {
             return await indexer.onRemoveStorage(existing);
         }
     });
+}
+
+async function removeById(context, id) {
+    return await _remove(context, 'id', id);
+}
+
+async function removeByCid(context, cid) {
+    return await _remove(context, 'cid', cid);
 }
 
 // Thought this method modifies the storage schema, it can be called concurrently from async. This is meant to simplify coding of intake endpoints.
@@ -251,7 +269,7 @@ async function _ensure(context, cid, schema, defaultName, defaultDescription, de
                 namespace: defaultNamespace
             };
 
-            const id = await _createTx(tx, context, signalSet);
+            const id = await createTx(tx, context, signalSet);
             signalSet.id = id;
         }
 
@@ -507,18 +525,18 @@ async function queryTx(tx, context, queries) {
                 for (const fltChild of flt.children) {
                     checkFilter(fltChild);
                 }
-
             } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
                     shares.throwPermissionDenied();
                 }
                 signalsToCheck.add(sig.id);
-
             } else  if (flt.type === 'ids'){
                // empty
-            }
-            else {
+            } else if (flt.type === 'function_score') {
+                if (!flt.function)
+                    throw new Error('Function not specified for function_score query');
+            } else {
                 throw new Error(`Unknown filter type "${flt.type}"`);
             }
         };
@@ -726,8 +744,10 @@ module.exports.getByCid = getByCid;
 module.exports.listDTAjax = listDTAjax;
 module.exports.list = list;
 module.exports.create = create;
+module.exports.createTx = createTx;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
-module.exports.remove = remove;
+module.exports.removeById = removeById;
+module.exports.removeByCid = removeByCid;
 module.exports.serverValidate = serverValidate;
 module.exports.ensure = ensure;
 module.exports.getRecord = getRecord;

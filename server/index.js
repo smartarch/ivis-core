@@ -50,7 +50,7 @@ async function initAndStart() {
             log.info('Express', `WWW server [${appName}] listening on HTTPS port ${addr.port}`);
         });
 
-        em.invoke('server.setup', server, app);
+        em.invoke('server.setup', server, app, appType);
 
         server.listen(port, host, callback);
     }
