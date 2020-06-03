@@ -203,7 +203,7 @@ export default class CUD extends Component {
                         dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
                         disabled={!!(isEdit || isSignalsetTimeseries)}
                     />
-
+                    {/*
                     <DatePicker
                         id={'offset'}
                         label={t("Offset")}
@@ -211,7 +211,7 @@ export default class CUD extends Component {
                         parseDate={str => parseDate(str)}
                         disabled={isEdit}
                     />
-
+                    */}
                     <InputField id="interval"
                                 label={t('Interval')}
                                 help={t('Bucket interval - add s(seconds), m(minute), h(hour), d(day) right after numeric value to select the unit.')}

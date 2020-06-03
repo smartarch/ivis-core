@@ -88,7 +88,7 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
         if (!this.props.entity) {
-            const wizardData = getWizard(data.type, data.wizard);
+            const wizardData = getWizard(data.type, data.subtype, data.wizard);
             if (wizardData) {
                 wizardData.wizard(data);
             } else {
