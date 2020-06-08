@@ -83,6 +83,7 @@ class KeyframeBuffer {
     }
 }
 
+//TODO: needs thorough check
 class ServerAnimation extends Component {
     static propTypes = {
         children: PropTypes.node,
@@ -125,19 +126,25 @@ class ServerAnimation extends Component {
     }
 
     componentDidUpdate(prevProps) {
+        //TODO: on config change???
+        let nextStatus = {};
         if (prevProps.lastFetchedStatus !== this.props.lastFetchedStatus) {
-            console.log("New status",{old: prevProps.lastFetchedStatus, new: this.props.lastFetchedStatus});
-            const optionalCurrKeyframe = prevProps.lastFetchedKeyframe !== this.props.lastFetchedKeyframe && this.props.lastFetchedKeyframe;
-            this.handleStatusChange(optionalCurrKeyframe);
+            // console.log("New status",{old: prevProps.lastFetchedStatus, new: this.props.lastFetchedStatus});
+            nextStatus = this.handleStatusChange();
 
             if (this.initialStatus) {
                 this.initialStatus = false;
                 this.setState({controls: this.animControls});
             }
-        } else if (prevProps.lastFetchedKeyframe !== this.props.lastFetchedKeyframe) {
+        }
+
+        if (prevProps.lastFetchedKeyframe !== this.props.lastFetchedKeyframe) {
             // console.log("New keyframe", {old: prevProps.lastFetchedKeyframe, new: this.props.lastFetchedKeyframe});
             this.buffer.push(this.props.lastFetchedKeyframe);
+            if (!this.isPlaying && (nextStatus.isBuffering || this.state.status.isBuffering)) nextStatus.isBuffering = false;
         }
+
+        if (Object.keys(nextStatus).length > 0) this.setStatus(nextStatus);
 
         if (this.props.statusFetchError && !prevProps.statusFetchError) {
             this.errorHandler(this.props.statusFetchError);
@@ -153,12 +160,12 @@ class ServerAnimation extends Component {
     }
 
 
-    handleStatusChange(optionalCurrKeyframe) {
+    handleStatusChange() {
         const newStatus = this.props.lastFetchedStatus.status;
         const diffLog = this.props.lastFetchedStatus.diffLog;
         const nextStatus = {};
 
-        console.log("Status change", {current: this.state.status, new: newStatus, newDiff: diffLog});
+        // console.log("Status change", {current: this.state.status, new: newStatus, newDiff: diffLog});
 
         if (this.localPlayControl) {
             this.synchronize(newStatus);
@@ -184,20 +191,13 @@ class ServerAnimation extends Component {
             this.localPlayControl = true;
         }
 
-        if (optionalCurrKeyframe) {
-            this.buffer.push(optionalCurrKeyframe);
-            if (!this.isPlaying) nextStatus.isBuffering = false;
-        }
-
-        if (Object.keys(nextStatus).length > 0) this.setStatus(nextStatus);
+        return nextStatus;
     }
 
     setStatus(status) {
         this.setState((prevState) => {
             const newStatus = Object.assign({}, prevState.status, status);
             const newKeyframes = {curr: this.buffer.current, next: this.buffer.next};
-
-            newStatus.reachedEnd = newStatus.position === this.props.config.endTs;
 
             // console.log({"pushed status": newStatus});
             return { status: newStatus, keyframes: newKeyframes };
@@ -207,8 +207,14 @@ class ServerAnimation extends Component {
     refresh() {
         // console.log("Refreshing");
         const getPositionJump = () => {
+            //TODO: getting rid of realtimeTs, instead calculating realTime by
+            //multiplication with speed factor
+
+            const jump = this.savedInterval || Date.now() - this.lastRefreshTs;
+            this.lastRefreshTs = Date.now();
+
             const jumpPerMs = (this.buffer.next.ts - this.buffer.current.ts)/(this.buffer.next.realtimeTs - this.buffer.current.realtimeTs);
-            return jumpPerMs*this.props.config.refreshRate;
+            return jumpPerMs*jump;
         };
 
         if (this.state.status.position === this.props.config.endTs) {
@@ -227,6 +233,7 @@ class ServerAnimation extends Component {
 
         if (!this.isBuffering && !this.buffer.hasMinimalDuration()) {
             // console.log("Buffering started");
+            this.lastRefreshTs = Date.now();
             this.isBuffering = true;
             this.setStatus({isBuffering: true});
         } else if (!this.isBuffering && this.buffer.hasMinimalDuration()) {
@@ -238,18 +245,26 @@ class ServerAnimation extends Component {
             );
 
 
-            if (nextPosition >= this.buffer.next.ts) {
+            //
+            while (this.buffer.hasMinimalDuration() && nextPosition >= this.buffer.next.ts) {
                 this.buffer.shift();
             }
 
-            this.setStatus({ position: nextPosition });
+            if (!this.buffer.hasMinimalDuration()) {
+                this.isBuffering = true;
+                this.setStatus({isBuffering: true});
+            } else {
+                this.setStatus({ position: nextPosition });
+            }
+        } else {
+            this.lastRefreshTs = Date.now();
         }
     }
 
     synchronize(serverStatus) {
         const localStatus = this.state.status;
 
-        console.log("Synchronizing", {local: localStatus, server: serverStatus});
+        // console.log("Synchronizing", {local: localStatus, server: serverStatus});
 
         if (localStatus.isPlaying && !serverStatus.isPlaying) {
             this.controlRequest("play", {});
@@ -270,17 +285,12 @@ class ServerAnimation extends Component {
 
 
     handlePlay(nextStatus) {
-        if (this.isPlaying) {
-            //TODO: Remove after testing
-            console.log("Playing twice");
-            return;
-        }
-
         this.isPlaying = true;
         this.isBuffering = !this.buffer.hasStartingDuration();
 
         nextStatus.isPlaying = true;
         nextStatus.isBuffering = this.isBuffering;
+        this.lastRefreshTs = Date.now();
         this.playInterval = setInterval(::this.refresh, this.props.config.refreshRate);
     }
 
@@ -322,7 +332,6 @@ class ServerAnimation extends Component {
         if (!this.localPlayControl) await this.controlRequest("pause", {});
     }
 
-    @withAsyncErrorHandler
     async stop() {
         if (this.state.status.isPlaying) this.pause();
         this.seek(this.props.config.beginTs);
@@ -334,7 +343,7 @@ class ServerAnimation extends Component {
         this.handleSeek(position, nextStatus);
         this.setStatus(nextStatus);
 
-        this.lastSeekTo = this.state.status.isPlaying ? Math.max(0, position - this.props.config.pollRate/4 * this.state.status.playbackSpeedFactor) : position;
+        this.lastSeekTo = this.state.status.isPlaying ? Math.max(this.props.config.beginTs, position - this.props.config.pollRate/4 * this.state.status.playbackSpeedFactor) : position;
         await this.controlRequest("seek", {position: this.lastSeekTo});
     }
 
@@ -344,6 +353,7 @@ class ServerAnimation extends Component {
         const nextStatus = {};
         const currKeyframe = isPlaying ? null : this.buffer.shift();
 
+        //TODO: weird
         this.handlePlaybackSpeedChange(newFactor, nextStatus);
         if (currKeyframe) {
             this.buffer.push(currKeyframe);
@@ -361,8 +371,6 @@ class ServerAnimation extends Component {
 
 
     render() {
-        const functions = [];
-
         const interpolFunc = interpolFuncs[this.props.config.interpolFunc];
         return (
             <>
@@ -377,7 +385,6 @@ class ServerAnimation extends Component {
                             <Debug
                                 name={"Server Animation"}
                                 state={this.state}
-                                funcs={functions}
                                 config={this.props.config}
                                 buffer={this.buffer._inner()}
                             />
@@ -399,7 +406,7 @@ function withStatusPoll(AnimationComp) {
         constructor(props) {
             super(props);
 
-            this.url = "rest/animation/" + props.config.id + "/status";
+            this.statusUrl = "rest/animation/" + props.config.id + "/status";
 
             this.accumulatedStatus = null;
             this.beforeFirstStatus = null;
@@ -414,6 +421,7 @@ function withStatusPoll(AnimationComp) {
         }
 
         componentDidUpdate(prevProps, prevState) {
+            //TODO: on config change???
             if (prevState.lastFetchedStatus !== this.state.lastFetchedStatus && this.accumulatedStatus) {
                 console.log("processing accumulated:", this.accumulatedStatus.position);
                 const accumulatedStatus = this.accumulatedStatus;
@@ -433,7 +441,7 @@ function withStatusPoll(AnimationComp) {
 
         @withAsyncErrorHandler
         async fetchStatus() {
-            const res = await axios.get(getUrl(this.url));
+            const res = await axios.get(getUrl(this.statusUrl));
             // console.log("Fetched status:", res.data);
 
             const {data, ...status} = res.data;
