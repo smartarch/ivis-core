@@ -1,117 +1,127 @@
+@import "node_modules/@coreui/coreui/scss/variables/colors";
 
-$grey: #73818f;
-$black: #000;
-$darkGrey: #2f353a;
-$light: #f0f3f5;
-
-$primary: #20a8d8;
-$secondary: #c8ced3;
-
-
-    .label {
-        user-select: none;
-    }
-
-.timeline {
-    color: #000;
-
-    .labelButton {
-        // fill: #bbb;
-    }
-
-    .tickLabel {
-        font-size: 0.9em;
-    }
-
-    .playedHighlight {
-        fill: $primary;
-    }
-
-    .playbackPositionSelector {
-        color: $primary;
-
-        .label {
-            fill: $black;
-        }
-
-        .labelButton {
-        }
-
-        .selector {
-        }
-
-    }
-
-    .hoverSelector {
-        color: $secondary;
-
-        .label {
-            fill: $black;
-        }
-
-        .labelButton {
-        }
-
-        .selector {
-        }
-    }
-}
-
-.slider {
-    color: $black;
-
-    .label {
-        font-weight: bold;
-    }
-    .sliderDomain {
-    }
-
-    .sliderSelector {
-        fill: #fff;
-    }
-
-    .sliderSelectorOnMouseHover {
-        fill: $primary;
-    }
-}
-
-.button {
-    color: $black;
-
-    .buttonFrame {
-        fill: white;
-    }
-
-    .buttonFrameOnMouseHover {
-        fill: $primary;
-    }
-}
-
-.disabled {
-    color: $secondary;
+.label {
+    user-select: none;
 }
 
 .controlGroup {
     width: 100%;
 
-    svg {
-        vertical-align: top;
-    }
+    :global {
+        .row {
+            height: 25px;
 
-    .floatLeft {
-        display: inline;
-        float: left;
-    }
-
-    .floatRight {
-        display: inline;
-        float: right;
-    }
-    .clear {
-        clear: both;
+            [class^="col-"] {
+                height: inherit;
+            }
+        }
     }
 }
 
+.changeSpeedButton {
+    border-top-left-radius: inherit;
+    border-bottom-left-radius: inherit;
+}
 
+//TODO: needs some work, still has outline, wider than it should
+.changeSpeedDropdown {}
+.changeSpeedMenu {
+    .changeSpeedMenuItem {
+        font-size: 0.8em;
+        padding: 0.5em;
+        font-weight: bold;
+    }
+}
+
+.mediaButtonGroup {
+    height: inherit;
+    width: 100%;
+
+    .mediaButton:not(:first-child),
+    .changeSpeedDropdown:not(:first-child) {
+        margin-left: 1px;
+
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+}
+
+//---Theme---
+//TODO: split functional styles from themed ones
+.timeline {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+
+    svg {
+        overflow: visible;
+    }
+
+    .axis {
+        stroke: $light;
+        stroke-width: 15px; //only px allowed
+        stroke-linecap: round;
+    }
+
+    .progressBar {
+        @extend .axis;
+        stroke: $primary;
+    }
+
+    .positionLabel {
+        @extend .label;
+        fill: $primary;
+        font-weight: bold;
+    }
+
+    .positionHoverLabel {
+        @extend .label;
+        fill: $dark;
+    }
+
+    .pointer {
+        fill: $dark;
+    }
+
+    .tick {
+        stroke: $dark;
+        stroke-width: 3px;
+    }
+
+    .tickLabel {
+        @extend .label;
+        fill: $dark;
+    }
+}
+
+.mediaButton {
+    font-size: 0.8em;
+    box-shadow: none;
+    height: 100%;
+    color: $light;
+    font-weight: bold;
+
+    &:active, &:focus {
+        outline: none;
+        box-shadow: none;
+    }
+}
+
+.darkChangeSpeedMenu {
+    .darkChangeSpeedMenuItem {
+        background-color: $dark;
+        color: $light;
+
+        &.active {
+            background-color: $primary;
+            color: $dark;
+        }
+
+        &:focus, &:hover {
+            background-color: $light;
+            color: $dark;
+        }
+    }
+}
 
 

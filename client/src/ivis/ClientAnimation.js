@@ -30,8 +30,7 @@ class ClientAnimation extends Component {
                 isPlaying: false,
                 isBuffering: true,
                 position: props.config.beginTs,
-                //TODO: provide default
-                playbackSpeedFactor: props.config.defaultPlaybackSpeedFactor,
+                playbackSpeedFactor: props.config.controls.changeSpeed.initial || 1,
             },
             controls: {
                 //TODO: handling of enabled/disabled here?
@@ -371,8 +370,8 @@ class KeyframeAccess {
         this.fetchTimeMult = 2;
 
         this.approxMaxFetchedTime = this.config.approxMaxFetchedTime || 30000;
-        //TODO: rename and move to initialValue
-        this.timeSpeedFactor = this.config.defaultPlaybackSpeedFactor || 1;
+
+        this.timeSpeedFactor = this.config.controls.changeSpeed.initial || 1;
     }
 
 
