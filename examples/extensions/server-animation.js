@@ -15,7 +15,7 @@ class AnimationTest {
         this.status.position = Math.min(this.endTs, this.status.position + (this.refreshRate * this.status.playbackSpeedFactor));
         this._updateData();
 
-        if (this.iteration % 500) log.info(this.status.position);
+        // log.info(this.status.position);
 
         if (this.status.position === this.endTs) {
             this.pause();
@@ -24,7 +24,6 @@ class AnimationTest {
 
     _updateData() {
         this.status.reachedEnd = this.status.position === this.endTs;
-        this.status.realtimePosition = this.status.position / this.status.playbackSpeedFactor;
         this.status.data.s1 = this.status.position * this.jump;
     }
 
@@ -32,7 +31,6 @@ class AnimationTest {
         this.status = {
             isPlaying: false,
             position: 0,
-            realtimePosition: 0,
             playbackSpeedFactor: 1,
             reachedEnd: false,
             data: {
@@ -46,6 +44,7 @@ class AnimationTest {
     }
 
     play() {
+        log.info("Playing");
         if (!this.status.isPlaying && this.status.position !== this.endTs) {
             this.refreshInterval = setInterval(
                 this._refresh.bind(this),
@@ -93,6 +92,7 @@ class AnimationTest {
     }
 
     changeSpeed(params) {
+        log.info("Changing speed to:", params.factor);
         this.status.playbackSpeedFactor = params.factor;
     }
 }

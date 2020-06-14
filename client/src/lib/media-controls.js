@@ -8,270 +8,18 @@ import {interpolateString} from "d3-interpolate";
 import styles from "./media-controls.scss";
 import {withAnimationControl} from "./animation-helpers";
 import {withComponentMixins} from "./decorator-helpers";
-import {Button, ButtonDropdown} from "./bootstrap-components";
-import moment from "moment";
+import {Button, ButtonDropdown, Icon} from "./bootstrap-components";
 
-class PlaybackSpeedSlider extends Component {
-    static propTypes = {
-        width: PropTypes.number,
-        height: PropTypes.number,
-        margin: PropTypes.shape({
-            top: PropTypes.number,
-            bottom: PropTypes.number,
-            left: PropTypes.number,
-            right: PropTypes.number,
-        }),
+//TODO: default label format for both relative and absolute
+//TODO: default factorFormat for ChangeSpeedButton
 
-        borderWidth: PropTypes.number,
-        sliderRadius: PropTypes.number,
-
-        animConfig: PropTypes.object,
-        animControl: PropTypes.object,
-        animStatus: PropTypes.object,
-    }
-
-    static defaultConfig = {
-        margin: {
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-        },
-    }
-
-    labelFormat(factor) {
-        return factor.toFixed(2) + "x";
-    }
-
-    snapTo(factor) {
-        const step = this.props.animConfig.controls.playbackSpeed.step;
-
-        const lowerBoundary = this.props.animConfig.controls.playbackSpeed.limits[0];
-        const factorShifted = factor - lowerBoundary;
-
-        return lowerBoundary + (Math.floor(factorShifted/step) * step);
-    }
-
-    render() {
-        return (
-            <Slider
-                width={this.props.width}
-                height={this.props.height}
-                margin={this.props.margin}
-
-                borderWidth={this.props.borderWidth}
-                sliderRadius={this.props.sliderRadius}
-
-                enabled={!!this.props.animControl.changeSpeed && this.props.animConfig.controls.playbackSpeed.enabled}
-                domain={this.props.animConfig.controls.playbackSpeed.limits}
-
-                value={this.props.animStatus.playbackSpeedFactor}
-                setValue={this.props.animControl.changeSpeed}
-
-                labelFormat={::this.labelFormat}
-                snapTo={::this.snapTo}
-            />
-        );
-    }
-}
-
-class Slider extends Component {
-    static propTypes = {
-        width: PropTypes.number,
-        height: PropTypes.number,
-        sliderRadius: PropTypes.number,
-        margin: PropTypes.shape({
-            left: PropTypes.number,
-            right: PropTypes.number,
-            top: PropTypes.number,
-            bottom: PropTypes.number,
-        }),
-
-        borderWidth: PropTypes.number,
-
-        domain: PropTypes.arrayOf(PropTypes.number),
-
-        snapTo: PropTypes.func,
-        value: PropTypes.number,
-        setValue: PropTypes.func,
-
-        labelFormat: PropTypes.func,
-
-        enabled: PropTypes.bool,
-    }
-
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            scale: null,
-            value: this.props.value,
-        };
-
-        this.sliding = false;
-    }
-
-    componentDidUpdate(prevProps) {
-        if (this.props.enabled && !prevProps.enabled) {
-            this.attachEvents();
-        } else if (!this.props.enabled && prevProps.enabled) {
-            this.detachEvents();
-        }
-
-        if (this.props.domain !== prevProps.domain || this.props.width !== prevProps.width ||
-            this.props.sliderRadius !== prevProps.sliderRadius) {
-            this.scaleInit();
-        }
-
-        if (this.props.value !== prevProps.value && !this.sliding) {
-            this.setState({value: this.props.value});
-        }
-    }
-
-    componentDidMount() {
-        this.scaleInit();
-        if (this.props.enabled) this.attachEvents();
-    }
-
-    attachEvents() {
-        const selectorSel = select(this.selectorN);
-        const domainSel = select(this.domainN);
-        const containerSel = select(this.domainContainerN);
-
-        const getMouseValue = () => {
-            const x = mouse(this.domainN)[0];
-            const value = this.state.scale.invert(x);
-            return this.props.snapTo(value);
-        };
-
-        const moveSelector = (val) => {
-            selectorSel.attr("transform", `translate(${this.state.scale(val)}, 0)`);
-            select(this.labelN).text(this.props.labelFormat(val));
-        };
-
-        const endSliding = () => {
-            this.sliding = false;
-            selectorSel.classed(styles.sliderSelectorOnMouseHover, false);
-            containerSel.on("mousemove mouseup mouseleave", null);
-        };
-
-        const startSliding = () => {
-            this.sliding = true;
-            containerSel
-                .on("mousemove", () => {
-                    const val = getMouseValue();
-                    moveSelector(val);
-                })
-                .on("mouseup", () => {
-                    endSliding();
-                    const val = getMouseValue();
-                    this.setState({
-                        value: val
-                    });
-                    this.props.setValue(val);
-                })
-                .on("mouseleave", () => {
-                    endSliding();
-                    moveSelector(this.state.value);
-                });
-        };
-
-
-        selectorSel
-            .on("mouseenter", () => selectorSel.classed(styles.sliderSelectorOnMouseHover, true))
-            .on("mouseleave", () => !this.sliding && selectorSel.classed(styles.sliderSelectorOnMouseHover, false))
-            .on("mousedown", startSliding)
-            .attr("cursor", "pointer");
-
-        domainSel
-            .on("mousedown", startSliding)
-            .attr("cursor", "pointer");
-    }
-
-    detachEvents() {
-        const selectorSel = select(this.selectorN);
-        const domainSel = select(this.domainN);
-        const containerSel = select(this.domainContainerN);
-
-        containerSel
-            .on("mousedown mouseup mouseleave", null);
-        domainSel
-            .attr("cursor", "default")
-            .on("mousedown", null);
-        selectorSel
-            .classed(styles.sliderSelectorOnMouseHover, false)
-            .attr("cursor", "default")
-            .on("mouseenter mouseleave mousedown", null);
-    }
-
-    getDomainWidth() {
-        return this.props.width - 2*this.props.sliderRadius;
-    }
-
-    scaleInit() {
-        const scale = scaleLinear()
-            .domain(this.props.domain)
-            .range([0, this.getDomainWidth()])
-            .clamp(true);
-
-        this.setState({scale});
-    }
-
-    render() {
-        const domainWidth = this.getDomainWidth();
-        const domainTop = this.props.margin.top + this.props.height/2;
-        const selectorShift = this.state.scale ? this.state.scale(this.state.value) : 0;
-
-        return (
-            <svg xmlns="http://www.w3.org/2000/svg"
-                width={this.props.width + this.props.margin.left + this.props.margin.right}
-                height={this.props.height + this.props.margin.top + this.props.margin.bottom}
-                className={styles.slider + " " + (this.props.enabled ? "" : styles.disabled)}
-                ref={node => this.domainContainerN = node}>
-
-                <text className={styles.label}
-                    textAnchor="middle"
-                    dominantBaseline="ideographic"
-                    fill="currentColor"
-                    x={this.props.margin.left + this.props.width/2}
-                    y={this.props.margin.top}
-                    ref={node => this.labelN = node}>
-                    {this.props.labelFormat(this.state.value)}
-                </text>
-
-                <g transform={`translate(${this.props.margin.left + this.props.sliderRadius}, ${domainTop})`}
-                    color="currentColor">
-                    <line
-                        className={styles.sliderDomain}
-                        x1="0"
-                        y1="0"
-                        x2={domainWidth}
-                        y2="0"
-                        strokeWidth={this.props.borderWidth*2}
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        ref={node => this.domainN = node}/>
-
-                    <circle transform={`translate(${selectorShift}, 0)`}
-                        className={styles.sliderSelector}
-                        cx={0}
-                        cy={0}
-                        r={this.props.sliderRadius - 2*this.props.borderWidth}
-                        strokeWidth={this.props.borderWidth}
-                        stroke="currentColor"
-                        ref={node => this.selectorN = node}/>
-                </g>
-            </svg>
-        );
-    }
-}
-
-
+@withComponentMixins([withAnimationControl])
 class PlayPauseButton extends Component {
     static propTypes = {
-        control: PropTypes.object,
-        status: PropTypes.object,
-        config: PropTypes.object,
+        animationControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+        enabled: PropTypes.bool,
+        visible: PropTypes.bool,
 
         className: PropTypes.string,
     }
@@ -280,27 +28,29 @@ class PlayPauseButton extends Component {
         super(props);
 
         this.state = {
-            isPlaying: props.status.isPlaying,
+            isPlaying: props.animationStatus.isPlaying,
         };
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.status.isPlaying !== prevProps.status.isPlaying) {
-            this.setState({isPlaying: this.props.status.isPlaying});
+        if (this.props.animationStatus.isPlaying !== prevProps.animationStatus.isPlaying) {
+            this.setState({isPlaying: this.props.animationStatus.isPlaying});
         }
     }
 
     handleClick() {
         if (this.state.isPlaying) {
             this.setState({isPlaying: false});
-            this.props.control.pause();
+            this.props.animationControl.pause();
         } else {
             this.setState({isPlaying: true});
-            this.props.control.play();
+            this.props.animationControl.play();
         }
     }
 
     render() {
+        if (!this.props.visible) return <></>;
+
         const icon = this.state.isPlaying ? "pause" : "play";
         const title = icon.charAt(0).toUpperCase() + icon.slice(1);
 
@@ -308,96 +58,121 @@ class PlayPauseButton extends Component {
             <Button
                 title={title}
                 icon={icon}
-                className={this.props.className}
+                className={styles.mediaButton + " " + (this.props.className || "")}
 
                 type={"button"}
                 onClickAsync={::this.handleClick}
-                disabled={!this.props.control.play || !this.props.control.pause || !this.props.config.enabled}
+                disabled={!this.props.animationControl.play || !this.props.animationControl.pause || !this.props.enabled}
             />
         );
     }
 }
 
+@withComponentMixins([withAnimationControl])
 class StopButton extends Component {
     static propTypes = {
-        control: PropTypes.object,
-        status: PropTypes.object,
-        config: PropTypes.object,
+        animationControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+        enabled: PropTypes.bool,
+        visible: PropTypes.bool,
 
         className: PropTypes.string,
     }
 
     render() {
+        if (!this.props.visible) return <></>;
+
         return (
             <Button
                 title={"Stop"}
                 icon={"stop"}
-                className={this.props.className}
+                className={styles.mediaButton + " " + (this.props.className || "")}
 
                 type={"button"}
-                onClickAsync={this.props.control.stop}
-                disabled={!this.props.control.stop || !this.props.config.enabled}
+                onClickAsync={this.props.animationControl.stop}
+                disabled={!this.props.animationControl.stop || !this.props.enabled}
             />
         );
     }
 }
 
+@withComponentMixins([withAnimationControl])
 class JumpForwardButton extends Component {
     static propTypes = {
-        control: PropTypes.object,
-        status: PropTypes.object,
-        config: PropTypes.object,
+        animationControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+
+        enabled: PropTypes.bool,
+        visible: PropTypes.bool,
+        shiftMs: PropTypes.number,
 
         className: PropTypes.string,
     }
 
     render() {
+        if (!this.props.visible) return <></>;
+
         return (
             <Button
                 title={"Jump froward"}
                 icon={"step-forward"}
-                className={this.props.className}
+                className={styles.mediaButton + " " + (this.props.className || "")}
 
                 type={"button"}
-                onClickAsync={this.props.control.jumpForward && this.props.control.jumpForward.bind(null, this.props.config.shiftMs)}
-                disabled={!this.props.control.jumpForward && this.props.config.enabled}
+                onClickAsync={this.props.animationControl.jumpForward && this.props.animationControl.jumpForward.bind(null, this.props.shiftMs)}
+                disabled={!this.props.animationControl.jumpForward && this.props.enabled}
             />
         );
     }
 }
 
+@withComponentMixins([withAnimationControl])
 class JumpBackwardButton extends Component {
     static propTypes = {
-        control: PropTypes.object,
-        status: PropTypes.object,
-        config: PropTypes.object,
+        animationControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+
+        enabled: PropTypes.bool,
+        visible: PropTypes.bool,
+        shiftMs: PropTypes.number,
 
         className: PropTypes.string,
     }
 
     render() {
+        if (!this.props.visible) return <></>;
+
         return (
             <Button
                 title={"Jump backward"}
                 icon={"step-backward"}
-                className={this.props.className}
+                className={styles.mediaButton + " " + (this.props.className || "")}
 
                 type={"button"}
-                onClickAsync={this.props.control.jumpBackward && this.props.control.jumpBackward.bind(null, this.props.config.shiftMs)}
-                disabled={!this.props.control.jumpBackward || !this.props.config.enabled}
+                onClickAsync={this.props.animationControl.jumpBackward && this.props.animationControl.jumpBackward.bind(null, this.props.shiftMs)}
+                disabled={!this.props.animationControl.jumpBackward || !this.props.enabled}
             />
         );
     }
 }
 
+@withComponentMixins([withAnimationControl])
 class ChangeSpeedButton extends Component {
     static propTypes = {
-        control: PropTypes.object,
-        status: PropTypes.object,
-        config: PropTypes.object,
+        animationControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+
+        enabled: PropTypes.bool,
+        visible: PropTypes.bool,
+        steps: PropTypes.arrayOf(PropTypes.number),
+
 
         factorFormat: PropTypes.func,
         classNames: PropTypes.object,
+    }
+
+    static defaultProps = {
+        classNames: {},
     }
 
     constructor(props) {
@@ -405,24 +180,24 @@ class ChangeSpeedButton extends Component {
 
         this.labelPrefix = "Speed: ";
         this.state = {
-            factor: props.status.playbackSpeedFactor || 1,
+            factor: props.animationStatus.playbackSpeedFactor || 1,
         };
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.status.playbackSpeedFactor !== prevProps.status.playbackSpeedFactor) {
-            this.setState({factor: this.props.status.playbackSpeedFactor});
+        if (this.props.animationStatus.playbackSpeedFactor !== prevProps.animationStatus.playbackSpeedFactor) {
+            this.setState({factor: this.props.animationStatus.playbackSpeedFactor});
         }
     }
 
     handleSpeedChange(factor) {
         this.setState({factor});
 
-        this.props.control.changeSpeed(factor);
+        this.props.animationControl.changeSpeed(factor);
     }
 
     getStepComps() {
-        const steps = this.props.config.steps;
+        const steps = this.props.steps;
         steps.sort((x, y) => x - y);
 
         const comps = [];
@@ -432,16 +207,19 @@ class ChangeSpeedButton extends Component {
                 (factor === this.state.factor ? "active " + styles.active : "") + " " +
                 (this.props.classNames.menuItem || "");
 
-            comps.push(
-                <li key={factor}>
-                    <button
-                        type={"button"}
-                        onClick={this.handleSpeedChange.bind(this, factor)}
-                        className={className}>
+            const label = this.props.factorFormat(factor);
 
-                        {this.props.factorFormat(factor)}
-                    </button>
-                </li>
+            comps.push(
+                <Button
+                    title={`Multiply time by ${label}`}
+                    label={label}
+                    className={className}
+
+                    type={"button"}
+                    onClickAsync={this.handleSpeedChange.bind(this, factor)}
+
+                    key={factor}
+                />
             );
         }
 
@@ -449,43 +227,39 @@ class ChangeSpeedButton extends Component {
     }
 
     render() {
-        const enabled = this.props.control.changeSpeed && this.props.config.enabled;
-        const label = this.labelPrefix + this.props.factorFormat(this.state.factor);
+        if (!this.props.visible) return <></>;
 
-        if (enabled) {
-            return (
-                <ButtonDropdown
-                    label={label}
-                    className={styles.changeSpeedDropdown + " " + (this.props.classNames.dropdown || "")}
-                    buttonClassName={styles.changeSpeedButton + " " + (this.props.classNames.button || "")}
-                    menuClassName={styles.changeSpeedMenu + " " + (this.props.classNames.menu || "")}>
+        const disabled = !this.props.animationControl.changeSpeed || !this.props.enabled;
+        const label = <>
+            <Icon className={"btn-icon mr-2"} icon={"clock"} />
+            {this.props.factorFormat(this.state.factor)}
+            <span className={styles.spacer}/>
+        </>;
 
-                    {this.getStepComps()}
-                </ButtonDropdown>
-            );
+        return (
+            <ButtonDropdown
+                label={label}
+                className={styles.changeSpeedDropdown + " " + (this.props.classNames.dropdown || "")}
+                buttonClassName={
+                    styles.changeSpeedButton + " " +
+                    (this.props.classNames.button || "") + " " +
+                    (disabled ? "disabled" : "")
+                }
+                menuClassName={styles.changeSpeedMenu + " " + (this.props.classNames.menu || "")}>
 
-        } else {
-            return (
-                <Button
-                    title={"Playback speed"}
-                    label={label}
-                    className={this.props.classNames.button}
-
-                    type={"button"}
-                    disabled={true}
-                    onClickAsync={null}
-                />
-            );
-        }
+                {this.getStepComps()}
+            </ButtonDropdown>
+        );
     }
 }
 
 
-class Timeline extends Component {
+class TimelineBase extends Component {
     static propTypes = {
         domain: PropTypes.arrayOf(PropTypes.number),
         position: PropTypes.number,
         setPosition: PropTypes.func,
+
         enabled: PropTypes.bool,
 
         labelFormat: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
@@ -502,7 +276,7 @@ class Timeline extends Component {
     constructor(props) {
         super(props);
 
-        this.updateAxisRectBound = () => this.setState({axisRect: this.getAxisRect()});
+        this.updateAxisRectBound = ::this.updateAxisRect;
 
         this.nodeRefs = {
             axis: null,
@@ -535,7 +309,7 @@ class Timeline extends Component {
 
     componentDidUpdate(prevProps, prevState) {
         if (this.props.enabled && !prevProps.enabled) this.enable();
-        else if (!this.props.enabled && prevProps.enabled) this.disable();
+        else if (prevProps.enabled && !this.props.enabled) this.disable();
 
         if (this.state.axisRect !== prevState.axisRect ||
             this.props.domain !== prevProps.domain ||
@@ -553,7 +327,7 @@ class Timeline extends Component {
         if (this.props.enabled) this.enable();
         window.addEventListener("resize", this.updateAxisRectBound);
 
-        this.setState({axisRect: this.getAxisRect()});
+        this.updateAxisRect();
     }
 
     componentWillUnmount() {
@@ -562,6 +336,7 @@ class Timeline extends Component {
 
     enable() {
         const posLabelSel = select(this.nodeRefs.positionLabel);
+        const hoverPosLabelSel = select(this.nodeRefs.hoverPositionLabel);
         const progressBarSel = select(this.nodeRefs.progressBar);
         const pointerSel = select(this.nodeRefs.pointer);
         const timelineSel = select(this.nodeRefs.timeline);
@@ -588,7 +363,9 @@ class Timeline extends Component {
             timelineSel
                 .on("mouseup.sliding mouseleave.sliding mousemove.sliding", null);
 
-            posLabelSel.classed(styles.positionHoverLabel, true);
+            posLabelSel.style("display", "none");
+            hoverPosLabelSel.style("display", "block");
+
             const pos = getScale().invert(mouse(this.nodeRefs.axis)[0]);
             this.props.setPosition(pos);
         };
@@ -604,7 +381,8 @@ class Timeline extends Component {
         };
         const startSliding = () => {
             this.sliding = true;
-            posLabelSel.classed(styles.positionHoverLabel, false);
+            posLabelSel.style("display", "block");
+            hoverPosLabelSel.style("display", "none");
 
             movePointer();
 
@@ -614,22 +392,27 @@ class Timeline extends Component {
                 .on("mouseleave.sliding", cancelSliding);
         };
 
+        const updateHoverLabel = () => {
+            const pos = getScale().invert(mouse(this.nodeRefs.axis)[0]);
+            hoverPosLabelSel.text(this.getLabelFromater("position")(pos));
+        };
         const stopTrackingHover = () => {
             pointerSel.style("display", "none");
-            posLabelSel.classed(styles.positionHoverLabel, false);
+            posLabelSel.style("display", "block");
+            hoverPosLabelSel.style("display", "none");
 
             timelineSel.on("mousemove.tracking mouseleave.tracking", null);
         };
         const startTrackingHover = () => {
             pointerSel.style("display", "block");
-            posLabelSel.classed(styles.positionHoverLabel, true);
+            posLabelSel.style("display", "none");
+            hoverPosLabelSel.style("display", "block");
+
+            updateHoverLabel();
 
             timelineSel
                 .on("mouseleave.tracking", stopTrackingHover)
-                .on("mousemove.tracking", () => {
-                    const pos = getScale().invert(mouse(this.nodeRefs.axis)[0]);
-                    posLabelSel.text(this.getLabelFromater("position")(pos));
-                });
+                .on("mousemove.tracking", updateHoverLabel);
 
         };
 
@@ -647,6 +430,13 @@ class Timeline extends Component {
     disable() {
         const pointerSel = select(this.nodeRefs.pointer);
         const timelineSel = select(this.nodeRefs.timeline);
+        const posLabelSel = select(this.nodeRefs.positionLabel);
+        const hoverPosLabelSel = select(this.nodeRefs.hoverPositionLabel);
+
+        this.sliding = false;
+
+        posLabelSel.style("display", "block");
+        hoverPosLabelSel.style("display", "none");
 
         timelineSel
             .attr("cursor", "default")
@@ -654,6 +444,7 @@ class Timeline extends Component {
 
         pointerSel
             .attr("cursor", "default")
+            .style("displa", "none")
             .on("mousedown.sliding", null);
     }
 
@@ -788,12 +579,13 @@ class Timeline extends Component {
         this.filterTicks();
     }
 
-    getAxisRect() {
+    updateAxisRect() {
         const axisSel = select(this.nodeRefs.axis);
 
         const rect = this.nodeRefs.axis.getBBox();
         rect.height = axisSel.attr("stroke-width") || Number.parseInt(axisSel.style("stroke-width"), 10);
-        return rect;
+
+        this.setState({axisRect: rect});
     }
 
     render() {
@@ -829,6 +621,13 @@ class Timeline extends Component {
                 >
                     {this.getLabelFromater("position")(this.state.position)}
                 </text>
+                <text ref={node => this.nodeRefs.hoverPositionLabel = node}
+                    className={styles.hoverPositionLabel + " " + (this.props.classNames.hoverPositionLabel || "")}
+                    y={this.state.axisRect && this.state.axisRect.y || 0} x={"50%"} dy={"-2em"}
+                    pointerEvents={"none"}
+                    textAnchor={"middle"}
+                    style={{display:"none"}}
+                />
                 <circle ref={node => this.nodeRefs.pointer = node}
                     className={styles.pointer + " " + (this.props.classNames.pointer || "")}
                     cx={percPosition} cy={"50%"}
@@ -840,125 +639,84 @@ class Timeline extends Component {
     }
 }
 
-//TODO: move to panel template
 @withComponentMixins([withAnimationControl])
-class FullControlLayout extends Component {
+class Timeline extends Component {
     static propTypes = {
-        animationConf: PropTypes.object,
-        animationStatus: PropTypes.object,
         animationControl: PropTypes.object,
+        animationStatus: PropTypes.object,
+
+        enabled: PropTypes.bool,
+        visible: PropTypes.bool,
+
+        labelFormat: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
+        tickInterval: PropTypes.number,
+
+        classNames: PropTypes.object,
     }
 
-    constructor(props) {
-        super(props);
+    render() {
+        if (!this.props.visible) return <></>;
 
-        this.labelFormatBound = ::this.timelineLabelFormat;
+        return (
+            <TimelineBase
+                domain={this.props.animationStatus.timeDomain}
+                position={this.props.animationStatus.position}
+                setPosition={this.props.animationControl.seek}
+
+                enabled={this.props.enabled}
+
+                labelFormat={this.props.labelFormat}
+                tickInterval={this.props.tickInterval}
+
+                classNames={this.props.classNames}
+            />
+        );
+    }
+}
+
+class ButtonGroup extends Component {
+    static propTypes = {
+        playPause: PropTypes.object,
+        stop: PropTypes.object,
+        jumpForward: PropTypes.object,
+        jumpBackward: PropTypes.object,
+        changeSpeed: PropTypes.object,
+
+        className: PropTypes.string,
     }
 
-    getButtonComps() {
-        const buttonTypes = {
+
+    render() {
+        const comps = {
             jumpBackward: JumpBackwardButton,
             playPause: PlayPauseButton,
             stop: StopButton,
             jumpForward: JumpForwardButton,
+            changeSpeed: ChangeSpeedButton,
         };
 
-        const buttons = [];
-        const config = this.props.animationConf;
-
-        const props = {
-            //TODO: figure out how to include these classes in mine
-            className: "btn-dark px-1 py-0 " + styles.mediaButton,
-            status: this.props.animationStatus,
-            control: this.props.animationControl,
-        };
-
-        for (let buttonTypeKey in buttonTypes) {
-            if (config.controls[buttonTypeKey] && config.controls[buttonTypeKey].visible) {
-                const Comp = buttonTypes[buttonTypeKey];
-                buttons.push(
-                    <Comp {...props} config={config.controls[buttonTypeKey]} key={buttonTypeKey} />
-                );
-            }
-        }
-
-        if (config.controls.changeSpeed && config.controls.changeSpeed.visible) {
-            buttons.push(
-                <ChangeSpeedButton
-                    status={props.status}
-                    control={props.control}
-                    classNames={{
-                        button: props.className,
-                        menu: styles.darkChangeSpeedMenu,
-                        menuItem: styles.darkChangeSpeedMenuItem,
-                    }}
-                    factorFormat={(f) => f + "x"}
-                    config={config.controls.changeSpeed}
-                    key={"changeSpeed"}
-                />
-            );
-        }
-
-        return buttons;
-    }
-
-    getTimelineComp() {
-        const config = this.props.animationConf;
-
-        if (!config.controls.timeline || !config.controls.timeline.visible) return null;
-
         return (
-            <Timeline
-                domain={[config.beginTs, config.endTs]}
+            <div role={"group"}
+                className={"btn-group " + styles.mediaButtonGroup + " " + (this.props.className || "")}>
+                {
+                    Object.keys(comps).filter(btnKey => btnKey in this.props).map(btnKey => {
+                        const Comp = comps[btnKey];
 
-                position={this.props.animationStatus.position}
-                setPosition={this.props.animationControl.seek}
-                enabled={this.props.animationControl.seek && config.controls.timeline.enabled}
-
-                labelFormat={this.labelFormatBound}
-                tickInterval={config.controls.timeline.tickInterval}
-            />
-        );
-    }
-
-    timelineLabelFormat(ts) {
-        return moment.utc(ts).toISOString();
-    }
-
-    render() {
-        const buttons = this.getButtonComps();
-        const timeline = this.getTimelineComp();
-
-        const buttonGroupWidth = Math.max(1, buttons.length - 2);
-        const timelineWidth = 12 - buttonGroupWidth;
-
-        return (
-            <div className={"mb-4 mt-1 rounded container-fluid " + styles.controlGroup}>
-                <div className={"row my-4"}>
-                    {buttons.length > 0 &&
-                        <div className={`col-${buttonGroupWidth}`}>
-                            <div className={"btn-group " + styles.mediaButtonGroup} role={"group"}>
-                                {buttons}
-                            </div>
-                        </div>
-                    }
-                    {!!timeline &&
-                        <div className={`col-${timelineWidth}`}>
-                            {timeline}
-                        </div>
-                    }
-                </div>
+                        return <Comp {...this.props[btnKey]} key={btnKey} />;
+                    })
+                }
             </div>
         );
-
     }
 }
 
-
-const controlLayouts = {
-    full: FullControlLayout,
-};
-
 export {
-    controlLayouts
+    PlayPauseButton,
+    StopButton,
+    JumpForwardButton,
+    JumpBackwardButton,
+    ChangeSpeedButton,
+
+    ButtonGroup,
+    Timeline,
 };

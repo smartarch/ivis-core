@@ -20,4 +20,6 @@ export * from './SVG';
 export * from './Records';
 export * from './Selector';
 export * from './Animation';
+export * from './LiveAnimation';
+export * from './RecordedAnimation';
 
