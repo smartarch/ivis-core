@@ -61,7 +61,7 @@ function toQuery(sigSet, signals, params) {
 
     const sort = [];
 
-    // DocSort is used for auto generated ids, because they don't have id field, therefore would be imposisble
+    // docSort is used for auto generated ids, because they don't have id field, therefore would be imposisble
     // to sort them, so it fallbacks on _doc sort and lowers priority
     let docSort = null;
     for (const order of params.order) {

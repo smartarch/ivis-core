@@ -1,11 +1,9 @@
-# Uses dtw algorithm to find closest model to real data from sensors. Also prints wheter windows should open more.
-
 import sys
 import os
 import json
 from elasticsearch import Elasticsearch, helpers
 
-import datetime
+from datetime import datetime, timezone
 import numpy as np
 from dtw import dtw
 
@@ -24,9 +22,64 @@ sensor_ts = entities['signals'][params['sensors']][params['ts']]
 sensor_co2 = entities['signals'][params['sensors']][params['co2']]
 
 limit_val = float(params['limitValue'])
-deviation = float(params['deviation'])
 
-limit = deviation + limit_val
+limit = limit_val
+
+if state is None or state.get('index') is None:
+    ns = sensor_set['namespace']
+  
+    msg = {}
+    msg['type'] = 'sets'
+    # Request new signal set creation 
+    msg['sigSet'] = {
+    "cid" : "e_plus_mod",
+    "name" : "E+ comparison" ,
+    "namespace": ns,
+    "description" : "Comparison of Energy+ models" ,
+    "aggs" :  "0" 
+    }
+
+    signals= [] 
+    signals.append({
+      "cid": "ts",
+      "name": "ts",
+      "description": "timestamp",
+      "namespace": ns,
+      "type": "date",
+      "indexed": False,
+      "settings": {}
+    })
+    signals.append({
+      "cid": "mod",
+      "name": "mod",
+      "description": "mod",
+      "namespace": ns,
+      "type": "keyword",
+      "indexed": False,
+      "settings": {}
+    })
+    signals.append({
+      "cid": "model",
+      "name": "model",
+      "description": "Closest model's cid",
+      "namespace": ns,
+      "type": "keyword",
+      "indexed": False,
+      "settings": {}
+    })
+    msg['sigSet']['signals'] = signals
+
+    ret = os.write(3,(json.dumps(msg) + '\n').encode())
+    state = json.loads(sys.stdin.readline())
+    error = state.get('error')
+    if error:
+      sys.stderr.write(error+"\n")
+      sys.exit(1)
+    else:
+      store_msg = {}
+      store_msg["type"] = "store"
+      store_msg["state"] = state
+      ret = os.write(3,(json.dumps(store_msg) + '\n').encode())
 
 def get_co2_values(index,ts_field, co2_field):
   # sensor data query
@@ -36,7 +89,6 @@ def get_co2_values(index,ts_field, co2_field):
       'query': {
         "range" : {
           ts_field : {
-                        #"gt" : "now-3h",
             "gt" : "now-180m/m",
             "lt" : "now/m"
           }
@@ -87,11 +139,15 @@ for model in params['models']:
   if d<min_distance:
     min_distance = d
     min_model['name'] = entities["signalSets"][model["sigSet"]]["name"]
-    min_model['ts']= ts
-    min_model['co2']= co2
-    min_model['index']= sig_set
+    min_model['cid'] = model["sigSet"]
+    min_model['ts'] = ts
+    min_model['co2'] = co2
+    min_model['index'] = sig_set
 
 # Do something with closest model
+if not min_model:
+  print('No model found')
+  exit()
 print(f'Closest model is: {min_model["name"]}')
 
 # Query prediction
@@ -113,11 +169,36 @@ query = {
 
 
 results = es.search(index=min_model['index'], body=query)
+max_co2 = results['aggregations']['max_co2']['value']
+
+# Get current mode 
+# TODO this will probably change later on to take data from the actual system
+query = {
+   'size': 1,
+   '_source': [state['fields']['mod']],
+   'sort': [{state['fields']['ts']: 'desc'}],
+   'query': {
+      "match_all": {}
+   }
+}
+results = es.search(index=state['index'], body=query)
+mod = results['hits']['hits'][0]['_source'][state['fields']['mod']] if results['hits']['total'] > 0 else 'mod1'
+
 # If currently over limit or going to be according to models data, open more
-if sensor_data[-1] > limit or results['aggregations']['max_co2']['value'] > limit:
-  print('mod2')
-else:
-  print('mod1')
+if sensor_data[-1] > limit or max_co2 > limit:
+  mod = 'mod2'
+elif sensor_data[-1] < limit - 200:
+  mod = 'mod1'
+
+print(f'Chosen: {mod}')
+
+ts = datetime.now(timezone.utc).astimezone()
+doc = {
+  state['fields']['ts']: ts,
+  state['fields']['model']: min_model['cid'],
+  state['fields']['mod']: mod 
+}
+res = es.index(index=state['index'], doc_type='_doc', id=ts, body=doc)
 
 #prediction_data = []
 #for item in results['hits']['hits']:

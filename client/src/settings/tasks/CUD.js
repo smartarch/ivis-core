@@ -22,8 +22,8 @@ import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
-import {WizardType, wizards} from "./wizards";
-import {TaskType} from "../../../../shared/tasks";
+import {WizardType, getWizard, getWizardsForType} from "./wizards";
+import {TaskType, subtypesByType, taskSubtypeSpecs} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 
@@ -57,9 +57,14 @@ export default class CUD extends Component {
                 description: '',
                 namespace: ivisConfig.user.namespace,
                 type: TaskType.PYTHON,
+                subtype: null,
                 wizard: WizardType.BLANK
             });
         }
+    }
+
+    getFormValuesMutator(data) {
+        data.subtype = data.settings.subtype ? data.settings.subtype : null;
     }
 
     localValidateFormValues(state) {
@@ -81,15 +86,11 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    static getWizard(wizardType) {
-        return wizards.get(wizardType);
-    }
-
     submitFormValuesMutator(data) {
         if (!this.props.entity) {
-            const wizard = CUD.getWizard(data.wizard);
-            if (wizard) {
-                wizard(data);
+            const wizardData = getWizard(data.type, data.wizard);
+            if (wizardData) {
+                wizardData.wizard(data);
             } else {
                 data.settings = {
                     params: [],
@@ -97,9 +98,14 @@ export default class CUD extends Component {
                 };
             }
 
+            if (data.subtype) {
+                data.settings.subtype = data.subtype;
+            }
         } else {
             data.settings = this.props.entity.settings;
         }
+
+
         return filterData(data, [
             'name',
             'description',
@@ -156,15 +162,46 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const typeOptions = [
-            {key: TaskType.NUMPY, label: t('Numpy task')},
-            {key: TaskType.PYTHON, label: t('Python task')},
-            {key: TaskType.ENERGY_PLUS, label: t('EnergyPlus task')}
+            {key: TaskType.PYTHON, label: t('Python')},
         ];
 
-        const wizardOptions = [
-            {key: WizardType.BLANK, label: t('Blank')},
-            {key: WizardType.BASIC, label: t('Basic functionality')}
-        ];
+        const taskType = this.getFormValue('type');
+
+        const wizardOptions = [];
+        const subtypeOptions = [];
+
+        // Subtypes
+        const subtypes = taskType ? subtypesByType[taskType] : null;
+        if (subtypes) {
+
+            // Default option
+            subtypeOptions.push({
+                key: null,
+                label: ''
+            });
+
+            Object.values(subtypes).forEach((subtype) => {
+                subtypeOptions.push({
+                    key: subtype,
+                    label: t(taskSubtypeSpecs[TaskType.PYTHON][subtype].label)
+                });
+            });
+        }
+
+        if (!isEdit && taskType) {
+            const subtype = this.getFormValue('subtype');
+            const wizardsForType = getWizardsForType(taskType, subtype);
+            if (wizardsForType) {
+                Object.entries(wizardsForType).forEach((entry) => {
+                    wizardOptions.push({
+                        key: entry[0],
+                        label: t(entry[1].label)
+                    });
+                });
+            }
+
+
+        }
 
         return (
             <Panel title={isEdit ? t('Task Settings') : t('Create Task')}>
@@ -183,6 +220,8 @@ export default class CUD extends Component {
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
                     <Dropdown id="type" label={t('Type')} options={typeOptions} disabled={isEdit}/>
+                    {taskType &&
+                    <Dropdown id="subtype" label={t('Subtype')} options={subtypeOptions} disabled={isEdit}/>}
 
                     {!isEdit && <Dropdown id="wizard" label={t('Wizard')} options={wizardOptions}/>}
                     <NamespaceSelect/>

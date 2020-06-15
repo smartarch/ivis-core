@@ -22,4 +22,9 @@ export * from './Selector';
 export * from './Animation';
 export * from './LiveAnimation';
 export * from './RecordedAnimation';
-
+export * from './ScatterPlot';
+export * from './BubblePlot';
+export * from './HeatmapChart';
+export * from './BarChart';
+export * from './MinMaxLoader';
+export * from './dot_shapes';

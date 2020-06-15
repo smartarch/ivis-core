@@ -479,7 +479,12 @@ export class TimeBasedChartBase extends Component {
             return (
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                     {this.props.getSvgDefs(this)}
-                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}>
+                    <defs>
+                        <clipPath id="plotRect">
+                            <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
+                        </clipPath>
+                    </defs>
+                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
                         {this.props.getGraphContent(this)}
                     </g>
                     <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>

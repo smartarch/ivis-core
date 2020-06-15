@@ -42,7 +42,7 @@ import ivisConfig
     from "ivisConfig";
 import {getUrl} from "../../../lib/urls";
 import ParamTypes
-    from "./ParamTypes"
+    from "../../ParamTypes"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {ModalDialog} from "../../../lib/bootstrap-components";
@@ -183,13 +183,11 @@ export default class CUD extends Component {
         if (oldVal !== newVal) {
             const templateType = state.formState.getIn(['data', 'templateType', 'value']);
 
-            console.log(templateType);
             if (templateType === 'user') {
                 const template = state.formState.getIn(['data', 'template', 'value']);
 
                 state.formState = state.formState.setIn(['data', 'templateParams', 'value'], '');
 
-                console.log(template);
                 if (template) {
                     this.fetchUserTemplateParams(template);
                 }
