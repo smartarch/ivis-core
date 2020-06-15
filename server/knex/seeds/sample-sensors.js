@@ -39,7 +39,7 @@ exports.seed = (knex, Promise) => (async () => {
         const tsCid = 'ts';
 
         await knex('signal_sets').where({cid: cid}).del();
-        const sigSet = {cid, name, indexing: JSON.stringify({status: 1}), namespace: 1};
+        const sigSet = {cid, name, settings: JSON.stringify({}), state: JSON.stringify({indexing: {status: 1}}), namespace: 1};
         const ids = await knex('signal_sets').insert(sigSet);
         sigSet.id = ids[0];
 
