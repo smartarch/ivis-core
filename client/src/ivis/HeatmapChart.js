@@ -57,7 +57,8 @@ class TooltipContent extends Component {
     static propTypes = {
         config: PropTypes.object.isRequired,
         signalSetsData: PropTypes.object,
-        selection: PropTypes.object
+        selection: PropTypes.object,
+        tooltipFormat: PropTypes.func.isRequired
     };
 
     render() {
@@ -88,7 +89,7 @@ class TooltipContent extends Component {
                 <div>
                     {xDescription}
                     {yDescription}
-                    <div>Count: {bucket.count}</div>
+                    <div>{this.props.tooltipFormat(bucket)}</div>
                     <div>Frequency: {probF(bucket.prob * 100)}%</div>
                 </div>
             );
@@ -109,7 +110,7 @@ const DataType = {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-], ["getView", "setView"])
+], ["getView", "setView"], ["processBucket", "prepareData", "getKeywordExtent", "getKeys"])
 export class HeatmapChart extends Component {
     constructor(props){
         super(props);
@@ -144,7 +145,9 @@ export class HeatmapChart extends Component {
             x_sigCid: PropTypes.string.isRequired,
             y_sigCid: PropTypes.string.isRequired,
             colors: PropTypes.arrayOf(PropType_d3Color()),
-            tsSigCid: PropTypes.string
+            tsSigCid: PropTypes.string,
+            metric_sigCid: PropTypes.string,
+            metric_type: PropTypes.oneOf(["sum", "min", "max", "avg"])
         }).isRequired,
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
@@ -163,6 +166,7 @@ export class HeatmapChart extends Component {
         withTransition: PropTypes.bool,
         withZoomX: PropTypes.bool,
         withZoomY: PropTypes.bool,
+        tooltipFormat: PropTypes.func, // bucket => line in tooltip
 
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
@@ -188,7 +192,11 @@ export class HeatmapChart extends Component {
         zoomLevelMax: PropTypes.number,
 
         className: PropTypes.string,
-        style: PropTypes.object
+        style: PropTypes.object,
+
+        filter: PropTypes.object,
+        processBucket: PropTypes.func, // see HeatmapChart.processBucket for reference
+        prepareData: PropTypes.func, // see HeatmapChart.prepareData for reference
     };
 
     static defaultProps = {
@@ -203,6 +211,7 @@ export class HeatmapChart extends Component {
         withTransition: true,
         withZoomX: true,
         withZoomY: true,
+        tooltipFormat: bucket => `Count: ${bucket.count}`,
 
         xMinValue: NaN,
         xMaxValue: NaN,
@@ -283,7 +292,7 @@ export class HeatmapChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    /** Fetches new data for the chart, processes the results using this.processData method and updates the state accordingly, so the chart is redrawn */
+    /** Fetches new data for the chart, processes the results using this.prepareData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
         const config = this.props.config;
@@ -330,6 +339,8 @@ export class HeatmapChart extends Component {
                         sigCid: config.y_sigCid,
                         lte: this.props.yMaxValue
                     });
+                if (this.props.filter)
+                    filter.children.push(this.props.filter);
 
                 // filter by current zoom
                 if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.zoomYScaleMultiplier !== 1) {
@@ -339,17 +350,28 @@ export class HeatmapChart extends Component {
                     maxBucketCountY = Math.ceil(maxBucketCountY * scaleY);
                 }
 
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.x_sigCid, config.y_sigCid], [maxBucketCountX, maxBucketCountY], [this.props.minStepX, this.props.minStepY], filter);
+                let metrics;
+                if (this.props.config.metric_sigCid && this.props.config.metric_type) {
+                    metrics = {};
+                    metrics[this.props.config.metric_sigCid] = [this.props.config.metric_type];
+                }
+
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.x_sigCid, config.y_sigCid], [maxBucketCountX, maxBucketCountY], [this.props.minStepX, this.props.minStepY], filter, metrics);
 
                 if (results) { // Results is null if the results returned are not the latest ones
-                    const processedResults = this.processData(results); // also sets this.xExtent and this.yExtent
+                    const prepareData = this.props.prepareData || HeatmapChart.prepareData;
+                    const [processedResults, xType, yType, xExtent, yExtent] = prepareData(this, results);
+                    this.xType = xType;
+                    this.yType = yType;
+                    this.xExtent = xExtent;
+                    this.yExtent = yExtent;
                     if (processedResults.xBucketsCount === 0 || processedResults.yBucketsCount === 0) {
                         this.brushBottom = null;
                         this.brushLeft = null;
                         this.zoom = null;
                         this.setState({
                             signalSetData: null,
-                            statusMsg: "No data."
+                            statusMsg: this.props.t("No data.")
                         });
                         return;
                     }
@@ -360,60 +382,94 @@ export class HeatmapChart extends Component {
                     });
                 }
             } catch (err) {
+                this.setState({statusMsg: this.props.t("Error loading data.")});
                 throw err;
             }
         }
     }
 
-    /** Processes the results of queries and updates this.xType, this.yType, this.xExtent, this.yExtent accordingly
-     * @return {{}} data in form which can be directly passed to the setState function */
-    processData(data) {
-        this.xType = data.step !== undefined ? DataType.NUMBER : DataType.KEYWORD;
+    /**
+     * The value returned from this function is used to determine the height of the bar corresponding to the bucket.
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} bucket - the record from server; contains 'count' field, and also 'values' field if metrics were specified
+     */
+    static processBucket(self, bucket) {
+        const config = self.props.config;
+        if (config.metric_sigCid && config.metric_type) {
+            if (!bucket.hasOwnProperty("values"))
+                return 0;
+            bucket.metric = bucket.values[config.metric_sigCid][config.metric_type];
+            delete bucket.values;
+            return bucket.metric;
+        }
+        else
+            return bucket.count;
+    }
+
+    /**
+     * Processes the results of queries and returns the data and xType, yType, xExtent and yExtent
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} data - the data from server; contains at least 'buckets', 'step', 'offset' and 'agg_type' fields
+     *
+     * @returns {[object]} - tuple of 5 values:
+     *
+     *   - newState - data in form which can be directly passed to this.setState() function; should contain at least 'signalSetData', 'xBucketsCount', 'yBucketsCount' and 'maxProb' (frequency of highest bar) fields
+     *   - xType, yType - numeric or keyword type of data along each axis (one of DataType)
+     *   - xExtent, yExtent - [min, max] of x-axis and y-axis signal
+     */
+    static prepareData(self, data) {
+        const props = self.props;
+        let xType = data.agg_type === "histogram" ? DataType.NUMBER : DataType.KEYWORD;
         const xBucketsCount = data.buckets.length;
-        this.xExtent = null; this.yExtent = null;
+        let xExtent = null;
+        let yExtent = null;
 
         if (xBucketsCount === 0)
-            return {
+            return [{
                 signalSetData: data,
                 xBucketsCount: 0,
                 yBucketsCount: 0
-            };
+            }, null, null, null, null];
 
-        this.yType = data.buckets[0].step !== undefined ? DataType.NUMBER : DataType.KEYWORD;
-
+        let yType = data.buckets[0].agg_type === "histogram" ? DataType.NUMBER : DataType.KEYWORD;
         let yBucketsCount;
-        if (this.xType === DataType.NUMBER) {
+
+        // compute xExtent
+        if (xType === DataType.NUMBER) {
             let xMin = data.buckets[0].key;
             let xMax = data.buckets[xBucketsCount - 1].key + data.step;
-            if (!isNaN(this.props.xMinValue)) xMin = this.props.xMinValue;
-            if (!isNaN(this.props.xMaxValue)) xMax = this.props.xMaxValue;
-            this.xExtent = [xMin, xMax];
+            if (!isNaN(props.xMinValue)) xMin = props.xMinValue;
+            if (!isNaN(props.xMaxValue)) xMax = props.xMaxValue;
+            xExtent = [xMin, xMax];
         } else { // xType === DataType.KEYWORD
-            this.xExtent = this.getKeys(data.buckets);
+            xExtent = HeatmapChart.getKeys(data.buckets);
         }
 
-        if (this.yType === DataType.NUMBER) {
+        // compute yExtent
+        if (yType === DataType.NUMBER) {
             yBucketsCount = data.buckets[0].buckets.length;
             if (yBucketsCount === 0)
-                return {
+                return [{
                     signalSetData: data,
                     xBucketsCount: 0,
                     yBucketsCount: 0,
-                };
+                }, null, null, null, null];
 
             let yMin = data.buckets[0].buckets[0].key;
             let yMax = data.buckets[0].buckets[yBucketsCount - 1].key + data.buckets[0].step;
-            if (!isNaN(this.props.yMinValue)) yMin = this.props.yMinValue;
-            if (!isNaN(this.props.yMaxValue)) yMax = this.props.yMaxValue;
-            this.yExtent = [yMin, yMax];
+            if (!isNaN(props.yMinValue)) yMin = props.yMinValue;
+            if (!isNaN(props.yMaxValue)) yMax = props.yMaxValue;
+            yExtent = [yMin, yMax];
         }
         else { // yType === DataType.KEYWORD
-            this.yExtent = this.getKeywordExtent(data.buckets);
-            this.yExtent.sort((a, b) => a.localeCompare(b));
+            yExtent = HeatmapChart.getKeywordExtent(data.buckets);
+            yExtent.sort((a, b) => a.localeCompare(b));
             // add missing inner buckets
             for (const bucket of data.buckets) {
-                const innerKeys = this.getKeys(bucket.buckets);
-                for (const key of this.yExtent)
+                const innerKeys = HeatmapChart.getKeys(bucket.buckets);
+                for (const key of yExtent)
                     if (innerKeys.indexOf(key) === -1)
                         bucket.buckets.push({ key: key, count: 0 });
                 // sort inner buckets so they are in same order in all outer buckets
@@ -421,42 +477,47 @@ export class HeatmapChart extends Component {
             }
         }
 
-        // calculate probabilities of buckets
-        let totalCount = d3Array.sum(data.buckets, d => d.count);
-        for (const bucket of data.buckets)
-            bucket.prob = bucket.count / totalCount;
-        const rowProbs = data.buckets[0].buckets.map((b, i) => { return {key: b.key, prob: 0, index: i}; });
-
-        let maxProb = 0;
-        for (const bucket of data.buckets) {
-            let columnCount = d3Array.sum(bucket.buckets, d => d.count);
-            for (const [i, innerBucket] of bucket.buckets.entries()) {
-                innerBucket.prob = bucket.prob * innerBucket.count / columnCount || 0;
-                innerBucket.xKey = bucket.key;
-                if (innerBucket.prob > maxProb)
-                    maxProb = innerBucket.prob;
-                rowProbs[i].prob += innerBucket.prob;
+        // process buckets
+        let maxValue = 0;
+        let totalValue = 0;
+        const processBucket = props.processBucket || HeatmapChart.processBucket;
+        for (const column of data.buckets)
+            for (const bucket of column.buckets) {
+                bucket.value = processBucket(self, bucket);
+                if (bucket.value > maxValue)
+                    maxValue = bucket.value;
+                totalValue += bucket.value;
             }
+
+        // calculate probabilities of buckets
+        const rowProbs = data.buckets[0].buckets.map((b, i) => { return {key: b.key, prob: 0, index: i}; });
+        for (const column of data.buckets) {
+            for (const [i, bucket] of column.buckets.entries()) {
+                bucket.prob = bucket.value / totalValue;
+                bucket.xKey = column.key;
+                rowProbs[i].prob += bucket.prob;
+            }
+            column.prob = d3Array.sum(column.buckets, d => d.prob);
         }
 
-        if (this.yType === DataType.KEYWORD) {
+        if (yType === DataType.KEYWORD) {
             // sort inner buckets by rowProbs
             rowProbs.sort((a,b) => b.prob - a.prob); // smallest to biggest prob
             const permuteKeys = rowProbs.map(d => d.index);
-            this.yExtent = d3Array.permute(this.yExtent, permuteKeys);
-            for (const bucket of data.buckets)
-                bucket.buckets = d3Array.permute(bucket.buckets, permuteKeys);
+            yExtent = d3Array.permute(yExtent, permuteKeys);
+            for (const column of data.buckets)
+                column.buckets = d3Array.permute(column.buckets, permuteKeys);
         }
 
-        return{
+        return [{
             signalSetData: data,
             xBucketsCount, yBucketsCount,
-            maxProb,
+            maxProb: maxValue / totalValue,
             rowProbs // colProbs are in signalSetData.buckets (outer buckets)
-        };
+        }, xType, yType, xExtent, yExtent];
     }
 
-    getKeywordExtent(buckets_of_buckets) {
+    static getKeywordExtent(buckets_of_buckets) {
         const keys = new Set();
         for (const bucket of buckets_of_buckets)
             for (const inner_bucket of bucket.buckets)
@@ -464,7 +525,7 @@ export class HeatmapChart extends Component {
         return [...keys];
     }
 
-    getKeys(buckets) {
+    static getKeys(buckets) {
         return buckets.map(bucket => bucket.key);
     }
 
@@ -800,6 +861,8 @@ export class HeatmapChart extends Component {
 
     /** Updates overview brushes from zoom transform values. */
     moveBrush(transform, zoomYScaleMultiplier) {
+        if (!this.defaultBrushBottom || !this.defaultBrushLeft) // no data
+            return;
         const [newBrushBottom, newBrushLeft, _] = this.getBrushValuesFromZoomValues(transform, zoomYScaleMultiplier);
         if (newBrushBottom && this.brushBottom)
             this.overviewBottomBrushSelection.call(this.brushBottom.move, newBrushBottom);
@@ -1170,7 +1233,7 @@ export class HeatmapChart extends Component {
                                 containerWidth={this.state.width}
                                 mousePosition={this.state.mousePosition}
                                 selection={this.state.selection}
-                                contentRender={props => <TooltipContent {...props}/>}
+                                contentRender={props => <TooltipContent {...props} tooltipFormat={this.props.tooltipFormat}/>}
                                 width={250}
                             />
                             }

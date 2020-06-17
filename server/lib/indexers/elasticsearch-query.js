@@ -57,6 +57,13 @@ const aggHandlers = {
         }),
         processResponse: resp => resp.value
     }),
+    sum: aggSpec => ({
+        id: 'sum',
+        getAgg: field => ({
+            sum: field
+        }),
+        processResponse: resp => resp.value
+    }),
     percentiles: aggSpec => ({
         id: 'percentiles',
         getAgg: field => ({
@@ -406,6 +413,8 @@ class QueryProcessor {
             if (agg.agg_type) {
                 if (agg.agg_type === "terms") {
                     elsAgg.terms = { ...this.getField(field) };
+                    if (agg.maxBucketCount)
+                        elsAgg.terms.size = agg.maxBucketCount;
                 }
                 else {
                     throw new Error("Aggregation type '" + agg.agg_type + "' is currently not supported, try omitting agg_type for default aggregation based on signal type.");
@@ -521,8 +530,10 @@ class QueryProcessor {
 
             const buckets = [];
             let additionalResponses = {};
+            let agg_type;
 
             if (agg.agg_type) {
+                agg_type = agg.agg_type;
                 if (agg.agg_type === "terms") {
                     _processTermsAgg(elsAggResp, buckets, additionalResponses);
                 }
@@ -541,7 +552,7 @@ class QueryProcessor {
                             count: elsBucket.doc_count
                         });
                     }
-
+                    agg_type = "date_histogram";
                 } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE) {
                     for (const elsBucket of elsAggResp.buckets) {
                         buckets.push({
@@ -549,8 +560,10 @@ class QueryProcessor {
                             count: elsBucket.doc_count
                         });
                     }
+                    agg_type = "histogram";
                 } else if (field.type === SignalType.KEYWORD) {
                     _processTermsAgg(elsAggResp, buckets, additionalResponses);
+                    agg_type = "terms";
                 } else {
                     throw new Error('Type of ' + agg.sigCid + ' (' + field.type + ') is not supported in aggregations');
                 }
@@ -573,7 +586,8 @@ class QueryProcessor {
 
             const res = {
                 buckets,
-                ...additionalResponses
+                ...additionalResponses,
+                agg_type
             };
 
             if (agg.computedStep) res.step = agg.computedStep;

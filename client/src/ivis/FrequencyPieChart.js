@@ -6,7 +6,7 @@ import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
+import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {StaticPieChart} from "./PieChart";
 import {FrequencyDataLoader} from "./FrequencyDataLoader";
 
@@ -34,6 +34,9 @@ export class FrequencyPieChart extends Component {
         colors: PropTypes.arrayOf(PropType_d3Color_Required()),
         getLabel: PropTypes.func, // (key, count) => label
         getColor: PropTypes.func, // chooses color from index: (props.color, index) => color
+        maxBucketCount: PropTypes.number,
+        otherLabel: PropTypes.string,
+        otherColor: PropType_d3Color(),
         // for Pie chart
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
@@ -49,7 +52,8 @@ export class FrequencyPieChart extends Component {
     static defaultProps = {
         getLabel: (key, count) => key,
         getColor: (colors, index) => colors[index % colors.length], // colors = this.props.colors
-        colors: d3Scheme.schemeCategory10
+        colors: d3Scheme.schemeCategory10,
+        otherLabel: "Other"
     };
 
     componentDidUpdate(prevProps, prevState) {
@@ -75,6 +79,12 @@ export class FrequencyPieChart extends Component {
                     value: b.count
                 }
             });
+            if (data.sum_other_doc_count && this.props.otherLabel)
+                arcs.push({
+                    label: this.props.otherLabel,
+                    color: this.props.otherColor !== undefined ? this.props.otherColor : this.props.getColor(this.props.colors, arcs.length),
+                    value: data.sum_other_doc_count
+                });
             this.setState({
                 data: { arcs }
             });
@@ -108,7 +118,7 @@ export class FrequencyPieChart extends Component {
         }
         return (
             <div className={this.props.className} style={this.props.style}>
-                <FrequencyDataLoader ref={(node) => this.dataLoader = node} config={this.props.config} processData={::this.processData} />
+                <FrequencyDataLoader ref={(node) => this.dataLoader = node} config={this.props.config} processData={::this.processData} maxBucketCount={this.props.maxBucketCount} />
                 {chart}
             </div>
         );

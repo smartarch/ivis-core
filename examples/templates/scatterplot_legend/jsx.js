@@ -90,4 +90,3 @@ export default class ScatterPlotWithLegend extends Component {
         );
     }
 }
-

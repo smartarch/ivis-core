@@ -49,7 +49,8 @@ class TooltipContent extends Component {
     static propTypes = {
         config: PropTypes.object.isRequired,
         signalSetsData: PropTypes.object,
-        selection: PropTypes.object
+        selection: PropTypes.object,
+        tooltipFormat: PropTypes.func.isRequired
     };
 
     render() {
@@ -63,7 +64,7 @@ class TooltipContent extends Component {
             return (
                 <div>
                     <div>Range: <Icon icon="chevron-left"/>{keyF(bucket.key)} <Icon icon="ellipsis-h"/> {keyF(bucket.key + step)}<Icon icon="chevron-right"/></div>
-                    <div>Count: {bucket.count}</div>
+                    <div>{this.props.tooltipFormat(bucket)}</div>
                     <div>Frequency: {probF(bucket.prob * 100)}%</div>
                 </div>
             );
@@ -78,7 +79,7 @@ class TooltipContent extends Component {
     withTranslation,
     withErrorHandling,
     intervalAccessMixin()
-], ["getView", "setView"])
+], ["getView", "setView"], ["processBucket", "prepareData"])
 export class HistogramChart extends Component {
     constructor(props){
         super(props);
@@ -109,7 +110,9 @@ export class HistogramChart extends Component {
             sigSetCid: PropTypes.string.isRequired,
             sigCid: PropTypes.string.isRequired,
             color: PropType_d3Color_Required(),
-            tsSigCid: PropTypes.string
+            tsSigCid: PropTypes.string,
+            metric_sigCid: PropTypes.string,
+            metric_type: PropTypes.oneOf(["sum", "min", "max", "avg"])
         }).isRequired,
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
@@ -121,6 +124,7 @@ export class HistogramChart extends Component {
         withOverview: PropTypes.bool,
         withTransition: PropTypes.bool,
         withZoom: PropTypes.bool,
+        tooltipFormat: PropTypes.func, // bucket => line in tooltip
 
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
@@ -138,7 +142,11 @@ export class HistogramChart extends Component {
         zoomLevelMax: PropTypes.number,
 
         className: PropTypes.string,
-        style: PropTypes.object
+        style: PropTypes.object,
+
+        filter: PropTypes.object,
+        processBucket: PropTypes.func, // see HistogramChart.processBucket for reference
+        prepareData: PropTypes.func, // see HistogramChart.prepareData for reference
     };
 
     static defaultProps = {
@@ -154,6 +162,7 @@ export class HistogramChart extends Component {
         withOverview: true,
         withTransition: true,
         withZoom: true,
+        tooltipFormat: bucket => `Count: ${bucket.count}`,
 
         zoomLevelMin: 1,
         zoomLevelMax: 4,
@@ -225,7 +234,7 @@ export class HistogramChart extends Component {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    /** Fetches new data for the chart, processes the results using this.processData method and updates the state accordingly, so the chart is redrawn */
+    /** Fetches new data for the chart, processes the results using prepareData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
         const config = this.props.config;
@@ -260,6 +269,8 @@ export class HistogramChart extends Component {
                         sigCid: config.sigCid,
                         lte: this.props.xMaxValue
                     });
+                if (this.props.filter)
+                    filter.children.push(this.props.filter);
 
                 // filter by current zoom
                 if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) {
@@ -270,14 +281,21 @@ export class HistogramChart extends Component {
                     isZoomedIn = true;
                 }
 
-                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], maxBucketCount, minStep, filter);
+                let metrics;
+                if (this.props.config.metric_sigCid && this.props.config.metric_type) {
+                    metrics = {};
+                    metrics[this.props.config.metric_sigCid] = [this.props.config.metric_type];
+                }
+
+                const results = await this.dataAccessSession.getLatestHistogram(config.sigSetCid, [config.sigCid], maxBucketCount, minStep, filter, metrics);
 
                 if (results) { // Results is null if the results returned are not the latest ones
-                    const processedResults = this.processData(results);
+                    const prepareData = this.props.prepareData || HistogramChart.prepareData;
+                    const processedResults = prepareData(this, results);
                     if (processedResults.buckets.length === 0) {
                         this.setState({
                             signalSetData: null,
-                            statusMsg: "No data."
+                            statusMsg: this.props.t("No data.")
                         });
                         this.brush = null;
                         this.zoom = null;
@@ -312,12 +330,43 @@ export class HistogramChart extends Component {
                     });
                 }
             } catch (err) {
+                this.setState({statusMsg: this.props.t("Error loading data.")});
                 throw err;
             }
         }
     }
 
-    processData(data) {
+    /**
+     * The value returned from this function is used to determine the height of the bar corresponding to the bucket.
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} bucket - the record from server; contains 'count' field, and also 'values' field if metrics were specified
+     */
+    static processBucket(self, bucket) {
+        const config = self.props.config;
+        if (config.metric_sigCid && config.metric_type) {
+            bucket.metric = bucket.values[config.metric_sigCid][config.metric_type];
+            delete bucket.values;
+            return bucket.metric;
+        }
+        else
+            return bucket.count;
+    }
+
+    /**
+     * Processes the data returned from the server and returns new signalSetData object.
+     *
+     * @param {HistogramChart} self - this HistogramChart object
+     * @param {object} data - the data from server; contains at least 'buckets', 'step' and 'offset' fields
+     *
+     * @returns {object} - signalSetData to be saved to state; must contain:
+     *
+     *   - 'buckets' - array of objects with 'key' (left boundary of the bucket) and 'prob' (frequency; height of the bucket)
+     *   - 'step' - width of the bucket
+     *   - 'min' and 'max' (along the x-axis)
+     *   - 'maxProb' - frequency (probability) of the highest bar
+     */
+    static prepareData(self, data) {
         if (data.buckets.length === 0)
             return {
                 buckets: data.buckets,
@@ -331,18 +380,22 @@ export class HistogramChart extends Component {
         const min = data.buckets[0].key;
         const max = data.buckets[data.buckets.length - 1].key + data.step;
 
-        let maxCount = 0;
-        let totalCount = 0;
+        const processBucket = self.props.processBucket || HistogramChart.processBucket;
+        for (const bucket of data.buckets)
+            bucket.value = processBucket(self, bucket);
+
+        let maxValue = 0;
+        let totalValue = 0;
         for (const bucket of data.buckets) {
-            if (bucket.count > maxCount)
-                maxCount = bucket.count;
-            totalCount += bucket.count;
+            if (bucket.value > maxValue)
+                maxValue = bucket.value;
+            totalValue += bucket.value;
         }
 
         for (const bucket of data.buckets) {
-            bucket.prob = bucket.count / totalCount;
+            bucket.prob = bucket.value / totalValue;
         }
-        const maxProb = maxCount / totalCount;
+        const maxProb = maxValue / totalValue;
 
         return {
             buckets: data.buckets,
@@ -441,7 +494,7 @@ export class HistogramChart extends Component {
 
     // noinspection JSCommentMatchesSignature
     /**
-     * @param data                  data in format as produces by this.processData
+     * @param data                  data in format as produces by this.prepareData
      * @param selection             d3 selection to which the data will get assigned and drawn
      * @param disableTransitions    animations when bars are created or modified
      */
@@ -805,7 +858,7 @@ export class HistogramChart extends Component {
                             containerWidth={this.state.width}
                             mousePosition={this.state.mousePosition}
                             selection={this.state.selection}
-                            contentRender={props => <TooltipContent {...props}/>}
+                            contentRender={props => <TooltipContent {...props} tooltipFormat={this.props.tooltipFormat} />}
                         />
                         }
                         <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
