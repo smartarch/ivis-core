@@ -121,10 +121,10 @@ export class SectionContent extends Component {
     errorHandler(error) {
         if (error.response && error.response.data && error.response.data.message) {
             console.error(error);
-            this.navigateToWithFlashMessage(this.props.root, 'danger', error.response.data.message);
+            this.setFlashMessage('danger', error.response.data.message);
         } else {
             console.error(error);
-            this.navigateToWithFlashMessage(this.props.root, 'danger', error.message);
+            this.setFlashMessage('danger', error.message);
         }
         return true;
     }
