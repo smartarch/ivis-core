@@ -11,7 +11,7 @@ import * as d3Shape
 import {select} from "d3-selection";
 import {StaticLegend} from "./Legend";
 import styles
-    from './PieChart.scss'
+    from './PieChart.scss';
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 
@@ -19,7 +19,7 @@ export const LegendPosition = {
     NONE: 0,
     RIGHT: 1,
     BOTTOM: 2
-}
+};
 
 const legendStructure = [
     {
@@ -32,22 +32,15 @@ const legendStructure = [
     withTranslation,
     withErrorHandling
 ])
-export class StaticPieChart extends Component {
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            width: 0
-        };
-
-        this.resizeListener = () => this.createChart();
-    }
-
+class StaticPieChart extends Component {
     static propTypes = {
         config: PropTypes.object.isRequired,
+        data: PropTypes.object,
+        getLabelColor: PropTypes.func,
+        getArcColor: PropTypes.func,
+
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
-        getArcColor: PropTypes.func,
         legendWidth: PropTypes.number,
         legendPosition: PropTypes.number,
         legendRowClass: PropTypes.string
@@ -74,43 +67,56 @@ export class StaticPieChart extends Component {
         legendPosition: LegendPosition.RIGHT
     }
 
-    componentDidMount() {
-        window.addEventListener('resize', this.resizeListener);
-        this.createChart(true);
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            width: 0
+        };
+
+        this.resizeListener = ::this.updateWidth;
     }
 
-    componentDidUpdate(prevProps, prevState, prevContext) {
-        const forceRefresh = this.prevContainerNode !== this.containerNode
-            || prevProps.data !== this.props.data
-            || prevProps.config !== this.props.config;
+    componentDidUpdate(prevProps, prevState) {
+        if (this.prevContainerNode !== this.containerNode ||
+            this.state.width !== prevState.width ||
+            this.props.height !== prevProps.height ||
+            this.props.margin !== prevProps.margin)
+        {
 
-        this.createChart(forceRefresh);
-        this.prevContainerNode = this.containerNode;
+            this.renderChart();
+            this.prevContainerNode = this.containerNode;
+        }
+        else if (this.props.config !== prevProps.config ||
+            this.props.data !== prevProps.data ||
+            this.props.getLabelColor !== prevProps.getLabelColor ||
+            this.props.getArcColor !== prevProps.getArcColor
+        ) {
+            this.updateChart();
+            this.prevContainerNode = this.containerNode;
+        }
+    }
+
+    componentDidMount() {
+        this.updateWidth();
+        window.addEventListener('resize', this.resizeListener);
     }
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.resizeListener);
     }
 
-    createChart(forceRefresh) {
-        const width = this.containerNode.getClientRects()[0].width;
+    updateWidth() {
+        this.setState({
+            width: this.containerNode.getClientRects()[0].width
+        });
+    }
 
-        if (this.state.width !== width) {
-            this.setState({
-                width
-            });
-        }
+    renderChart() {
+        const width = this.state.width;
 
-        if (!forceRefresh && width === this.renderedWidth) {
-            return;
-        }
-        this.renderedWidth = width;
-
-
-        const t = this.props.t;
         const innerWidth = width - this.props.margin.left - this.props.margin.right;
         const innerHeight = this.props.height - this.props.margin.top - this.props.margin.bottom;
-        const radius = Math.min(innerWidth / 2, innerHeight / 2);
 
         const centerX = innerWidth / 2 + this.props.margin.left;
         const centerY = innerHeight / 2 + this.props.margin.top;
@@ -118,19 +124,30 @@ export class StaticPieChart extends Component {
         this.pieSelection.attr('transform', `translate(${centerX},${centerY})`);
         this.labelsSelection.attr('transform', `translate(${centerX},${centerY})`);
 
+        const radius = Math.min(innerWidth / 2, innerHeight / 2); //
+        this.updateChart(radius);
+    }
+
+    updateChart(newRadius) {
+        this.chartRadius = newRadius || this.chartRadius;
+
+        const valueAccessor = typeof this.props.data !== "undefined" ?
+            d => this.props.data[d.sigSet][d.sensor] :
+            d => d.value;
+
         let total = 0;
         for (const entry of this.props.config.arcs) {
-            total += entry.value;
+            total += valueAccessor(entry);
         }
 
         const pieGen = d3Shape.pie()
             .padAngle(0.02)
             .sort(null)
-            .value(d => d.value);
+            .value(valueAccessor);
 
         const arcGen = d3Shape.arc()
-            .outerRadius(radius)
-            .innerRadius(radius - 60);
+            .outerRadius(this.chartRadius)
+            .innerRadius(this.chartRadius - 60);
 
         const shadows = this.shadowsSelection.selectAll('path').data(pieGen(this.props.config.arcs));
         shadows.enter().append('path')
@@ -154,9 +171,9 @@ export class StaticPieChart extends Component {
             .attr('class', styles.label)
             .attr('fill', d => this.props.getLabelColor(d.data.color))
             .text(d => {
-                const ratio = Math.floor(d.data.value * 100 / total);
+                const ratio = Math.floor(d.value * 100 / total);
                 return ratio > 5 ? `${ratio}%` : '';
-            })
+            });
     }
 
     render() {
@@ -188,3 +205,7 @@ export class StaticPieChart extends Component {
         );
     }
 }
+
+export {
+    StaticPieChart,
+};

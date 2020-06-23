@@ -24,7 +24,7 @@ class RecordedAnimation extends Component {
         minFetchedKeyframesCount: PropTypes.number,
         maxLoadAheadMs: PropTypes.number,
 
-        data: PropTypes.object.isRequired,
+        sigSets: PropTypes.object.isRequired,
 
         render: PropTypes.func.isRequired,
     }
@@ -53,48 +53,29 @@ class RecordedAnimation extends Component {
                 minFetchedKeyframesCount={this.props.minFetchedKeyframesCount}
                 maxLoadAheadMs={this.props.maxLoadAheadMs}
 
-                data={this.props.data}
+                sigSets={this.props.sigSets}
                 render={childrenRender}
             />
         );
     }
 }
 
-class KeyframeAccess extends Component {
-    static propTypes = {
-        timeDomain: PropTypes.arrayOf(PropTypes.number).isRequired,
-        refreshRate: PropTypes.number.isRequired,
-        initialStatus: PropTypes.object.isRequired,
+class SigSetKeyframeAccess {
+    constructor(getStatus, sigSetCid, sensorCids, timestampCid) {
+        this.getStatus = getStatus;
 
-        minFetchedKeyframesCount: PropTypes.number,
-        maxLoadAheadMs: PropTypes.number,
-        data: PropTypes.object.isRequired,
-
-        render: PropTypes.func.isRequired,
-    }
-
-    constructor(props) {
-        super(props);
+        this.sigSetCid = sigSetCid;
+        this.timestampCid = timestampCid || 'ts';
+        this.sensorCids = [...sensorCids, this.timestampCid];
 
         this.maxFetchTime = null;
-
-        this.getSignalSetCid = () => this.props.data.sigSet;
-        this.getSignalCids = () => this.props.data.sensors.map(s => s.cid);
-
-        this.timeSpeedFactor = this.props.initialStatus.playbackSpeedFactor;
-
-        this.state = {
-            seek: ::this.seek,
-            getNext: ::this.getNext,
-            changePlaybackSpeed: ::this.changePlaybackSpeed,
-        };
 
         this.initialized = false;
     }
 
-    async seek(startingTs) {
-        this.lastSeekTo = startingTs;
-        this.nextChunkBeginTs = startingTs;
+    async seek(ts) {
+        this.lastSeekTo = ts;
+        this.nextChunkBeginTs = ts;
 
         this._reset();
 
@@ -102,38 +83,30 @@ class KeyframeAccess extends Component {
 
         const [kf_1, kf_2, kf_3, ...rest] = chunkData;
 
-        if (this.lastSeekTo === startingTs) {
-            this._addKeyframes(rest);
+        if (this.lastSeekTo === ts) {
+            this.kfQueue.push(...rest);
 
-            this._startFillingDataQueue();
+            this.startFillingDataQueue();
         }
 
-        return [kf_1, kf_2, kf_3];
+        return {[this.sigSetCid]: [kf_1, kf_2, kf_3]};
     }
 
     getNext() {
         if (this.kfQueue.length === 0) {
-            if (!this.nextChunkPromise) this._startFillingDataQueue();
+            if (!this.nextChunkPromise) this.startFillingDataQueue();
 
             this.fetchTimeMult *= 2;
             return {keyframe: null, promise: this.nextChunkPromise.then(() => this.getNext())};
         }
 
         const nextKf = this.kfQueue.shift();
-        this.timeLoaded -= nextKf.duration;
 
-        this._startFillingDataQueue();
+        this.startFillingDataQueue();
         return {keyframe: nextKf, promise: null};
     }
 
-    changePlaybackSpeed(mult) {
-        this.timeSpeedFactor = mult;
-
-        if (this.initialized) this._startFillingDataQueue();
-    }
-
-
-    _startFillingDataQueue() {
+    startFillingDataQueue() {
         if (this.initialized && !this.nextChunkPromise) this._fillDataQueue();
     }
 
@@ -143,7 +116,7 @@ class KeyframeAccess extends Component {
             const fetchBeginTs = Date.now();
 
             this.nextChunkPromise = this._fetchNextChunk(false)
-                .then(::this._addKeyframes);
+                .then(chunk => this.kfQueue.push(...chunk));
 
             try {
                 await this.nextChunkPromise;
@@ -161,16 +134,17 @@ class KeyframeAccess extends Component {
     }
 
     _hasEnoughLoaded() {
-        const minBufferedTime = Math.max(maxRefreshRate, this.props.refreshRate);
+        const storedTimeCushion = Math.max(maxRefreshRate, this.getStatus().refreshRate);
+        const storedTime = this.kfQueue.length <= 1 ? 0 : this.kfQueue[this.kfQueue.length - 1].ts - this.kfQueue[1].ts;
 
-        return (this.nextChunkBeginTs >= this.props.timeDomain[1]) ||
-            this.kfQueue.length >= 1 && (this.timeLoaded - this.kfQueue[0].duration - minBufferedTime) / this.timeSpeedFactor > this.maxFetchTime * this.fetchTimeMult;
+        return (this.nextChunkBeginTs >= this.getStatus().timeDomain[1]) ||
+            (storedTime - storedTimeCushion) / this.getStatus().timeSpeedFactor > this.maxFetchTime * this.fetchTimeMult;
     }
 
-    _fetchNextChunk(withFirstKeyframe) {
+    _fetchNextChunk(withFirstKeyframe = false) {
         const queries = [];
         if (withFirstKeyframe) queries.push(this._getFirstKfQuery());
-        queries.push(this._getNextChunkQuery(withFirstKeyframe));
+        queries.push(this._getNextChunkQuery());
 
         return dataAccess.query(queries)
             .then(data => {
@@ -185,7 +159,7 @@ class KeyframeAccess extends Component {
     _processData(keyframeData) {
         const kfs = [];
         for (let kfDatum of keyframeData) {
-            const {ts, ...data} = kfDatum;
+            const {[this.timestampCid]: ts, ...data} = kfDatum;
             const kf = {
                 ts: moment.utc(ts).valueOf(),
                 data
@@ -194,52 +168,40 @@ class KeyframeAccess extends Component {
             kfs.push(kf);
         }
 
-        const timeFetched = kfs[kfs.length - 1].ts - kfs[0].ts;
-        if (timeFetched / this.timeSpeedFactor < this.props.maxLoadAheadMs) {
+        const timeFetched = kfs[kfs.length - 1][this.timestampCid] - kfs[0][this.timestampCid];
+        if (timeFetched / this.getStatus().timeSpeedFactor < this.getStatus().maxLoadAheadMs) {
             this.nextKeyframeCount = this.nextKeyframeCount * 2;
         }
 
-        this.nextChunkBeginTs = kfs[kfs.length - 1].ts;
+        this.nextChunkBeginTs = kfs[kfs.length - 1][this.timestampCid];
 
         return kfs;
     }
 
-    _addKeyframes(kfs) {
-        if (kfs.length === 0) return;
-
-        let lastTs = this.kfQueue.length > 0 ? this.kfQueue[this.kfQueue.length - 1].ts : kfs[0].ts;
-        for (let kf of kfs) {
-            kf.duration = kf.ts - lastTs;
-            lastTs = kf.ts;
-
-            this.kfQueue.push(kf);
-            this.timeLoaded += kf.duration;
-        }
-
-    }
-
     _reset() {
         this.kfQueue = [];
-        this.timeLoaded = 0;
-        this.nextKeyframeCount = this.props.minFetchedKeyframesCount || 3;
+        //TODO: better initialization without configuration (getting average
+        //keyframe duration, with combination of that fetch time and playback
+        //speed)
+        this.nextKeyframeCount = this.getStatus().minFetchedKeyframesCount;
         this.fetchTimeMult = 2;
 
         this.initialized = true;
     }
 
-    _getNextChunkQuery(withFirstKeyframe) {
+    _getNextChunkQuery() {
         return {
             type: "docs",
             args: [
-                this.getSignalSetCid(),
-                this.getSignalCids(),
+                this.sigSetCid,
+                this.sensorCids,
                 {
                     type: "range",
-                    sigCid: "ts",
+                    sigCid: this.timestampCid,
                     gt: moment.utc(this.nextChunkBeginTs).toISOString(),
                 },
-                [{sigCid: "ts", order: "asc" }],
-                withFirstKeyframe ? this.nextKeyframeCount - 1 : this.nextKeyframeCount,
+                [{sigCid: this.timestampCid, order: "asc" }],
+                this.nextKeyframeCount,
             ]
         };
     }
@@ -248,17 +210,87 @@ class KeyframeAccess extends Component {
         return {
             type: "docs",
             args: [
-                this.getSignalSetCid(),
-                this.getSignalCids(),
+                this.sigSetCid,
+                this.sensorCids,
                 {
                     type: "range",
-                    sigCid: "ts",
+                    sigCid: this.timestampCid,
                     lte: moment.utc(this.nextChunkBeginTs).toISOString(),
                 },
-                [{ sigCid: "ts", order: "desc", }],
+                [{ sigCid: this.timestampCid, order: "desc", }],
                 1
             ]
         };
+    }
+}
+
+class KeyframeAccess extends Component {
+    static propTypes = {
+        timeDomain: PropTypes.arrayOf(PropTypes.number).isRequired,
+        refreshRate: PropTypes.number.isRequired,
+        initialStatus: PropTypes.object.isRequired,
+
+        minFetchedKeyframesCount: PropTypes.number,
+        maxLoadAheadMs: PropTypes.number,
+        sigSets: PropTypes.object.isRequired,
+
+        render: PropTypes.func.isRequired,
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            seek: ::this.seek,
+            getNext: ::this.getNext,
+            changePlaybackSpeed: ::this.changePlaybackSpeed,
+        };
+
+        this.timeSpeedFactor = this.props.initialStatus.playbackSpeedFactor;
+        this.keyframeAccessesInit();
+
+        this.forAllKfAccesses = (func) => Object.keys(this.keyframeAccesses).map(sigSetCid => func(this.keyframeAccesses[sigSetCid], sigSetCid));
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.sigSets !== prevProps.sigSets) {
+            this.keyframeAccessesInit();
+        }
+    }
+
+    async seek(ts) {
+        const keyframesArr = await Promise.all(this.forAllKfAccesses(kfAccess => kfAccess.seek(ts)));
+
+        return keyframesArr.reduce((acc, keyframe) => Object.assign(acc, keyframe), {});
+    }
+
+    getNext(sigSetCid) {
+        // console.log("getNext:", sigSetCid);
+        return this.keyframeAccesses[sigSetCid].getNext();
+    }
+
+    changePlaybackSpeed(factor) {
+        this.timeSpeedFactor = factor;
+
+        this.forAllKfAccesses(kfAccess => kfAccess.startFillingDataQueue());
+    }
+
+    getStatus() {
+        return {
+            timeSpeedFactor: this.timeSpeedFactor,
+            timeDomain: this.props.timeDomain,
+            refreshRate: this.props.refreshRate,
+            minFetchedKeyframesCount: this.props.minFetchedKeyframesCount || 3,
+            maxLoadAheadMs: this.props.maxLoadAheadMs || 30000,
+        };
+    }
+
+
+    keyframeAccessesInit() {
+        this.keyframeAccesses = {};
+        for (let sigSetCid of Object.keys(this.props.sigSets)) {
+            this.keyframeAccesses[sigSetCid] = new SigSetKeyframeAccess(::this.getStatus, sigSetCid, this.props.sigSets[sigSetCid].sensors, this.props.sigSets[sigSetCid].timestampCid);
+        }
     }
 
     render() {
@@ -297,8 +329,11 @@ class RecordedAnimationBase extends Component {
             keyframes: {},
         };
 
-        this.keyframes = [];
+        this.keyframes = {};
         this.refreshTimeout = null;
+
+        this.nextSeekPromise = null;
+        this.nextKfPromises = new Map();
     }
 
     componentDidUpdate() {
@@ -358,18 +393,17 @@ class RecordedAnimationBase extends Component {
 
     @withAsyncErrorHandler
     async seekHandler(ts) {
-        const clampedTs = this.clampPosition(ts);
+        const clampedTs = Math.min(this.props.timeDomain[1], Math.max(this.props.timeDomain[0], ts));
 
-        this.keyframes = [];
+        this.keyframes = {};
         this.setStatus({position: clampedTs, isBuffering: true});
 
-        const dataPromise = this.props.seek(clampedTs);
-        this.nextKfPromise = dataPromise;
+        this.nextSeekPromise = this.props.seek(clampedTs);
 
-        const keyframes = await dataPromise;
+        const keyframes = await this.nextSeekPromise;
 
         if (clampedTs === this.state.status.position) {
-            this.nextKfPromise = null;
+            this.nextSeekPromise = null;
             this.keyframes = keyframes;
             if (!this.refreshing) this.setStatus({isBuffering: false});
         }
@@ -377,23 +411,34 @@ class RecordedAnimationBase extends Component {
 
 
     refresh() {
+        const notEnoughKfs = () => (
+            Object.keys(this.keyframes).length === 0 ||
+            Object.keys(this.keyframes).filter(sigSetCid => this.keyframes[sigSetCid].length < 3 && this.keyframes[sigSetCid][1].ts < this.props.timeDomain[1]).length > 0
+        );
+
         const refreshPosition = (interval) => {
             const nextPosition = Math.min(
                 this.props.timeDomain[1],
                 this.state.status.position + (this.state.status.playbackSpeedFactor * interval)
             );
 
+
             this.tryShiftUntil(nextPosition);
 
-            if (this.keyframes.length < 3 && this.keyframes[1].ts < this.props.timeDomain[1]) {
+
+            if (notEnoughKfs()) {
+                // console.log("try shifting, not enough keyframes");
                 this.savedInterval = interval;
                 if (!this.state.status.isBuffering) this.setStatus({isBuffering: true});
             } else {
+                // console.log("refreshing");
                 this.setStatus({isBuffering: false, position: nextPosition});
             }
         };
 
-        if (this.keyframes.length < 3) {
+
+        if (notEnoughKfs()) {
+            // console.log("not enough kfs, starting to buffer");
             if(!this.state.status.isBuffering) {
                 this.setStatus({isBuffering: true});
             }
@@ -418,26 +463,42 @@ class RecordedAnimationBase extends Component {
             this.refreshTimeout = setTimeout(::this.refresh, this.props.refreshRate);
         } else {
             this.refreshing = false;
+            this.pauseHandler();
         }
     }
 
     tryShiftUntil(ts) {
-        while (!this.nextKfPromise && this.keyframes.length >= 3 && ts > this.keyframes[1].ts) {
-            this.keyframes.shift();
-            if (this.keyframes[1].ts < this.props.timeDomain[1]) {
-                const {keyframe, promise} = this.props.getNext();
+        if (this.nextSeekPromise) return;
+
+        const sigSetsToFetch = Object.keys(this.keyframes).filter(sigSetCid =>
+            this.keyframes[sigSetCid][1].ts < this.props.timeDomain[1] &&
+            this.keyframes[sigSetCid][1].ts < ts &&
+            !this.nextKfPromises.has(sigSetCid)
+        );
+
+        for (let sigSetCid of sigSetsToFetch) {
+            this.keyframes[sigSetCid].shift();
+
+            if (this.keyframes[sigSetCid][1].ts < this.props.timeDomain[1]) {
+                // console.log("gettin next for", sigSetCid);
+                const {keyframe, promise} = this.props.getNext(sigSetCid);
 
                 if (promise) {
                     const positionBefore = this.state.status.position;
-                    this.nextKfPromise = promise.then(({keyframe}) => {
+                    const sigSetPromise = promise.then(({keyframe}) => {
                         if (this.state.status.position === positionBefore) {
-                            this.keyframes.push(keyframe);
+                            this.keyframes[sigSetCid].push(keyframe);
+                            // console.log("thrid keyframe came, same position");
                         }
 
-                        this.nextKfPromise = null;
+                        // console.log("thrid keyframe came, different position");
+
+                        this.nextKfPromises.delete(sigSetCid);
                     });
+
+                    this.nextKfPromises.set(sigSetCid, sigSetPromise);
                 } else {
-                    this.keyframes.push(keyframe);
+                    this.keyframes[sigSetCid].push(keyframe);
                 }
             }
         }
@@ -459,14 +520,14 @@ class RecordedAnimationBase extends Component {
     setStatus(nextStatus) {
         this.setState(prevState => {
             const newStatus = Object.assign({}, prevState.status, nextStatus);
-            const newKeyframes = {curr: this.keyframes[0], next: this.keyframes[1]};
+
+            const newKeyframes = {};
+            for (let sigSetCid in this.keyframes) {
+                newKeyframes[sigSetCid] = [...this.keyframes[sigSetCid]];
+            }
 
             return {status: newStatus, keyframes: newKeyframes};
         });
-    }
-
-    clampPosition(ts) {
-        return Math.min(this.props.timeDomain[1], Math.max(this.props.timeDomain[0], ts));
     }
 
     render() {

@@ -136,7 +136,7 @@ function animated(VisualizationComp) {
         return (
             <AnimationDataContext.Consumer>
                 {
-                    value => <VisualizationComp {...props} animationData={value} ref={ref} />
+                    value => <VisualizationComp {...props} data={value} ref={ref} />
                 }
             </AnimationDataContext.Consumer>
         );
@@ -155,7 +155,7 @@ class AnimationKeyframeInterpolator extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            animData: null,
+            animationData: null,
         };
     }
 
@@ -171,49 +171,55 @@ class AnimationKeyframeInterpolator extends Component {
         return interpolated;
     }
 
-    refresh() {
-        const kfCurr = this.props.keyframes.curr;
-        const kfNext = this.props.keyframes.next;
+    refreshSigSet(sigSetCid) {
+        const kfCurr = this.props.keyframes[sigSetCid][0];
+        const kfNext = this.props.keyframes[sigSetCid][1];
 
         if (kfNext === undefined) {
-            this.setState({animData: kfCurr.data});
-            return;
+            return kfCurr.data;
         }
 
         const ratio = (this.props.status.position - kfCurr.ts) / (kfNext.ts - kfCurr.ts);
         // console.log("Refreshing", {ratio, current: kfCurr.ts, next: kfNext.ts, position: this.props.status.position});
 
-        const interpolated = this.interpolate(
+        return this.interpolate(
             kfCurr.data,
             kfNext.data,
             this.props.interpolFunc,
             ratio
         );
+    }
 
-        this.setState({animData: interpolated});
+    refreshAll() {
+        const animationData = {};
+        for (let sigSetCid in this.props.keyframes) {
+            animationData[sigSetCid] = this.refreshSigSet(sigSetCid);
+        }
+
+        this.setState({animationData});
     }
 
     componentDidUpdate(prevProps) {
         if (!this.props.status.isBuffering &&
             (prevProps.status.position !== this.props.status.position || prevProps.status.isBuffering)) {
 
-            this.refresh();
+            this.refreshAll();
             // console.log("AnimatedBase: position refresh", this.props.keyframes);
         }
 
         if (this.props.status.isBuffering && !prevProps.status.isBuffering) {
-            this.setState({animData: null});
+            this.setState({animationData : null});
         }
     }
 
     componentDidMount() {
-        if (!this.props.status.isBuffering) this.refresh();
+        if (!this.props.status.isBuffering) this.refreshAll();
     }
 
     render() {
         return (
             <>
-                <AnimationDataContext.Provider value={this.state.animData}>
+                <AnimationDataContext.Provider value={this.state.animationData}>
                     {this.props.children}
                 </AnimationDataContext.Provider>
 
@@ -221,7 +227,7 @@ class AnimationKeyframeInterpolator extends Component {
                 {/*     name={"Animated Base"} */}
                 {/*     status={this.props.status} */}
                 {/*     keyframes={this.props.keyframes} */}
-                {/*     animationData={this.state.animData} */}
+                {/*     animationData={this.state.animationData} */}
                 {/* /> */}
             </>
         );

@@ -123,3 +123,20 @@
     }
 }
 
+// Control layouts
+
+.onelineLayout {
+    @include make-container();
+
+    padding: map-get($spacers, 5) 0;
+
+    :global {
+        .row {
+            height: 25px;
+
+            [class^="col-"] {
+                height: inherit;
+            }
+        }
+    }
+}
