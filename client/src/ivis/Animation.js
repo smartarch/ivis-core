@@ -52,8 +52,8 @@ class Animation extends Component {
 
         return {
             isPlaying: is.isPlaying || false,
-            position: Number.isInteger(is.position)  ? is.position : this.props.timeDomain[0],
-            playbackSpeedFactor: is.position || 1,
+            position: Number.isInteger(is.position) ? is.position : this.props.timeDomain[0],
+            playbackSpeedFactor: Number.isInteger(is.playbackSpeedFactor) ? is.playbackSpeedFactor : 1,
         };
     }
 

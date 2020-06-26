@@ -70,7 +70,7 @@ class SigSetKeyframeAccess {
 
         this.maxFetchTime = null;
 
-        this.initialized = false;
+        this.isInitialized = false;
     }
 
     async seek(ts) {
@@ -107,7 +107,7 @@ class SigSetKeyframeAccess {
     }
 
     startFillingDataQueue() {
-        if (this.initialized && !this.nextChunkPromise) this._fillDataQueue();
+        if (this.isInitialized && !this.nextChunkPromise) this._fillDataQueue();
     }
 
     async _fillDataQueue() {
@@ -152,7 +152,7 @@ class SigSetKeyframeAccess {
                 if (dataArr.length > 0)
                     return this._processData(dataArr);
                 else
-                    throw Error(`There are no data for sigSet '${this.getSignalSetCid()}' after '${moment.utc(this.nextChunkBeginTs)}'`);
+                    throw Error(`There are no data for sigSet '${this.sigSetCid}' after '${moment.utc(this.nextChunkBeginTs)}'`);
             });
     }
 
@@ -186,7 +186,7 @@ class SigSetKeyframeAccess {
         this.nextKeyframeCount = this.getStatus().minFetchedKeyframesCount;
         this.fetchTimeMult = 2;
 
-        this.initialized = true;
+        this.isInitialized = true;
     }
 
     _getNextChunkQuery() {
@@ -255,10 +255,12 @@ class KeyframeAccess extends Component {
     componentDidUpdate(prevProps) {
         if (this.props.sigSets !== prevProps.sigSets) {
             this.keyframeAccessesInit();
+            this.seek(this.lastSeekTo);
         }
     }
 
     async seek(ts) {
+        this.lastSeekTo = ts;
         const keyframesArr = await Promise.all(this.forAllKfAccesses(kfAccess => kfAccess.seek(ts)));
 
         return keyframesArr.reduce((acc, keyframe) => Object.assign(acc, keyframe), {});
