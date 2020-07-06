@@ -1,4 +1,6 @@
 @import "../scss/variables.scss";
+@import "../scss/mixins";
+@import "~react-day-picker/lib/style.css";
 
 .panelMenu {
   float: right;
@@ -17,6 +19,8 @@
   text-align: right;
   margin-bottom: 15px;
 }
+
+
 
 .form { // This is here to give the styles below higher priority than Bootstrap has
   :global .DayPicker {
@@ -50,7 +54,8 @@
 }
 
 .dayPickerWrapper {
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .buttonRow {
@@ -121,7 +126,7 @@
 .inputContainer {
   position: relative;
 
-  .inputHints{
+  .inputHints {
     position: absolute;
     border-top: 0;
     width: 100%;
@@ -129,9 +134,56 @@
     z-index: 100;
   }
 
-  .inputHint{
+  .inputHint {
     padding: 0.5rem;
   }
+
+}
+
+
+.columnSelect {
+  list-style-type: none;
+  overflow: hidden;
+  padding:0;
+  height: 20em;
+  margin: 0;
+
+  @include hocus(){
+    overflow-y: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+
+    &::-webkit-scrollbar { /* WebKit */
+      width: 0;
+      height: 0;
+    }
+  }
+}
+
+.columnSelectItem {
+  padding: 0 20px;
+  cursor: pointer;
+
+  &.columnSelectItemSelected {
+    background-color: #4A90E2;
+    color:white;
+    @include hocus() {
+      background-color:#51A0FA;
+    }
+  }
+
+  @include hocus(){
+    background-color: #F0F8FF;
+  }
+}
+
+.TimePicker {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  border: $input-border-width solid $input-border-color;
+  border-radius: $input-border-radius;
+  padding: $input-padding-y $input-padding-x;
 }
 
 .colorPickerSwatchWrapper {
@@ -145,7 +197,7 @@
   .colorPickerSwatchColor {
     width: 60px;
     height: 18px;
-    borderRadius: 2px;
+    border-radius: 2px;
   }
 }
 

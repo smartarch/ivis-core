@@ -1116,15 +1116,13 @@ async function getHandler(id) {
 /**
  * Returns run message for job.
  * @param job the job to run
- * @returns {Promise<{type: number, spec: {jobId: *, taskDir: string}}>}
  */
-async function createRunMsg(job) {
-    const task = await knex('tasks').select('id').where('id', job.task).first();
+function createRunMsg(job) {
     return {
         type: HandlerMsgType.RUN,
         spec: {
             jobId: job.id,
-            taskDir: getTaskBuildOutputDir(task.id)
+            taskDir: getTaskBuildOutputDir(job.task)
         }
     };
 }
@@ -1143,7 +1141,7 @@ async function checkSignalTriggers(cid) {
     for (let trigger of triggers) {
         const job = await knex('jobs').where('id', trigger.job).first();
         if (job.state === JobState.ENABLED) {
-            const msg = await createRunMsg(job);
+            const msg = createRunMsg(job);
             handleRunMsg(msg).catch(logErr);
         }
     }
@@ -1167,10 +1165,10 @@ async function runTimeTrigger(job) {
         if (last_run && last_run.started_at) {
             let timeFromLast = moment(Date.now()).diff(moment(last_run.started_at), 'seconds');
             if (timeFromLast > job.trigger) {
-                await handleRunMsg(await createRunMsg(job));
+                await handleRunMsg(createRunMsg(job));
             }
         } else {
-            await handleRunMsg(await createRunMsg(job));
+            await handleRunMsg(createRunMsg(job));
         }
 
     }
@@ -1182,13 +1180,11 @@ async function runTimeTrigger(job) {
  */
 async function runTimeTriggers() {
     try {
-        const jobs = await knex.select().table('jobs');
+        const jobs = await knex('jobs').where('state', JobState.ENABLED);
 
         if (jobs) {
             for (let i = 0; i < jobs.length; i++) {
-                if (jobs[i].state === JobState.ENABLED) {
                     await runTimeTrigger(jobs[i]).catch(logErr);
-                }
             }
         }
         startIfNotRunning();

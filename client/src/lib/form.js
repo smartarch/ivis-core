@@ -689,6 +689,49 @@ class ColorPicker extends Component {
     }
 }
 
+class ColumnSelect extends Component {
+
+    constructor(props) {
+        super(props);
+    }
+
+    static propTypes = {
+        selectedValue: PropTypes.any,
+        onSelect: PropTypes.func,
+        options: PropTypes.array
+    }
+
+    render() {
+        const {
+            onSelect,
+            options,
+            selectedValue
+        } = this.props;
+
+        const optionsElements = options.map(
+            option => {
+                let cls = styles.columnSelectItem;
+                let tabIndex = '-1';
+                if (option == selectedValue) {
+                    cls += ` ${styles.columnSelectItemSelected}`;
+                    tabIndex = '0';
+                }
+                return (
+                    <li className={cls} tabIndex={tabIndex} onClick={() => onSelect(option)}>
+                        {option}
+                    </li>
+                );
+            }
+        );
+
+        return (
+            <ul className={styles.columnSelect}>
+                {optionsElements}
+            </ul>
+        )
+    }
+}
+
 @withComponentMixins([
     withTranslation,
     withFormStateOwner
@@ -711,6 +754,7 @@ class DatePicker extends Component {
         dateFormat: PropTypes.string,
         formatDate: PropTypes.func,
         parseDate: PropTypes.func,
+        showTime: PropTypes.bool,
         disabled: PropTypes.bool
     }
 
@@ -726,8 +770,13 @@ class DatePicker extends Component {
 
     daySelected(date) {
         const owner = this.getFormStateOwner();
-        const id = this.props.id;
-        const props = this.props;
+
+        time = {
+            hour: 0,
+            minute: 0,
+            second: 0,
+            ...time
+        };
 
         if (props.formatDate) {
             owner.updateFormValue(id, props.formatDate(date));
@@ -735,17 +784,19 @@ class DatePicker extends Component {
             owner.updateFormValue(id, props.birthday ? formatBirthday(props.dateFormat, date) : formatDate(props.dateFormat, date));
         }
 
-        this.setState({
-            opened: false
-        });
+        if (!showTime) {
+            this.setState({
+                dateOpened: false
+            });
+        }
     }
 
     render() {
+        const {t, showTime, id} = this.props;
+
         const props = this.props;
         const owner = this.getFormStateOwner();
-        const id = this.props.id;
         const htmlId = 'form_' + id;
-        const t = props.t;
 
         function BirthdayPickerCaption({date, localeUtils, onChange}) {
             const months = localeUtils.getMonths();
@@ -793,6 +844,12 @@ class DatePicker extends Component {
 
         const className = owner.addFormValidationClass('form-control', id);
 
+        const time = {
+            hour: selectedDate.getHours(),
+            minute: selectedDate.getMinutes(),
+            second: selectedDate.getSeconds()
+        };
+
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
             <>
                 <div className={props.disabled ? '' : "input-group"}>
@@ -817,6 +874,12 @@ class DatePicker extends Component {
                         toMonth={toMonth}
                         captionElement={captionElement}
                     />
+                    {showTime &&
+                    <TimePicker
+                        time={time}
+                        onChange={time => this.dateTimeChange(selectedDate, time)}
+                    />
+                    }
                 </div>
                 }
             </>
