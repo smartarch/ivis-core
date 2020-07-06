@@ -11,7 +11,7 @@ import {
 import {
     Button,
     ButtonRow,
-    DatePicker,
+    DateTimePicker,
     filterData,
     Form,
     FormSendMethod,
@@ -28,7 +28,6 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
 import moment from "moment";
-import {parseDate} from "../../../../shared/date"
 import interoperableErrors from "../../../../shared/interoperable-errors";
 import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators"
 
@@ -155,6 +154,15 @@ export default class CUD extends Component {
         }
     }
 
+    parseDate = str => {
+        const date = moment(str, 'YYYY-MM-DD HH:mm:ss', true);
+        if (date && date.isValid()) {
+            return date.toDate();
+        } else {
+            return null;
+        }
+    };
+
     render() {
         const t = this.props.t;
         const signalSet = this.props.signalSet;
@@ -203,15 +211,20 @@ export default class CUD extends Component {
                         dataUrl={`rest/signals-table-by-cid/${signalSet.cid}`}
                         disabled={!!(isEdit || isSignalsetTimeseries)}
                     />
-                    {/*
-                    <DatePicker
+
+                    <DateTimePicker
                         id={'offset'}
                         label={t("Offset")}
-                        formatDate={date => moment(date).format('YYYY-MM-DD') + ' 00:00:00'}
-                        parseDate={str => parseDate(str)}
+                        showTime={true}
+                        formatDate={(date, time) => {
+                            const dateTime = moment(date);
+                            dateTime.set(time);
+                            return dateTime.format('YYYY-MM-DD HH:mm:ss');
+                        }}
+                        parseDate={str => this.parseDate(str)}
                         disabled={isEdit}
                     />
-                    */}
+
                     <InputField id="interval"
                                 label={t('Interval')}
                                 help={t('Bucket interval - add s(seconds), m(minute), h(hour), d(day) right after numeric value to select the unit.')}
