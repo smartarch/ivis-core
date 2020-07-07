@@ -701,6 +701,32 @@ class ColumnSelect extends Component {
         options: PropTypes.array
     }
 
+    onKeyUp(event) {
+        const key = event.key;
+        if (key == 'Enter') {
+            event.target.click();
+        }
+    }
+
+    onKeyDown(event) {
+        const key = event.key;
+        if ((key == 'ArrowUp' || key == 'ArrowDown') && event.target === event.currentTarget) {
+            event.currentTarget.querySelector(`.${styles.columnSelectItem}`).focus();
+        } else {
+            if (key == 'ArrowUp') {
+                const previous = event.target.previousSibling;
+                if (previous) {
+                    previous.focus();
+                }
+            } else if (key == 'ArrowDown') {
+                const next = event.target.nextSibling;
+                if (next) {
+                    next.focus();
+                }
+            }
+        }
+    }
+
     render() {
         const {
             onSelect,
@@ -711,13 +737,11 @@ class ColumnSelect extends Component {
         const optionsElements = options.map(
             option => {
                 let cls = styles.columnSelectItem;
-                let tabIndex = '-1';
                 if (option == selectedValue) {
                     cls += ` ${styles.columnSelectItemSelected}`;
-                    tabIndex = '0';
                 }
                 return (
-                    <li className={cls} tabIndex={tabIndex} onClick={() => onSelect(option)}>
+                    <li key={option} className={cls} tabIndex='-1' onClick={() => onSelect(option)}>
                         {option}
                     </li>
                 );
@@ -725,7 +749,7 @@ class ColumnSelect extends Component {
         );
 
         return (
-            <ul className={styles.columnSelect}>
+            <ul className={styles.columnSelect} tabIndex='0' onKeyUp={this.onKeyUp} onKeyDown={this.onKeyDown}>
                 {optionsElements}
             </ul>
         )
