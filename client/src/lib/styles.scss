@@ -141,6 +141,15 @@
 
 }
 
+.columnSelectWrapper {
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+.columnSelectHeader {
+  color: var(--gray);
+  text-align: center;
+}
 
 .columnSelect {
   list-style-type: none;
