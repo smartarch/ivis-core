@@ -698,6 +698,7 @@ class ColumnSelect extends Component {
     static propTypes = {
         selectedValue: PropTypes.any,
         onSelect: PropTypes.func,
+        header: PropTypes.string,
         options: PropTypes.array
     }
 
@@ -731,7 +732,8 @@ class ColumnSelect extends Component {
         const {
             onSelect,
             options,
-            selectedValue
+            selectedValue,
+            header
         } = this.props;
 
         const optionsElements = options.map(
@@ -749,9 +751,14 @@ class ColumnSelect extends Component {
         );
 
         return (
-            <ul className={styles.columnSelect} tabIndex='0' onKeyUp={this.onKeyUp} onKeyDown={this.onKeyDown}>
-                {optionsElements}
-            </ul>
+            <div className={styles.columnSelectWrapper}>
+                {header &&
+                <div className={styles.columnSelectHeader}>{header}</div>
+                }
+                <ul className={styles.columnSelect} tabIndex='0' onKeyUp={this.onKeyUp} onKeyDown={this.onKeyDown}>
+                    {optionsElements}
+                </ul>
+            </div>
         )
     }
 }
