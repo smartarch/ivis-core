@@ -532,7 +532,6 @@ async function getLastId(context, sigSet) {
     }
 
 */
-
 async function query(context, queries) {
     return await knex.transaction(async tx => {
         return await queryTx(tx, context, queries);
@@ -549,17 +548,7 @@ async function queryTx(tx, context, queries) {
 
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
 
-        let substitutionOpts = sigSetQry.substitutionOpts;
-        if (!substitutionOpts) {
-            substitutionOpts = {
-                minSubaggsBuckets: DEFAULT_MIN_SUBAGGS_BUCKETS
-            };
-
-        } else if (substitutionOpts.allow !== false) {
-            substitutionOpts.minSubaggsBuckets = substitutionOpts.minSubaggsBuckets || DEFAULT_MIN_SUBAGGS_BUCKETS;
-        } else {
-            substitutionOpts = null;
-        }
+        let substitutionOpts = setupSubstitutionOpts(sigSetQry.substitutionOpts);
 
         // Map from signal cid to signal
         const signalMap = {};
@@ -685,7 +674,10 @@ async function queryTx(tx, context, queries) {
 
         if (substitutionOpts && substitutionOpts.minStep) {
             const maxInterval = substitutionOpts.minStep / substitutionOpts.minSubaggsBuckets;
-            const aggSigSet = await signalSetAggregations.getMaxFittingAggSet(sigSet.id, maxInterval);
+            if (sigSetQry.filter && sigSetQry.filter.gte) {
+                substitutionOpts.dateFrom = sigSetQry.filter.gte;
+            }
+            const aggSigSet = await signalSetAggregations.getMaxFittingAggSet(sigSet.id, maxInterval, substitutionOpts.dateFrom);
             if (aggSigSet) {
                 sigSetQry.aggSigSet = {
                     sigSet: aggSigSet,
@@ -705,6 +697,19 @@ async function queryTx(tx, context, queries) {
 
     const resp = await indexer.query(queries);
     return resp;
+}
+
+function setupSubstitutionOpts(querySubstitutionOpts) {
+    let substitutionOpts = {
+        minSubaggsBuckets: DEFAULT_MIN_SUBAGGS_BUCKETS,
+        ...querySubstitutionOpts
+    };
+
+    if (substitutionOpts.allow !== false) {
+        return substitutionOpts;
+    } else {
+        return null;
+    }
 }
 
 async function index(context, signalSetId, method = IndexMethod.FULL, from) {

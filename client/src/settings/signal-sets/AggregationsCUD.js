@@ -154,7 +154,7 @@ export default class CUD extends Component {
         }
     }
 
-    parseDate = str => {
+    parseDateTime = str => {
         const date = moment(str, 'YYYY-MM-DD HH:mm:ss', true);
         if (date && date.isValid()) {
             return date.toDate();
@@ -221,7 +221,7 @@ export default class CUD extends Component {
                             dateTime.set(time);
                             return dateTime.format('YYYY-MM-DD HH:mm:ss');
                         }}
-                        parseDate={str => this.parseDate(str)}
+                        parseDate={str => this.parseDateTime(str)}
                         disabled={isEdit}
                     />
 
