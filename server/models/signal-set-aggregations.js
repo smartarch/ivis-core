@@ -33,11 +33,12 @@ async function listDTAjax(context, sigSetId, params) {
     );
 }
 
-async function getMaxFittingAggSet(sigSetId, maxInterval) {
+async function getMaxFittingAggSet(sigSetId, maxInterval, dateFrom) {
     const sigSet = await knex('aggregation_jobs')
         .select('signal_sets.*')
         .where('aggregation_jobs.set', sigSetId)
         .andWhere('aggregation_jobs.interval', '<=', maxInterval)
+        .andWhere('aggregation_jobs.offset', '<=', dateFrom)
         .innerJoin('jobs', 'aggregation_jobs.job', 'jobs.id')
         .innerJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
         .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set')
@@ -85,13 +86,15 @@ async function createTx(tx, context, sigSetId, params) {
 
     enforce(isSignalSetAggregationIntervalValid(intervalStr), 'Interval must be a positive integer and have a unit.');
 
+    const date = moment(params.offset, 'YYYY-MM-DD HH:mm:ss', true);
+    enforce(date && date.isValid(), 'Date is not in valid format');
+
     const jobParams = {
         signalSet: signalSet.cid,
         offset: params.offset,
         ts: ts,
         interval: intervalStr
     };
-
 
     const intervalms = intervalStrToMiliseconds(intervalStr);
     const aggregationJobName = `aggregation_${intervalStr}_${signalSet.cid}`;
@@ -115,7 +118,7 @@ async function createTx(tx, context, sigSetId, params) {
     };
     const jobId = await jobs.create(context, job);
 
-    await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id, interval: intervalms});
+    await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id, offset: params.offset, interval: intervalms});
 
     jobs.run(context, jobId).catch(error => log.error('signal-set-aggregations', error));
 
