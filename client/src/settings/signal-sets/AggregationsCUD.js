@@ -62,14 +62,16 @@ export default class CUD extends Component {
         if (props.job) {
             this.populateFormValues({
                 ts: props.job.params.ts,
-                interval: props.job.params.interval
+                interval: props.job.params.interval,
+                offset: props.job.params.offset || ''
             });
         } else {
             const ts = props.signalSet.settings && props.signalSet.settings.ts;
 
             this.populateFormValues({
                     ts: ts,
-                    interval: ''
+                    interval: '',
+                    offset: ''
                 }
             )
         }
@@ -95,11 +97,23 @@ export default class CUD extends Component {
                 state.setIn(['interval', 'error'], null);
             }
         }
+
+        const offset = state.getIn(['offset', 'value']);
+        if (offset) {
+            if (!this.parseDateTime(offset)) {
+                state.setIn(['offset', 'error'], t('Offset format is "YYYY-MM-DD hh:mm:ss"'));
+            } else {
+                state.setIn(['offset', 'error'], null);
+            }
+        } else {
+            state.setIn(['offset', 'error'], null);
+        }
     }
 
     submitFormValuesMutator(data) {
 
         data.interval = data.interval.trim();
+        data.offset = data.offset.trim() ? data.offset : null;
 
         const allowedKeys = [
             'interval',
@@ -134,6 +148,7 @@ export default class CUD extends Component {
                 this.navigateBack();
             } else {
                 if (submitAndLeave) {
+                    M
                     this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations`, 'success', t('Aggregation created'));
                 } else {
                     this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/aggregations/${submitResult}/edit`, 'success', t('Aggregation created'));
@@ -215,6 +230,7 @@ export default class CUD extends Component {
                     <DateTimePicker
                         id={'offset'}
                         label={t("Offset")}
+                        help={t('Where aggregation starts - can be empty for all data aggregation')}
                         showTime={true}
                         formatDate={(date, time) => {
                             const dateTime = moment(date);

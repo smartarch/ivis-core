@@ -38,7 +38,11 @@ async function getMaxFittingAggSet(sigSetId, maxInterval, dateFrom) {
         .select('signal_sets.*')
         .where('aggregation_jobs.set', sigSetId)
         .andWhere('aggregation_jobs.interval', '<=', maxInterval)
-        .andWhere('aggregation_jobs.offset', '<=', dateFrom)
+        .andWhere(function () {
+                this.where('aggregation_jobs.offset', '<=', dateFrom)
+                    .orWhereNull('aggregation_jobs.offset')
+            }
+        )
         .innerJoin('jobs', 'aggregation_jobs.job', 'jobs.id')
         .innerJoin('signal_sets_owners', 'signal_sets_owners.job', 'jobs.id')
         .innerJoin('signal_sets', 'signal_sets.id', 'signal_sets_owners.set')
@@ -46,6 +50,7 @@ async function getMaxFittingAggSet(sigSetId, maxInterval, dateFrom) {
         .first();
     if (sigSet) {
         sigSet.settings = JSON.parse(sigSet.settings);
+
     }
     return sigSet;
 }
@@ -86,8 +91,10 @@ async function createTx(tx, context, sigSetId, params) {
 
     enforce(isSignalSetAggregationIntervalValid(intervalStr), 'Interval must be a positive integer and have a unit.');
 
-    const date = moment(params.offset, 'YYYY-MM-DD HH:mm:ss', true);
-    enforce(date && date.isValid(), 'Date is not in valid format');
+    if (params.offset != null) {
+        const date = moment(params.offset, 'YYYY-MM-DD HH:mm:ss', true);
+        enforce(date && date.isValid(), 'Offset is not in valid format');
+    }
 
     const jobParams = {
         signalSet: signalSet.cid,
