@@ -654,10 +654,6 @@ class ColorPicker extends Component {
         const owner = this.getFormStateOwner();
         const id = this.props.id;
 
-        this.setState({
-            opened: false
-        });
-
         owner.updateFormValue(id, value.rgb);
     }
 
@@ -678,9 +674,12 @@ class ColorPicker extends Component {
                     </div>
                 </div>
                 {this.state.opened &&
-                <div className={styles.colorPickerWrapper}>
-                    <SketchPicker color={color} onChange={::this.selected}/>
-                </div>
+                <>
+                    <div className={styles.overlay} onClick={::this.toggle} />
+                    <div className={styles.colorPickerWrapper}>
+                        <SketchPicker color={color} onChangeComplete={::this.selected} className={styles.dialog} />
+                    </div>
+                </>
                 }
             </div>
         );
