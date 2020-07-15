@@ -160,6 +160,26 @@ EOF
 }
 
 
+function installTasksPrerequisities {
+    case "$hostType" in
+        centos8-aws|centos8-minimal)
+            dnf -y install python3 python3-pip
+            ;;
+
+        centos7-aws|centos7-minimal)
+            yum -y install python3 python3-pip
+            ;;
+
+        ubuntu1804)
+            apt-get install -y python3 python3-pip
+            ;;
+    esac
+
+    # Install 'ivis' library for tasks
+    python3 -m pip install --user --upgrade setuptools wheel
+    (cd ./ivis-core/server/lib/tasks/python/ && python3 setup.py sdist bdist_wheel)
+}
+
 
 function installPrerequisities {
     # Run as root!
@@ -170,11 +190,11 @@ function installPrerequisities {
 
     case "$hostType" in
         centos8-aws|centos8-minimal)
-            yum -y install epel-release
+            dnf -y install epel-release
 
             curl --silent --location https://rpm.nodesource.com/setup_13.x | bash -
 
-            yum -y install mariadb-server nodejs redis pwgen gcc-c++ make bzip2 java-1.8.0-openjdk git libXScrnSaver at-spi2-atk gtk3
+            dnf -y install mariadb-server nodejs redis pwgen gcc-c++ make bzip2 java-1.8.0-openjdk git libXScrnSaver at-spi2-atk gtk3
             rpm -Uhv --force https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.rpm
             ;;
 
@@ -197,6 +217,7 @@ function installPrerequisities {
             ;;
     esac
 
+    installTasksPrerequisities
 
     systemctl start mariadb
     systemctl enable mariadb
@@ -284,7 +305,6 @@ log:
 
 $apiCerts
 EOT
-    
 
     reinstallAllModules
 
@@ -337,7 +357,7 @@ function installHttpd {
                     firewall-cmd --add-port=${portAPI}/tcp --permanent
                 fi
 
-                # Activate the firefall settings
+                # Activate the firewall settings
                 firewall-cmd --reload
             fi
             ;;
