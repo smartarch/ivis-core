@@ -126,21 +126,26 @@ export class SimpleBarChart extends Component {
     }
 
     renderChart() {
-        //TODO got too complicated with rs, needs rework
-        //TODO: possibly get rid off the complicated structure,
-        //keep the axes as a helper, but admit that things are different and do
-        //not try to hide behind abstraction that does not work
-
         const data = this.props.data;
         const config = this.props.config;
 
         //TODO: fix pieCHart to behave the same
-        const valueAccessor = (value) => {
+        const getRawValue = (value) => {
             if (typeof value === "number") return value;
-            else return data[value.sigSet][value.signal];
+            else {
+                let resValue = null;
+                if (value.sigSet && value.signal) resValue = data[value.sigSet][value.signal];
+                if (value.agg && resValue) resValue = resValue[value.agg];
+
+                return resValue;
+            }
         };
 
-        //TODO: negative values?
+        const valueAccessor = (value) => {
+            const rawValue = getRawValue(value);
+            return typeof rawValue === "number" ? rawValue : 0;
+        };
+
         const [minValue, maxValue] = extent([].concat(...config.groups.map(group => group.values)), valueAccessor);
         const maxSubgroups = max(config.groups.map(group => group.values.length));
 
@@ -156,10 +161,16 @@ export class SimpleBarChart extends Component {
             .domain([Math.min(0, minValue), maxValue].map(limit => limit * 1.2))
             .range(rs.y.range);
 
-        const valueFormat = this.props.valueFormatSpecifier ?
+        const valueFormatIfDef = this.props.valueFormatSpecifier ?
             y.tickFormat(y.ticks(), this.props.valueFormatSpecifier) :
             y.tickFormat()
         ;
+
+        const valueFormat = (value) => {
+            const rawValue = getRawValue(value);
+            if (rawValue === null) return "No data";
+            else return valueFormatIfDef(rawValue);
+        };
 
         const xSubgroups = scaleBand()
             .domain(range(maxSubgroups))
@@ -171,7 +182,7 @@ export class SimpleBarChart extends Component {
             .call(rs.x.axis(x).tickFormat(idx => config.groups[idx].label));
 
         select(rs.y.axisNode)
-            .call(rs.y.axis(y).tickFormat(valueFormat))
+            .call(rs.y.axis(y).tickFormat(valueFormatIfDef))
             .call(sel => sel.selectAll(".tickLine").remove())
             .selectAll(".tick line").clone().classed("tickLine", true)
             .attr(rs.x.name + "2", x.range()[1] - x.range()[0])
@@ -206,7 +217,7 @@ export class SimpleBarChart extends Component {
                 .attr("width", d => y(valueAccessor(d.value)))
             )
             .call(sel => sel.select("text")
-                .text(d => valueFormat(valueAccessor(d.value)))
+                .text(d => valueFormat(d.value))
                 .attr("y", xSubgroups.bandwidth()/2)
                 .attr("x", d => y(valueAccessor(d.value)))
                 .attr("dx", "1em")
@@ -239,7 +250,7 @@ export class SimpleBarChart extends Component {
                 .attr("height", d => y.range()[0] - y(valueAccessor(d.value)))
             )
             .call(sel => sel.select("text")
-                .text(d => valueFormat(valueAccessor(d.value)))
+                .text(d => valueFormat(d.value))
                 .attr("x", xSubgroups.bandwidth()/2)
                 .attr("dy", "-2em")
                 .attr("dominant-baseline", "baseline")
@@ -281,4 +292,3 @@ export class SimpleBarChart extends Component {
         );
     }
 }
-

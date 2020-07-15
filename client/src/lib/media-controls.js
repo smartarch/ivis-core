@@ -6,10 +6,11 @@ import {select, mouse} from "d3-selection";
 import {scaleLinear} from "d3-scale";
 import {interpolateString} from "d3-interpolate";
 import styles from "./media-controls.scss";
-import {withAnimationControl} from "./animation-helpers";
+import {withAnimationControl, withAnimationStatus} from "./animation-helpers";
 import {withComponentMixins} from "./decorator-helpers";
 import {Button, ButtonDropdown, Icon} from "./bootstrap-components";
 import {utcMillisecond, utcSecond, utcMinute, utcHour, utcDay, utcMonth, utcYear} from "d3-time";
+import {intervalAccessMixin} from "../ivis/TimeContext";
 
 //TODO: default label format for both relative and absolute??
 
@@ -416,6 +417,7 @@ class TimelineBase extends Component {
                 .on("mousemove.tracking", updateHoverLabel);
 
         };
+        //TODO: on click faulty behaviour
 
 
         timelineSel
@@ -635,8 +637,9 @@ class TimelineBase extends Component {
     }
 }
 
-@withComponentMixins([withAnimationControl])
+@withComponentMixins([withAnimationControl, intervalAccessMixin()])
 class Timeline extends Component {
+    //TODO: use d3 time domain as default
     static propTypes = {
         animationControl: PropTypes.object.isRequired,
         animationStatus: PropTypes.object.isRequired,
@@ -646,6 +649,7 @@ class Timeline extends Component {
 
         labelFormat: PropTypes.oneOfType([PropTypes.object, PropTypes.func]).isRequired,
         tickInterval: PropTypes.oneOfType([
+            //TODO: is feature "relative timeline" necessary or even wanted?
             PropTypes.number,
             PropTypes.func,
             PropTypes.shape({
@@ -662,12 +666,17 @@ class Timeline extends Component {
 
         this.state = {
             ticks: this.getTicks(),
+            timeDomain: this.getTimeDomain(),
         };
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.animationStatus.domain !== prevProps.animationStatus.domain ||
-            this.props.tickInterval !== prevProps.tickInterval) {
+        const prevIntervalAbsolute = this.getIntervalAbsolute(prevProps);
+        if (this.getIntervalAbsolute() !== prevIntervalAbsolute) {
+            this.setState({ticks: this.getTicks(), timeDomain: this.getTimeDomain()});
+        }
+
+        if (this.props.tickInterval !== prevProps.tickInterval) {
             this.setState({ticks: this.getTicks()});
         }
     }
@@ -680,10 +689,10 @@ class Timeline extends Component {
         //    and returns array of unix timestamps, where ticks should be
         //    placed.
 
-        const domain = this.props.animationStatus.timeDomain;
+        const domain = this.getTimeDomain();
         const interval = this.props.tickInterval;
 
-        //TODO: think about utc vs local..?
+        //TODO: transfer all to local...
         const intervals = {
             millisecond: utcMillisecond,
             second: utcSecond,
@@ -723,12 +732,17 @@ class Timeline extends Component {
         }
     }
 
+    getTimeDomain() {
+        const intvAbs = this.getIntervalAbsolute();
+        return [intvAbs.from.valueOf(), intvAbs.to.valueOf()];
+    }
+
     render() {
         if (!this.props.visible) return <></>;
 
         return (
             <TimelineBase
-                domain={this.props.animationStatus.timeDomain}
+                domain={this.state.timeDomain}
                 position={this.props.animationStatus.position}
                 setPosition={this.props.animationControl.seek}
 
@@ -742,6 +756,66 @@ class Timeline extends Component {
         );
     }
 }
+
+
+//------------ Observers
+
+//TODO: style this
+@withComponentMixins([withAnimationStatus])
+class PositionObserver extends Component {
+    static propTypes = {
+        animationStatus: PropTypes.object.isRequired,
+
+        visible: PropTypes.bool,
+        positionFormat: PropTypes.func.isRequired,
+
+        classNames: PropTypes.object,
+    }
+
+    render() {
+        if (!this.props.visible) return null;
+
+        const position = this.props.animationStatus.position;
+
+        return (
+            <div className={styles.positionObserver + " " + (this.props.classNames.container || "")}>
+                <span className={styles.label + " " + (this.props.classNames.label || "")}>
+                    {this.props.positionFormat(position)}
+                </span>
+            </div>
+        );
+    }
+}
+
+//TODO: style this
+@withComponentMixins([withAnimationStatus])
+class LiveObserver extends Component {
+    static propTypes = {
+        animationStatus: PropTypes.object.isRequired,
+
+        visible: PropTypes.bool,
+        // TODO
+        // behindTimestampFormat: PropTypes.func.isRequired,
+
+        classNames: PropTypes.object,
+    }
+
+    render() {
+        const isLive = this.props.animationStatus.isLive;
+        const title = isLive ? "Live" : "From data";
+
+        return (
+            <div className={styles.liveObserver + " " + (this.props.classNames.container || "")}>
+                <div className={styles.label + " " + (this.props.classNames.label || "")}>
+                    <Icon family={isLive ? "fas" : "far"} icon="circle" className={styles.liveIcon}/>
+                    <span className={styles.spacer} />
+                    {title}
+                </div>
+            </div>
+        );
+    }
+}
+
 
 class ButtonGroup extends Component {
     static propTypes = {

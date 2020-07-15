@@ -70,6 +70,7 @@ export class LineChart extends Component {
 
     static propTypes = {
         config: PropTypes.object.isRequired,
+        data: PropTypes.array,
         contentComponent: PropTypes.func,
         contentRender: PropTypes.func,
         onClick: PropTypes.func,
@@ -174,6 +175,7 @@ export class LineChart extends Component {
         return (
             <LineChartBase
                 config={props.config}
+                data={props.data}
                 height={props.height}
                 margin={props.margin}
                 signalAggs={['min', 'max', 'avg']}

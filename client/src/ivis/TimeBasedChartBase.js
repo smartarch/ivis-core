@@ -192,6 +192,7 @@ export class TimeBasedChartBase extends Component {
 
     static propTypes = {
         config: PropTypes.object.isRequired,
+        data: PropTypes.array,
         contentComponent: PropTypes.func,
         contentRender: PropTypes.func,
         height: PropTypes.number.isRequired,
@@ -239,7 +240,7 @@ export class TimeBasedChartBase extends Component {
         window.addEventListener('resize', this.resizeListener);
 
         // This causes the absolute interval to change, which in turn causes a data fetch
-        this.updateTimeIntervalChartWidth();
+        this.resizeListener();
 
         if (!this.delayedFetchDueToTimeIntervalChartWidthUpdate) {
             this.fetchData();
@@ -267,7 +268,7 @@ export class TimeBasedChartBase extends Component {
 
             signalSetsData = null;
 
-        } else if (this.delayedFetchDueToTimeIntervalChartWidthUpdate || prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
+        } else if (this.delayedFetchDueToTimeIntervalChartWidthUpdate || prevAbs !== this.getIntervalAbsolute() || this.props.data !== prevProps.data) { // If its just a regular refresh, don't clear the chart
             this.delayedFetchDueToTimeIntervalChartWidthUpdate = false;
 
             this.fetchData();
@@ -292,9 +293,17 @@ export class TimeBasedChartBase extends Component {
         const t = this.props.t;
 
         try {
-            const queries = this.props.getQueries(this, this.getIntervalAbsolute(), this.props.config);
+            let results = null;
 
-            const results = await this.dataAccessSession.getLatestMixed(queries);
+            if (this.props.data) {
+                results = this.props.data;
+            } else {
+                const queries = this.props.getQueries(this, this.getIntervalAbsolute(), this.props.config);
+
+                results = await this.dataAccessSession.getLatestMixed(queries);
+            }
+
+            console.log("time chart", {results});
 
             if (results) {
                 // This converts NaNs and Infinity to null. D3 can handle nulls in data by omitting the data point
@@ -339,7 +348,7 @@ export class TimeBasedChartBase extends Component {
                 return;
             }
 
-            throw err;
+            // throw err;
         }
     }
 
@@ -435,6 +444,8 @@ export class TimeBasedChartBase extends Component {
 
         if (renderStatus == RenderStatus.NO_DATA) {
             this.statusMsgSelection.text(t('No data.'));
+        } else if (renderStatus === RenderStatus.SUCCESS) {
+            this.statusMsgSelection.text(null);
         }
     }
 
@@ -474,7 +485,6 @@ export class TimeBasedChartBase extends Component {
             } else {
                 tooltipExtraProps.contentRender = (props) => <TooltipContent getSignalValues={this.props.getSignalValuesForDefaultTooltip} {...props}/>;
             }
-
 
             return (
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">

@@ -7,7 +7,10 @@ const externalsLibs = [
     'prop-types',
     'd3-color',
     'd3-format',
-    'd3-selection'
+    'd3-selection',
+    'd3-scale',
+    'd3-zoom',
+    'd3-array',
 ];
 
 const internalLibs = {
