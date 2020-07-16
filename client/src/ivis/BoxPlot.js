@@ -109,11 +109,11 @@ export class BoxPlot extends Component {
         }).isRequired,
 
         // percentiles
-        top_whisker_percentile: PropTypes.oneOfType([PropType_NumberInRange(0, 100), PropTypes.oneOf(["max"])]), // undefined = Q3 + 1.5 * IQR (default)
-        top_percentile: PropType_NumberInRange(0, 100), // top of the box - Q3
-        middle_percentile: PropType_NumberInRange(0, 100), // middle of the box - median
-        bottom_percentile: PropType_NumberInRange(0, 100), // bottom of the box - Q1
-        bottom_whisker_percentile: PropTypes.oneOfType([PropType_NumberInRange(0, 100), PropTypes.oneOf(["min"])]),  // undefined = Q1 - 1.5 * IQR (default)
+        topWhiskerPercentile: PropTypes.oneOfType([PropType_NumberInRange(0, 100), PropTypes.oneOf(["max"])]), // undefined = Q3 + 1.5 * IQR (default)
+        topPercentile: PropType_NumberInRange(0, 100), // top of the box - Q3
+        middlePercentile: PropType_NumberInRange(0, 100), // middle of the box - median
+        bottomPercentile: PropType_NumberInRange(0, 100), // bottom of the box - Q1
+        bottomWhiskerPercentile: PropTypes.oneOfType([PropType_NumberInRange(0, 100), PropTypes.oneOf(["min"])]),  // undefined = Q1 - 1.5 * IQR (default)
 
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
@@ -139,9 +139,9 @@ export class BoxPlot extends Component {
         margin: { left: 40, right: 5, top: 5, bottom: 20 },
         maxBoxWidth: 100,
 
-        top_percentile: 75,
-        middle_percentile: 50,
-        bottom_percentile: 25,
+        topPercentile: 75,
+        middlePercentile: 50,
+        bottomPercentile: 25,
 
         withCursor: true,
         withTooltip: true,
@@ -222,12 +222,16 @@ export class BoxPlot extends Component {
         if (this.props.filter)
             filter.children.push(this.props.filter);
 
-        // TODO whiskers
         // percentiles
+        const percents = [this.props.topPercentile, this.props.middlePercentile, this.props.bottomPercentile]
+        if (Number.isFinite(this.props.topWhiskerPercentile))
+            percents.push(this.props.topWhiskerPercentile);
+        if (Number.isFinite(this.props.bottomWhiskerPercentile))
+            percents.push(this.props.bottomWhiskerPercentile);
         const aggs = [{
             sigCid: signalSetConfig.sigCid,
             agg_type: "percentiles",
-            percents: [this.props.top_percentile, this.props.middle_percentile, this.props.bottom_percentile],
+            percents: percents,
             keyed: false
         }];
 
@@ -277,7 +281,10 @@ export class BoxPlot extends Component {
             signalSetsData.push(this.prepareDataForSignalSet(this.props.config.signalSets[i], queriesForSignalSet))
         }
         const xExtent = this.props.config.signalSets.map((s, index) => s.label || index);
-        const yExtent = [d3Array.min(signalSetsData, d => d.min), d3Array.max(signalSetsData, d => d.max)];
+        const yExtent = [
+            d3Array.min(signalSetsData, d => Math.min(d.min, d.bottomWhisker)),
+            d3Array.max(signalSetsData, d => Math.max(d.max, d.topWhisker))
+        ];
 
         return {
             signalSetsData, xExtent, yExtent,
@@ -292,14 +299,27 @@ export class BoxPlot extends Component {
         const min = summaryResults[signalSetConfig.sigCid].min;
         const max = summaryResults[signalSetConfig.sigCid].max;
 
-        const top = percentilesResults.values.find(d => d.key === this.props.top_percentile).value;
-        const middle = percentilesResults.values.find(d => d.key === this.props.middle_percentile).value;
-        const bottom = percentilesResults.values.find(d => d.key === this.props.bottom_percentile).value;
+        const top = percentilesResults.values.find(d => d.key === this.props.topPercentile).value;
+        const middle = percentilesResults.values.find(d => d.key === this.props.middlePercentile).value;
+        const bottom = percentilesResults.values.find(d => d.key === this.props.bottomPercentile).value;
+        const IQR = top - bottom;
 
-        // TODO whiskers
+        // top whisker
+        let topWhisker = top + 1.5 * IQR;
+        if (this.props.topWhiskerPercentile === "max")
+            topWhisker = max;
+        else if (Number.isFinite(this.props.topWhiskerPercentile))
+            topWhisker = percentilesResults.values.find(d => d.key === this.props.topWhiskerPercentile).value;
+
+        // bottom whisker
+        let bottomWhisker = bottom - 1.5 * IQR;
+        if (this.props.bottomWhiskerPercentile === "min")
+            bottomWhisker = min;
+        else if (Number.isFinite(this.props.bottomWhiskerPercentile))
+            bottomWhisker = percentilesResults.values.find(d => d.key === this.props.bottomWhiskerPercentile).value;
 
         return {
-            min, max, top, middle, bottom,
+            min, max, top, middle, bottom, topWhisker, bottomWhisker
         }
     }
 
@@ -444,6 +464,8 @@ export class BoxPlot extends Component {
                              top={this.state.yScale(d.top)}
                              middle={this.state.yScale(d.middle)}
                              bottom={this.state.yScale(d.bottom)}
+                             topWhisker={this.state.yScale(d.topWhisker)}
+                             bottomWhisker={this.state.yScale(d.bottomWhisker)}
                         />);
                 }
             }
@@ -508,6 +530,9 @@ export class Box extends Component {
         top: PropTypes.number.isRequired,
         middle: PropTypes.number.isRequired,
         bottom: PropTypes.number.isRequired,
+        topWhisker: PropTypes.number,
+        bottomWhisker: PropTypes.number,
+        additionalValues: PropTypes.arrayOf(PropTypes.number),
     };
 
     render() {
@@ -518,6 +543,14 @@ export class Box extends Component {
             <g>
                 <rect x={p.x - w} width={p.width} y={p.top} height={p.bottom - p.top} stroke="black" fill="none" />
                 <line x1={p.x - w} x2={p.x + w} y1={p.middle} y2={p.middle} stroke="black" />
+                {p.topWhisker !== undefined && <>
+                    <line x1={p.x} x2={p.x} y1={p.top} y2={p.topWhisker} stroke="black" />
+                    <line x1={p.x - w} x2={p.x + w} y1={p.topWhisker} y2={p.topWhisker} stroke="black" />
+                </>}
+                {p.bottomWhisker !== undefined && <>
+                    <line x1={p.x} x2={p.x} y1={p.bottom} y2={p.bottomWhisker} stroke="black" />
+                    <line x1={p.x - w} x2={p.x + w} y1={p.bottomWhisker} y2={p.bottomWhisker} stroke="black" />
+                </>}
             </g>
         );
     }
