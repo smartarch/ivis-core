@@ -78,7 +78,7 @@ export default class CUD extends Component {
     }
 
     getDefaultBuiltinTask() {
-        return (this.state.builtinTasks && this.state.builtinTasks.length> 0) ? this.state.builtinTasks[0] : null;
+        return (this.state.builtinTasks && this.state.builtinTasks.length > 0) ? this.state.builtinTasks[0] : null;
     }
 
     componentDidMount() {
@@ -114,7 +114,7 @@ export default class CUD extends Component {
                     this.fetchTaskParams(taskId);
                 }
             } else {
-                const builtinTask = this.state.builtinTasks&& this.state.builtinTasks.find(task => task.id = taskId);
+                const builtinTask = this.state.builtinTasks && this.state.builtinTasks.find(task => task.id = taskId);
 
                 if (builtinTask) {
                     state.formState = state.formState.setIn(['data', 'taskParams', 'value'], builtinTask.settings.params);
@@ -390,11 +390,21 @@ export default class CUD extends Component {
                         <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>
                     </Fieldset>
 
-                    <ListCreator id={'signalSetTriggers'} label={t('Signal sets triggers')} entryElement={
-                        <TableSelect label={t('Trigger on')} withHeader dropdown
-                                     dataUrl='rest/signal-sets-table' columns={setsColumns}
-                                     selectionLabelIndex={2}/>
-                    } initValues={signal_sets_triggers}/>
+                    <ListCreator
+                        id={'signalSetTriggers'}
+                        label={t('Signal sets triggers')}
+                        entryElement={
+                            <TableSelect
+                                label={t('Trigger on')}
+                                withHeader
+                                dropdown
+                                dataUrl='rest/signal-sets-table'
+                                columns={setsColumns}
+                                selectionLabelIndex={2}
+                            />
+                        }
+                        initValues={signal_sets_triggers}
+                    />
 
                     {configSpec ?
                         params &&
@@ -410,8 +420,13 @@ export default class CUD extends Component {
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
                                 onClickAsync={async () => await this.submitHandler(true)}/>
-                        {canDelete && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
-                                                  to={`/settings/jobs/${this.props.entity.id}/delete`}/>}
+                        {canDelete &&
+                        <LinkButton
+                            className="btn-danger"
+                            icon="trash-alt"
+                            label={t('Delete')}
+                            to={`/settings/jobs/${this.props.entity.id}/delete`}
+                        />}
                     </ButtonRow>
                 </Form>
             </Panel>

@@ -1131,13 +1131,13 @@ class ListCreator extends Component {
         const entries = [];
         const entryIds = owner.getFormValue(id) || [];
 
-        const entryButtonsStyles = withOrder ? cudStyles.entryButtonsWithOrder : cudStyles.entryButtons;
+        const entryButtonsStyles = withOrder ? styles.entryButtonsWithOrder : styles.entryButtons;
         for (let pos = 0; pos < entryIds.length; pos++) {
             const entryId = entryIds[pos];
             const elementId = this.getFormValueId(entryId);
             entries.push(
                 <div key={entryId}
-                     className={cudStyles.entry + (withOrder ? ' ' + cudStyles.withOrder : '') + ' ' + cudStyles.entryWithButtons}>
+                     className={styles.listCreatorEntry + (withOrder ? ' ' + styles.withOrder : '') + ' ' + styles.entryWithButtons}>
                     <div className={entryButtonsStyles}>
                         <Button
                             className="btn-secondary"
@@ -1170,7 +1170,7 @@ class ListCreator extends Component {
                         />
                         }
                     </div>
-                    <div className={cudStyles.entryContent}>
+                    <div className={styles.entryContent}>
                         {React.cloneElement(this.props.entryElement, {id: elementId})}
                     </div>
                 </div>
@@ -1180,7 +1180,7 @@ class ListCreator extends Component {
         return (
             <Fieldset id={id} className={props.classname} help={props.help} flat={props.flat} label={props.label}>
                 {entries}
-                <div key="newEntry" className={cudStyles.newEntry}>
+                <div key="newEntry" className={styles.newListCreatorEntry}>
                     <Button
                         className="btn-secondary"
                         icon="plus"
