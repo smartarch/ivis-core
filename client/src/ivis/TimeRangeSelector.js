@@ -4,7 +4,7 @@ import React, {Component} from "react";
 import PropTypes
     from "prop-types";
 import {
-    DatePicker,
+    DateTimePicker,
     Dropdown,
     Form,
     withForm
@@ -362,13 +362,13 @@ export class TimeRangeSelector extends Component {
                 <div className={styles.timeRange}>
                     <h3>{t('Custom Time Range')}</h3>
                     <Form stateOwner={this} onSubmitAsync={::this.submitForm} format="wide">
-                        <DatePicker
+                        <DateTimePicker
                             id="from"
                             label={t('From:')}
                             formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 00:00:00'}
                             parseDate={str => parseDate(str, false)} format="wide"
                         />
-                        <DatePicker
+                        <DateTimePicker
                             id="to"
                             label={t('To:')}
                             formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 23:59:59'}

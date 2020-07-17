@@ -34,8 +34,6 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
-import cudStyles from "../settings/jobs/CUD.scss";
-import ParamTypes from "../settings/ParamTypes";
 
 
 const FormState = {
@@ -767,12 +765,93 @@ class ColumnSelect extends Component {
     withTranslation,
     withFormStateOwner
 ])
-class DatePicker extends Component {
+class TimePicker extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    static propTypes = {
+        selectedTime: PropTypes.object,
+        time: PropTypes.object,
+        onChange: PropTypes.func
+    };
+
+    onChange({hour, minute, second}) {
+        const {
+            time
+        } = this.props;
+
+        this.props.onChange(
+            {
+                hour: hour || time.hour,
+                minute: minute || time.minute,
+                second: second || time.second
+            }
+        )
+    }
+
+    onHourChange(hour) {
+        this.onChange({hour: hour})
+    }
+
+    onMinuteChange(minute) {
+        this.onChange({minute: minute})
+    }
+
+    onSecondsChange(second) {
+        this.onChange({second: second})
+    }
+
+    _generateTimeOptions(start, end, step = 1) {
+        const arr = [];
+        for (let i = start; i <= end; i += step) {
+            arr.push(String(i).padStart(2, '0'));
+        }
+        return arr;
+    }
+
+    render() {
+        const {
+            t,
+            time
+        } = this.props;
+
+        const hourOpts = this._generateTimeOptions(0, 23);
+        const minOpts = this._generateTimeOptions(0, 59);
+        const secOpts = minOpts;
+
+        return (
+            <div className={styles.TimePicker}>
+                <ColumnSelect
+                    header={t('h')}
+                    selectedValue={time.hour || hourOpts[0]}
+                    options={hourOpts}
+                    onSelect={::this.onHourChange}/>
+                <ColumnSelect
+                    header={t('min')}
+                    selectedValue={time.minute || minOpts[0]}
+                    options={minOpts}
+                    onSelect={::this.onMinuteChange}/>
+                <ColumnSelect
+                    header={t('sec')}
+                    selectedValue={time.second || secOpts[0]}
+                    options={secOpts}
+                    onSelect={::this.onSecondsChange}/>
+            </div>
+        );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+    withFormStateOwner
+])
+class DateTimePicker extends Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            opened: false
+            dateOpened: false,
         };
     }
 
@@ -795,11 +874,14 @@ class DatePicker extends Component {
 
     async toggleDayPicker() {
         this.setState({
-            opened: !this.state.opened
+            dateOpened: !this.state.dateOpened
         });
     }
 
-    daySelected(date) {
+    dateTimeChange(date, time) {
+        const props = this.props;
+        const {id, showTime} = props;
+
         const owner = this.getFormStateOwner();
 
         time = {
@@ -810,7 +892,7 @@ class DatePicker extends Component {
         };
 
         if (props.formatDate) {
-            owner.updateFormValue(id, props.formatDate(date));
+            owner.updateFormValue(id, props.formatDate(date, time));
         } else {
             owner.updateFormValue(id, props.birthday ? formatBirthday(props.dateFormat, date) : formatDate(props.dateFormat, date));
         }
@@ -895,10 +977,10 @@ class DatePicker extends Component {
                     </div>
                     }
                 </div>
-                {this.state.opened &&
+                {this.state.dateOpened &&
                 <div className={styles.dayPickerWrapper}>
                     <DayPicker
-                        onDayClick={date => this.daySelected(date)}
+                        onDayClick={date => this.dateTimeChange(date, time)}
                         selectedDays={selectedDate}
                         initialMonth={selectedDate}
                         fromMonth={fromMonth}
@@ -1999,7 +2081,7 @@ export {
     RadioGroup,
     TextArea,
     ColorPicker,
-    DatePicker,
+    DateTimePicker,
     Dropdown,
     AlignedRow,
     ButtonRow,
