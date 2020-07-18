@@ -138,76 +138,96 @@ class Animation extends Component {
     }
 }
 
-//TODO: style this
-//TODO: width and height watch
-//TODO: should not unmount vis components
-@withComponentMixins([withAnimationData, withAnimationStatus])
-class AnimatedContent extends Component {
-    static propTypes = {
-        animationStatus: PropTypes.object,
-        animationData: PropTypes.object,
-        className: PropTypes.string,
-        messageClassName: PropTypes.string,
+//TODO: consistency of animationData
+function animated(VisualizationComp) {
+    @withComponentMixins([withAnimationData, withAnimationStatus])
+    class AnimatedContent extends Component {
+        static propTypes = {
+            animationStatus: PropTypes.object.isRequired,
+            animationData: PropTypes.object.isRequired,
 
-        children: PropTypes.node,
-    }
-
-    render() {
-        console.log({isBuffering: this.props.animationStatus.isBuffering});
-        // console.log({animatedContent: this.props.animationData, status: this.props.animationStatus});
-        const sigSetsWithoutData = this.props.animationData === null ? [] : Object.keys(this.props.animationData).filter(sigSetCid => this.props.animationData[sigSetCid] === null);
-
-        let message = null;
-        let withSpinner = false;
-        if (this.props.animationStatus.error) {
-            message = new String(this.props.animationStatus.error);
-        } else if (this.props.animationStatus.isBuffering) {
-            withSpinner = true;
-            message =  "Loading...";
-        } else if (this.props.animationData === null) {
-            message = `All provided singal sets do not provide data for '${moment(this.props.animationStatus.position).format()}'.`;
-        } else if (sigSetsWithoutData.length > 0) {
-            message = `The following singal sets do not provide data for '${moment(this.props.animationStatus.position).format()}': ` +
-                sigSetsWithoutData.join(",") + ".";
+            forwardRef: PropTypes.func,
+            height: PropTypes.number,
+            animationDataFormatter: PropTypes.func,
         }
 
-        const content = message !== null ?
-            <div className={styles.loadingOverlay + " " + (this.props.className || "")}>
-                <div className={styles.loadingMsgContainer}>
-                    {withSpinner &&
-                        <div className={"spinner-border"} role={"status"}>
-                            <span className={"sr-only"}>Loading</span>
+        constructor(props) {
+            super(props);
+
+            this.lastValidData = null;
+            this.visWidth = null;
+            this.visHeight = props.height ? props.height : null;
+        }
+
+        componentDidUpdate() {
+            this.updateContainerRect();
+        }
+
+        componentDidMount() {
+            this.updateContainerRect();
+        }
+
+        updateContainerRect() {
+            if (!this.lastValidData || this.props.animationStatus.isBuffering || this.props.animationStatus.error) return;
+
+            const visRect = this.containerNode.getClientRects()[0];
+            this.visWidth = visRect.width;
+            this.visHeight = visRect.height;
+        }
+
+        render() {
+            let message = null;
+            let withSpinner = false;
+            let data = this.props.animationData;
+            if (this.props.animationStatus.error) {
+                data = this.lastValidData;
+
+                message = new String(this.props.animationStatus.error);
+            } else if (this.props.animationStatus.isBuffering) {
+                data = this.lastValidData;
+
+                withSpinner = true;
+                message =  "Loading...";
+            } else if (data !== null) {
+                data = this.props.animationDataFormatter ? this.props.animationDataFormatter(data) : data;
+                this.lastValidData = data;
+            }
+
+            let width = this.visWidth + "px" || "100%";
+            let height = this.visHeight + "px" || "100%";
+            const overlayStyles = {
+                width: width,
+                height: height,
+            };
+
+            const msgContainerStyles = {
+                paddingTop: this.visHeight/2 + "px" || "0px",
+            };
+
+            const {forwardRef, animationDataFormatter, ...visualizationProps} = this.props;
+
+            return (
+                <div ref={node => this.containerNode = node}>
+                    {message &&
+                        <div className={styles.loadingOverlay} style={overlayStyles}>
+                            <div className={styles.loadingMsgContainer} style={msgContainerStyles}>
+                                {withSpinner &&
+                                    <div className={styles.loadingSpinner + " spinner-border"} role={"status"}>
+                                        <span className={"sr-only"}>Loading</span>
+                                    </div>
+                                }
+                                <span className={styles.loadingMsg}>{message}</span>
+                            </div>
                         </div>
                     }
-                    <span className={styles.loadingMsg + " " + (this.props.messageClassName || "")}>{message}</span>
+                    {data && <VisualizationComp {...visualizationProps} data={data} ref={this.props.forwardRef} />}
                 </div>
-            </div>
-            :
-            this.props.children
-        ;
-
-
-        return (
-            <div className={this.props.className}>
-                {content}
-            </div>
-        );
+            );
+        }
     }
-}
 
-function animated(VisualizationComp, formatter = null) {
     return React.forwardRef(function AnimatedVisualization(props, ref) {
-        return (
-            <AnimationDataContext.Consumer>
-                {
-                    value => {
-                        const data = formatter !== null ? formatter(value) : value;
-
-                        return <VisualizationComp {...props} data={data} ref={ref} />;
-                    }
-                }
-            </AnimationDataContext.Consumer>
-        );
+        return <AnimatedContent {...props} forwardRef={ref} />;
     });
 }
 
@@ -275,7 +295,7 @@ class AnimationKeyframeInterpolator extends Component {
         // console.log("refreshing");
 
         const animationData = {};
-        for (let sigSetCid in this.props.keyframes) {
+        for (const sigSetCid of Object.keys(this.props.keyframes)) {
             animationData[sigSetCid] = this.refreshSigSet(sigSetCid);
         }
 
@@ -330,7 +350,5 @@ export * from "../lib/media-controls";
 export * from "../lib/animation-interpolations";
 export {
     Animation,
-    AnimatedContent,
     animated,
-    animatedHistory,
 };

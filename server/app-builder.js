@@ -26,7 +26,7 @@ const panelsRest = require('./routes/rest/panels');
 const filesRest = require('./routes/rest/files');
 const embedRest = require('./routes/rest/embed');
 const settingsRest = require('./routes/rest/settings');
-const serverAnimationRest = require('./routes/rest/server-animation');
+const liveAnimationRest = require('./routes/rest/live-animation');
 
 const embedApi = require('./routes/api/embed');
 
@@ -191,7 +191,7 @@ function createApp(type) {
         app.use('/rest', filesRest);
         app.use('/rest', panelsRest);
         app.use('/rest', settingsRest);
-        app.use('/rest', serverAnimationRest);
+        app.use('/rest', liveAnimationRest);
 
         if (type === AppType.SANDBOXED) {
             app.use('/rest', embedRest);

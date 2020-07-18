@@ -258,7 +258,7 @@ export class TimeBasedChartBase extends Component {
 
         const prevAbs = this.getIntervalAbsolute(prevProps);
         const prevSpec = this.getIntervalSpec(prevProps);
-        if (configDiff === ConfigDifference.DATA || prevSpec !== this.getIntervalSpec()) {
+        if (configDiff === ConfigDifference.DATA || prevSpec !== this.getIntervalSpec() && !this.props.data) {
             this.setState({
                 signalSetsData: null,
                 statusMsg: t('Loading...')
@@ -302,8 +302,6 @@ export class TimeBasedChartBase extends Component {
 
                 results = await this.dataAccessSession.getLatestMixed(queries);
             }
-
-            console.log("time chart", {results});
 
             if (results) {
                 // This converts NaNs and Infinity to null. D3 can handle nulls in data by omitting the data point

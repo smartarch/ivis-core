@@ -1,0 +1,18 @@
+.loadingOverlay {
+    position: absolute;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.8);
+
+    .loadingMsgContainer {
+        .loadingSpinner {
+            vertical-align: middle;
+        }
+
+        .loadingMsg {
+            font-weight: bold;
+            font-size: 1.2em;
+            padding-left: 1rem;
+        }
+    }
+
+}

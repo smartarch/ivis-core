@@ -1,5 +1,10 @@
 import React, {Component} from "react";
-import {AnimationStatusContext, AnimationControlContext, AnimationDataContext} from "../lib/animation-helpers";
+import {
+    AnimationStatusContext,
+    AnimationControlContext,
+    AnimationDataContext,
+    SignalInterpolator
+} from "../lib/animation-helpers";
 import {withAsyncErrorHandler} from "../lib/error-handling";
 import {DataAccessSession} from "./DataAccess";
 import {withComponentMixins} from "../lib/decorator-helpers";
@@ -50,13 +55,13 @@ class RecordedAnimation extends Component {
     render() {
         const childrenRender = (props) => {
             return (
-                <RecordedAnimationBase
+                <RecordedAnimationControl
                     refreshRate={this.props.refreshRate}
                     initialStatus={this.props.initialStatus}
                     {...props}
                 >
                     {this.props.children}
-                </RecordedAnimationBase>
+                </RecordedAnimationControl>
             );
         };
 
@@ -75,63 +80,6 @@ class RecordedAnimation extends Component {
                 />
             </TimeContext>
         );
-    }
-}
-
-class SignalInterpolation {
-    constructor(signals, func, arity) {
-        this.signals = signals;
-        this.func = func;
-        this.arity = arity;
-        this.signalArgs = {};
-        this.tsArgs = [];
-
-        this.hasCachedArgs = false;
-    }
-
-    rebuildArgs(keyframes) {
-        this.signalArgs = {};
-        this.tsArgs = [];
-        this.hasCachedArgs = false;
-
-        if (keyframes.length < this.arity) return;
-        const kfsWithArgs = keyframes.slice(0, this.arity);
-
-        const getArgsForAgg = (sigCid, agg) => kfsWithArgs.map(kf => kf.data[sigCid][agg]);
-
-        for (const sigCid of Object.keys(this.signals)) {
-            const sigAggs = this.signals[sigCid];
-
-            const args = {};
-            for (const agg of sigAggs) {
-                args[agg] = getArgsForAgg(sigCid, agg);
-            }
-
-            this.signalArgs[sigCid] = args;
-        }
-
-        this.tsArgs = kfsWithArgs.map(kf => moment.isMoment(kf.ts) ? kf.ts.valueOf() : kf.ts);
-        this.hasCachedArgs = true;
-    }
-
-    interpolate(ts) {
-        let forceNull = !this.hasCachedArgs || this.tsArgs[0] > ts || this.tsArgs[this.tsArgs.length - 1] < ts;
-
-        const results = {};
-        const interpolateAgg = (sigCid, agg) => forceNull ? null : this.func(this.tsArgs, this.signalArgs[sigCid][agg], ts);
-
-        for (const sigCid of Object.keys(this.signals)) {
-            const sigAggs = this.signals[sigCid];
-
-            const sigResults = {};
-            for (const agg of sigAggs) {
-                sigResults[agg] = interpolateAgg(sigCid, agg);
-            }
-
-            results[sigCid] = sigResults;
-        }
-
-        return results;
     }
 }
 
@@ -176,7 +124,7 @@ class GenericDataSource {
 
         this.nextChunkBeginTs = null;
 
-        this.intp = new SignalInterpolation(this.conf.signals, config.interpolation.func, this.conf.kfCount);
+        this.intp = new SignalInterpolator(this.conf.signals, config.interpolation.func, this.conf.kfCount);
     }
 
     canShiftTo(ts) {
@@ -404,7 +352,7 @@ class TimeSeriesDataSource {
         this.data = null;
         this.kfStartIdx = null;
         this.lastMainEndIdx = null;
-        this.intp = new SignalInterpolation(this.conf.signals, config.interpolation.func, this.conf.kfCount);
+        this.intp = new SignalInterpolator(this.conf.signals, config.interpolation.func, this.conf.kfCount);
 
         this.lastSeekInterval = null;
     }
@@ -715,7 +663,7 @@ class AnimationDataAccess extends Component {
         this.nextFetchPromise = null;
 
         this.dataSources = {};
-        for (let dataSrcKey of Object.keys(this.props.dataSources)) {
+        for (const dataSrcKey of Object.keys(this.props.dataSources)) {
             const config = this.props.dataSources[dataSrcKey];
             const DataSourceType = dataSources[config.type] || "generic";
 
@@ -729,7 +677,7 @@ class AnimationDataAccess extends Component {
 }
 
 @withComponentMixins([intervalAccessMixin()])
-class RecordedAnimationBase extends Component {
+class RecordedAnimationControl extends Component {
     static propTypes = {
         refreshRate: PropTypes.number.isRequired,
         initialStatus: PropTypes.object.isRequired,
@@ -949,15 +897,13 @@ class RecordedAnimationBase extends Component {
 
     render() {
         return (
-            <>
-                <AnimationStatusContext.Provider value={this.state.status}>
-                    <AnimationControlContext.Provider value={this.state.controls}>
-                        <AnimationDataContext.Provider value={this.state.animationData}>
-                            {this.props.children}
-                        </AnimationDataContext.Provider>
-                    </AnimationControlContext.Provider>
-                </AnimationStatusContext.Provider>
-            </>
+            <AnimationStatusContext.Provider value={this.state.status}>
+                <AnimationControlContext.Provider value={this.state.controls}>
+                    <AnimationDataContext.Provider value={this.state.animationData}>
+                        {this.props.children}
+                    </AnimationDataContext.Provider>
+                </AnimationControlContext.Provider>
+            </AnimationStatusContext.Provider>
         );
     }
 }

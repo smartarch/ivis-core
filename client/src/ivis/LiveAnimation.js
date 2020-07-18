@@ -1,208 +1,257 @@
 import React, {Component} from "react";
-import {Debug} from "./Debug";
 import axios from "../lib/axios";
 import {getUrl} from "../lib/urls";
 import PropTypes from "prop-types";
-import {AnimationStatusContext, AnimationControlContext} from "../lib/animation-helpers";
+import {
+    AnimationStatusContext,
+    AnimationControlContext,
+    AnimationDataContext,
+    SignalInterpolator
+} from "../lib/animation-helpers";
 import {withAsyncErrorHandler} from "../lib/error-handling";
+import {withComponentMixins} from "../lib/decorator-helpers";
+import {intervalAccessMixin, TimeContext} from "./TimeContext";
+import {IntervalSpec} from "./TimeInterval";
+import moment from "moment";
+import _ from "lodash";
 
-//TODO: this file does not need to be in ivis, can be in libs
-const statusChanges = {
-    POSITION: 0,
-    STARTED_PLAYING: 1,
-    STOPED_PLAYING: 2,
-    PLAYBACK_SPEED: 3,
-    SEEK: 4,
-    REACHED_END: 5,
-};
+const defaultRefreshRate = 45;
+const defaultPollRate = 1000;
 
 class LiveAnimation extends Component {
     static propTypes = {
-        timeDomain: PropTypes.arrayOf(PropTypes.number).isRequired,
-        refreshRate: PropTypes.number,
-        initialStatus: PropTypes.object.isRequired,
-
+        dataSources: PropTypes.object.isRequired,
         animationId: PropTypes.string.isRequired,
 
-        pollRate: PropTypes.number.isRequired,
+        intervalSpanBefore: PropTypes.object,
+        intervalSpanAfter: PropTypes.object,
 
-        render: PropTypes.func.isRequired,
+        refreshRate: PropTypes.number,
+        initialStatus: PropTypes.object,
+
+        pollRate: PropTypes.number,
+
+        children: PropTypes.node,
+    }
+
+    static defaultProps = {
+        intervalSpanBefore: moment.duration(10, 'm'),
+        intervalSpanAfter: moment.duration(3, 'm'),
+
+        refreshRate: defaultRefreshRate,
+        pollRate: defaultPollRate,
+        initialStatus: {isPlaying: false},
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.initialIntervalSpec = new IntervalSpec(
+            moment(Date.now() - props.intervalSpanBefore.asMilliseconds()),
+            moment(Date.now() + props.intervalSpanAfter.asMilliseconds()),
+            null,
+            null
+        );
     }
 
     render() {
-        //TODO: unnecessary nested render props
         const childrenRender = (props) => {
             return (
-                <LiveAnimationBase
-                    timeDomain={this.props.timeDomain}
-                    refreshRate={this.props.refreshRate}
-                    initialStatus={this.props.initialStatus}
-
+                <LiveAnimationControl
+                    animationId={this.props.animationId}
                     pollRate={this.props.pollRate}
 
-                    animationId={this.props.animationId}
-                    {...props}
+                    intervalSpanBefore={this.props.intervalSpanBefore}
+                    intervalSpanAfter={this.props.intervalSpanAfter}
 
-                    render={this.props.render}
-                />
+                    refreshRate={this.props.refreshRate}
+                    initialStatus={this.props.initialStatus}
+                    {...props}>
+                    {this.props.children}
+                </LiveAnimationControl>
             );
         };
 
-        return (
-            <StatusAccess
-                timeDomain={this.props.timeDomain}
-                animationId={this.props.animationId}
-                pollRate={this.props.pollRate}
 
-                render={childrenRender}
-            />
+        return (
+            <TimeContext
+                initialIntervalSpec={this.initialIntervalSpec}
+            >
+                <AnimationDataAccess
+                    dataSources={this.props.dataSources}
+
+                    render={childrenRender}
+                />
+            </TimeContext>
         );
     }
 }
 
-class StatusAccess extends Component {
+class GenericDataSource {
+    constructor(config, dataAccess) {
+        this.conf = {...config};
+        this.dataAccess = dataAccess;
+
+        this.intp = new SignalInterpolator(
+            this.conf.signals,
+            this.conf.interpolation.func,
+            this.conf.interpolation.arity
+        );
+
+        this.clear();
+    }
+
+    addKeyframe(kf) {
+        const data = this.conf.formatData ? this.conf.formatData(kf.data) : kf.data;
+        this.kfBuffer.push({ts: kf.ts, data});
+    }
+
+    clear() {
+        this.history = [];
+        this.kfBuffer = [];
+    }
+
+    shiftTo(ts) {
+        if (this.kfBuffer.length < this.conf.interpolation.arity) return null;
+
+        if (this.conf.withHistory) {
+            const historyLastTs = this.history.length > 0 ? this.history[this.history.length - 1].ts : -1;
+            const kfsToHistory = this.kfBuffer.filter(kf => kf.ts < ts && kf.ts > historyLastTs);
+            this.history.push(...kfsToHistory);
+        }
+
+        const intpArity = this.conf.interpolation.arity;
+        let kfsChanged = false;
+        while (this.kfBuffer[intpArity - 1].ts < ts && this.kfBuffer.length > intpArity) {
+            const delCount = Math.min(
+                intpArity - 1,
+                this.kfBuffer.length - intpArity
+            );
+            kfsChanged = true;
+
+            this.kfBuffer.splice(0, delCount);
+        }
+
+        if (this.kfBuffer[intpArity - 1].ts < ts) return null;
+
+        if (kfsChanged || !this.intp.hasCachedArgs) this.intp.rebuildArgs(this.kfBuffer);
+
+        if (this.conf.withHistory) {
+            return [...this.history, {ts: ts, data: this.intp.interpolate(ts)}];
+        } else {
+            return this.intp.interpolate(ts);
+        }
+    }
+
+    getEmptyData() {
+        return this.conf.withHistory ? [] : this.intp.interpolate(-1);
+    }
+}
+
+class TimeSeriesDataSource extends GenericDataSource{
+    constructor(config, dataAccess) {
+        super({...config, withHistory: true}, dataAccess);
+    }
+
+    shiftTo(ts) {
+        const history = super.shiftTo(ts);
+        if (history === null) return null;
+
+        const tsToMoment = (kf) => ({ts: moment(kf.ts), data: kf.data});
+
+        const mainStartTs = this.dataAccess.getIntervalAbsolute().from.valueOf();
+        const mainStartIdx = history.findIndex(kf => kf.ts > mainStartTs);
+
+        const data = {
+            main: history.slice(mainStartIdx).map(tsToMoment),
+        };
+
+        if (mainStartIdx > 0) data.prev = tsToMoment(history[mainStartIdx - 1]);
+
+        return {[this.conf.sigSetCid]: data};
+    }
+
+    getEmptyData() {
+        return {
+            [this.conf.sigSetCid]: { main: [] }
+        };
+    }
+}
+
+const dataSourceTypes = {
+    generic: GenericDataSource,
+    timeSeries: TimeSeriesDataSource,
+};
+
+@withComponentMixins([intervalAccessMixin()])
+class AnimationDataAccess extends Component {
     static propTypes = {
-        timeDomain: PropTypes.arrayOf(PropTypes.number).isRequired,
-        animationId: PropTypes.string.isRequired,
-
-        pollRate: PropTypes.number.isRequired,
-
+        dataSources: PropTypes.object.isRequired,
         render: PropTypes.func.isRequired,
     }
 
     constructor(props) {
         super(props);
 
-        this.accumulatedStatus = null;
-        this.beforeFirstStatus = null;
-
         this.state = {
-            lastFetchedStatus: {
-                status: {},
-            },
-            lastFetchedKeyframe: {},
-            error: null,
+            addKeyframe: ::this.addKeyframe,
+            clearKeyframes: ::this.clearKeyframes,
+            shiftTo: ::this.shiftTo,
+            getEmptyData: ::this.getEmptyData,
+
+            dataSources: props.dataSources,
         };
+
+        this.resetDataSources();
     }
 
-    componentDidUpdate(prevProps, prevState) {
-        //TODO: on timeDomain change?
-        if (this.props.pollRate !== prevProps.pollRate) {
-            clearInterval(this.fetchInterval);
-            this.fetchStatus();
-            this.fetchInterval = setInterval(::this.fetchStatus, this.props.pollRate);
-        }
-
-        if (prevState.lastFetchedStatus !== this.state.lastFetchedStatus && this.accumulatedStatus) {
-            // console.log("processing accumulated:", this.accumulatedStatus.position);
-            const accumulatedStatus = this.accumulatedStatus;
-            this.accumulatedStatus = null;
-            this.processStatus(accumulatedStatus);
+    componentDidUpdate(prevProps) {
+        if (!_.isEqual(this.props.dataSources, prevProps.dataSources)) {
+            this.resetDataSources();
+            this.setState({dataSources: this.props.dataSources});
         }
     }
 
-    componentDidMount() {
-        this.fetchStatus();
-        this.fetchInterval = setInterval(::this.fetchStatus, this.props.pollRate);
+    addKeyframe(kf) {
+        for (const dtSrcKey of Object.keys(this.dataSources)) {
+            this.dataSources[dtSrcKey].addKeyframe(kf);
+        }
     }
 
-    componentWillUnmount() {
-        clearInterval(this.fetchInterval);
+    clearKeyframes() {
+        for (const dtSrcKey of Object.keys(this.dataSources)) {
+            this.dataSources[dtSrcKey].clear();
+        }
     }
 
-    @withAsyncErrorHandler
-    async fetchStatus() {
-        const url = getUrl("rest/animation/" + this.props.animationId + "/status");
-        const res = await axios.get(url);
-        // console.log("Fetched status:", res.data);
-
-        //TODO: wrong, what if seeked between beforeFirstStatus and
-        //accumulatedStatus?
-        const {data, ...status} = res.data;
-        if (status.position > this.props.timeDomain[1] && this.state.lastFetchedStatus.status.position >= this.props.timeDomain[1]) return;
-
-        if (status.position < this.props.timeDomain[0]) {
-            // console.log("assigning beforeFirstStatus:", status.position);
-            this.beforeFirstStatus = res.data;
-            return;
+    shiftTo(ts) {
+        const data = {};
+        for (const dtSrcKey of Object.keys(this.dataSources)) {
+            data[dtSrcKey] = this.dataSources[dtSrcKey].shiftTo(ts);
+            if (data[dtSrcKey] === null) return null;
         }
 
-        let dataToProcess = res.data;
-        if (status.position === this.props.timeDomain[0]) {
-            this.beforeFirstStatus = null;
-        } else if (status.position > this.props.timeDomain[0] && this.beforeFirstStatus) {
-            // console.log("Using beforeFirstStatus, storing:", status.position);
-            this.accumulatedStatus = res.data;
-            dataToProcess = this.beforeFirstStatus;
-            this.beforeFirstStatus = null;
-        }
-
-        this.processStatus(dataToProcess);
+        return data;
     }
 
-    processStatus(statusData) {
-        const {data, ...status} = statusData;
-        const diffLog = this.runStatusDiff(status);
-
-        if (diffLog.size === 0) return;
-
-        const nextState = {};
-        if (diffLog.has(statusChanges.POSITION) || diffLog.has(statusChanges.SEEK)) {
-            nextState.lastFetchedKeyframe = {
-                ts: status.position,
-                data,
-            };
+    getEmptyData() {
+        const data = {};
+        for (const dtSrcKey of Object.keys(this.dataSources)) {
+            data[dtSrcKey] = this.dataSources[dtSrcKey].getEmptyData();
         }
 
-        if (diffLog.size > (diffLog.has(statusChanges.POSITION) ? 1 : 0)) {
-            nextState.lastFetchedStatus = {
-                status,
-                diffLog,
-            };
-        }
-
-        if (Object.keys(nextState).length > 0) {
-            this.setState(nextState);
-        }
-
-        this.lastPosition = status.position;
+        return data;
     }
 
-    runStatusDiff(newStatus) {
-        const oldStatus = this.state.lastFetchedStatus.status;
-        const diffLog = new Set();
+    resetDataSources() {
+        this.dataSources = {};
+        const dtSourceConfigs = this.props.dataSources;
+        for (const dtSrcKey of Object.keys(dtSourceConfigs)) {
+            const config = dtSourceConfigs[dtSrcKey];
+            const DataSourceType = dataSourceTypes[config.type];
 
-        if (this.lastPosition !== newStatus.position) {
-            diffLog.add(statusChanges.POSITION);
+            this.dataSources[dtSrcKey] = new DataSourceType(config, this);
         }
-
-        if (oldStatus.isPlaying && !newStatus.isPlaying ) {
-            diffLog.add(statusChanges.STOPED_PLAYING);
-        } else if (!oldStatus.isPlaying && newStatus.isPlaying) {
-            diffLog.add(statusChanges.STARTED_PLAYING);
-        }
-
-        if (oldStatus.playbackSpeedFactor !== newStatus.playbackSpeedFactor) {
-            diffLog.add(statusChanges.PLAYBACK_SPEED);
-        }
-
-        if (!oldStatus.seek || newStatus.seek.count !== oldStatus.seek.count) {
-            diffLog.add(statusChanges.SEEK);
-        }
-
-        if (!oldStatus.reachedEnd && newStatus.reachedEnd) {
-            diffLog.add(statusChanges.REACHED_END);
-        }
-
-        // console.log("diff", diffLog);
-        return diffLog;
-    }
-
-    errorHandler(error) {
-        clearInterval(this.fetchInterval);
-        this.setState({error});
-
-        return true;
     }
 
     render() {
@@ -210,384 +259,252 @@ class StatusAccess extends Component {
     }
 }
 
-class KeyframeBuffer {
-    constructor(minStoredDuration, endTs) {
-        this.minStoredDuration = minStoredDuration;
-        this.endTs = endTs;
-
-        this.innerBuffer = [];
-        this.storedDuration = 0;
-
-        this.reachedEnd = false;
-    }
-
-    push(keyframe) {
-        if (this.innerBuffer.length > 0) {
-            this.storedDuration += keyframe.ts - this.innerBuffer[this.innerBuffer.length - 1].ts;
-        }
-
-        this.reachedEnd = keyframe.ts >= this.endTs;
-
-        this.innerBuffer.push(keyframe);
-    }
-
-    shift() {
-        if (this.innerBuffer.length > 1) this.storedDuration -= this.innerBuffer[1].ts - this.innerBuffer[0].ts;
-        return this.innerBuffer.shift();
-    }
-
-    invalidateExceptLast() {
-        this.innerBuffer = [this.innerBuffer.pop()];
-        this.storedDuration = 0;
-    }
-
-    invalidate() {
-        this.storedDuration = 0;
-        this.innerBuffer = [];
-        this.reachedEnd = false;
-    }
-
-    hasStartingDuration(playbackSpeedFactor) {
-        return this.reachedEnd ? this.innerBuffer.length > 1 : (this.storedDuration*playbackSpeedFactor >= 1.2*this.minStoredDuration);
-    }
-
-    hasMinimalDuration(playbackSpeedFactor) {
-        return this.reachedEnd ? this.innerBuffer.length > 1 : (this.storedDuration*playbackSpeedFactor >= this.minStoredDuration);
-    }
-
-    get current() {
-        return this.innerBuffer[0];
-    }
-
-    get next() {
-        return this.innerBuffer[1];
-    }
-
-    get length() {
-        return this.innerBuffer.length;
-    }
-
-    didReachEnd() {
-        return this.reachedEnd;
-    }
-
-    _inner() {
-        return [...this.innerBuffer];
-    }
-}
-
-//TODO: needs thorough check, probably after server monitor panel...
-class LiveAnimationBase extends Component {
+@withComponentMixins([intervalAccessMixin()])
+class LiveAnimationControl extends Component {
     static propTypes = {
-        timeDomain: PropTypes.arrayOf(PropTypes.number).isRequired,
-        refreshRate: PropTypes.number,
-        initialStatus: PropTypes.object.isRequired,
-
+        pollRate: PropTypes.number.isRequired,
         animationId: PropTypes.string.isRequired,
 
-        pollRate: PropTypes.number.isRequired,
+        refreshRate: PropTypes.number.isRequired,
+        initialStatus: PropTypes.object.isRequired,
 
+        intervalSpanBefore: PropTypes.object.isRequired,
+        intervalSpanAfter: PropTypes.object.isRequired,
 
-        lastFetchedStatus: PropTypes.object,
-        lastFetchedKeyframe: PropTypes.object,
-        statusFetchError: PropTypes.object,
+        addKeyframe: PropTypes.func.isRequired,
+        clearKeyframes: PropTypes.func.isRequired,
+        shiftTo: PropTypes.func.isRequired,
+        getEmptyData: PropTypes.func.isRequired,
 
-        render: PropTypes.func.isRequired,
+        dataSources: PropTypes.object.isRequired,
+
+        children: PropTypes.node,
     }
 
     constructor(props) {
         super(props);
 
-
-        //TODO: transfer to keyframe count instead of time?
-        this.buffer = new KeyframeBuffer(3*props.pollRate, props.timeDomain[1]);
-
-        this.localPlayControl = false;
-
-        this.animControls = {
-            play: ::this.play,
-            pause: ::this.pause,
-            stop: ::this.stop,
-            jumpForward: (shiftMs) => this.seek(this.state.status.position + shiftMs),
-            jumpBackward: (shiftMs) => this.seek(this.state.status.position - shiftMs),
-            seek: ::this.seek,
-            changeSpeed: ::this.changePlaybackSpeed,
-        };
-
-        this.initialStatus = true;
-
         this.state = {
-            status: { ...props.initialStatus, isBuffering: true, timeDomain: props.timeDomain},
-            controls: {},
-            keyframes: {},
+            status: this.getInitStatus(),
+            controls: {
+                play: ::this.play,
+                pause: ::this.pause
+            },
+            animationData: props.getEmptyData(),
         };
+        this.lastStatus = {};
+        this.isRefreshing = false;
     }
 
     componentDidUpdate(prevProps) {
-        //TODO: on refreshRate, timeDomain?, animationId?, initialStatus
-        let nextStatus = {};
-        if (prevProps.lastFetchedStatus !== this.props.lastFetchedStatus) {
-            // console.log("New status",{old: prevProps.lastFetchedStatus, new: this.props.lastFetchedStatus});
-            nextStatus = this.handleStatusChange();
-
-            if (this.initialStatus) {
-                this.initialStatus = false;
-                this.setState({controls: this.animControls});
-            }
+        if (this.props.pollRate !== prevProps.pollRate) {
+            clearInterval(this.fetchStatusInterval);
+            this.fetchStatusInterval = setInterval(::this.fetchStatus, this.props.pollRate);
         }
 
-        if (prevProps.lastFetchedKeyframe !== this.props.lastFetchedKeyframe) {
-            // console.log("New keyframe", {old: prevProps.lastFetchedKeyframe, new: this.props.lastFetchedKeyframe});
-            this.buffer.push(this.props.lastFetchedKeyframe);
-            if (!this.isPlaying && (nextStatus.isBuffering || this.state.status.isBuffering)) nextStatus.isBuffering = false;
+        if (this.props.animationId !== prevProps.animationId ||
+            this.props.dataSources !== prevProps.dataSources) {
+            this.masterReset();
         }
 
-        if (Object.keys(nextStatus).length > 0) this.setStatus(nextStatus);
-
-        if (this.props.statusFetchError && !prevProps.statusFetchError) {
-            this.errorHandler(this.props.statusFetchError);
+        if (this.props.intervalSpanBefore.asMilliseconds() !== prevProps.intervalSpanBefore.asMilliseconds()||
+            this.props.intervalSpanAfter.asMilliseconds() !== prevProps.intervalSpanAfter.asMilliseconds()) {
+            this.updateInterval();
         }
     }
 
     componentDidMount() {
-        this.changePlaybackSpeed(this.state.status.playbackSpeedFactor);
-        this.seek(this.state.status.position);
-
         if (this.state.status.isPlaying) this.play();
+        this.fetchStatusInterval = setInterval(::this.fetchStatus, this.props.pollRate);
     }
 
     componentWillUnmount() {
-        clearInterval(this.playInterval);
+        clearTimeout(this.refreshTimeout);
+        clearInterval(this.fetchStatusInterval);
     }
 
+    masterReset() {
+        this.pause();
 
-    handleStatusChange() {
-        const newStatus = this.props.lastFetchedStatus.status;
-        const diffLog = this.props.lastFetchedStatus.diffLog;
+        const initStatus = this.getInitStatus();
+        this.setStatus(initStatus);
+        if (initStatus.isPlaying) {
+            this.play();
+        }
+
+        this.props.clearKeyframes();
+        this.setState({animationData: this.props.getEmptyData()});
+    }
+
+    errorHandler(error) {
+        console.error(error);
+
+        clearTimeout(this.refreshTimeout);
+        clearInterval(this.fetchStatusInterval);
+        this.setState({controls: {}});
+        this.setStatus({error});
+
+        return true;
+    }
+
+    getInitStatus() {
+        const initialStatus = this.props.initialStatus;
+
+        const newStatus = {
+            isBuffering: false,
+            isPlaying: !!initialStatus.isPlaying,
+            position: Date.now(),
+            playbackSpeedFactor: 1,
+        };
+
+        return newStatus;
+    }
+
+    updateInterval(currentPosition = this.state.status.position) {
+        const from = moment(currentPosition - this.props.intervalSpanBefore.asMilliseconds());
+        const to = moment(currentPosition + this.props.intervalSpanAfter.asMilliseconds());
+        const newSpec = new IntervalSpec(
+            from,
+            to,
+            null,
+            null
+        );
+
+        this.getInterval().setSpec(newSpec, true);
+    }
+
+    handleNewStatus(newStatus) {
         const nextStatus = {};
 
-        // console.log("Status change", {current: this.state.status, new: newStatus, newDiff: diffLog});
-
-        if (this.localPlayControl) {
-            this.synchronize(newStatus);
+        if (newStatus.isPlaying !== this.lastStatus.isPlaying) {
+            if (newStatus.isPlaying && !this.isRefreshing) {
+                nextStatus.position = newStatus.position;
+                this.handlePlay(nextStatus);
+            } else if (!newStatus && this.isRefreshing) {
+                this.handlePause(nextStatus);
+            }
         }
 
-        if (diffLog.has(statusChanges.SEEK) && this.lastSeekTo !== newStatus.seek.last) {
-            this.handleSeek(newStatus.position, nextStatus);
+        if (this.isRefreshing) {
+            const keyframe = { data: newStatus.data, ts: newStatus.position};
+
+            this.props.addKeyframe(keyframe);
         }
 
-        if (diffLog.has(statusChanges.PLAYBACK_SPEED) && this.state.status.playbackSpeedFactor !== newStatus.playbackSpeedFactor) {
-            this.handlePlaybackSpeedChange(newStatus.playbackSpeedFactor, nextStatus);
+        if (Object.keys(nextStatus).length > 0) {
+            this.setStatus(nextStatus);
         }
 
-        if (diffLog.has(statusChanges.STARTED_PLAYING) && !this.isPlaying) {
-            this.handlePlay(nextStatus);
-        }
-
-        if (diffLog.has(statusChanges.STOPED_PLAYING) && !diffLog.has(statusChanges.REACHED_END) && this.isPlaying) {
-            this.handlePause(nextStatus);
-        }
-
-        if (diffLog.has(statusChanges.REACHED_END)) {
-            this.localPlayControl = true;
-        }
-
-        return nextStatus;
+        this.lastStatus = newStatus;
     }
 
     setStatus(status) {
         this.setState((prevState) => {
             const newStatus = Object.assign({}, prevState.status, status);
-            const newKeyframes = {curr: this.buffer.current, next: this.buffer.next};
+            if (newStatus.position !== prevState.status.position) {
+                this.updateInterval(newStatus.position);
+            }
 
-            return { status: newStatus, keyframes: newKeyframes };
+            return {status: newStatus};
         });
     }
 
+
     refresh() {
-        // console.log("Refreshing");
-        const getPositionJump = () => {
-            const msPassed = this.savedInterval || Date.now() - this.lastRefreshTs;
-            this.lastRefreshTs = Date.now();
-
-            return this.state.status.playbackSpeedFactor*msPassed;
-        };
-
-        if (this.state.status.position === this.props.timeDomain[1]) {
-            // console.log("reached end");
-            this.localPlayControl = true;
-            this.pause();
-
-            return;
-        }
-
-        if (this.isBuffering && this.buffer.hasStartingDuration(this.state.status.playbackSpeedFactor)) {
-            // console.log("Buffering finished");
-            this.isBuffering = false;
-            this.setStatus({isBuffering: false});
-        }
-
-        if (!this.isBuffering && !this.buffer.hasMinimalDuration(this.state.status.playbackSpeedFactor)) {
-            // console.log("Buffering started");
-            this.lastRefreshTs = Date.now();
-            this.isBuffering = true;
-            this.setStatus({isBuffering: true});
-        } else if (!this.isBuffering && this.buffer.hasMinimalDuration(this.state.status.playbackSpeedFactor)) {
-            // console.log("Continue playing");
-
-            const nextPosition = Math.min(
-                this.props.timeDomain[1],
-                Math.max(this.buffer.current.ts, this.state.status.position + getPositionJump())
-            );
-
-
-            //
-            while (this.buffer.hasMinimalDuration(this.state.status.playbackSpeedFactor) && nextPosition >= this.buffer.next.ts) {
-                this.buffer.shift();
-            }
-
-            if (!this.buffer.hasMinimalDuration(this.state.status.playbackSpeedFactor)) {
-                this.isBuffering = true;
-                this.setStatus({isBuffering: true});
-            } else {
-                this.setStatus({ position: nextPosition });
-            }
+        let nextPosition;
+        if (this.savedPosition) {
+            nextPosition = this.savedPosition;
+            this.savedPosition = null;
         } else {
-            this.lastRefreshTs = Date.now();
+            nextPosition = this.lastRefreshTs === null ?
+                this.state.status.position :
+                this.state.status.position + (Date.now() - this.lastRefreshTs);
         }
-    }
-
-    synchronize(serverStatus) {
-        const localStatus = this.state.status;
-
-        // console.log("Synchronizing", {local: localStatus, server: serverStatus});
-
-        if (localStatus.isPlaying && !serverStatus.isPlaying) {
-            this.controlRequest("play", {});
-        } else if (!localStatus.isPlaying && serverStatus.isPlaying) {
-            this.play();
-        }
-
-        this.localPlayControl = false;
-    }
-
-    errorHandler(error) {
-        clearInterval(this.playInterval);
-        this.setState({controls: {}});
-        this.setStatus({error, isBuffering: true});
-
-        return true;
-    }
-
-
-    handlePlay(nextStatus) {
-        //TODO: try to get rid of this.isPlaying
-        this.isPlaying = true;
-        this.isBuffering = !this.buffer.hasStartingDuration(this.state.status.playbackSpeedFactor);
-
-        nextStatus.isPlaying = true;
-        nextStatus.isBuffering = this.isBuffering;
         this.lastRefreshTs = Date.now();
-        this.playInterval = setInterval(::this.refresh, this.props.refreshRate);
+
+        const data = this.props.shiftTo(nextPosition);
+
+        if (data === null) {
+            this.savedPosition = nextPosition;
+            this.setStatus({isBuffering: true});
+        } else {
+            this.setState({animationData: data});
+            this.setStatus({position: nextPosition, isBuffering: false});
+        }
+
+        this.refreshTimeout = setTimeout(::this.refresh, Math.max(0, this.props.refreshRate - (Date.now() - this.lastRefreshTs)));
     }
 
-    handlePause(nextStatus) {
-        this.isPlaying = false;
+    handlePlay(nextStatus = {}) {
+        if (this.isRefreshing) return nextStatus;
 
-        clearInterval(this.playInterval);
+        this.isRefreshing = true;
+        nextStatus.isPlaying = true;
+        nextStatus.isBuffering = true;
+
+        this.props.clearKeyframes();
+
+        this.savedPosition = null;
+        this.lastRefreshTs = null;
+        this.refreshTimeout = setTimeout(::this.refresh, this.props.refreshRate);
+
+        return nextStatus;
+    }
+
+    handlePause(nextStatus = {}) {
+        this.isRefreshing = false;
+
+        clearTimeout(this.refreshTimeout);
         nextStatus.isPlaying = false;
         nextStatus.isBuffering = false;
-    }
 
-    handleSeek(position, nextStatus) {
-        this.buffer.invalidate();
-        nextStatus.position = position;
-        nextStatus.isBuffering = true;
-    }
-
-    handlePlaybackSpeedChange(factor, nextStatus) {
-        this.buffer.invalidate();
-        nextStatus.isBuffering = true;
-        nextStatus.playbackSpeedFactor = factor;
+        return nextStatus;
     }
 
 
     play() {
-        const nextStatus = {};
-        this.handlePlay(nextStatus);
-        this.setStatus(nextStatus);
-
-        if (!this.localPlayControl) this.controlRequest("play", {});
+        this.setStatus({isPlaying: true, isBuffering: true});
+        this.sendControlRequest("play");
     }
 
     pause() {
-        const nextStatus = {};
-        this.handlePause(nextStatus);
-        this.setStatus(nextStatus);
-
-        if (!this.localPlayControl) this.controlRequest("pause", {});
-    }
-
-    stop() {
-        if (this.state.status.isPlaying) this.pause();
-        this.seek(this.props.timeDomain[0]);
-    }
-
-    seek(position) {
-        const clampedPosition = Math.min(this.props.timeDomain[1], Math.max(this.props.timeDomain[0], position));
-
-        const nextStatus = {};
-        this.handleSeek(clampedPosition, nextStatus);
-        this.setStatus(nextStatus);
-
-        this.lastSeekTo = this.state.status.isPlaying ? Math.max(this.props.timeDomain[0], position - this.props.pollRate/4 * this.state.status.playbackSpeedFactor) : position;
-        this.controlRequest("seek", {position: this.lastSeekTo});
-    }
-
-    changePlaybackSpeed(newFactor) {
-        const isPlaying = this.state.status.isPlaying;
-        const nextStatus = {};
-        const currKeyframe = isPlaying ? null : this.buffer.shift();
-
-        //TODO: weird
-        this.handlePlaybackSpeedChange(newFactor, nextStatus);
-        if (currKeyframe) {
-            this.buffer.push(currKeyframe);
-            nextStatus.isBuffering = false;
-        }
-        this.setStatus(nextStatus);
-
-        this.controlRequest("changeSpeed", {factor: newFactor});
-        if (isPlaying) this.seek(this.state.status.position);
+        this.setStatus(this.handlePause());
+        this.sendControlRequest("pause");
     }
 
     @withAsyncErrorHandler
-    async controlRequest(controlName, params) {
+    async sendControlRequest(controlName) {
         const url = getUrl("rest/animation/" + this.props.animationId + "/" + controlName);
-        await axios.post(url, params);
+        const ctrlPromise = axios.post(url);
+
+        this.fetchStatus();
+
+        await ctrlPromise;
     }
 
+    @withAsyncErrorHandler
+    async fetchStatus() {
+        const animationId = this.props.animationId;
+        const url = getUrl("rest/animation/" + animationId + "/status");
+        const res = await axios.get(url);
+
+        if (this.props.animationId === animationId) {
+            this.handleNewStatus(res.data);
+        }
+    }
 
     render() {
         return (
-            <>
-                <AnimationStatusContext.Provider value={this.state.status}>
-                    <AnimationControlContext.Provider value={this.state.controls}>
-                        {this.props.render({status: this.state.status, keyframes: this.state.keyframes})}
-
-                        <Debug
-                            name={"Server Animation"}
-                            state={this.state}
-                            buffer={this.buffer._inner()}
-                        />
-                    </AnimationControlContext.Provider>
-                </AnimationStatusContext.Provider>
-            </>
+            <AnimationStatusContext.Provider value={this.state.status}>
+                <AnimationControlContext.Provider value={this.state.controls}>
+                    <AnimationDataContext.Provider value={this.state.animationData}>
+                        {this.props.children}
+                    </AnimationDataContext.Provider>
+                </AnimationControlContext.Provider>
+            </AnimationStatusContext.Provider>
         );
     }
 }
-
-
 
 export {
     LiveAnimation

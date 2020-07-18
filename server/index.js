@@ -20,10 +20,10 @@ const { AppType } = require('../shared/app');
 const bluebird = require('bluebird');
 const savePdf = require('./lib/pdf-export');
 
-const testAnimation = require('../examples/extensions/server-animation').create();
+const serverMonitorAnimation = require('../examples/extensions/animations/server-monitor').create();
 
 emCommonDefaults.setDefaults(em);
-em.set('animation.test', testAnimation);
+em.set('animation.monitor', serverMonitorAnimation);
 
 async function initAndStart() {
     function createServer(appType, appName, host, port, isHttps, certsConfig, callback) {
