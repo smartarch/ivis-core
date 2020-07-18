@@ -3,24 +3,34 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {select, mouse} from "d3-selection";
-import {scaleLinear} from "d3-scale";
+import {scaleLinear, scaleTime} from "d3-scale";
 import {interpolateString} from "d3-interpolate";
 import styles from "./media-controls.scss";
-import {withAnimationControl, withAnimationStatus} from "./animation-helpers";
+import {withAnimationControl} from "./animation-helpers";
 import {withComponentMixins} from "./decorator-helpers";
 import {Button, ButtonDropdown, Icon} from "./bootstrap-components";
-import {utcMillisecond, utcSecond, utcMinute, utcHour, utcDay, utcMonth, utcYear} from "d3-time";
 import {intervalAccessMixin} from "../ivis/TimeContext";
+import moment from "moment";
 
-//TODO: default label format for both relative and absolute??
+//TODO: ensure same interval interpretation
+const defaultPlaybackSpeedSteps = [
+    1,
+    moment.duration(1, "s").asSeconds(),
+    moment.duration(1, "m").asSeconds(),
+    moment.duration(1, "h").asSeconds(),
+    moment.duration(6, "h").asSeconds(),
+    moment.duration(1, "d").asSeconds(),
+    moment.duration(1, "w").asSeconds(),
+    moment.duration(1, "m").asSeconds(),
+    moment.duration(6, "m").asSeconds(),
+];
 
 @withComponentMixins([withAnimationControl])
 class PlayPauseButton extends Component {
     static propTypes = {
-        animationControl: PropTypes.object,
-        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object.isRequired,
+        animationStatus: PropTypes.object.isRequired,
         enabled: PropTypes.bool,
-        visible: PropTypes.bool,
 
         className: PropTypes.string,
     }
@@ -50,8 +60,6 @@ class PlayPauseButton extends Component {
     }
 
     render() {
-        if (!this.props.visible) return <></>;
-
         const icon = this.state.isPlaying ? "pause" : "play";
         const title = icon.charAt(0).toUpperCase() + icon.slice(1);
 
@@ -72,17 +80,14 @@ class PlayPauseButton extends Component {
 @withComponentMixins([withAnimationControl])
 class StopButton extends Component {
     static propTypes = {
-        animationControl: PropTypes.object,
-        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object.isRequired,
+        animationStatus: PropTypes.object.isRequired,
         enabled: PropTypes.bool,
-        visible: PropTypes.bool,
 
         className: PropTypes.string,
     }
 
     render() {
-        if (!this.props.visible) return <></>;
-
         return (
             <Button
                 title={"Stop"}
@@ -97,22 +102,36 @@ class StopButton extends Component {
     }
 }
 
-@withComponentMixins([withAnimationControl])
+@withComponentMixins([withAnimationControl, intervalAccessMixin()])
 class JumpForwardButton extends Component {
     static propTypes = {
-        animationControl: PropTypes.object,
-        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object.isRequired,
+        animationStatus: PropTypes.object.isRequired,
 
         enabled: PropTypes.bool,
-        visible: PropTypes.bool,
-        shiftMs: PropTypes.number,
+        jumpFactor: PropTypes.number,
 
         className: PropTypes.string,
     }
 
-    render() {
-        if (!this.props.visible) return <></>;
+    static defaultProps = {
+        jumpFactor: 0.01,
+    }
 
+    constructor(props) {
+        super(props);
+
+        this.jumpBound = ::this.jump;
+    }
+
+    jump() {
+        const intvAbs = this.getIntervalAbsolute();
+        const jumpDistance = (intvAbs.to.valueOf() - intvAbs.from.valueOf()) * this.props.jumpFactor;
+
+        this.props.animationControl.jumpForward(jumpDistance);
+    }
+
+    render() {
         return (
             <Button
                 title={"Jump froward"}
@@ -120,29 +139,43 @@ class JumpForwardButton extends Component {
                 className={styles.mediaButton + " " + (this.props.className || "")}
 
                 type={"button"}
-                onClickAsync={this.props.animationControl.jumpForward && this.props.animationControl.jumpForward.bind(null, this.props.shiftMs)}
+                onClickAsync={this.props.animationControl.jumpForward && this.jumpBound}
                 disabled={!this.props.animationControl.jumpForward && this.props.enabled}
             />
         );
     }
 }
 
-@withComponentMixins([withAnimationControl])
+@withComponentMixins([withAnimationControl, intervalAccessMixin()])
 class JumpBackwardButton extends Component {
     static propTypes = {
-        animationControl: PropTypes.object,
-        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object.isRequired,
+        animationStatus: PropTypes.object.isRequired,
 
         enabled: PropTypes.bool,
-        visible: PropTypes.bool,
-        shiftMs: PropTypes.number,
+        jumpFactor: PropTypes.number,
 
         className: PropTypes.string,
     }
 
-    render() {
-        if (!this.props.visible) return <></>;
+    static defaultProps = {
+        jumpFactor: 0.01,
+    }
 
+    constructor(props) {
+        super(props);
+
+        this.jumpBound = ::this.jump;
+    }
+
+    jump() {
+        const intvAbs = this.getIntervalAbsolute();
+        const jumpDistance = (intvAbs.to.valueOf() - intvAbs.from.valueOf()) * this.props.jumpFactor;
+
+        this.props.animationControl.jumpBackward(jumpDistance);
+    }
+
+    render() {
         return (
             <Button
                 title={"Jump backward"}
@@ -150,7 +183,7 @@ class JumpBackwardButton extends Component {
                 className={styles.mediaButton + " " + (this.props.className || "")}
 
                 type={"button"}
-                onClickAsync={this.props.animationControl.jumpBackward && this.props.animationControl.jumpBackward.bind(null, this.props.shiftMs)}
+                onClickAsync={this.props.animationControl.jumpBackward && this.jumpBound}
                 disabled={!this.props.animationControl.jumpBackward || !this.props.enabled}
             />
         );
@@ -160,13 +193,11 @@ class JumpBackwardButton extends Component {
 @withComponentMixins([withAnimationControl])
 class ChangeSpeedButton extends Component {
     static propTypes = {
-        animationControl: PropTypes.object,
-        animationStatus: PropTypes.object,
+        animationControl: PropTypes.object.isRequired,
+        animationStatus: PropTypes.object.isRequired,
 
         enabled: PropTypes.bool,
-        visible: PropTypes.bool,
         steps: PropTypes.arrayOf(PropTypes.number),
-
 
         factorFormat: PropTypes.func,
         classNames: PropTypes.object,
@@ -174,13 +205,13 @@ class ChangeSpeedButton extends Component {
 
     static defaultProps = {
         classNames: {},
-        factorFormat: (f) => f + "x",
+        steps: defaultPlaybackSpeedSteps,
+        factorFormat: (f) => `${moment.duration(1000).humanize()} as ${moment.duration(f*1000).humanize()}`,
     }
 
     constructor(props) {
         super(props);
 
-        this.labelPrefix = "Speed: ";
         this.state = {
             factor: props.animationStatus.playbackSpeedFactor || 1,
         };
@@ -199,13 +230,12 @@ class ChangeSpeedButton extends Component {
     }
 
     getStepComps() {
-        const steps = this.props.steps;
+        const steps = [...this.props.steps];
         steps.sort((x, y) => x - y);
 
         const comps = [];
-        for (let factor of steps) {
-            const className = styles.changeSpeedMenuItem + " " +
-                "dropdown-item" + " " +
+        for (const factor of steps) {
+            const className = styles.changeSpeedMenuItem + " dropdown-item" + " " +
                 (factor === this.state.factor ? "active " + styles.active : "") + " " +
                 (this.props.classNames.menuItem || "");
 
@@ -229,8 +259,6 @@ class ChangeSpeedButton extends Component {
     }
 
     render() {
-        if (!this.props.visible) return <></>;
-
         const disabled = !this.props.animationControl.changeSpeed || !this.props.enabled;
         const label = <>
             <Icon className={"btn-icon mr-2"} icon={"clock"} />
@@ -255,24 +283,21 @@ class ChangeSpeedButton extends Component {
     }
 }
 
-
-class TimelineBase extends Component {
+@withComponentMixins([withAnimationControl, intervalAccessMixin()])
+class Timeline extends Component {
     static propTypes = {
-        domain: PropTypes.arrayOf(PropTypes.number),
-        position: PropTypes.number,
-        setPosition: PropTypes.func,
+        animationControl: PropTypes.object.isRequired,
+        animationStatus: PropTypes.object.isRequired,
 
         enabled: PropTypes.bool,
-
-        labelFormat: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
-        ticks: PropTypes.arrayOf(PropTypes.number),
+        positionFormatString: PropTypes.string,
 
         classNames: PropTypes.object,
     }
 
     static defaultProps = {
-        tickInterval: 0,
         classNames: {},
+        positionFormatString: "L LTS",
     }
 
     constructor(props) {
@@ -288,24 +313,17 @@ class TimelineBase extends Component {
         };
 
         this.getPercScale = () => {
+            const intv = this.getIntervalAbsolute();
             return scaleLinear()
-                .domain(this.props.domain)
+                .domain([intv.from.valueOf(), intv.to.valueOf()])
                 .range(["2%", "98%"])
                 .interpolate(interpolateString)
                 .clamp(true);
         };
 
-        this.getLabelFormater = (key) => {
-            if (typeof this.props.labelFormat === "object" && !!this.props.labelFormat[key]) {
-                return this.props.labelFormat[key];
-            } else {
-                return this.props.labelFormat;
-            }
-        };
-
         this.state = {
             axisRect: null,
-            position: props.position,
+            position: props.animationStatus.position,
         };
     }
 
@@ -313,15 +331,14 @@ class TimelineBase extends Component {
         if (this.props.enabled && !prevProps.enabled) this.enable();
         else if (prevProps.enabled && !this.props.enabled) this.disable();
 
+        const prevIntvAbs = this.getIntervalAbsolute(prevProps);
         if (this.state.axisRect !== prevState.axisRect ||
-            this.props.domain !== prevProps.domain ||
-            this.props.ticks !== prevProps.ticks ||
-            this.props.labelFormat !== prevProps.labelFormat) {
+            this.getIntervalAbsolute() !== prevIntvAbs) {
             this.updateTicks();
         }
 
-        if (this.props.position !== prevProps.position && !this.sliding) {
-            this.setState({position: this.props.position});
+        if (this.props.animationStatus.position !== prevProps.animationStatus.position && !this.sliding) {
+            this.setState({position: this.props.animationStatus.position});
         }
     }
 
@@ -345,8 +362,9 @@ class TimelineBase extends Component {
 
         const percScale = this.getPercScale();
         const getScale = () => {
+            const intv = this.getIntervalAbsolute();
             return scaleLinear()
-                .domain(this.props.domain)
+                .domain([intv.from.valueOf(), intv.to.valueOf()])
                 .range([this.state.axisRect.x, this.state.axisRect.x + this.state.axisRect.width])
                 .clamp(true);
         };
@@ -358,7 +376,7 @@ class TimelineBase extends Component {
             progressBarSel.attr("x2", perc);
             pointerSel.attr("cx", perc);
 
-            posLabelSel.text(this.getLabelFormater("position")(pos));
+            posLabelSel.text(moment(pos).format(this.props.positionFormatString));
         };
         const stopSliding = () => {
             this.sliding = false;
@@ -369,14 +387,14 @@ class TimelineBase extends Component {
             hoverPosLabelSel.style("display", "block");
 
             const pos = getScale().invert(mouse(this.nodeRefs.axis)[0]);
-            this.props.setPosition(pos);
+            this.props.animationControl.seek(pos);
         };
         const cancelSliding = () => {
             this.sliding = false;
             timelineSel.on("mouseup.sliding mousemove.sliding mouseleave.sliding", null);
 
-            if (this.props.position !== this.state.position) {
-                this.setState({position: this.props.position});
+            if (this.props.animationStatus.position !== this.state.position) {
+                this.setState({position: this.props.animationStatus.position});
             } else {
                 movePointer(this.state.position);
             }
@@ -396,7 +414,7 @@ class TimelineBase extends Component {
 
         const updateHoverLabel = () => {
             const pos = getScale().invert(mouse(this.nodeRefs.axis)[0]);
-            hoverPosLabelSel.text(this.getLabelFormater("position")(pos));
+            hoverPosLabelSel.text(moment(pos).format(this.props.positionFormatString));
         };
         const stopTrackingHover = () => {
             pointerSel.style("display", "none");
@@ -417,7 +435,7 @@ class TimelineBase extends Component {
                 .on("mousemove.tracking", updateHoverLabel);
 
         };
-        //TODO: on click faulty behaviour
+        //TODO: needs testing
 
 
         timelineSel
@@ -451,78 +469,15 @@ class TimelineBase extends Component {
             .on("mousedown.sliding", null);
     }
 
-    getTicks() {
-        const tickDefs = [];
-        const lbFromat = this.getLabelFormater("tick");
-        const percScale = this.getPercScale();
-
-        tickDefs.push({
-            type: "begin",
-            label: lbFromat(this.props.domain[0]),
-            x: percScale(this.props.domain[0])
-        });
-
-
-        //TODO: const in for loops
-        for (const ts of this.props.ticks) {
-            tickDefs.push({
-                type: "middle",
-                label: lbFromat(ts),
-                x: percScale(ts)
-            });
-        }
-
-        tickDefs.push({
-            type: "end",
-            label: lbFromat(this.props.domain[this.props.domain.length - 1]),
-            x: percScale(this.props.domain[this.props.domain.length - 1]),
-        });
-
-        return tickDefs;
-    }
-
-    filterTicks() {
-        const ticksSel = select(this.nodeRefs.ticks).selectAll("svg");
-
-        const nodes = ticksSel.nodes();
-        let i = 0;
-        while (i < nodes.length - 1) {
-            const lastNode = nodes[i];
-            const rect = lastNode.getBoundingClientRect();
-            const end = rect.x + rect.width;
-
-            select(lastNode).select("text").attr("opacity", 1);
-
-            let j = i + 1;
-            while (j < nodes.length - 1 && end > nodes[j].getBoundingClientRect().x) {
-                select(nodes[j]).select("text").attr("opacity", 0);
-                j++;
-            }
-
-            if (j === nodes.length - 1 && end > nodes[j].getBoundingClientRect().x) {
-                select(lastNode).select("text").attr("opacity", 0);
-            }
-
-            i = j;
-        }
-    }
-
     updateTicks() {
-        const tickDefs = this.getTicks();
+        const intv = this.getIntervalAbsolute();
+        const timeScale = scaleTime()
+            .domain([intv.from.toDate(), intv.to.toDate()])
+            .range([this.state.axisRect.x, this.state.axisRect.x + this.state.axisRect.width]);
 
-        const createTick = (sel) => {
-            return sel.append("svg")
-                .attr("pointer-events", "none")
-                .call(sel => sel.append("line")
-                    .classed(styles.tick, true)
-                    .classed(this.props.classNames.tick, !!this.props.classNames.tick)
-                    .attr("stroke-linecap", "round")
-                )
-                .call(sel => sel.append("text")
-                    .classed(styles.tickLabel, true).classed(this.props.classNames.tickLabel, !!this.props.classNames.tickLabel)
-                    .attr("dy", "1em")
-                );
-        };
+        const tickCount = Math.floor((timeScale.range()[1] - timeScale.range()[0])/ 80);
+        const ticks = timeScale.ticks(tickCount);
+        const tickFormat = timeScale.tickFormat();
 
         const axisTop = this.state.axisRect.y - this.state.axisRect.height/2;
         const axisBottom = this.state.axisRect.y + this.state.axisRect.height/2;
@@ -530,51 +485,31 @@ class TimelineBase extends Component {
         const tickTop = axisTop + this.state.axisRect.height/4;
         const tickBottom = axisBottom - this.state.axisRect.height/4;
 
-        const updates = {
-            begin: {
-                updateTickMark: (sel) => sel.attr("opacity", 0),
-                updateLabel: (sel, d) => sel
-                    .attr("dx", "-0.5em")
-                    .attr("y", axisBottom)
-                    .attr("text-anchor", "start")
-                    .text(d.label),
-            },
-            end: {
-                updateTickMark: (sel) => sel.attr("opacity", 0),
-                updateLabel: (sel, d) => sel
-                    .attr("dx", "0.5em")
-                    .attr("y", axisBottom)
-                    .attr("text-anchor", "end")
-                    .text(d.label),
-            },
-            middle: {
-                updateTickMark: (sel) => sel
-                    .attr("opacity", 1)
+        const createTick = (sel) => {
+            return sel.append("g")
+                .attr("pointer-events", "none")
+                .call(sel => sel.append("line")
+                    .classed(styles.tick, true)
+                    .classed(this.props.classNames.tick, !!this.props.classNames.tick)
+                    .attr("stroke-linecap", "round")
                     .attr("y1", tickTop)
                     .attr("y2", tickBottom),
-                updateLabel: (sel, d) => sel
-                    .attr("y", axisBottom)
+                )
+                .call(sel => sel.append("text")
+                    .classed(styles.tickLabel, true).classed(this.props.classNames.tickLabel, !!this.props.classNames.tickLabel)
                     .attr("text-anchor", "middle")
-                    .text(d.label),
-            }
+                    .attr("dy", "1em")
+                    .attr("y", axisBottom)
+                );
         };
 
-        select(this.nodeRefs.ticks).selectAll("svg")
-            .data(tickDefs)
+        select(this.nodeRefs.ticks).selectAll("g")
+            .data(ticks)
             .join(createTick)
-            .attr("x", d => d.x)
-            .call(sel => sel.select("line")
-                .each(function (d) {
-                    updates[d.type].updateTickMark(select(this));
-                })
-            )
+            .attr("transform", d => `translate(${timeScale(d)}, 0)`)
             .call(sel => sel.select("text")
-                .each(function (d) {
-                    updates[d.type].updateLabel(select(this), d);
-                })
+                .text(d => tickFormat(d))
             );
-
-        this.filterTicks();
     }
 
     updateAxisRect() {
@@ -617,7 +552,7 @@ class TimelineBase extends Component {
                     pointerEvents={"none"}
                     textAnchor={"middle"}
                 >
-                    {this.getLabelFormater("position")(this.state.position)}
+                    {moment(this.state.position).format(this.props.positionFormatString)}
                 </text>
                 <text ref={node => this.nodeRefs.hoverPositionLabel = node}
                     className={styles.hoverPositionLabel + " " + (this.props.classNames.hoverPositionLabel || "")}
@@ -637,186 +572,6 @@ class TimelineBase extends Component {
     }
 }
 
-@withComponentMixins([withAnimationControl, intervalAccessMixin()])
-class Timeline extends Component {
-    //TODO: use d3 time domain as default
-    static propTypes = {
-        animationControl: PropTypes.object.isRequired,
-        animationStatus: PropTypes.object.isRequired,
-
-        enabled: PropTypes.bool.isRequired,
-        visible: PropTypes.bool.isRequired,
-
-        labelFormat: PropTypes.oneOfType([PropTypes.object, PropTypes.func]).isRequired,
-        tickInterval: PropTypes.oneOfType([
-            //TODO: is feature "relative timeline" necessary or even wanted?
-            PropTypes.number,
-            PropTypes.func,
-            PropTypes.shape({
-                name: PropTypes.string.isRequired,
-                step: PropTypes.number.isRequired,
-            })
-        ]).isRequired,
-
-        classNames: PropTypes.object,
-    }
-
-    constructor(props) {
-        super(props);
-
-        this.state = {
-            ticks: this.getTicks(),
-            timeDomain: this.getTimeDomain(),
-        };
-    }
-
-    componentDidUpdate(prevProps) {
-        const prevIntervalAbsolute = this.getIntervalAbsolute(prevProps);
-        if (this.getIntervalAbsolute() !== prevIntervalAbsolute) {
-            this.setState({ticks: this.getTicks(), timeDomain: this.getTimeDomain()});
-        }
-
-        if (this.props.tickInterval !== prevProps.tickInterval) {
-            this.setState({ticks: this.getTicks()});
-        }
-    }
-
-    getTicks() {
-        //Definition of intervals can be done in three ways:
-        //    - as millisecond gap repeating itself from 1970-01-01
-        //    - as context aware d3.time interval
-        //    - using a function that recieves the time domain of the animation
-        //    and returns array of unix timestamps, where ticks should be
-        //    placed.
-
-        const domain = this.getTimeDomain();
-        const interval = this.props.tickInterval;
-
-        //TODO: transfer all to local...
-        const intervals = {
-            millisecond: utcMillisecond,
-            second: utcSecond,
-            minute: utcMinute,
-            hour: utcHour,
-            day: utcDay,
-            month: utcMonth,
-            year: utcYear,
-        };
-
-        const getTicksFromMsInterval = (msInterval) => {
-            if (msInterval === 0) return [];
-
-            const ticks = [];
-            let pos = domain[0] + 1;
-            pos += pos % msInterval === 0 ? 0 : msInterval - (pos % msInterval);
-
-            while (pos < domain[1]) {
-                ticks.push(pos);
-
-                pos += this.props.tickInterval;
-            }
-
-            return ticks;
-        };
-
-
-        if (typeof interval === "function") return interval(domain);
-        else if (typeof interval === "number") return getTicksFromMsInterval(interval);
-        else {
-            if (!Object.prototype.hasOwnProperty.call(intervals, interval.name) || interval.step <= 0) return [];
-
-            return intervals[interval.name]
-                .every(interval.step)
-                .range(domain[0] + 1, domain[1])
-                .map(d => d.valueOf());
-        }
-    }
-
-    getTimeDomain() {
-        const intvAbs = this.getIntervalAbsolute();
-        return [intvAbs.from.valueOf(), intvAbs.to.valueOf()];
-    }
-
-    render() {
-        if (!this.props.visible) return <></>;
-
-        return (
-            <TimelineBase
-                domain={this.state.timeDomain}
-                position={this.props.animationStatus.position}
-                setPosition={this.props.animationControl.seek}
-
-                enabled={this.props.enabled}
-
-                labelFormat={this.props.labelFormat}
-                ticks={this.state.ticks}
-
-                classNames={this.props.classNames}
-            />
-        );
-    }
-}
-
-
-//------------ Observers
-
-//TODO: style this
-@withComponentMixins([withAnimationStatus])
-class PositionObserver extends Component {
-    static propTypes = {
-        animationStatus: PropTypes.object.isRequired,
-
-        visible: PropTypes.bool,
-        positionFormat: PropTypes.func.isRequired,
-
-        classNames: PropTypes.object,
-    }
-
-    render() {
-        if (!this.props.visible) return null;
-
-        const position = this.props.animationStatus.position;
-
-        return (
-            <div className={styles.positionObserver + " " + (this.props.classNames.container || "")}>
-                <span className={styles.label + " " + (this.props.classNames.label || "")}>
-                    {this.props.positionFormat(position)}
-                </span>
-            </div>
-        );
-    }
-}
-
-//TODO: style this
-@withComponentMixins([withAnimationStatus])
-class LiveObserver extends Component {
-    static propTypes = {
-        animationStatus: PropTypes.object.isRequired,
-
-        visible: PropTypes.bool,
-        // TODO
-        // behindTimestampFormat: PropTypes.func.isRequired,
-
-        classNames: PropTypes.object,
-    }
-
-    render() {
-        const isLive = this.props.animationStatus.isLive;
-        const title = isLive ? "Live" : "From data";
-
-        return (
-            <div className={styles.liveObserver + " " + (this.props.classNames.container || "")}>
-                <div className={styles.label + " " + (this.props.classNames.label || "")}>
-                    <Icon family={isLive ? "fas" : "far"} icon="circle" className={styles.liveIcon}/>
-                    <span className={styles.spacer} />
-                    {title}
-                </div>
-            </div>
-        );
-    }
-}
-
-
 class ButtonGroup extends Component {
     static propTypes = {
         playPause: PropTypes.object,
@@ -827,7 +582,6 @@ class ButtonGroup extends Component {
 
         className: PropTypes.string,
     }
-
 
     render() {
         const comps = {
@@ -842,7 +596,7 @@ class ButtonGroup extends Component {
             <div role={"group"}
                 className={"btn-group " + styles.mediaButtonGroup + " " + (this.props.className || "")}>
                 {
-                    Object.keys(comps).filter(btnKey => btnKey in this.props).map(btnKey => {
+                    Object.keys(comps).filter(btnKey => btnKey in this.props && this.props[btnKey].visible).map(btnKey => {
                         const Comp = comps[btnKey];
 
                         return <Comp {...this.props[btnKey]} key={btnKey} />;
@@ -869,9 +623,11 @@ class OnelineLayout extends Component {
     render() {
         const {timeline, ...buttons} = this.props;
 
-        const buttonsCount = Object.keys(buttons).filter(buttonId => buttons[buttonId].visible).length;
+        const visibleButtonKeys = Object.keys(buttons).filter(buttonId => buttons[buttonId].visible);
+        const visibleButtons = {};
+        for (const btKey of visibleButtonKeys) visibleButtons[btKey] = buttons[btKey];
 
-        const buttonGroupWidth = Math.max(1, buttonsCount - 2);
+        const buttonGroupWidth = Math.max(1, visibleButtonKeys.length - 2);
         const timelineWidth = 12 - buttonGroupWidth;
 
         return (
@@ -879,9 +635,9 @@ class OnelineLayout extends Component {
                 styles.onelineLayout + " " + (this.props.layoutClassName || "")
             }>
                 <div className={"row"}>
-                    {buttonsCount > 0 &&
+                    {visibleButtonKeys.length > 0 &&
                         <div className={`col-${buttonGroupWidth}`}>
-                            <ButtonGroup {...buttons} className={this.props.buttonGroupClassName} />
+                            <ButtonGroup {...visibleButtons} className={this.props.buttonGroupClassName} />
                         </div>
                     }
                     {timeline && timeline.visible &&

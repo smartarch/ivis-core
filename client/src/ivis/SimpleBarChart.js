@@ -15,7 +15,6 @@ export class SimpleBarChart extends Component {
         domainLabel: PropTypes.string,
         barPadding: PropTypes.number, //between 0 and 1
         groupPadding: PropTypes.number, //between 0 and 1
-        // legendPosition: PropTypes.number, //TODO: possible future enhancement
 
         withTickLines: PropTypes.bool,
         withBarValues: PropTypes.bool,
@@ -134,7 +133,7 @@ export class SimpleBarChart extends Component {
             if (typeof value === "number") return value;
             else {
                 let resValue = null;
-                if (value.sigSet && value.signal) resValue = data[value.sigSet][value.signal];
+                if (value.dataSource && value.signal) resValue = data[value.dataSource][value.signal];
                 if (value.agg && resValue) resValue = resValue[value.agg];
 
                 return resValue;
@@ -157,8 +156,23 @@ export class SimpleBarChart extends Component {
             .range(rs.x.range)
             .padding(this.props.groupPadding);
 
+        let domainMax = config.yAxis && config.yAxis.includeMax ?
+            Math.max(maxValue, config.yAxis.includeMax) : maxValue;
+        let domainMin = config.yAxis && config.yAxis.includeMin ?
+            Math.min(minValue, config.yAxis.includeMin) : minValue;
+
+        const domainWidth = domainMax - domainMin;
+
+        if (config.yAxis && config.yAxis.belowMin) {
+            domainMin -= domainWidth * config.yAxis.belowMin;
+        }
+
+        if (config.yAxis && config.yAxis.aboveMax) {
+            domainMax += domainWidth * config.yAxis.aboveMax;
+        }
+
         const y = scaleLinear()
-            .domain([Math.min(0, minValue), maxValue].map(limit => limit * 1.2))
+            .domain([domainMin, domainMax])
             .range(rs.y.range);
 
         const valueFormatIfDef = this.props.valueFormatSpecifier ?
