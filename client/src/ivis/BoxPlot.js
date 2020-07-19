@@ -118,6 +118,14 @@ export class BoxPlot extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
         maxBoxWidth: PropTypes.number,
+        strokeWidth: PropTypes.number,
+        medianLineWidth: PropTypes.number,
+        whiskerLineWidth: PropTypes.number,
+        whiskerTipLineWidth: PropTypes.number,
+        whiskerTipLength: PropType_NumberInRange(0, 1), // length of the whisker tip line (along the x-axis) relative to the width of the box (1 = same width as box, 0 = no tip)
+        dotRadius: PropTypes.number, // for outliers
+        showMin: PropTypes.bool, // dot for the minimum (if bottomWhiskerPercentile is not "min")
+        showMax: PropTypes.bool, // dot for the maximum (if topWhiskerPercentile is not "max")
 
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
@@ -133,11 +141,26 @@ export class BoxPlot extends Component {
         style: PropTypes.object,
 
         filter: PropTypes.object,
+        /**
+         *  This function should return the data for the BoxPlot as an object of shape { signalSetsData, xExtent, yExtent }. The return value will be saved to the component's state.
+         *  - signalSetsData is an array of object with shape { min, max, top, middle, bottom, topWhisker, bottomWhisker } (all the values are numbers - the y-coordinates
+         *  - xExtent - array of strings with names for the boxes (displayed along the x-axis), should have same length as signalSetsData
+         *  - yExtent - [minimum, maximum] of the y-axis
+         **/
+        getData: PropTypes.func,
     };
 
     static defaultProps = {
         margin: { left: 40, right: 5, top: 5, bottom: 20 },
         maxBoxWidth: 100,
+        strokeWidth: 1,
+        medianLineWidth: 1,
+        whiskerLineWidth: 1,
+        whiskerTipLineWidth: 1,
+        whiskerTipLength: 0.7,
+        dotRadius: 5,
+        showMin: true,
+        showMax: true,
 
         topPercentile: 75,
         middlePercentile: 50,
@@ -257,6 +280,11 @@ export class BoxPlot extends Component {
     /** Fetches new data for the chart, processes the results using prepareData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
+        if (typeof this.props.getData === "function") {
+            this.setState(this.getData());
+            return;
+        }
+
         try {
             const queries = [];
             for (const signalSetConfig of this.props.config.signalSets) {
@@ -457,6 +485,12 @@ export class BoxPlot extends Component {
                     const c = this.props.config.signalSets[i];
                     const d = this.state.signalSetsData[i];
 
+                    const additionalValues = [];
+                    if (this.props.showMax && this.props.topWhiskerPercentile !== "max")
+                        additionalValues.push(this.state.yScale(d.max))
+                    if (this.props.showMin &&this.props.bottomWhiskerPercentile !== "min")
+                        additionalValues.push(this.state.yScale(d.min))
+
                     boxes.push(
                         <Box key={c.label}
                              x={this.state.xScale(c.label)}
@@ -466,6 +500,9 @@ export class BoxPlot extends Component {
                              bottom={this.state.yScale(d.bottom)}
                              topWhisker={this.state.yScale(d.topWhisker)}
                              bottomWhisker={this.state.yScale(d.bottomWhisker)}
+                             additionalValues={additionalValues}
+                             fillColor={c.fillColor || "none"}
+                             BoxPlotProps={this.props}
                         />);
                 }
             }
@@ -533,24 +570,33 @@ export class Box extends Component {
         topWhisker: PropTypes.number,
         bottomWhisker: PropTypes.number,
         additionalValues: PropTypes.arrayOf(PropTypes.number),
+
+        fillColor: PropType_d3Color(),
+        BoxPlotProps: PropTypes.object,
     };
 
     render() {
         const p = this.props;
         const w = p.width / 2;
+        const bp = this.props.BoxPlotProps;
 
         return (
-            <g>
-                <rect x={p.x - w} width={p.width} y={p.top} height={p.bottom - p.top} stroke="black" fill="none" />
-                <line x1={p.x - w} x2={p.x + w} y1={p.middle} y2={p.middle} stroke="black" />
+            <g key={p.key} >
+                <rect x={p.x - w} width={p.width} y={p.top} height={p.bottom - p.top} stroke="black" strokeWidth={bp.strokeWidth} fill={p.fillColor} />
+                <line x1={p.x - w} x2={p.x + w} y1={p.middle} y2={p.middle} stroke="black" strokeWidth={bp.medianLineWidth}  />
                 {p.topWhisker !== undefined && <>
-                    <line x1={p.x} x2={p.x} y1={p.top} y2={p.topWhisker} stroke="black" />
-                    <line x1={p.x - w} x2={p.x + w} y1={p.topWhisker} y2={p.topWhisker} stroke="black" />
+                    <line x1={p.x} x2={p.x} y1={p.top} y2={p.topWhisker} stroke="black" strokeWidth={bp.whiskerLineWidth} />
+                    <line x1={p.x - w * bp.whiskerTipLength} x2={p.x + w * bp.whiskerTipLength} y1={p.topWhisker} y2={p.topWhisker} stroke="black" strokeWidth={bp.whiskerTipLineWidth} />
                 </>}
                 {p.bottomWhisker !== undefined && <>
-                    <line x1={p.x} x2={p.x} y1={p.bottom} y2={p.bottomWhisker} stroke="black" />
-                    <line x1={p.x - w} x2={p.x + w} y1={p.bottomWhisker} y2={p.bottomWhisker} stroke="black" />
+                    <line x1={p.x} x2={p.x} y1={p.bottom} y2={p.bottomWhisker} stroke="black" strokeWidth={bp.whiskerLineWidth}  />
+                    <line x1={p.x - w * bp.whiskerTipLength} x2={p.x + w * bp.whiskerTipLength} y1={p.bottomWhisker} y2={p.bottomWhisker} stroke="black" strokeWidth={bp.whiskerTipLineWidth} />
                 </>}
+                {p.additionalValues &&
+                    p.additionalValues.map(value =>
+                        <circle key={value} cx={p.x} cy={value} r={bp.dotRadius} fill={p.fillColor !== "none" ? p.fillColor : "black"} />
+                    )
+                }
             </g>
         );
     }
