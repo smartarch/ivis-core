@@ -45,7 +45,7 @@ sig_set_cid = params['signalSet']
 sig_set = entities['signalSets'][sig_set_cid]
 ts = entities['signals'][sig_set_cid][params['ts']]
 interval = params['interval']
-#offset = params['offset']
+offset = params['offset']
 
 agg_set_cid =  f"aggregation_{interval}_{sig_set_cid}"
 
@@ -100,34 +100,49 @@ if state is None or state.get(agg_set_cid) is None:
   
 if state is not None and state.get('last') is not None:
   last = state['last']
-  query_content = {
-    "range" : {
-      ts['field'] : {
+  filter = {
+    "range": {
+      ts['field']: {
         "gte" : last
       }
     }
   }
-  
+
   es.delete_by_query(index=state[agg_set_cid]['index'], body={
     "query": { 
       "match": {
         state[agg_set_cid]['fields']['ts']: last
       }
-    }}
-  )
+    }
+  })
   
 else:
-  query_content = {'match_all': {}}
+  if offset is not None:
+    filter = {
+      "range": {
+        ts['field']: {
+          "gte": offset,
+          "format":  "yyyy-MM-dd HH:mm:ss"
+        }
+      }
+    } 
+  else:
+    filter = {'match_all': {}}
 
+query_content = {
+  "bool": {
+    "filter": filter
+  }
+}
 
-avg_aggs = {}
+stat_aggs = {}
 for cid, signal in numeric_signals.items():
-  avg_aggs[cid] = {
-            "stats": {
-              "field": signal['field']
-            }
-          }
-          
+  stat_aggs[cid] = {
+    "stats": {
+      "field": signal['field']
+    }
+  }
+ 
 # interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
 query = {
   'size': 0,
@@ -138,7 +153,7 @@ query = {
         "field": ts['field'],
         "interval": interval
       },
-      "aggs": avg_aggs
+      "aggs": stat_aggs
     }
   }
 }
