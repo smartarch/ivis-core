@@ -77,7 +77,7 @@ exports.seed = (knex, Promise) => (async () => {
         });
 
 
-        let ts = startTs;
+        let ts = startTs.clone();
 
         const walkers = {};
         for (const fieldCid of fields) {
@@ -93,7 +93,7 @@ exports.seed = (knex, Promise) => (async () => {
             }
 
             row['id'] = ts.toISOString();
-            row[getColumnName(idMap[tsCid])] = ts.toDate();
+            row[getColumnName(idMap[tsCid])] = ts.format('YYYY-MM-DD HH:mm:ss.SSS');
             ts.add(step);
 
             rows.push(row);
