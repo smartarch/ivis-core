@@ -8,7 +8,23 @@ class ServerMonitor {
         this.status = {
             isPlaying: false,
             position: 0,
-            data: null,
+            data: {
+                cpu_load: {
+                    load: 0,
+                    user: 0,
+                    system: 0,
+                },
+                mem_status: {
+                    total: 0,
+                    free: 0,
+                    used: 0,
+                },
+                disk_load: {
+                    readIOPerSec: 0,
+                    writeIOPerSec: 0,
+                    totalIOPerSec: 0,
+                }
+            },
         };
 
         this.refreshStatsBound = this.refreshStats.bind(this);
@@ -32,15 +48,6 @@ class ServerMonitor {
             used: memInfo.used,
         };
     }
-    async getNetLoad() {
-        const netInfo = await si.networkStats('*');
-
-        return netInfo.map(netIface => ({
-            iface: netIface.iface,
-            recievedBPerSec: netIface.rx_sec,
-            transferedBPerSec: netIface.tx_sec,
-        }));
-    }
     async getDiskLoad() {
         const diskStat = await si.disksIO();
 
@@ -56,11 +63,9 @@ class ServerMonitor {
 
         const mem_status = await this.getMemStatus();
 
-        const net_load = await this.getNetLoad();
-
         const disk_load = await this.getDiskLoad();
 
-        this.updateStatus({data: { cpu_load, mem_status, net_load, disk_load}});
+        this.updateStatus({data: { cpu_load, mem_status, disk_load}});
     }
 
     updateStatus(newStatus) {
