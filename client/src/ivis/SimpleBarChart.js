@@ -32,7 +32,7 @@ export class SimpleBarChart extends Component {
         classNames: {},
         padding: {
             left: 40,
-            right: 20,
+            right: 40,
             top: 20,
             bottom: 40,
         },
@@ -128,7 +128,6 @@ export class SimpleBarChart extends Component {
         const data = this.props.data;
         const config = this.props.config;
 
-        //TODO: fix pieCHart to behave the same
         const getRawValue = (value) => {
             if (typeof value === "number") return value;
             else {

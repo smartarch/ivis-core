@@ -4,6 +4,7 @@ import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {select, mouse} from "d3-selection";
 import {scaleLinear, scaleTime} from "d3-scale";
+import {format} from "d3-format";
 import {interpolateString} from "d3-interpolate";
 import styles from "./media-controls.scss";
 import {withAnimationControl} from "./animation-helpers";
@@ -15,14 +16,13 @@ import moment from "moment";
 //TODO: ensure same interval interpretation
 const defaultPlaybackSpeedSteps = [
     1,
-    moment.duration(1, "s").asSeconds(),
     moment.duration(1, "m").asSeconds(),
     moment.duration(1, "h").asSeconds(),
     moment.duration(6, "h").asSeconds(),
     moment.duration(1, "d").asSeconds(),
     moment.duration(1, "w").asSeconds(),
-    moment.duration(1, "m").asSeconds(),
-    moment.duration(6, "m").asSeconds(),
+    moment.duration(1, "M").asSeconds(),
+    moment.duration(6, "M").asSeconds(),
 ];
 
 @withComponentMixins([withAnimationControl])
@@ -206,7 +206,7 @@ class ChangeSpeedButton extends Component {
     static defaultProps = {
         classNames: {},
         steps: defaultPlaybackSpeedSteps,
-        factorFormat: (f) => `${moment.duration(1000).humanize()} as ${moment.duration(f*1000).humanize()}`,
+        factorFormat: (f) => format("~s")(f),
     }
 
     constructor(props) {
@@ -243,7 +243,7 @@ class ChangeSpeedButton extends Component {
 
             comps.push(
                 <Button
-                    title={`Multiply time by ${label}`}
+                    title={`Multiply playback speed by ${label}`}
                     label={label}
                     className={className}
 
@@ -360,7 +360,6 @@ class Timeline extends Component {
         const pointerSel = select(this.nodeRefs.pointer);
         const timelineSel = select(this.nodeRefs.timeline);
 
-        const percScale = this.getPercScale();
         const getScale = () => {
             const intv = this.getIntervalAbsolute();
             return scaleLinear()
@@ -370,11 +369,12 @@ class Timeline extends Component {
         };
 
         const movePointer = (ts) => {
-            const pos = ts || getScale().invert(mouse(this.nodeRefs.axis)[0]);
-            const perc = percScale(pos);
+            const scale = getScale();
+            const pos = ts || scale.invert(mouse(this.nodeRefs.axis)[0]);
+            const x = scale(pos);
 
-            progressBarSel.attr("x2", perc);
-            pointerSel.attr("cx", perc);
+            progressBarSel.attr("x2", x);
+            pointerSel.attr("cx", x);
 
             posLabelSel.text(moment(pos).format(this.props.positionFormatString));
         };
@@ -435,8 +435,6 @@ class Timeline extends Component {
                 .on("mousemove.tracking", updateHoverLabel);
 
         };
-        //TODO: needs testing
-
 
         timelineSel
             .attr("cursor", "pointer")
@@ -625,10 +623,8 @@ class OnelineLayout extends Component {
 
         const visibleButtonKeys = Object.keys(buttons).filter(buttonId => buttons[buttonId].visible);
         const visibleButtons = {};
-        for (const btKey of visibleButtonKeys) visibleButtons[btKey] = buttons[btKey];
-
-        const buttonGroupWidth = Math.max(1, visibleButtonKeys.length - 2);
-        const timelineWidth = 12 - buttonGroupWidth;
+        for (const btKey of visibleButtonKeys)
+            visibleButtons[btKey] = buttons[btKey];
 
         return (
             <div className={
@@ -636,12 +632,12 @@ class OnelineLayout extends Component {
             }>
                 <div className={"row"}>
                     {visibleButtonKeys.length > 0 &&
-                        <div className={`col-${buttonGroupWidth}`}>
+                        <div className={`col-auto`}>
                             <ButtonGroup {...visibleButtons} className={this.props.buttonGroupClassName} />
                         </div>
                     }
                     {timeline && timeline.visible &&
-                        <div className={`col-${timelineWidth}`}>
+                        <div className={`col`}>
                             <Timeline
                                 {...timeline}
                             />

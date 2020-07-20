@@ -11,6 +11,7 @@
     padding: map-get($spacers, 0) map-get($spacers, 1);
 
     height: 100%;
+    min-width: 30px;
 
     box-shadow: none;
     color: $light;
@@ -151,7 +152,7 @@
         .row {
             height: 25px;
 
-            [class^="col-"] {
+            [class^="col"] {
                 height: inherit;
             }
         }

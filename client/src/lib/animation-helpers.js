@@ -79,6 +79,10 @@ class SignalInterpolator {
 
         return results;
     }
+
+    clearArgs() {
+        this.hasCachedArgs = false;
+    }
 }
 
 export {

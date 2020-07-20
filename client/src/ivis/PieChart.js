@@ -123,6 +123,7 @@ class StaticPieChart extends Component {
         this.shadowsSelection.attr('transform', `translate(${centerX},${centerY})`);
         this.pieSelection.attr('transform', `translate(${centerX},${centerY})`);
         this.labelsSelection.attr('transform', `translate(${centerX},${centerY})`);
+        this.msgSelection.attr('transform', `translate(${centerX},${centerY})`);
 
         const radius = Math.min(innerWidth / 2, innerHeight / 2); //
         this.updateChart(radius);
@@ -131,13 +132,31 @@ class StaticPieChart extends Component {
     updateChart(newRadius) {
         this.chartRadius = newRadius || this.chartRadius;
 
-        const valueAccessor = typeof this.props.data !== "undefined" ?
-            d => this.props.data[d.sigSet][d.sensor] :
-            d => d.value;
+        const getRawValue = (datum) => {
+            if (typeof datum.value === "number") return datum;
+            else {
+                let resValue = null;
+                if (datum.dataSource && datum.signal) resValue = this.props.data[datum.dataSource][datum.signal];
+                if (datum.agg && resValue) resValue = resValue[datum.agg];
+
+                return resValue;
+            }
+        };
+
+        const valueAccessor = (value) => {
+            const rawValue = getRawValue(value);
+            return typeof rawValue === "number" ? rawValue : 0;
+        };
 
         let total = 0;
         for (const entry of this.props.config.arcs) {
             total += valueAccessor(entry);
+        }
+
+        if (total === 0) {
+            this.msgSelection.text('No data.');
+        } else {
+            this.msgSelection.text(null);
         }
 
         const pieGen = d3Shape.pie()
@@ -186,6 +205,7 @@ class StaticPieChart extends Component {
                             <feGaussianBlur result="blurOut" in="offOut" stdDeviation="2" />
                         </filter>
                     </defs>
+                    <text ref={node => this.msgSelection = select(node)} fill="black" textAnchor="middle"/>
                     <g ref={node => this.shadowsSelection = select(node)} />
                     <g ref={node => this.pieSelection = select(node)} />
                     <g ref={node => this.labelsSelection = select(node)} />

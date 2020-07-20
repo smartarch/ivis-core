@@ -165,7 +165,7 @@ function compareConfigs(conf1, conf2, customComparator) {
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
-    intervalAccessMixin()
+    intervalAccessMixin(),
 ])
 export class TimeBasedChartBase extends Component {
     constructor(props){
@@ -442,8 +442,12 @@ export class TimeBasedChartBase extends Component {
 
         if (renderStatus == RenderStatus.NO_DATA) {
             this.statusMsgSelection.text(t('No data.'));
+            //FIX ME: ugly solution, graphs need clear old data
+            select(this.graphContentNode).selectAll('g').attr("opacity", 0);
         } else if (renderStatus === RenderStatus.SUCCESS) {
             this.statusMsgSelection.text(null);
+            //FIX ME: ugly solution, graphs need clear old data
+            select(this.graphContentNode).selectAll('g').attr("opacity", 1);
         }
     }
 
@@ -485,14 +489,14 @@ export class TimeBasedChartBase extends Component {
             }
 
             return (
-                <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
+                <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%" >
                     {this.props.getSvgDefs(this)}
                     <defs>
                         <clipPath id="plotRect">
                             <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                         </clipPath>
                     </defs>
-                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                    <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" ref={node => this.graphContentNode = node}>
                         {this.props.getGraphContent(this)}
                     </g>
                     <g ref={node => this.xAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>

@@ -16,7 +16,9 @@ import moment from "moment";
 import _ from "lodash";
 
 const defaultRefreshRate = 45;
+const minRefreshRate = 5;
 const defaultPollRate = 1000;
+const minPollRate = 50;
 
 class LiveAnimation extends Component {
     static propTypes = {
@@ -55,16 +57,26 @@ class LiveAnimation extends Component {
     }
 
     render() {
+        const refreshRate = this.props.refreshRate === null || Number.isNaN(this.props.refreshRate) ?
+            minRefreshRate :
+            Math.max(minRefreshRate, this.props.refreshRate)
+        ;
+        const pollRate = this.props.pollRate === null || Number.isNaN(this.props.pollRate) ?
+            minPollRate :
+            Math.max(minPollRate, this.props.pollRate)
+        ;
+
+
         const childrenRender = (props) => {
             return (
                 <LiveAnimationControl
                     animationId={this.props.animationId}
-                    pollRate={this.props.pollRate}
+                    pollRate={pollRate}
 
                     intervalSpanBefore={this.props.intervalSpanBefore}
                     intervalSpanAfter={this.props.intervalSpanAfter}
 
-                    refreshRate={this.props.refreshRate}
+                    refreshRate={refreshRate}
                     initialStatus={this.props.initialStatus}
                     {...props}>
                     {this.props.children}
@@ -109,6 +121,7 @@ class GenericDataSource {
     clear() {
         this.history = [];
         this.kfBuffer = [];
+        this.intp.clearArgs();
     }
 
     shiftTo(ts) {

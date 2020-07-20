@@ -24,6 +24,7 @@ const minTimeLoadedAhead = 1000;
 const defaultMaxLoadAheadMs = 30000;
 const defaultMinFramesPerKeyframe = 5;
 const defaultRefreshRate = 45;
+const minRefreshRate = 5;
 
 
 //TODO: fill isRequired & optional
@@ -64,6 +65,10 @@ class RecordedAnimation extends Component {
                 </RecordedAnimationControl>
             );
         };
+        const refreshRate = this.props.refreshRate === null || Number.isNaN(this.props.refreshRate) ?
+            minRefreshRate :
+            Math.max(minRefreshRate, this.props.refreshRate)
+        ;
 
         return (
             <TimeContext
@@ -73,7 +78,7 @@ class RecordedAnimation extends Component {
             >
 
                 <AnimationDataAccess
-                    refreshRate={this.props.refreshRate}
+                    refreshRate={refreshRate}
 
                     dataSources={this.props.dataSources}
                     render={childrenRender}
@@ -128,13 +133,10 @@ class GenericDataSource {
     }
 
     canShiftTo(ts) {
-        console.log("can shift to", {hasMoreData: this.hasMoreData, lastTs: this.kfBuffer.length > 0 ? moment(this.kfBuffer[this.kfBuffer.length - 1].ts).toString() : "empty buffer", shiftTs: moment(ts).toString()});
         return !this.hasMoreData || this.kfBuffer[this.kfBuffer.length - 1].ts >= ts;
     }
 
     shiftTo(ts) {
-        console.log("shifting ", this.conf.sigSetCid);
-
         if (this.conf.withHistory) {
             const historyLastTs = this.history.length > 0 ? this.history[this.history.length - 1].ts : this.dataAccess.getIntervalAbsolute().from.valueOf() - 1;
             const kfsToHistory = this.kfBuffer.filter(kf => kf.ts < ts && kf.ts > historyLastTs);
@@ -142,47 +144,43 @@ class GenericDataSource {
         }
 
         if (this.kfBuffer.length < this.conf.kfCount) {
-            console.log("buffer has insufficent length");
             while (this.kfBuffer.length > 0 && this.kfBuffer[0].ts < ts)
                 this.kfBuffer.shift();
 
             this.intp.rebuildArgs(this.kfBuffer);
 
         } else if (this.kfBuffer[this.kfBuffer.length - 1].ts < ts) {
-            console.log("entire buffer is outdated");
-
             this.kfBuffer = [];
 
             this.intp.rebuildArgs(this.kfBuffer);
 
         } else if (this.kfBuffer[this.conf.kfCount - 1].ts < ts) {
-            console.log("buffer is shifting");
-
             while (this.kfBuffer[this.conf.kfCount - 1].ts < ts) {
                 const newBeginIdx = Math.min(
                     this.kfBuffer.length - this.conf.kfCount,
                     this.conf.kfCount - 1
                 );
 
-                console.log("shift by ", newBeginIdx);
-
                 this.kfBuffer = this.kfBuffer.slice(newBeginIdx);
             }
 
             this.intp.rebuildArgs(this.kfBuffer);
         } else if (!this.intp.hasCachedArgs) {
-            console.log("rebuildArgs");
-
             this.intp.rebuildArgs(this.kfBuffer);
         }
-
-        console.log("--------- shifting", this.conf.sigSetCid);
-
 
         if (this.conf.withHistory) {
             return [...this.history, {ts, data: this.intp.interpolate(ts)}];
         } else {
             return this.intp.interpolate(ts);
+        }
+    }
+
+    getEmptyData() {
+        if (this.conf.withHistory) {
+            return [];
+        } else {
+            return this.intp.interpolate(-1);
         }
     }
 
@@ -210,6 +208,7 @@ class GenericDataSource {
     }
     processSeekQueries(qryResults) {
         this.hasMoreData = true;
+        this.intp.clearArgs();
 
         const realKeyframeCount = qryResults[qryResults.length - 1][0].buckets.length;
         if (realKeyframeCount < this.nextKeyframeCount) {
@@ -236,7 +235,10 @@ class GenericDataSource {
 
         let keyframes = this._processKeyframes(buckets);
 
-        this.kfBuffer.push(...keyframes);
+
+        //Due to aggregation intervals behaviour, we sometimes get a kf twice
+        const lastKfBufferTs = this.kfBuffer.length > 0 ? this.kfBuffer[this.kfBuffer.length - 1].ts : -1;
+        this.kfBuffer.push(...keyframes.filter(kf => kf.ts > lastKfBufferTs));
     }
 
     _processKeyframes(buckets) {
@@ -351,7 +353,6 @@ class TimeSeriesDataSource {
         this.conf = parseConfig();
         this.data = null;
         this.kfStartIdx = null;
-        this.lastMainEndIdx = null;
         this.intp = new SignalInterpolator(this.conf.signals, config.interpolation.func, this.conf.kfCount);
 
         this.lastSeekInterval = null;
@@ -364,15 +365,12 @@ class TimeSeriesDataSource {
     shiftTo(ts) {
         const main = this.data.main;
 
-        console.log("timeSeries", "shift start", moment(ts).toString(), this.data.main);
 
         if (main.length === 0 || ts < main[0].ts.valueOf()) {
-            console.log("timeSeries", "ts before main");
             return {
                 [this.conf.sigSetCid]: { main: [] }
             };
         } else if (ts >= main[main.length - 1].ts.valueOf()) {
-            console.log("timeSeries", "ts after main");
             const data = {
                 main: this.data.main
             };
@@ -387,22 +385,9 @@ class TimeSeriesDataSource {
 
         const maxKfStartIdx = main.length - this.conf.kfCount;
 
-        let mainEndIdx;
-        if (this.lastMainEndIdx === null) {
-            console.log("timeSeries", "new main idx");
-            mainEndIdx = bisector((kf) => kf.ts.valueOf()).left(main, ts);
-        } else {
-            console.log("timeSeries", "shifting main idx");
-            mainEndIdx = this.lastMainEndIdx;
-            while (mainEndIdx < main.length - 1 && main[mainEndIdx + 1].ts.valueOf() < ts) {
-                mainEndIdx++;
-            }
-        }
-        this.lastMainEndIdx = mainEndIdx;
-        console.log("timeSeries", mainEndIdx);
+        let mainEndIdx = Math.max(0, bisector((kf) => kf.ts.valueOf()).left(main, ts) - 1);
 
         if (this.kfStartIdx === null) {
-            console.log("timeSeries", "new kfStartIdx");
             if (mainEndIdx > maxKfStartIdx) {
                 this.kfStartIdx = maxKfStartIdx;
             } else {
@@ -417,27 +402,28 @@ class TimeSeriesDataSource {
                     maxKfStartIdx,
                     this.kfStartIdx + this.conf.kfCount - 1
                 );
-
-                console.log("timeSeries", "shifting kfs");
             }
 
             this.intp.rebuildArgs(main.slice(this.kfStartIdx, this.kfStartIdx + this.conf.kfCount));
         } else if (!this.intp.hasCachedArgs) {
-            console.log("timeSeries", "rebuildArgs");
             this.intp.rebuildArgs(main.slice(this.kfStartIdx, this.kfStartIdx + this.conf.kfCount));
         }
 
-        console.log("timeSeries", "shift end", main.slice(this.kfStartIdx, this.kfStartIdx + this.conf.kfCount));
         const data = {
             main: main.slice(0, mainEndIdx + 1),
         };
-        console.log("timeSeries", "main", data.main);
 
         data.main.push({ts: moment(ts), data: this.intp.interpolate(ts)});
 
         if (this.data.prev) data.prev = this.data.prev;
 
         return {[this.conf.sigSetCid]: data};
+    }
+
+    getEmptyData() {
+        return {
+            [this.conf.sigSetCid]: {main: []}
+        };
     }
 
     didMissFetch() {}
@@ -480,6 +466,9 @@ class TimeSeriesDataSource {
         return queries;
     }
     processSeekQueries(qryResults, queries) {
+        this.kfStartIdx = null;
+        this.intp.clearArgs();
+
         if (qryResults.length === 0) return;
 
         const intvAbs = queries[0].args[1];
@@ -491,7 +480,7 @@ class TimeSeriesDataSource {
 
 
         this.kfStartIdx = null;
-        this.lastMainEndIdx = null;
+        this.intp.clearArgs();
 
         this.data = qryResults[0][this.conf.sigSetCid];
     }
@@ -522,6 +511,7 @@ class AnimationDataAccess extends Component {
             seek: ::this.seek,
             refreshTo: ::this.refreshTo,
             setPlaybackSpeedFactor: ::this.setPlaybackSpeedFactor,
+            getEmptyData: ::this.getEmptyData,
 
             fetchError: null,
             needsReseek: false,
@@ -543,8 +533,6 @@ class AnimationDataAccess extends Component {
     async seek(ts) {
         if (this.state.needsReseek) this.setState({needsReseek: false});
 
-        console.log("seeking to ", moment(ts).toString());
-
         const wasLatestFetch = await this.runQueries(Object.keys(this.dataSources), "getSeekQueries", [ts], "processSeekQueries");
 
         if (!wasLatestFetch) return null;
@@ -555,7 +543,6 @@ class AnimationDataAccess extends Component {
     refreshTo(ts) {
         if (this.state.needsReseek || this.nextFetchPromise) return {data: null};
 
-        console.log("refreshing to ", moment(ts).toString());
         const dataSourcesToFetch = Object.keys(this.dataSources).filter(dataSrcKey => !this.dataSources[dataSrcKey].canShiftTo(ts));
 
         if (dataSourcesToFetch.length === 0) {
@@ -563,7 +550,6 @@ class AnimationDataAccess extends Component {
         }
 
         dataSourcesToFetch.map(dtSrcKey => this.dataSources[dtSrcKey].didMissFetch());
-        console.log("data sources with not enough data", dataSourcesToFetch);
         this.runQueries(dataSourcesToFetch, "getNextChunkQueries", [], "processNextChunkQueries");
         const promise = this.nextFetchPromise.then(wasLatestFetch => {
             if (!wasLatestFetch) return null;
@@ -572,6 +558,19 @@ class AnimationDataAccess extends Component {
         });
 
         return {promise};
+    }
+
+    setPlaybackSpeedFactor(factor) {
+        this.playbackSpeedFactor = factor;
+    }
+
+    getEmptyData() {
+        const emptDt = {};
+        for (const dtSrcKey of Object.keys(this.dataSources)) {
+            emptDt[dtSrcKey] = this.dataSources[dtSrcKey].getEmptyData();
+        }
+
+        return emptDt;
     }
 
 
@@ -624,7 +623,6 @@ class AnimationDataAccess extends Component {
             data[dataSrcKey] = this.dataSources[dataSrcKey].shiftTo(ts);
         }
 
-        console.log("shift", {ts: moment(ts).toString(), data});
         this.startPreFetching();
         return data;
     }
@@ -632,10 +630,8 @@ class AnimationDataAccess extends Component {
     async startPreFetching() {
         if (this.state.needsReseek || this.nextFetchPromise) return;
 
-        console.log("starting to prefetch");
         let needFetch = Object.keys(this.dataSources).filter(dataSrcKey => !this.dataSources[dataSrcKey].hasEnoughLoaded(this.maxFetchTime));
         while (needFetch.length > 0) {
-            console.log("prefetch", {needFetch});
             const wasLatestFetch = await this.runQueries(needFetch, "getNextChunkQueries", [], "processNextChunkQueries");
 
             if (!wasLatestFetch) return;
@@ -643,12 +639,8 @@ class AnimationDataAccess extends Component {
             needFetch = Object.keys(this.dataSources).filter(dataSrcKey => !this.dataSources[dataSrcKey].hasEnoughLoaded(this.maxFetchTime));
         }
 
-        console.log("prefetch ended");
     }
 
-    setPlaybackSpeedFactor(factor) {
-        this.playbackSpeedFactor = factor;
-    }
     errorHandler(error) {
         this.setState({fetchError: error, needsReseek: true});
 
@@ -685,6 +677,7 @@ class RecordedAnimationControl extends Component {
         seek: PropTypes.func.isRequired,
         refreshTo: PropTypes.func.isRequired,
         setPlaybackSpeedFactor: PropTypes.func.isRequired,
+        getEmptyData: PropTypes.func.isRequired,
 
         needsReseek: PropTypes.bool,
 
@@ -707,7 +700,7 @@ class RecordedAnimationControl extends Component {
                 jumpBackward: ::this.jumpBackwardHandler,
                 changeSpeed: ::this.changePlaybackSpeedHandler,
             },
-            animationData: {},
+            animationData: props.getEmptyData(),
         };
 
         this.refreshTimeout = null;
@@ -743,15 +736,21 @@ class RecordedAnimationControl extends Component {
 
     resetStatus(withUpdate) {
         const is = this.props.initialStatus;
-        const startingPos = is.position !== null ?
+        const startingPos = is.position !== null && !Number.isNaN(is.position) ?
             this.clampPos(is.position) :
             this.getIntervalAbsolute().from.valueOf()
         ;
 
+        let speedFactor = is.playbackSpeedFactor;
+        if (speedFactor == undefined || Number.isNaN(speedFactor) || speedFactor <= 0) {
+            speedFactor = 1;
+        }
+
+
         const newStatus = {
             isBuffering: true,
             isPlaying: is.isPlaying,
-            playbackSpeedFactor: is.playbackSpeedFactor,
+            playbackSpeedFactor: speedFactor,
             position: startingPos,
         };
 
@@ -830,7 +829,6 @@ class RecordedAnimationControl extends Component {
         this.inRefresh = true;
 
         const interval = Date.now() - this.lastRefreshTs;
-        console.log("_refresh", interval);
         this.lastRefreshTs = Date.now();
 
         const endPosition = this.getIntervalAbsolute().to.valueOf();
