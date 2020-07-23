@@ -80,7 +80,7 @@ const serializeToDb = {
     [SignalType.BOOLEAN]: x => x,
     [SignalType.KEYWORD]: x => x,
     [SignalType.TEXT]: x => x,
-    [SignalType.DATE_TIME]: x => moment(x).format('YYYY-MM-DD HH:mm:ss.SSS')
+    [SignalType.DATE_TIME]: x => moment(x).utc().format('YYYY-MM-DD HH:mm:ss.SSS')
 };
 
 
