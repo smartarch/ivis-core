@@ -252,6 +252,7 @@ async function updateWithConsistencyCheck(context, entity) {
             throw new interoperableErrors.ChangedError();
         }
 
+        entity.set = existing.set;
         await _validateAndPreprocess(context, tx, entity, false);
 
         await namespaceHelpers.validateMove(context, entity, existing, 'signal', 'createSignal', 'delete');
