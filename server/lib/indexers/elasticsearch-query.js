@@ -36,7 +36,6 @@ function getElsInterval(duration) {
     return duration.as('d') + 'd';
 }
 
-
 const aggHandlers = {
     min: aggSpec => ({
         id: 'min',
