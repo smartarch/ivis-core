@@ -687,6 +687,9 @@ class ColorPicker extends Component {
     }
 }
 
+@withComponentMixins([
+    withTranslation
+])
 class ColumnSelect extends Component {
 
     constructor(props) {
@@ -726,8 +729,21 @@ class ColumnSelect extends Component {
         }
     }
 
+    scrollColumnBy(e, y) {
+        e.target.parentNode.getElementsByClassName(styles.columnSelect)[0].scrollBy(0, y);
+    }
+
+    scrollColumnDown(e) {
+        this.scrollColumnBy(e, 50);
+    }
+
+    scrollColumnUp(e) {
+        this.scrollColumnBy(e, -50);
+    }
+
     render() {
         const {
+            t,
             onSelect,
             options,
             selectedValue,
@@ -753,9 +769,11 @@ class ColumnSelect extends Component {
                 {header &&
                 <div className={styles.columnSelectHeader}>{header}</div>
                 }
+                <div className={styles.columnScroller} onClick={::this.scrollColumnUp}>&uarr;</div>
                 <ul className={styles.columnSelect} tabIndex='0' onKeyUp={this.onKeyUp} onKeyDown={this.onKeyDown}>
                     {optionsElements}
                 </ul>
+                <div className={styles.columnScroller} onClick={::this.scrollColumnDown}>&darr;</div>
             </div>
         )
     }
