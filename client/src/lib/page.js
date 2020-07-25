@@ -373,6 +373,9 @@ export class SectionContent extends Component {
         };
 
         this.historyUnlisten = props.history.listen((location, action) => {
+            if (action === "REPLACE") return;
+            if (location.state && location.state.preserveFlashMessage) return;
+
             // noinspection JSIgnoredPromiseFromCall
             this.closeFlashMessage();
         });
@@ -431,7 +434,7 @@ export class SectionContent extends Component {
     }
 
     navigateToWithFlashMessage(path, severity, text) {
-        this.props.history.push(path);
+        this.props.history.push(path, {preserveFlashMessage: true});
         this.setFlashMessage(severity, text);
     }
 
