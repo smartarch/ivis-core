@@ -292,15 +292,26 @@ async function removeByCid(context, cid) {
 }
 
 // Thought this method modifies the storage schema, it can be called concurrently from async. This is meant to simplify coding of intake endpoints.
-async function _ensure(context, cid, schema, defaultName, defaultDescription, defaultNamespace) {
+async function _ensure(context, signalSetConfig, schema) {
+    const {
+        cid,
+        name,
+        description,
+        namespace,
+        kind = SignalSetKind.GENERIC,
+        settings = {}
+    } = signalSetConfig;
+
     return await knex.transaction(async tx => {
         let signalSet = await tx('signal_sets').where('cid', cid).first();
         if (!signalSet) {
             signalSet = {
                 cid,
-                name: defaultName,
-                description: defaultDescription,
-                namespace: defaultNamespace
+                name,
+                description,
+                namespace,
+                kind,
+                settings
             };
 
             const id = await createTx(tx, context, signalSet);
@@ -341,14 +352,14 @@ async function _ensure(context, cid, schema, defaultName, defaultDescription, de
                 enforce(existingSignalType === fieldSpec.type, `Signal "${fieldCid}" is already present with another type.`);
 
             } else {
-                await shares.enforceEntityPermissionTx(tx, context, 'namespace', defaultNamespace, 'createSignal');
+                await shares.enforceEntityPermissionTx(tx, context, 'namespace', namespace, 'createSignal');
                 await shares.enforceEntityPermissionTx(tx, context, 'signalSet', signalSet.id, 'createSignal');
 
                 const signal = {
                     cid: fieldCid,
                     ...fieldSpec,
                     set: signalSet.id,
-                    namespace: defaultNamespace
+                    namespace: namespace
                 };
 
                 signal.settings = JSON.stringify(signal.settings);
