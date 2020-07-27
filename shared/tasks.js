@@ -9,7 +9,8 @@ const defaultSubtypeKey = '__default__';
 const PythonSubtypes = {
     ENERGY_PLUS: 'energy_plus',
     NUMPY: 'numpy',
-    PANDAS: 'pandas'
+    PANDAS: 'pandas',
+    ARIMA: 'arima'
 };
 
 // File name of every build output
