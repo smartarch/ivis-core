@@ -208,6 +208,7 @@ function installPrerequisities {
             ;;
 
         ubuntu1804)
+            apt-get install -y curl
             curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
             apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libatk-bridge2.0 libgtk-3-0
 			TEMP_DEB="$(mktemp)"
