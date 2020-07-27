@@ -170,14 +170,18 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
         if (data.kind === SignalSetKind.TIME_SERIES) {
-            data.record_id_template = `{{toISOString ${data.ts}}}`;
+            const ts = data.ts ? data.ts : 'ts';
+            data.record_id_template = `{{toISOString ${ts}}}`;
+            data.settings = {
+                ...data.settings,
+                ts: ts
+            };
         } else {
             if (data.record_id_template.trim() === '') {
                 data.record_id_template = null;
             }
         }
 
-        data.settings = {ts: data.ts};
 
         const allowedKeys = [
             'name',
