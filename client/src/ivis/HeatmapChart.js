@@ -23,7 +23,9 @@ import {
     AreZoomTransformsEqual,
     brushHandlesLeftRight,
     brushHandlesTopBottom,
-    getColorScale, setZoomTransform,
+    drawBars,
+    getColorScale,
+    setZoomTransform,
     transitionInterpolate,
     WheelDelta,
     ZoomEventSources
@@ -1129,45 +1131,30 @@ export class HeatmapChart extends Component {
     }
 
     drawVerticalBars(data, barsSelection, keyScale, probScale, barColor) {
-        const bars = barsSelection
-            .selectAll('rect')
-            .data(data, d => d.key);
         const ySize = probScale.range()[0];
         const barWidth = (keyScale.range()[1] - keyScale.range()[0]) / data.length;
 
-        bars.enter()
-            .append('rect')
-            .merge(bars)
-            .attr('x', d => keyScale(d.key))
-            .attr('y', d => probScale(d.prob))
-            .attr("width", barWidth)
-            .attr("height", d => ySize - probScale(d.prob))
-            .attr("fill", barColor);
-
-        bars.exit()
-            .remove();
+        drawBars(data, barsSelection,
+            d => keyScale(d.key),
+            d => probScale(d.prob),
+            barWidth,
+            d => ySize - probScale(d.prob),
+            barColor,
+            d => d.key);
     }
 
     drawHorizontalBars(data, barsSelection, keyScale, probScale, barColor) {
-        const bars = barsSelection
-            .selectAll('rect')
-            .data(data, d => d.key);
         const barHeight = (keyScale.range()[0] - keyScale.range()[1]) / data.length;
         const yCompensate = this.yType === DataType.NUMBER ? barHeight : 0;
 
-        bars.enter()
-            .append('rect')
-            .merge(bars)
-            .attr('x', 0)
-            .attr('y', d => keyScale(d.key) - yCompensate)
-            .attr("width", d => probScale(d.prob))
-            .attr("height", barHeight)
-            .attr("fill", barColor);
-
-        bars.exit()
-            .remove();
+        drawBars(data, barsSelection,
+            0,
+            d => keyScale(d.key) - yCompensate,
+            d => probScale(d.prob),
+            barHeight,
+            barColor,
+            d => d.key);
     }
-
 
     render() {
         if (!this.state.signalSetData) {

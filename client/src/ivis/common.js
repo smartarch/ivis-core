@@ -151,3 +151,31 @@ export function AreZoomTransformsEqual(a, b, scale_epsilon = 0.001, translate_ep
     return true;
 }
 
+/**
+ * Helper function to draw a set of rectangles to a D3 selection
+ * @param data - array of values
+ * @param selection - D3 selection
+ * @param x_position - value or function (evaluated with each datum)
+ * @param y_position - value or function (evaluated with each datum)
+ * @param width - value or function (evaluated with each datum)
+ * @param height - value or function (evaluated with each datum)
+ * @param color - color of bars - value or function (evaluated with each datum)
+ * @param key - see https://github.com/d3/d3-selection#selection_data
+ */
+export function drawBars(data, selection, x_position, y_position, width, height, color, key) {
+    const bars = selection
+        .selectAll('rect')
+        .data(data, key || (d => d));
+
+    bars.enter()
+        .append('rect')
+        .merge(bars)
+        .attr('x', x_position)
+        .attr('y', y_position)
+        .attr("width", width)
+        .attr("height", height)
+        .attr("fill", color);
+
+    bars.exit()
+        .remove();
+}
