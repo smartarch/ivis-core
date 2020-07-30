@@ -379,7 +379,8 @@ export class ScatterPlotBase extends Component {
                     createRegressionForEachColor: PropTypes.bool, // default: false
                     bandwidth: PropTypes.number,    // for LOESS
                     order: PropTypes.number         // for polynomial
-                }))
+                })),
+                filter: PropTypes.object,
             })).isRequired
         }).isRequired,
 
@@ -696,6 +697,8 @@ export class ScatterPlotBase extends Component {
                 lte: yMax
             });
         // custom filter
+        if (signalSetConfig.filter)
+            filter.children.push(signalSetConfig.filter);
         if (self.props.filter)
             if (typeof(self.props.filter) === "function")
                 filter.children.push(self.props.filter(signalSetConfig));
