@@ -4,6 +4,7 @@ import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import {select} from "d3-selection";
+import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
 import * as d3Shape from "d3-shape";
@@ -15,6 +16,10 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {withPageHelpers} from "../lib/page-common";
+import {Tooltip} from "./Tooltip";
+import {isInExtent} from "./common";
+import {Icon} from "../lib/bootstrap-components";
+import * as d3Format from "d3-format";
 
 const ConfigDifference = {
     NONE: 0,
@@ -48,6 +53,39 @@ function compareSignalSetConfigs(conf1, conf2) {
     }
 
     return diffResult;
+}
+
+class TooltipContent extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    static propTypes = {
+        signalSetsData: PropTypes.object,
+        selection: PropTypes.object,
+        tooltipFormat: PropTypes.func.isRequired
+    };
+
+    render() {
+        if (this.props.selection) {
+            const data = this.props.signalSetsData[this.props.selection.violinIndex];
+            const step = data.step;
+            const bucket = this.props.selection.bucket;
+            const keyF = d3Format.format("." + d3Format.precisionFixed(step) + "f");
+
+            return (
+                <div>
+                    <div><b>{this.props.selection.label}</b></div>
+                    {bucket && <>
+                        <div>Range: <Icon icon="chevron-left"/>{keyF(bucket.key)} <Icon icon="ellipsis-h"/> {keyF(bucket.key + step)}<Icon icon="chevron-right"/></div>
+                        <div>{this.props.tooltipFormat(bucket)}</div>
+                    </>}
+                </div>
+            );
+        } else {
+            return null;
+        }
+    }
 }
 
 @withComponentMixins([
@@ -102,7 +140,11 @@ export class ViolinPlot extends Component {
         maxBucketCount: PropTypes.number,
         yMinValue: PropTypes.number,
         yMaxValue: PropTypes.number,
-        curve: PropTypes.func, // d3Shape curve to render the violin (d3Shape.curveCatmullRom is default, use d3Shape.step to get a histogram look)
+        curve: PropTypes.func, // d3Shape curve to render the violin (d3Shape.curveCatmullRom is default, use curveVerticalStep from common.js from 'ivis' to get a histogram look)
+
+        withCursor: PropTypes.bool,
+        withTooltip: PropTypes.bool,
+        tooltipFormat: PropTypes.func, // bucket => line in tooltip
 
         className: PropTypes.string,
         style: PropTypes.object,
@@ -120,6 +162,11 @@ export class ViolinPlot extends Component {
         maxBucketCount: undefined,
         yMinValue: NaN,
         yMaxValue: NaN,
+
+        withCursor: true,
+        withTooltip: true,
+
+        tooltipFormat: bucket => `Count: ${bucket.count}`,
 
         curve: d3Shape.curveCatmullRom,
     };
@@ -333,12 +380,21 @@ export class ViolinPlot extends Component {
             bucket.prob = bucket.value / totalValue;
         }
 
+        // add an empty bucket before and after to have spiky ends of violins
+        const bucketBefore = {
+            key: min - data.step,
+            value: 0, count: 0, prob: 0,
+        }
+        const bucketAfter = {
+            key: max,
+            value: 0, count: 0, prob: 0,
+        }
         return {
-            buckets: data.buckets,
+            buckets: [bucketBefore, ...data.buckets, bucketAfter],
             step: data.step,
             offset: data.offset,
-            min,
-            max,
+            min: min - data.step, // add margin to the chart
+            max: max + data.step,
             maxValue
         };
     }
@@ -368,7 +424,7 @@ export class ViolinPlot extends Component {
         }
 
         const min = d3Array.min(processedResults, d => d.min);
-        const max = d3Array.min(processedResults, d => d.max);
+        const max = d3Array.max(processedResults, d => d.max);
         const maxValue = d3Array.max(processedResults, d => d.maxValue);
 
         return {
@@ -411,7 +467,7 @@ export class ViolinPlot extends Component {
         const xScale = d3Scale.scalePoint()
             .domain(xExtent)
             .range([0, xSize])
-            .padding(1);
+            .padding(0.5);
         this.xScale = xScale;
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
@@ -429,6 +485,9 @@ export class ViolinPlot extends Component {
         //</editor-fold>
 
         this.drawChart(signalSetsData, xScale, yScale);
+
+        this.createChartCursorArea(xSize, ySize);
+        this.createChartCursor(xSize, ySize, xScale, yScale, signalSetsData);
     }
 
     drawChart(signalSetsData, xScale, yScale) {
@@ -436,6 +495,7 @@ export class ViolinPlot extends Component {
         const xWidthScale = d3Scale.scaleLinear()
             .domain([0, this.state.maxValue])
             .range([0, violinWidth]);
+        this.xWidthScale = xWidthScale;
 
         for (let i = 0; i < this.props.config.signalSets.length; i++) {
             const config = this.props.config.signalSets[i];
@@ -471,6 +531,117 @@ export class ViolinPlot extends Component {
             .attr('d', violin);
     }
 
+    /** Prepares rectangle for cursor movement events.
+     *  Called from this.createChart(). */
+    createChartCursorArea(xSize, ySize) {
+        this.cursorAreaSelection
+            .selectAll('rect')
+            .remove();
+
+        this.cursorAreaSelection
+            .append('rect')
+            .attr('pointer-events', 'all')
+            .attr('cursor', 'crosshair')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', xSize)
+            .attr('height', ySize)
+            .attr('visibility', 'hidden');
+    }
+
+    /** Handles mouse movement to display cursor line.
+     *  Called from this.createChart(). */
+    createChartCursor(xSize, ySize, xScale, yScale, signalSetsData) {
+        const self = this;
+
+        const mouseMove = function () {
+            const containerPos = d3Selection.mouse(self.containerNode);
+            const y = containerPos[1] - self.props.margin.top;
+            const x = containerPos[0] - self.props.margin.left;
+
+            self.cursorSelection
+                .attr('y1', containerPos[1])
+                .attr('y2', containerPos[1])
+                .attr('x1', self.props.margin.left)
+                .attr('x2', xSize + self.props.margin.left)
+                .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
+
+
+            let newSelection = null;
+            const halfStep = xScale.step() / 2;
+            let violinIndex = 0;
+            // we will only show tooltip for one violin
+            // first find the violin under the mouse
+            for (let i = 0; i < self.props.config.signalSets.length; i++) {
+                const label = self.props.config.signalSets[i].label || i;
+                const violinLeftBorder = xScale(label) - halfStep;
+                if (violinLeftBorder < x)
+                    violinIndex = i;
+                else
+                    break;
+            }
+            // now select the bucket
+            const data = signalSetsData[violinIndex];
+            const label =  self.props.config.signalSets[violinIndex].label || violinIndex;
+            const key = yScale.invert(y);
+            if (isInExtent(key, [data.min, data.max])) {
+                for (const bucket of data.buckets) {
+                    if (bucket.key <= key) {
+                        newSelection = bucket;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if (self.props.withTooltip) {
+                if (newSelection) {
+                    const config = self.props.config.signalSets[violinIndex];
+                    self.highlightDotSelection1
+                        .attr("visibility", "visible")
+                        .attr("cx", xScale(label) + self.xWidthScale(newSelection.value))
+                        .attr("cy", yScale(newSelection.key + data.step / 2))
+                        .attr("fill", d3Color.color(config.color).darker());
+                    self.highlightDotSelection2
+                        .attr("visibility", "visible")
+                        .attr("cx", xScale(label) - self.xWidthScale(newSelection.value))
+                        .attr("cy", yScale(newSelection.key + data.step / 2))
+                        .attr("fill", d3Color.color(config.color).darker());
+                }
+                else {
+                    self.highlightDotSelection1.attr("visibility", "hidden");
+                    self.highlightDotSelection2.attr("visibility", "hidden");
+                }
+            }
+
+            const mousePosition = {x: containerPos[0], y: containerPos[1]};
+            const tooltip = {
+                y: yScale.invert(y),
+                violinIndex,
+                bucket: newSelection,
+                label,
+            }
+
+            self.setState({
+                tooltip,
+                mousePosition
+            });
+        };
+
+        const mouseLeave = function () {
+            self.cursorSelection.attr('visibility', 'hidden');
+            self.setState({
+                tooltip: null,
+                mousePosition: null
+            });
+        }
+
+        this.cursorAreaSelection
+            .on('mouseenter', mouseMove)
+            .on('mousemove', mouseMove)
+            .on('mouseleave', mouseLeave);
+    }
+
     render() {
         if (!this.state.signalSetsData) {
             return (
@@ -501,6 +672,8 @@ export class ViolinPlot extends Component {
                         </defs>
                         <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
                             {violinSelectionPaths}
+                            <circle cx="0" cy="0" r="5" visibility="hidden" ref={node => this.highlightDotSelection1 = select(node)} />
+                            <circle cx="0" cy="0" r="5" visibility="hidden" ref={node => this.highlightDotSelection2 = select(node)} />
                         </g>
 
                         {/* axes */}
@@ -511,11 +684,29 @@ export class ViolinPlot extends Component {
                         <text ref={node => this.yAxisLabelSelection = select(node)}
                               transform={`translate(${15}, ${this.props.margin.top + (this.props.height - this.props.margin.top - this.props.margin.bottom) / 2}) rotate(-90)`} />
 
+                        {/* cursor line */}
                         <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>}
 
+                        {/* status message */}
                         <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
                             {this.state.statusMsg}
                         </text>
+
+                        {/* tooltip */}
+                        {this.props.withTooltip &&
+                        <Tooltip
+                            config={this.props.config}
+                            containerHeight={this.props.height}
+                            containerWidth={this.state.width}
+                            mousePosition={this.state.mousePosition}
+                            selection={this.state.tooltip}
+                            signalSetsData={this.state.signalSetsData}
+                            width={200}
+                            contentRender={props => <TooltipContent {...props} tooltipFormat={this.props.tooltipFormat} />}
+                        />}
+
+                        {/* cursor area */}
+                        <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                     </svg>
                 </div>
             );
