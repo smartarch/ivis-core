@@ -49,27 +49,6 @@ function compareSignalSetConfigs(conf1, conf2) {
     else return ConfigDifference.NONE;
 }
 
-class TooltipContent extends Component {
-    constructor(props) {
-        super(props);
-    }
-
-    static propTypes = {
-        selection: PropTypes.object,
-        tooltipFormat: PropTypes.func.isRequired
-    };
-
-    render() {
-        if (this.props.selection) {
-            return (
-                <div>{this.props.tooltipFormat(this.props.selection)}</div>
-            );
-        } else {
-            return null;
-        }
-    }
-}
-
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
@@ -129,7 +108,7 @@ export class BoxPlot extends Component {
 
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
-        tooltipFormat: PropTypes.func, // bucket => line in tooltip
+        tooltipFormat: PropTypes.func, // gets state.tooltip which is an object of shape { y /* y-coordinate of the mouse */ }
 
         xAxisTicksFormat: PropTypes.func,
         xAxisLabel: PropTypes.string,
@@ -433,11 +412,11 @@ export class BoxPlot extends Component {
 
         const mouseMove = function () {
             const containerPos = d3Selection.mouse(self.containerNode);
-            const y = containerPos[1];
+            const y = containerPos[1] - self.props.margin.top;
 
             self.cursorSelection
-                .attr('y1', y)
-                .attr('y2', y)
+                .attr('y1', containerPos[1])
+                .attr('y2', containerPos[1])
                 .attr('x1', self.props.margin.left)
                 .attr('x2', xSize + self.props.margin.left)
                 .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
@@ -539,9 +518,10 @@ export class BoxPlot extends Component {
                             mousePosition={this.state.mousePosition}
                             selection={this.state.tooltip}
                             width={200}
-                            contentRender={props => <TooltipContent {...props} tooltipFormat={this.props.tooltipFormat} />}
-                        />
-                        }
+                            contentRender={props => props.selection ? this.props.tooltipFormat(props.selection) : null}
+                        />}
+
+                        {/* cursor area */}
                         <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                     </svg>
                 </div>
