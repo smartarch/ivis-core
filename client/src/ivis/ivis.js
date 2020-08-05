@@ -24,5 +24,6 @@ export * from './BubblePlot';
 export * from './HeatmapChart';
 export * from './BarChart';
 export * from './BoxPlot';
+export * from './ViolinPlot';
 export * from './MinMaxLoader';
 export * from './dot_shapes';
