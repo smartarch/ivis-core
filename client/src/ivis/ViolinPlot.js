@@ -14,7 +14,7 @@ import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
+import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
 import {isInExtent} from "./common";
@@ -61,7 +61,7 @@ class TooltipContent extends Component {
     }
 
     static propTypes = {
-        signalSetsData: PropTypes.object,
+        signalSetsData: PropTypes.array,
         selection: PropTypes.object,
         tooltipFormat: PropTypes.func.isRequired
     };
@@ -108,6 +108,8 @@ export class ViolinPlot extends Component {
             maxBucketCount: 0,
         };
 
+        this.xWidthScales = [];
+
         this.resizeListener = () => {
             this.createChart(true);
         };
@@ -138,6 +140,8 @@ export class ViolinPlot extends Component {
         minStep: PropTypes.number,
         minBarHeight: PropTypes.number,
         maxBucketCount: PropTypes.number,
+        commonWidthScale: PropTypes.bool, // if set to true, all violins will be rendered using the same width scale (if the maximum bucket value in one violin is a half of the maximum bucket value of another violin, the first violin's width will be 2 time smaller); if set to false (default), each violin will have its own width scale (each violin's maximum width is the same)
+        padding: PropType_NumberInRange(0, 1), // empty space around each violin
         yMinValue: PropTypes.number,
         yMaxValue: PropTypes.number,
         curve: PropTypes.func, // d3Shape curve to render the violin (d3Shape.curveCatmullRom is default, use curveVerticalStep from common.js from 'ivis' to get a histogram look)
@@ -160,6 +164,8 @@ export class ViolinPlot extends Component {
         margin: { left: 40, right: 5, top: 5, bottom: 20 },
         minBarHeight: 20,
         maxBucketCount: undefined,
+        commonWidthScale: false,
+        padding: 0.2,
         yMinValue: NaN,
         yMaxValue: NaN,
 
@@ -491,17 +497,19 @@ export class ViolinPlot extends Component {
     }
 
     drawChart(signalSetsData, xScale, yScale) {
-        const violinWidth = xScale.step() / 2;
-        const xWidthScale = d3Scale.scaleLinear()
-            .domain([0, this.state.maxValue])
-            .range([0, violinWidth]);
-        this.xWidthScale = xWidthScale;
+        const violinWidth = (xScale.step() / 2) * (1 - this.props.padding); // width of one side of the violin
+        this.xWidthScales = [];
 
         for (let i = 0; i < this.props.config.signalSets.length; i++) {
             const config = this.props.config.signalSets[i];
             const data = signalSetsData[i];
             const color = d3Color.color(config.color);
             const verticalPosition = key => yScale(key + data.step / 2); // 'key' is the lowest value in bucket -> this returns the center
+
+            const xWidthScale = d3Scale.scaleLinear()
+                .domain([0, this.props.commonWidthScale ? this.state.maxValue : data.maxValue])
+                .range([0, violinWidth]);
+            this.xWidthScales[i] = xWidthScale;
 
             this.drawViolin(data.buckets, this.violinSelections[i], xScale(config.label || i), xWidthScale, verticalPosition, color, this.props.curve);
         }
@@ -599,12 +607,12 @@ export class ViolinPlot extends Component {
                     const config = self.props.config.signalSets[violinIndex];
                     self.highlightDotSelection1
                         .attr("visibility", "visible")
-                        .attr("cx", xScale(label) + self.xWidthScale(newSelection.value))
+                        .attr("cx", xScale(label) + self.xWidthScales[violinIndex](newSelection.value))
                         .attr("cy", yScale(newSelection.key + data.step / 2))
                         .attr("fill", d3Color.color(config.color).darker());
                     self.highlightDotSelection2
                         .attr("visibility", "visible")
-                        .attr("cx", xScale(label) - self.xWidthScale(newSelection.value))
+                        .attr("cx", xScale(label) - self.xWidthScales[violinIndex](newSelection.value))
                         .attr("cy", yScale(newSelection.key + data.step / 2))
                         .attr("fill", d3Color.color(config.color).darker());
                 }
