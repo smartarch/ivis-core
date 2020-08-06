@@ -108,7 +108,11 @@ export class BoxPlot extends Component {
 
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
-        tooltipFormat: PropTypes.func, // gets state.tooltip which is an object of shape { y /* y-coordinate of the mouse */ }
+        tooltipFormat: PropTypes.func, /* gets state.tooltip which is an object of shape
+         {
+             y      // y-coordinate of the mouse
+             box    // object with values (min, bottomWhisker, bottom, middle, top, topWhisker, max, label) for box under the mouse
+         } */
 
         xAxisTicksFormat: PropTypes.func,
         xAxisLabel: PropTypes.string,
@@ -121,7 +125,7 @@ export class BoxPlot extends Component {
 
         filter: PropTypes.object,
         /**
-         *  This function should return the data for the BoxPlot as an object of shape { signalSetsData, xExtent, yExtent }. The return value will be saved to the component's state.
+         *  The getData function should return the data for the BoxPlot as an object of shape { signalSetsData, xExtent, yExtent }. The return value will be saved to the component's state.
          *  - signalSetsData is an array of object with shape { min, max, top, middle, bottom, topWhisker, bottomWhisker } (all the values are numbers - the y-coordinates
          *  - xExtent - array of strings with names for the boxes (displayed along the x-axis), should have same length as signalSetsData
          *  - yExtent - [minimum, maximum] of the y-axis
@@ -362,7 +366,7 @@ export class BoxPlot extends Component {
         const xScale = d3Scale.scalePoint()
             .domain(this.state.xExtent)
             .range([0, xSize])
-            .padding(1);
+            .padding(0.5);
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
         if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
@@ -381,7 +385,7 @@ export class BoxPlot extends Component {
         //</editor-fold>
 
         this.createChartCursorArea(xSize, ySize);
-        this.createChartCursor(xSize, ySize, yScale);
+        this.createChartCursor(xSize, ySize, xScale, yScale, signalSetsData);
 
         // re-render boxes with updated scales
         this.setState({ xScale, yScale });
@@ -407,12 +411,13 @@ export class BoxPlot extends Component {
 
     /** Handles mouse movement to display cursor line.
      *  Called from this.createChart(). */
-    createChartCursor(xSize, ySize, yScale) {
+    createChartCursor(xSize, ySize, xScale, yScale, signalSetsData) {
         const self = this;
 
         const mouseMove = function () {
             const containerPos = d3Selection.mouse(self.containerNode);
             const y = containerPos[1] - self.props.margin.top;
+            const x = containerPos[0] - self.props.margin.left;
 
             self.cursorSelection
                 .attr('y1', containerPos[1])
@@ -421,9 +426,24 @@ export class BoxPlot extends Component {
                 .attr('x2', xSize + self.props.margin.left)
                 .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
 
+            // find which box is under the mouse
+            let box = null;
+            const halfStep = xScale.step() / 2;
+            for (let i = 0; i < self.props.config.signalSets.length; i++) {
+                const label = self.props.config.signalSets[i].label || i;
+                const boxAreaLeftBorder = xScale(label) - halfStep;
+                if (boxAreaLeftBorder < x) {
+                    box = signalSetsData[i];
+                    box.label = label;
+                }
+                else
+                    break;
+            }
+
             const mousePosition = {x: containerPos[0], y: containerPos[1]};
             const tooltip = {
-                y: yScale.invert(y)
+                y: yScale.invert(y),
+                box
             }
 
             self.setState({
