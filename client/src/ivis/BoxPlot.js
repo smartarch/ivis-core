@@ -169,7 +169,7 @@ export class BoxPlot extends Component {
         let configDiff = compareConfigs(this.props.config, prevProps.config);
 
         // test if time interval changed
-        const considerTs = !!this.props.config.tsSigCid;
+        const considerTs =  this.props.config.signalSets.some(setConf => !!setConf.tsSigCid);
         if (considerTs) {
             const prevAbs = this.getIntervalAbsolute(prevProps);
             const prevSpec = this.getIntervalSpec(prevProps);
