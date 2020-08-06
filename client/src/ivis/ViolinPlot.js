@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
-import {select} from "d3-selection";
+import {select, event as d3Event} from "d3-selection";
 import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
@@ -17,9 +17,10 @@ import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
-import {isInExtent} from "./common";
+import {isInExtent, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import {Icon} from "../lib/bootstrap-components";
 import * as d3Format from "d3-format";
+import * as d3Zoom from "d3-zoom";
 
 const ConfigDifference = {
     NONE: 0,
@@ -93,7 +94,7 @@ class TooltipContent extends Component {
     withErrorHandling,
     withPageHelpers,
     intervalAccessMixin()
-], [], ["processBucket", "prepareData", "prepareDataForSignalSet"])
+], ["getView", "setView"], ["processBucket", "prepareData", "prepareDataForSignalSet"])
 export class ViolinPlot extends Component {
     constructor(props){
         super(props);
@@ -106,9 +107,13 @@ export class ViolinPlot extends Component {
             statusMsg: t('Loading...'),
             width: 0,
             maxBucketCount: 0,
+            zoomTransform: d3Zoom.zoomIdentity,
+            zoomInProgress: false,
         };
 
         this.xWidthScales = [];
+        this.zoom = null;
+        this.lastZoomCausedByUser = false;
 
         this.resizeListener = () => {
             this.createChart(true);
@@ -147,8 +152,13 @@ export class ViolinPlot extends Component {
         curve: PropTypes.func, // d3Shape curve to render the violin (d3Shape.curveCatmullRom is default, use curveVerticalStep from common.js from 'ivis' to get a histogram look)
 
         withCursor: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        withTransition: PropTypes.bool,
         withTooltip: PropTypes.bool,
         tooltipFormat: PropTypes.func, // bucket => line in tooltip
+
+        zoomLevelMin: PropTypes.number,
+        zoomLevelMax: PropTypes.number,
 
         className: PropTypes.string,
         style: PropTypes.object,
@@ -170,7 +180,12 @@ export class ViolinPlot extends Component {
         yMaxValue: NaN,
 
         withCursor: true,
+        withZoom: true,
+        withTransition: true,
         withTooltip: true,
+
+        zoomLevelMin: 1,
+        zoomLevelMax: 4,
 
         tooltipFormat: bucket => `Count: ${bucket.count}`,
 
@@ -210,6 +225,7 @@ export class ViolinPlot extends Component {
         }
 
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
+            this.setZoom(d3Zoom.zoomIdentity); // reset zoom
             this.setState({
                 statusMsg: t('Loading...')
             }, () => {
@@ -227,8 +243,13 @@ export class ViolinPlot extends Component {
                 || configDiff !== ConfigDifference.NONE
                 || prevProps.height !== this.props.height;
 
-            this.createChart(forceRefresh);
-            this.prevContainerNode = this.containerNode;
+             // TODO AreZoomTransformsEqual when merged to correlation_charts
+             const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
+
+             this.createChart(forceRefresh, updateZoom);
+             this.prevContainerNode = this.containerNode;
+            if (updateZoom)
+                this.callViewChangeCallback();
         }
     }
 
@@ -288,6 +309,8 @@ export class ViolinPlot extends Component {
         }
 
         let maxBucketCount = this.props.maxBucketCount || this.state.maxBucketCount;
+        if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) // allow more buckets if zoomed in
+            maxBucketCount = Math.ceil(maxBucketCount * this.state.zoomTransform.k);
         let minStep = this.props.minStep;
         if (maxBucketCount > 0) {
             try {
@@ -444,7 +467,7 @@ export class ViolinPlot extends Component {
 
     /** Creates (or updates) the chart with current data.
      * This method is called from componentDidUpdate automatically when state or config is updated. */
-    createChart(forceRefresh) {
+    createChart(forceRefresh, updateZoom) {
         const signalSetsData = this.state.signalSetsData;
 
         const maxBucketCount = Math.ceil(this.props.height / this.props.minBarHeight);
@@ -457,7 +480,7 @@ export class ViolinPlot extends Component {
         const widthChanged = width !== this.state.width;
         if (widthChanged)
             this.setState({width});
-        if (!forceRefresh && !widthChanged) {
+        if (!forceRefresh && !widthChanged && !updateZoom) {
             return;
         }
 
@@ -480,9 +503,11 @@ export class ViolinPlot extends Component {
         this.xAxisSelection.call(xAxis);
         this.xAxisLabelSelection.text(this.props.xAxisLabel).style("text-anchor", "middle");
 
-        const yScale = d3Scale.scaleLinear()
+        let yScale = d3Scale.scaleLinear()
             .domain(this.yExtent)
             .range([ySize, 0]);
+        yScale = this.state.zoomTransform.rescaleY(yScale);
+        this.yScale = yScale;
         const yAxis = d3Axis.axisLeft(yScale);
         if (this.props.yAxisTicksCount) yAxis.ticks(this.props.yAxisTicksCount);
         if (this.props.yAxisTicksFormat) yAxis.tickFormat(this.props.yAxisTicksFormat);
@@ -492,8 +517,10 @@ export class ViolinPlot extends Component {
 
         this.drawChart(signalSetsData, xScale, yScale);
 
-        this.createChartCursorArea(xSize, ySize);
+        if (forceRefresh || widthChanged) // we don't want to change the cursor area when updating only zoom (it breaks touch drag)
+            this.createChartCursorArea(xSize, ySize);
         this.createChartCursor(xSize, ySize, xScale, yScale, signalSetsData);
+        this.createChartZoom(xSize, ySize);
     }
 
     drawChart(signalSetsData, xScale, yScale) {
@@ -563,6 +590,9 @@ export class ViolinPlot extends Component {
         const self = this;
 
         const mouseMove = function () {
+            if (self.state.zoomInProgress)
+                return;
+
             const containerPos = d3Selection.mouse(self.containerNode);
             const y = containerPos[1] - self.props.margin.top;
             const x = containerPos[0] - self.props.margin.left;
@@ -573,7 +603,6 @@ export class ViolinPlot extends Component {
                 .attr('x1', self.props.margin.left)
                 .attr('x2', xSize + self.props.margin.left)
                 .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
-
 
             let newSelection = null;
             const halfStep = xScale.step() / 2;
@@ -637,17 +666,129 @@ export class ViolinPlot extends Component {
         };
 
         const mouseLeave = function () {
-            self.cursorSelection.attr('visibility', 'hidden');
-            self.setState({
-                tooltip: null,
-                mousePosition: null
-            });
+            self.deselectPoints();
         }
 
         this.cursorAreaSelection
             .on('mouseenter', mouseMove)
             .on('mousemove', mouseMove)
             .on('mouseleave', mouseLeave);
+    }
+
+    deselectPoints() {
+        this.cursorSelection.attr('visibility', 'hidden');
+        this.setState({
+            tooltip: null,
+            mousePosition: null
+        });
+        this.highlightDotSelection1.attr("visibility", "hidden");
+        this.highlightDotSelection2.attr("visibility", "hidden");
+    }
+
+    /** Handles zoom of the chart by user using d3-zoom.
+     *  Called from this.createChart(). */
+    createChartZoom(xSize, ySize) {
+        // noinspection DuplicatedCode
+        const self = this;
+
+        const handleZoom = function () {
+            // noinspection JSUnresolvedVariable
+            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                self.lastZoomCausedByUser = true;
+                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform(self), () => {
+                    self.deselectPoints();
+                });
+            } else {
+                // noinspection JSUnresolvedVariable
+                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                    self.lastZoomCausedByUser = true;
+                // noinspection JSUnresolvedVariable
+                setZoomTransform(self)(d3Event.transform);
+            }
+        };
+
+        const handleZoomEnd = function () {
+            self.deselectPoints();
+            self.setState({
+                zoomInProgress: false
+            });
+        };
+        const handleZoomStart = function () {
+            self.deselectPoints();
+            self.setState({
+                zoomInProgress: true
+            });
+        };
+
+        const zoomExtent = [[0,0], [xSize, ySize]];
+        const zoomExisted = this.zoom !== null;
+        this.zoom = zoomExisted ? this.zoom : d3Zoom.zoom();
+        this.zoom
+            .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
+            .translateExtent(zoomExtent)
+            .extent(zoomExtent)
+            .on("zoom", handleZoom)
+            .on("end", handleZoomEnd)
+            .on("start", handleZoomStart)
+            .wheelDelta(WheelDelta(2));
+        this.svgContainerSelection.call(this.zoom);
+    }
+
+    /** Returns the current view (boundaries of visible region)
+     * @return {{yMin: number, yMax: number }} top, bottom boundary
+     */
+    getView() {
+        const [yMin, yMax] = this.yScale.domain();
+        return {yMin, yMax};
+    }
+
+    /**
+     * Set the visible region of the chart to defined limits (in units of the data, not in pixels)
+     * @param yMin          bottom boundary of the visible region (in units of data on x-axis)
+     * @param yMax          top boundary of the visible region (in units of data on x-axis)
+     * @param source        the element which caused the view change (if source === this, the update is ignored)
+     * @param causedByUser  tells whether the view update was caused by user (this propagates to props.viewChangeCallback call), default = false
+     */
+    setView(yMin, yMax, source, causedByUser = false) {
+        if (source === this || this.state.signalSetsData === null)
+            return;
+
+        if (yMin === undefined) yMin = this.yScale.domain()[0];
+        if (yMax === undefined) yMax = this.yScale.domain()[1];
+
+        if (isNaN(yMin) || isNaN(yMax))
+            throw new Error("Parameters must be numbers.");
+
+        this.lastZoomCausedByUser = causedByUser;
+        // noinspection JSUnresolvedVariable
+        this.setZoomToLimits(xMin, xMax);
+    }
+
+    /** Sets zoom object (transform) to desired view boundaries. */
+    setZoomToLimits(yMin, yMax) {
+        const newYSize = yMax - yMin;
+        const oldYSize = this.yScale.domain()[1] - this.yScale.domain()[0];
+
+        const bottomInverted = this.state.zoomTransform.invertY(this.yScale(yMin));
+        const transform = d3Zoom.zoomIdentity.scale(this.state.zoomTransform.k * oldYSize / newYSize).translate(0, -bottomInverted);
+
+        setZoom(transform);
+    }
+
+    /** Helper method to update zoom transform in state and zoom object. */
+    setZoom(transform) {
+        if (this.zoom)
+            this.svgContainerSelection.call(this.zoom.transform, transform);
+        else {
+            this.setState({zoomTransform: transform});
+        }
+    }
+
+    callViewChangeCallback() {
+        if (typeof(this.props.viewChangeCallback) !== "function")
+            return;
+
+        this.props.viewChangeCallback(this, this.getView(), this.lastZoomCausedByUser);
     }
 
     render() {
@@ -693,6 +834,7 @@ export class ViolinPlot extends Component {
                               transform={`translate(${15}, ${this.props.margin.top + (this.props.height - this.props.margin.top - this.props.margin.bottom) / 2}) rotate(-90)`} />
 
                         {/* cursor line */}
+                        {!this.state.zoomInProgress &&
                         <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>}
 
                         {/* status message */}
@@ -701,7 +843,7 @@ export class ViolinPlot extends Component {
                         </text>
 
                         {/* tooltip */}
-                        {this.props.withTooltip &&
+                        {this.props.withTooltip && !this.state.zoomInProgress &&
                         <Tooltip
                             config={this.props.config}
                             containerHeight={this.props.height}
