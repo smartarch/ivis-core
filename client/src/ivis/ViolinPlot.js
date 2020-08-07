@@ -94,7 +94,7 @@ class TooltipContent extends Component {
     withErrorHandling,
     withPageHelpers,
     intervalAccessMixin()
-], ["getView", "setView"], ["processBucket", "prepareData", "prepareDataForSignalSet"])
+], ["getView", "setView"], ["processBucket", "processDataForAdditionalLines", "prepareData", "prepareDataForSignalSet"])
 export class ViolinPlot extends Component {
     constructor(props){
         super(props);
@@ -157,6 +157,13 @@ export class ViolinPlot extends Component {
         withTooltip: PropTypes.bool,
         tooltipFormat: PropTypes.func, // bucket => line in tooltip
 
+        additionalLines: PropTypes.arrayOf(PropTypes.shape({
+            value: PropTypes.oneOf(["min", "max", "avg", "median", "percentile"]),
+            percents: PropTypes.oneOfType([PropType_NumberInRange(0, 100)]), // only valid when value == "percentile" // code comment: wrapping PropType_NumberInRange in oneOfType allows it to also be undefined (without it, it must be a number)
+            props: PropTypes.object, // props of the SVG <line>, if not specified, 'additionalLinesProps' is used
+        })).isRequired, // add horizontal lines to the violin plot marking certain values; note: these lines do not respect metric_sigCid and metric_type
+        additionalLinesProps: PropTypes.object, // props of the SVG <line>
+
         zoomLevelMin: PropTypes.number,
         zoomLevelMax: PropTypes.number,
 
@@ -165,6 +172,7 @@ export class ViolinPlot extends Component {
 
         filter: PropTypes.object,
         processBucket: PropTypes.func, // see ViolinPlot.processBucket for reference
+        processDataForAdditionalLines: PropTypes.func, // see ViolinPlot.processDataForAdditionalLines for reference
         prepareData: PropTypes.func, // see ViolinPlot.prepareData for reference
         prepareDataForSignalSet: PropTypes.func, // see ViolinPlot.prepareDataForSignalSet for reference
         getData: PropTypes.func,
@@ -183,6 +191,9 @@ export class ViolinPlot extends Component {
         withZoom: true,
         withTransition: true,
         withTooltip: true,
+
+        additionalLines: [],
+        additionalLinesProps: { strokeWidth: 2, stroke: "black" },
 
         zoomLevelMin: 1,
         zoomLevelMax: 4,
@@ -300,6 +311,68 @@ export class ViolinPlot extends Component {
         };
     }
 
+    getAdditionalLinesQueriesForSignalSet(signalSetConfig) {
+        let filter = {
+            type: 'and',
+            children: []
+        };
+        if (signalSetConfig.tsSigCid) {
+            const abs = this.getIntervalAbsolute();
+            filter.children.push({
+                type: 'range',
+                sigCid: signalSetConfig.tsSigCid,
+                gte: abs.from.toISOString(),
+                lt: abs.to.toISOString()
+            });
+        }
+        if (!isNaN(this.props.yMinValue))
+            filter.children.push({
+                type: "range",
+                sigCid: signalSetConfig.sigCid,
+                gte: this.props.yMinValue
+            });
+        if (!isNaN(this.props.yMaxValue))
+            filter.children.push({
+                type: "range",
+                sigCid: signalSetConfig.sigCid,
+                lte: this.props.yMaxValue
+            });
+        if (signalSetConfig.filter)
+            filter.children.push(signalSetConfig.filter);
+        if (this.props.filter)
+            filter.children.push(this.props.filter);
+
+        const queries = [];
+
+        for (const l of this.props.additionalLines) {
+            if (l.value === "min" || l.value === "max" || l.value === "avg") {
+                const summary = {
+                    signals: {}
+                };
+                summary.signals[signalSetConfig.sigCid] = [l.value];
+                queries.push({
+                    type: "summary",
+                    args: [signalSetConfig.cid, filter, summary]
+                });
+            }
+            else { // percentiles
+                if (l.value === "median")
+                    l.percents = 50;
+                queries.push({
+                    type: "aggs",
+                    args: [signalSetConfig.cid, filter, [{
+                        sigCid: signalSetConfig.sigCid,
+                        agg_type: "percentiles",
+                        percents: l.percents,
+                        keyed: false,
+                    }]]
+                });
+            }
+        }
+
+        return queries;
+    }
+
     /** Fetches new data for the chart, processes the results using prepareData method and updates the state accordingly, so the chart is redrawn */
     @withAsyncErrorHandler
     async fetchData() {
@@ -317,6 +390,9 @@ export class ViolinPlot extends Component {
                 const queries = [];
                 for (const signalSetConfig of this.props.config.signalSets)
                     queries.push(this.getQueryForSignalSet(signalSetConfig, maxBucketCount, minStep));
+                if (this.props.additionalLines)
+                    for (const signalSetConfig of this.props.config.signalSets)
+                        queries.push(...this.getAdditionalLinesQueriesForSignalSet(signalSetConfig));
 
                 const results = await this.dataAccessSession.getLatestMixed(queries);
 
@@ -363,11 +439,34 @@ export class ViolinPlot extends Component {
     }
 
     /**
+     * Computes the y coordinates of the additional lines specified in props.additionalLines
+     *
+     * @param {ViolinPlot} self - this ViolinPlot object
+     * @param data - data from the server (array of query results)
+     * @param signalSetConfig - config of the corresponding signalSet
+     */
+    static processDataForAdditionalLines(self, data, signalSetConfig) {
+        const ret = [];
+        for (const [i, d] of data.entries()) {
+            if (Array.isArray(d) && d.length === 1 && d[0].agg_type === "percentiles") {
+                ret.push(d[0].values[0].value);
+            }
+            else if (typeof(d) === "object" && d.hasOwnProperty(signalSetConfig.sigCid)) {
+                ret.push(d[signalSetConfig.sigCid][self.props.additionalLines[i].value]);
+            }
+            else
+                self.setFlashMessage("error", `Error when processing data for additional lines.`);
+        }
+        return ret;
+    }
+
+    /**
      * Processes the data returned from the server and returns new signalSetData object.
      *
      * @param {ViolinPlot} self - this ViolinPlot object
      * @param {object} data - the data from server; contains at least 'buckets', 'step' and 'offset' fields
      * @param signalSetConfig - configuration of the corresponding signalSet
+     * @param additionalLinesData - the data from server for values of props.additionalLines
      *
      * @returns {object} - signalSet data to be saved to state; must contain (if valid):
      *
@@ -376,7 +475,7 @@ export class ViolinPlot extends Component {
      *   - 'min' and 'max' (along the y-axis)
      *   - 'maxValue' - value (count of elements) of the most frequent bucket
      */
-    static prepareDataForSignalSet(self, data, signalSetConfig) {
+    static prepareDataForSignalSet(self, data, signalSetConfig, additionalLinesData) {
         if (data.buckets.length === 0)
             return {
                 buckets: [],
@@ -409,6 +508,9 @@ export class ViolinPlot extends Component {
             bucket.prob = bucket.value / totalValue;
         }
 
+        const processDataForAdditionalLines = self.props.processDataForAdditionalLines || ViolinPlot.processDataForAdditionalLines;
+        const additionalValues = processDataForAdditionalLines(self, additionalLinesData, signalSetConfig);
+
         // add an empty bucket before and after to have spiky ends of violins
         const bucketBefore = {
             key: min - data.step,
@@ -424,7 +526,8 @@ export class ViolinPlot extends Component {
             offset: data.offset,
             min: min - data.step, // add margin to the chart
             max: max + data.step,
-            maxValue
+            maxValue,
+            additionalValues,
         };
     }
 
@@ -449,7 +552,9 @@ export class ViolinPlot extends Component {
 
         for (let i = 0; i < self.props.config.signalSets.length; i++) {
             const signalSetConfig = self.props.config.signalSets[i];
-            processedResults.push(prepareDataForSignalSet(self, data[i], signalSetConfig));
+            const n = self.props.config.signalSets.length;
+            const l = self.props.additionalLines.length;
+            processedResults.push(prepareDataForSignalSet(self, data[i], signalSetConfig, data.slice(n + l * i, n + l * (i+1)))); // data[i] == histogram query, the rest are queries for additional lines
         }
 
         const min = d3Array.min(processedResults, d => d.min);
@@ -539,6 +644,7 @@ export class ViolinPlot extends Component {
             this.xWidthScales[i] = xWidthScale;
 
             this.drawViolin(data.buckets, this.violinSelections[i], xScale(config.label || i), xWidthScale, verticalPosition, color, this.props.curve);
+            this.drawAdditionalLines(data.additionalValues, this.additionalLinesSelections[i], xScale(config.label || i) - violinWidth / 2, xScale(config.label || i) + violinWidth / 2,  yScale)
         }
     }
 
@@ -564,6 +670,18 @@ export class ViolinPlot extends Component {
             .attr('stroke-linejoin', 'round')
             .attr('stroke-linecap', 'round')
             .attr('d', violin);
+    }
+
+    drawAdditionalLines(data, selection, xLeft, xRight, yScale) {
+        const lines = selection
+            .selectAll("line")
+            .data(data);
+
+        lines
+            .attr('x1', xLeft)
+            .attr('x2', xRight)
+            .attr('y1', d => yScale(d))
+            .attr('y2', d => yScale(d));
     }
 
     /** Prepares rectangle for cursor movement events.
@@ -810,6 +928,17 @@ export class ViolinPlot extends Component {
                       ref={node => this.violinSelections[i] = select(node)}/>
             );
 
+            this.additionalLinesSelections = [];
+            const additionalLines = this.props.config.signalSets.map((signalSet, i) =>
+                <g key={i}
+                      ref={node => this.additionalLinesSelections[i] = select(node)}>
+                    {this.props.additionalLines.map((l, j) =>
+                        <line key={j}
+                              {...(l.props !== undefined ? l.props : this.props.additionalLinesProps)} />
+                    )}
+                </g>
+            );
+
             return (
                 <div ref={node => this.svgContainerSelection = select(node)}
                      className={this.props.className} style={this.props.style}>
@@ -821,6 +950,7 @@ export class ViolinPlot extends Component {
                         </defs>
                         <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
                             {violinSelectionPaths}
+                            {additionalLines}
                             <circle cx="0" cy="0" r="5" visibility="hidden" ref={node => this.highlightDotSelection1 = select(node)} />
                             <circle cx="0" cy="0" r="5" visibility="hidden" ref={node => this.highlightDotSelection2 = select(node)} />
                         </g>
