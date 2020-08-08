@@ -179,3 +179,5 @@ export function drawBars(data, selection, x_position, y_position, width, height,
     bars.exit()
         .remove();
 }
+
+export {curveVerticalStep} from "../lib/d3-shape_step_vertical";

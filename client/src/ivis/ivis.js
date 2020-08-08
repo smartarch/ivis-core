@@ -26,6 +26,8 @@ export * from './BarChart';
 export * from './FrequencyDataLoader';
 export * from './FrequencyBarChart';
 export * from './FrequencyPieChart';
+export * from './BoxPlot';
+export * from './ViolinPlot';
 export * from './MinMaxLoader';
 export * from './dot_shapes';
 export * from './common';
