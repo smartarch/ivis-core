@@ -347,7 +347,7 @@ export class HeatmapChart extends Component {
                     filter.children.push(this.props.filter);
 
                 // filter by current zoom
-                if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.zoomYScaleMultiplier !== 1) {
+                if (!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.zoomYScaleMultiplier !== 1) {
                     const scaleX = this.state.zoomTransform.k;
                     maxBucketCountX = Math.ceil(maxBucketCountX * scaleX);
                     const scaleY = this.state.zoomTransform.k * this.state.zoomYScaleMultiplier;
@@ -650,34 +650,12 @@ export class HeatmapChart extends Component {
         if (this.props.withOverviewBottom)
             this.createChartOverviewBottom(signalSetData.buckets, this.overviewXScale, d3Color.color(this.props.overviewBottomColor || colors[colors.length - 1]));
 
-        // we don't want to change the cursor area when updating only zoom (it breaks touch drag)
-        if (forceRefresh || widthChanged) {
-            this.createChartCursorArea(width, height);
-        }
         if (this.props.withZoomX || this.props.withZoomY)
             this.createChartZoom(xSize, ySize);
         if (this.props.withOverviewLeft && this.props.withOverviewLeftBrush)
             this.createChartOverviewLeftBrush();
         if (this.props.withOverviewBottom && this.props.withOverviewBottomBrush)
             this.createChartOverviewBottomBrush();
-    }
-
-    /** Prepares rectangle for cursor movement events.
-     *  Called from this.createChart(). */
-    createChartCursorArea(width, height) {
-        this.cursorAreaSelection
-            .selectAll('rect')
-            .remove();
-
-        this.cursorAreaSelection
-            .append('rect')
-            .attr('pointer-events', 'all')
-            .attr('cursor', 'crosshair')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('width', width - this.props.margin.left - this.props.margin.right)
-            .attr('height', height - this.props.margin.top - this.props.margin.bottom)
-            .attr('visibility', 'hidden');
     }
 
     /** Handles mouse movement to select the bin (for displaying its details in Tooltip, etc.).
@@ -1233,8 +1211,13 @@ export class HeatmapChart extends Component {
                                 width={250}
                             />
                             }
-                            <g ref={node => this.cursorAreaSelection = select(node)}
-                               transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                            {/* cursor area */}
+                            <rect ref={node => this.cursorAreaSelection = select(node)}
+                                  x={this.props.margin.left} y={this.props.margin.top}
+                                  width={this.state.width - this.props.margin.left - this.props.margin.right}
+                                  height={this.props.height - this.props.margin.top - this.props.margin.bottom}
+                                  pointerEvents={"all"} cursor={"crosshair"} visibility={"hidden"}
+                            />
                         </svg>
                     </div>
                     {this.props.withOverviewBottom &&

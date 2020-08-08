@@ -416,7 +416,7 @@ class QueryProcessor {
                     if (agg.maxBucketCount)
                         elsAgg.terms.size = agg.maxBucketCount;
                 }
-                if (agg.agg_type === "percentiles") {
+                else if (agg.agg_type === "percentiles") {
                     elsAgg.percentiles = { ...this.getField(field) };
                     if (agg.percents)
                         elsAgg.percentiles.percents = agg.percents;

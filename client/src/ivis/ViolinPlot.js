@@ -17,7 +17,14 @@ import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
-import {isInExtent, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
+import {
+    AreZoomTransformsEqual,
+    isInExtent,
+    setZoomTransform,
+    transitionInterpolate,
+    WheelDelta,
+    ZoomEventSources
+} from "./common";
 import {Icon} from "../lib/bootstrap-components";
 import * as d3Format from "d3-format";
 import * as d3Zoom from "d3-zoom";
@@ -149,7 +156,7 @@ export class ViolinPlot extends Component {
         padding: PropType_NumberInRange(0, 1), // empty space around each violin
         yMinValue: PropTypes.number,
         yMaxValue: PropTypes.number,
-        curve: PropTypes.func, // d3Shape curve to render the violin (d3Shape.curveCatmullRom is default, use curveVerticalStep from common.js from 'ivis' to get a histogram look)
+        curve: PropTypes.func, // d3Shape curve to render the violin (d3Shape.curveCatmullRom is default, use curveVerticalStep from 'ivis' to get a histogram look)
 
         withCursor: PropTypes.bool,
         withZoom: PropTypes.bool,
@@ -254,8 +261,7 @@ export class ViolinPlot extends Component {
                 || configDiff !== ConfigDifference.NONE
                 || prevProps.height !== this.props.height;
 
-             // TODO AreZoomTransformsEqual when merged to correlation_charts
-             const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
+             const updateZoom = !AreZoomTransformsEqual(prevState.zoomTransform, this.state.zoomTransform);
 
              this.createChart(forceRefresh, updateZoom);
              this.prevContainerNode = this.containerNode;
@@ -382,7 +388,7 @@ export class ViolinPlot extends Component {
         }
 
         let maxBucketCount = this.props.maxBucketCount || this.state.maxBucketCount;
-        if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) // allow more buckets if zoomed in
+        if (!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity)) // allow more buckets if zoomed in
             maxBucketCount = Math.ceil(maxBucketCount * this.state.zoomTransform.k);
         let minStep = this.props.minStep;
         if (maxBucketCount > 0) {
@@ -622,10 +628,10 @@ export class ViolinPlot extends Component {
 
         this.drawChart(signalSetsData, xScale, yScale);
 
-        if (forceRefresh || widthChanged) // we don't want to change the cursor area when updating only zoom (it breaks touch drag)
-            this.createChartCursorArea(xSize, ySize);
         this.createChartCursor(xSize, ySize, xScale, yScale, signalSetsData);
-        this.createChartZoom(xSize, ySize);
+
+        if (forceRefresh || widthChanged) // no need to update this.zoom object when only updating current zoom (zoomTransform)
+            this.createChartZoom(xSize, ySize);
     }
 
     drawChart(signalSetsData, xScale, yScale) {
@@ -682,24 +688,6 @@ export class ViolinPlot extends Component {
             .attr('x2', xRight)
             .attr('y1', d => yScale(d))
             .attr('y2', d => yScale(d));
-    }
-
-    /** Prepares rectangle for cursor movement events.
-     *  Called from this.createChart(). */
-    createChartCursorArea(xSize, ySize) {
-        this.cursorAreaSelection
-            .selectAll('rect')
-            .remove();
-
-        this.cursorAreaSelection
-            .append('rect')
-            .attr('pointer-events', 'all')
-            .attr('cursor', 'crosshair')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('width', xSize)
-            .attr('height', ySize)
-            .attr('visibility', 'hidden');
     }
 
     /** Handles mouse movement to display cursor line.
@@ -879,7 +867,7 @@ export class ViolinPlot extends Component {
 
         this.lastZoomCausedByUser = causedByUser;
         // noinspection JSUnresolvedVariable
-        this.setZoomToLimits(xMin, xMax);
+        this.setZoomToLimits(yMin, yMax);
     }
 
     /** Sets zoom object (transform) to desired view boundaries. */
@@ -890,7 +878,7 @@ export class ViolinPlot extends Component {
         const bottomInverted = this.state.zoomTransform.invertY(this.yScale(yMin));
         const transform = d3Zoom.zoomIdentity.scale(this.state.zoomTransform.k * oldYSize / newYSize).translate(0, -bottomInverted);
 
-        setZoom(transform);
+        this.setZoom(transform);
     }
 
     /** Helper method to update zoom transform in state and zoom object. */
@@ -986,7 +974,12 @@ export class ViolinPlot extends Component {
                         />}
 
                         {/* cursor area */}
-                        <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                        <rect ref={node => this.cursorAreaSelection = select(node)}
+                              x={this.props.margin.left} y={this.props.margin.top}
+                              width={this.state.width - this.props.margin.left - this.props.margin.right}
+                              height={this.props.height - this.props.margin.top - this.props.margin.bottom}
+                              pointerEvents={"all"} cursor={"crosshair"} visibility={"hidden"}
+                        />
                     </svg>
                 </div>
             );

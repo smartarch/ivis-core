@@ -24,7 +24,7 @@ import {Tooltip} from "./Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../lib/form";
 import styles from "./CorrelationCharts.scss";
 import {ActionLink, Icon} from "../lib/bootstrap-components";
-import {distance, extentWithMargin, getColorScale, getExtent, isInExtent, isSignalVisible, ModifyColorCopy, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
+import {AreZoomTransformsEqual, distance, extentWithMargin, getColorScale, getExtent, isInExtent, isSignalVisible, ModifyColorCopy, setZoomTransform, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
 import {withPageHelpers} from "../lib/page-common";
@@ -553,7 +553,7 @@ export class ScatterPlotBase extends Component {
                 || prevState.zoomYScaleMultiplier !== this.state.zoomYScaleMultiplier // update zoom extent
                 || configDiff !== ConfigDifference.NONE;
 
-            const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
+            const updateZoom = !AreZoomTransformsEqual(prevState.zoomTransform, this.state.zoomTransform);
 
             this.createChart(forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;

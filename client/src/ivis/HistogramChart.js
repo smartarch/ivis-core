@@ -19,7 +19,7 @@ import {withTranslation} from "../lib/i18n";
 import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
 import styles from "./CorrelationCharts.scss";
-import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
+import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta, ZoomEventSources, AreZoomTransformsEqual} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 
 const ConfigDifference = {
@@ -221,7 +221,7 @@ export class HistogramChart extends Component {
                 || prevState.signalSetData !== this.state.signalSetData
                 || configDiff !== ConfigDifference.NONE;
 
-            const updateZoom = !Object.is(prevState.zoomTransform, this.state.zoomTransform);
+            const updateZoom = !AreZoomTransformsEqual(prevState.zoomTransform, this.state.zoomTransform);
 
             this.createChart(forceRefresh, updateZoom);
             this.prevContainerNode = this.containerNode;
@@ -273,7 +273,7 @@ export class HistogramChart extends Component {
                     filter.children.push(this.props.filter);
 
                 // filter by current zoom
-                if (!Object.is(this.state.zoomTransform, d3Zoom.zoomIdentity)) {
+                if (!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity)) {
                     const scale = this.state.zoomTransform.k;
                     if (minStep !== undefined)
                         minStep = Math.floor(minStep / scale);
@@ -479,14 +479,10 @@ export class HistogramChart extends Component {
 
         this.drawBars(signalSetData, this.barsSelection, xScale, yScale, d3Color.color(this.props.config.color), false);
 
-        // we don't want to change zoom object and cursor area when updating only zoom (it breaks touch drag)
-        if (forceRefresh || widthChanged) {
-            this.createChartCursorArea();
-            if (this.props.withZoom)
-                this.createChartZoom(xSize, ySize);
-        }
+        if ((forceRefresh || widthChanged) && this.props.withZoom) // no need to update this.zoom object when only updating current zoom (zoomTransform)
+            this.createChartZoom(xSize, ySize);
 
-        this.createChartCursor(signalSetData, xScale, yScale, ySize);
+        this.createChartCursor(signalSetData, xScale, yScale);
 
         if (this.props.withOverview)
             this.createChartOverview(globalSignalSetData);
@@ -522,24 +518,6 @@ export class HistogramChart extends Component {
 
         bars.exit()
             .remove();
-    }
-
-    /** Prepares rectangle for cursor movement events.
-     *  Called from this.createChart(). */
-    createChartCursorArea() {
-        this.cursorAreaSelection
-            .selectAll('rect')
-            .remove();
-
-        this.cursorAreaSelection
-            .append('rect')
-            .attr('pointer-events', 'all')
-            .attr('cursor', 'crosshair')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('width', this.renderedWidth - this.props.margin.left - this.props.margin.right)
-            .attr('height', this.props.height - this.props.margin.top - this.props.margin.bottom)
-            .attr('visibility', 'hidden');
     }
 
     /** Handles mouse movement to select the closest bar (for displaying its details in Tooltip, etc.).
@@ -861,7 +839,13 @@ export class HistogramChart extends Component {
                             contentRender={props => <TooltipContent {...props} tooltipFormat={this.props.tooltipFormat} />}
                         />
                         }
-                        <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                        {/* cursor area */}
+                        <rect ref={node => this.cursorAreaSelection = select(node)}
+                              x={this.props.margin.left} y={this.props.margin.top}
+                              width={this.state.width - this.props.margin.left - this.props.margin.right}
+                              height={this.props.height - this.props.margin.top - this.props.margin.bottom}
+                              pointerEvents={"all"} cursor={"crosshair"} visibility={"hidden"}
+                        />
                     </svg>
                     </div>
                     {this.props.withOverview &&

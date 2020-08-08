@@ -384,29 +384,10 @@ export class BoxPlot extends Component {
         this.yAxisLabelSelection.text(this.props.yAxisLabel).style("text-anchor", "middle");
         //</editor-fold>
 
-        this.createChartCursorArea(xSize, ySize);
         this.createChartCursor(xSize, ySize, xScale, yScale, signalSetsData);
 
         // re-render boxes with updated scales
         this.setState({ xScale, yScale });
-    }
-
-    /** Prepares rectangle for cursor movement events.
-     *  Called from this.createChart(). */
-    createChartCursorArea(xSize, ySize) {
-        this.cursorAreaSelection
-            .selectAll('rect')
-            .remove();
-
-        this.cursorAreaSelection
-            .append('rect')
-            .attr('pointer-events', 'all')
-            .attr('cursor', 'crosshair')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('width', xSize)
-            .attr('height', ySize)
-            .attr('visibility', 'hidden');
     }
 
     /** Handles mouse movement to display cursor line.
@@ -542,7 +523,12 @@ export class BoxPlot extends Component {
                         />}
 
                         {/* cursor area */}
-                        <g ref={node => this.cursorAreaSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                        <rect ref={node => this.cursorAreaSelection = select(node)}
+                              x={this.props.margin.left} y={this.props.margin.top}
+                              width={this.state.width - this.props.margin.left - this.props.margin.right}
+                              height={this.props.height - this.props.margin.top - this.props.margin.bottom}
+                              pointerEvents={"all"} cursor={"crosshair"} visibility={"hidden"}
+                        />
                     </svg>
                 </div>
             );
