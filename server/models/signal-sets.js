@@ -641,7 +641,7 @@ async function queryTx(tx, context, queries) {
             if (sort) {
                 for (const srt of sort) {
                     // Ignores other types of sorts
-                    if (sort.sigCid) {
+                    if (srt.sigCid) {
                         srt.sigCid = mutateSignalCid(srt.sigCid);
                         const sig = signalMap[srt.sigCid];
                         if (!sig) {
