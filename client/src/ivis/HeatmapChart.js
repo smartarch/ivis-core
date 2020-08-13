@@ -19,26 +19,9 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
-import {
-    AreZoomTransformsEqual,
-    brushHandlesLeftRight,
-    brushHandlesTopBottom,
-    drawBars,
-    getColorScale,
-    setZoomTransform,
-    transitionInterpolate,
-    WheelDelta,
-    ZoomEventSources
-} from "./common";
+import {AreZoomTransformsEqual, brushHandlesLeftRight, brushHandlesTopBottom, ConfigDifference, drawBars, getColorScale, setZoomTransform, TimeIntervalDifference, transitionInterpolate, WheelDelta, ZoomEventSources} from "./common";
 import styles from "./CorrelationCharts.scss";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
-
-const ConfigDifference = {
-    NONE: 0,
-    RENDER: 1,
-    DATA: 2,
-    DATA_WITH_CLEAR: 3
-};
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -245,16 +228,8 @@ export class HeatmapChart extends Component {
 
         // test if time interval changed
         const considerTs = !!this.props.config.tsSigCid;
-        if (considerTs) {
-            const prevAbs = this.getIntervalAbsolute(prevProps);
-            const prevSpec = this.getIntervalSpec(prevProps);
-
-            if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
-            } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
-                configDiff = Math.max(configDiff, ConfigDifference.DATA);
-            }
-        }
+        if (considerTs)
+            configDiff = Math.max(configDiff, TimeIntervalDifference(this, prevProps));
 
         // test if limits changed
         if (!Object.is(prevProps.xMinValue, this.props.xMinValue) || !Object.is(prevProps.xMaxValue, this.props.xMaxValue) || !Object.is(prevProps.yMinValue, this.props.yMinValue) || !Object.is(prevProps.yMaxValue, this.props.yMaxValue))

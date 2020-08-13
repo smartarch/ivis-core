@@ -181,3 +181,29 @@ export function drawBars(data, selection, x_position, y_position, width, height,
 }
 
 export {curveVerticalStep} from "../lib/d3-shape_step_vertical";
+
+export const ConfigDifference = {
+    // We assume here order from the most benign to the worst
+    NONE: 0,
+    RENDER: 1,
+    DATA: 2,
+    DATA_WITH_CLEAR: 3
+};
+
+/**
+ * Test if time interval changed
+ * @param self          the chart object, must use the intervalAccessMixin
+ * @returns {number}    ConfigDifference
+ */
+export function TimeIntervalDifference(self, props) {
+    const prevAbs = self.getIntervalAbsolute(props);
+    const prevSpec = self.getIntervalSpec(props);
+
+    if (prevSpec !== self.getIntervalSpec()) {
+        return ConfigDifference.DATA_WITH_CLEAR;
+    } else if (prevAbs !== self.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
+        return ConfigDifference.DATA;
+    }
+    return ConfigDifference.NONE;
+}
+

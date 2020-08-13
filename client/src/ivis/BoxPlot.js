@@ -14,15 +14,8 @@ import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {Tooltip} from "./Tooltip";
-import {extentWithMargin} from "./common";
+import {ConfigDifference, extentWithMargin, TimeIntervalDifference} from "./common";
 import {PropType_d3Color, PropType_NumberInRange} from "../lib/CustomPropTypes";
-
-const ConfigDifference = {
-    NONE: 0,
-    RENDER: 1,
-    DATA: 2,
-    DATA_WITH_CLEAR: 3
-};
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -170,16 +163,8 @@ export class BoxPlot extends Component {
 
         // test if time interval changed
         const considerTs =  this.props.config.signalSets.some(setConf => !!setConf.tsSigCid);
-        if (considerTs) {
-            const prevAbs = this.getIntervalAbsolute(prevProps);
-            const prevSpec = this.getIntervalSpec(prevProps);
-
-            if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
-            } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
-                configDiff = Math.max(configDiff, ConfigDifference.DATA);
-            }
-        }
+        if (considerTs)
+            configDiff = Math.max(configDiff, TimeIntervalDifference(this, prevProps));
 
         if (configDiff === ConfigDifference.DATA_WITH_CLEAR) {
             this.setState({

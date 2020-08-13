@@ -19,15 +19,8 @@ import {withTranslation} from "../lib/i18n";
 import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
 import styles from "./CorrelationCharts.scss";
-import {brushHandlesLeftRight, isInExtent, transitionInterpolate, WheelDelta, ZoomEventSources, AreZoomTransformsEqual} from "./common";
+import {brushHandlesLeftRight, ConfigDifference, isInExtent, transitionInterpolate, WheelDelta, ZoomEventSources, AreZoomTransformsEqual, TimeIntervalDifference} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
-
-const ConfigDifference = {
-    NONE: 0,
-    RENDER: 1,
-    DATA: 2,
-    DATA_WITH_CLEAR: 3
-};
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -184,16 +177,8 @@ export class HistogramChart extends Component {
 
         // test if time interval changed
         const considerTs = !!this.props.config.tsSigCid;
-        if (considerTs) {
-            const prevAbs = this.getIntervalAbsolute(prevProps);
-            const prevSpec = this.getIntervalSpec(prevProps);
-
-            if (prevSpec !== this.getIntervalSpec()) {
-                configDiff = Math.max(configDiff, ConfigDifference.DATA_WITH_CLEAR);
-            } else if (prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
-                configDiff = Math.max(configDiff, ConfigDifference.DATA);
-            }
-        }
+        if (considerTs)
+            configDiff = Math.max(configDiff, TimeIntervalDifference(this, prevProps));
 
         // test if limits changed
         if (!Object.is(prevProps.xMinValue, this.props.xMinValue) || !Object.is(prevProps.xMaxValue, this.props.xMaxValue))
@@ -275,8 +260,6 @@ export class HistogramChart extends Component {
                 // filter by current zoom
                 if (!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity)) {
                     const scale = this.state.zoomTransform.k;
-                    if (minStep !== undefined)
-                        minStep = Math.floor(minStep / scale);
                     maxBucketCount = Math.ceil(maxBucketCount * scale);
                     isZoomedIn = true;
                 }

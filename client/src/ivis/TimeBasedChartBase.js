@@ -17,7 +17,7 @@ import * as dateMath from "../lib/datemath";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {AreZoomTransformsEqual, setZoomTransform, transitionInterpolate, WheelDelta} from "./common";
+import {AreZoomTransformsEqual, ConfigDifference, setZoomTransform, transitionInterpolate, WheelDelta} from "./common";
 import * as d3Zoom from "d3-zoom";
 
 export function createBase(base, self) {
@@ -94,14 +94,7 @@ export const RenderStatus = {
     NO_DATA: 1
 };
 
-
-
-export const ConfigDifference = {
-    // We assume here order from the most benign to the worst
-    NONE: 0,
-    RENDER: 1,
-    DATA: 2
-};
+export {ConfigDifference} from "./common";
 
 function compareConfigs(conf1, conf2, customComparator) {
     let diffResult = ConfigDifference.NONE;
