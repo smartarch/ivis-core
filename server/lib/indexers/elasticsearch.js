@@ -20,6 +20,8 @@ const {query} = require('./elasticsearch-query');
 const insertBatchSize = 1000;
 
 const indexerExec = em.get('indexer.elasticsearch.exec', path.join(__dirname, '..', '..', 'services', 'indexer-elasticsearch.js'));
+const indexer = require('./elasticsearch-common');
+const knex = require('../../lib/knex');
 
 const events = require('events');
 const emitter = new events.EventEmitter();
@@ -72,8 +74,21 @@ async function init() {
 
     const sigSets = await signalSets.list();
     for (const sigSet of sigSets) {
+        // TODO non existing indices for computed singal sets are not handled yet
+        // it might cause problems. For example when clearing indices, starting ivis, jobs might expect index to exits.
         if (sigSet.type !== SignalSetType.COMPUTED) {
             await signalSets.index(contextHelpers.getAdminContext(), sigSet.id, IndexMethod.INCREMENTAL);
+        } else {
+            const indexName = getIndexName(sigSet);
+            const exists = await elasticsearch.indices.exists({
+                index: indexName
+            });
+            if (!exists) {
+                await knex.transaction(async tx => {
+                    const signalByCidMap = await signalSets.getSignalByCidMapTx(tx, sigSet);
+                    await indexer.createIndex(sigSet, signalByCidMap);
+                });
+            }
         }
     }
 }

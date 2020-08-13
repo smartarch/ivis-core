@@ -52,8 +52,7 @@ if (Object.freeze) {
 
 const TaskSource = {
     USER: 'user',
-    BUILTIN: 'builtin',
-    BUILTIN_ADJACENT: 'builtin_adjacent'
+    BUILTIN: 'builtin'
 };
 
 if (Object.freeze) {

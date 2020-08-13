@@ -17,6 +17,8 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import interoperableErrors
     from "../../../shared/interoperable-errors";
 
+import {SUBSTITUTE_TS_SIGNAL} from "../../../shared/signal-sets";
+
 // How many aggregationIntervals before and after an absolute interval is search for prev/next values. This is used only in aggregations to avoid unnecessary aggregations.
 const prevNextSize = 100;
 const docsLimitDefault = 1000;
@@ -31,6 +33,9 @@ export function forAggs(signals, fn) {
     return result;
 }
 
+function getTsSignalCid(signalSet) {
+    return signalSet.tsSigCid || SUBSTITUTE_TS_SIGNAL;
+}
 
 export const TimeSeriesPointType = {
     LTE: 'lte',
@@ -132,7 +137,7 @@ class DataAccess {
 
         for (const sigSetCid in sigSets) {
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = getTsSignalCid(sigSet);
 
             const qry = {
                 sigSetCid,
@@ -201,7 +206,8 @@ class DataAccess {
         for (const sigSetCid in sigSets) {
             const sigSetRes = responseData[idx];
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            // When using time series, and tsSigCId is not specified, we get ts cid by server
+            const tsSig = sigSet.tsSigCid || sigSetRes.tsSigCid;
 
             if (sigSetRes.docs.length > 0) {
                 const doc = sigSetRes.docs[0];
@@ -239,10 +245,15 @@ class DataAccess {
 
         for (const sigSetCid in sigSets) {
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = getTsSignalCid(sigSet);
+
+            const queryBase = {
+                sigSetCid,
+                substitutionOpts: sigSet.substitutionOpts
+            };
 
             const prevQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -251,7 +262,7 @@ class DataAccess {
             };
 
             const mainQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -261,7 +272,7 @@ class DataAccess {
             };
 
             const nextQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -382,7 +393,7 @@ class DataAccess {
             const sigSetResNext = responseData[idx + 2];
 
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = sigSet.tsSigCid || sigSetResMain.tsSigCid;
 
             const processDoc = doc => {
                 const data = {};
@@ -523,7 +534,7 @@ class DataAccess {
 
         for (const sigSetCid in sigSets) {
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = getTsSignalCid(sigSet);
 
             const qry = {
                 sigSetCid,
@@ -558,7 +569,6 @@ class DataAccess {
     }
 
 
-
     /*
       signals = [ sigCid1, sigCid2 ],
       metrics: { [sigCid]: ['min', 'max', 'avg', 'sum'] }    // additional metrics for each bucket, same format as signals in summary query
@@ -576,10 +586,10 @@ class DataAccess {
 
         let bucketGroups = {};
         signals.map((sigCid, index) => {
-           bucketGroups[sigCid + ":" + index] = {
-               maxBucketCount: maxBucketCounts[index],
-               minStep: minSteps[index]
-           };
+            bucketGroups[sigCid + ":" + index] = {
+                maxBucketCount: maxBucketCounts[index],
+                minStep: minSteps[index]
+            };
         });
 
         const qry = {

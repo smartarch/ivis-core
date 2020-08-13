@@ -20,6 +20,17 @@ if (Object.freeze) {
 
 const AllSignalTypes = new Set(Object.values(SignalType));
 
+function isAggregatedType(type) {
+    return [SignalType.DOUBLE, SignalType.FLOAT, SignalType.INTEGER, SignalType.LONG].includes(type);
+}
+
+/**
+ * Naming usage needs to be consistent between aggregation creating job and query processor
+ */
+function getSigCidForAggSigStat (aggSigCid, stat){
+    return `_${aggSigCid}_${stat}`;
+}
+
 const SignalSource = {
     RAW: 'raw',
     DERIVED: 'derived',
@@ -40,7 +51,6 @@ const typesMap = {
     [SignalSource.RAW]: [
         ...AllSignalTypes
     ],
-    // TODO check job types requirements
     [SignalSource.JOB]: [
         ...AllSignalTypes
     ],
@@ -70,7 +80,7 @@ const serializeToDb = {
     [SignalType.BOOLEAN]: x => x,
     [SignalType.KEYWORD]: x => x,
     [SignalType.TEXT]: x => x,
-    [SignalType.DATE_TIME]: x => moment(x).format('YYYY-MM-DD HH:mm:ss.SSS')
+    [SignalType.DATE_TIME]: x => moment(x).utc().format('YYYY-MM-DD HH:mm:ss.SSS')
 };
 
 
@@ -95,5 +105,7 @@ module.exports = {
     IndexingStatus,
     IndexMethod,
     deserializeFromDb,
-    serializeToDb
+    serializeToDb,
+    isAggregatedType,
+    getSigCidForAggSigStat
 };

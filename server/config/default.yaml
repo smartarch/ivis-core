@@ -86,6 +86,7 @@ log:
 tasks:
   # time between all job's time triggers check in seconds
   checkInterval: 10
+  # How long should be run logs kept for in days
   runLogRetentionTime: 1
   python:
     # On Centos7 with SCL use: scl enable rh-python36 -- python3 -m venv

@@ -1,7 +1,7 @@
 'use strict';
 
 import React from "react";
-import {CheckBox, DatePicker, InputField} from "../../lib/form";
+import {CheckBox, DateTimePicker, InputField} from "../../lib/form";
 import moment from "moment";
 
 const { SignalType, SignalSource } = require('../../../../shared/signals');
@@ -71,7 +71,7 @@ export default class FieldTypes {
                 }
             },
             render: (sigSpec, self, formId) =>
-                <DatePicker
+                <DateTimePicker
                     key={sigSpec.cid}
                     id={formId}
                     label={sigSpec.name}

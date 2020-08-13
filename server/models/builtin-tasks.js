@@ -22,11 +22,16 @@ const aggregationTask = {
             "signalSetRef": "signalSet",
             "label": "Timestamp signal",
             "help": "Timestamp for aggregation"
+        },{
+            "id": "offset",
+            "type": "string",
+            "label": "Offset",
+            "help": "Since when should aggregation be done"
         }, {
             "id": "interval",
-            "type": "number",
+            "type": "string",
             "label": "Interval",
-            "help": "Bucket interval in seconds"
+            "help": "Bucket interval"
         }],
         code: `from ivis import ivis
 
@@ -40,9 +45,9 @@ sig_set_cid = params['signalSet']
 sig_set = entities['signalSets'][sig_set_cid]
 ts = entities['signals'][sig_set_cid][params['ts']]
 interval = params['interval']
-#offset = params['offset']
+offset = params['offset']
 
-agg_set_cid =  f"aggregation_{interval}s_{sig_set_cid}"
+agg_set_cid =  f"aggregation_{interval}_{sig_set_cid}"
 
 numeric_signals = { cid: signal for (cid,signal) in entities['signals'][sig_set_cid].items() if (signal['type'] in ['integer','long','float','double']) }
 
@@ -62,12 +67,13 @@ if state is None or state.get(agg_set_cid) is None:
     }
     signals.append(signal_base)
   
-    for stat in ['min', 'max', 'count']:
+  # Cid is important it is used in the system to identify related signals
+    for stat in ['min', 'max', 'count', 'sum']:
       signal = signal_base.copy()
       signal.update({
-        "cid": f"{signal_base['cid']}_{stat}",
+        "cid": f"_{signal_base['cid']}_{stat}",
         "name": f"{stat} of {signal_base['cid']}",
-        "description": f"Stat {stat} for aggregation of signal {signal_base['cid']}"
+        "description": f"Stat {stat} for aggregation of signal '{signal_base['cid']}'"
       })
       signals.append(signal)
 
@@ -85,7 +91,7 @@ if state is None or state.get(agg_set_cid) is None:
     agg_set_cid,
     ns,
     agg_set_cid,
-    f"aggregation with interval {interval}s for signal set {sig_set_cid}",
+    f"aggregation with interval '{interval}' for signal set '{sig_set_cid}'",
     None,
     signals)
     
@@ -94,34 +100,49 @@ if state is None or state.get(agg_set_cid) is None:
   
 if state is not None and state.get('last') is not None:
   last = state['last']
-  query_content = {
-    "range" : {
-      ts['field'] : {
+  filter = {
+    "range": {
+      ts['field']: {
         "gte" : last
       }
     }
   }
-  
+
   es.delete_by_query(index=state[agg_set_cid]['index'], body={
     "query": { 
       "match": {
         state[agg_set_cid]['fields']['ts']: last
       }
-    }}
-  )
+    }
+  })
   
 else:
-  query_content = {'match_all': {}}
+  if offset is not None:
+    filter = {
+      "range": {
+        ts['field']: {
+          "gte": offset,
+          "format":  "yyyy-MM-dd HH:mm:ss"
+        }
+      }
+    } 
+  else:
+    filter = {'match_all': {}}
 
+query_content = {
+  "bool": {
+    "filter": filter
+  }
+}
 
-avg_aggs = {}
+stat_aggs = {}
 for cid, signal in numeric_signals.items():
-  avg_aggs[cid] = {
-            "stats": {
-              "field": signal['field']
-            }
-          }
-          
+  stat_aggs[cid] = {
+    "stats": {
+      "field": signal['field']
+    }
+  }
+ 
 # interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
 query = {
   'size': 0,
@@ -130,9 +151,9 @@ query = {
     "sig_set_aggs": {
       "date_histogram": {
         "field": ts['field'],
-        "interval": f"{interval}s"
+        "interval": interval
       },
-      "aggs": avg_aggs
+      "aggs": stat_aggs
     }
   }
 }
@@ -143,10 +164,11 @@ for hit in res['aggregations']['sig_set_aggs']['buckets']:
   last = hit['key_as_string']
   doc = {}
   for cid in numeric_signals.keys():
-    doc[state[agg_set_cid]['fields'][f"{cid}_min"]]= hit[cid]['min']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_min"]]= hit[cid]['min']
     doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['avg']
-    doc[state[agg_set_cid]['fields'][f"{cid}_max"]]= hit[cid]['max']
-    doc[state[agg_set_cid]['fields'][f"{cid}_count"]]= hit[cid]['count']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_max"]]= hit[cid]['max']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_count"]]= hit[cid]['count']
+    doc[state[agg_set_cid]['fields'][f"_{cid}_sum"]]= hit[cid]['sum']
   
   doc[state[agg_set_cid]['fields'][ts['cid']]] = last
   res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
