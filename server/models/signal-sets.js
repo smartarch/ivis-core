@@ -600,7 +600,7 @@ async function queryTx(tx, context, queries) {
                 const sig = signalMap[signals[i]];
                 if (!sig) {
                     log.verbose(`unknown signal ${sigSet.cid}.${signals[i]}`);
-                    shares.throwPermissionDenied();
+                    shares.throwPermissionDenied(signals[i]);
                 }
 
                 // Can't mix aggregated types with non
