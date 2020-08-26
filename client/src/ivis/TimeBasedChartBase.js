@@ -531,7 +531,7 @@ export class TimeBasedChartBase extends Component {
         if (!this.state.signalSetsData) {
             return (
                 <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
-                    <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                    <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px" fill="currentColor">
                         {this.state.statusMsg}
                     </text>
                 </svg>
@@ -580,7 +580,7 @@ export class TimeBasedChartBase extends Component {
                     <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                     <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>
                     <text textAnchor="middle" x="50%" y="50%"
-                          fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                          fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px" fill="currentColor">
                         {this.state.statusMsg}
                     </text>
                     {this.props.withTooltip &&

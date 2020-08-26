@@ -3,6 +3,11 @@
   border-radius: 2px;
   background: #E6E9ED;
 
+  &.dark {
+    color: white;
+    background: #545457;
+  }
+
   :global .glyphicon {
     // This is a FIX for Chrome. It goes nuts when one enlarges the zoom level with ctrl-wheel. The elements which are
     // in a foreign object with position: relative suddenly start behaving as if there was no zoom.

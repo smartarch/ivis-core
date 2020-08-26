@@ -3,8 +3,12 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import styles from "./Tooltip.scss";
+import {ThemeContext} from "../lib/theme-context";
+import {Theme} from "../../../shared/themes"
 
 export class Tooltip extends Component {
+    static contextType = ThemeContext;
+
     constructor(props) {
         super(props);
 
@@ -68,10 +72,17 @@ export class Tooltip extends Component {
                 content = this.props.contentRender(contentProps);
             }
 
+            let cls = styles.tooltip;
+
+            let theme = this.context;
+            if (theme === Theme.DARK){
+                cls = cls + ` ${styles.dark}`;
+            }
+
             return (
                 <g transform={`translate(${x}, ${y})`}>
                     <foreignObject requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility" width={this.props.width} height={this.state.height}>
-                        <div ref={node => this.tooltipNode = node} className={styles.tooltip}>
+                        <div ref={node => this.tooltipNode = node} className={cls}>
                             {content}
                         </div>
                     </foreignObject>
