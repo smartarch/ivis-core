@@ -83,7 +83,11 @@ const serializeToDb = {
     [SignalType.KEYWORD]: x => x,
     [SignalType.TEXT]: x => x,
     [SignalType.DATE_TIME]: x => moment(x).utc().format('YYYY-MM-DD HH:mm:ss.SSS'),
-    [SignalType.JSON]: x => JSON.stringify(x),
+    [SignalType.JSON]: x => {
+        if (typeof x !== "object" || Array.isArray(x)) // arrays and simple types are not indexed properly as 'object' datatype in ES (arrays inside object are fine)
+            throw new TypeError("Only JSON objects are allowed.")
+        return JSON.stringify(x)
+    },
 };
 
 

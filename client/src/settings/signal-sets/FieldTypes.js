@@ -88,7 +88,9 @@ export default class FieldTypes {
                 const val = state.getIn([formId, 'value']);
 
                 try {
-                    JSON.parse(val);
+                    const o = JSON.parse(val);
+                    if (typeof o !== "object" || Array.isArray(o))
+                        throw SyntaxError("Only JSON objects are allowed.");
                 }
                 catch (e) {
                     if (e instanceof SyntaxError) {
@@ -97,7 +99,7 @@ export default class FieldTypes {
                     else throw e;
                 }
             },
-            render: (sigSpec, self, formId) => <ACEEditor key={sigSpec.cid} id={formId} label={sigSpec.name} mode={"json"} />,
+            render: (sigSpec, self, formId) => <ACEEditor key={sigSpec.cid} id={formId} label={sigSpec.name} mode={"json"} height={100} />,
             getSignal: (sigSpec, data, formId) => data[formId] === '' ? null : JSON.parse(data[formId]),
             populateFields: (sigSpec, data, value, formId) => data[formId] = value === null ? '' : JSON.stringify(value)
         };
