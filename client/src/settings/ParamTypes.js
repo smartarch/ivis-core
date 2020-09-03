@@ -90,6 +90,20 @@ export default class ParamTypes {
             setFields: setStringFieldFromParam,
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
+                if (mode === "json") {
+                    const formId = this.getParamFormId(prefix, spec.id);
+                    const val = state.getIn([formId, 'value']);
+
+                    try {
+                        JSON.parse(val);
+                    }
+                    catch (e) {
+                        if (e instanceof SyntaxError) {
+                            state.setIn([formId, 'error'], t('Please enter a valid JSON.') + " (" + e.message + ")");
+                        }
+                        else throw e;
+                    }
+                }
             },
             render: (self, prefix, spec) => <ACEEditor key={spec.id} id={this.getParamFormId(prefix, spec.id)}
                                                        label={spec.label} help={spec.help} mode={mode}
