@@ -295,7 +295,14 @@ export default class ParamTypes {
                     {data: 6, title: t('Namespace')}
                 ];
 
-                let dataUrl, data;
+                // filter by type of signal
+                let filterByType;
+                if (spec.signalType)
+                    if (Array.isArray(spec.signalType))
+                        filterByType = data => data.filter(d => spec.signalType.includes(d[4]));
+                    else
+                        filterByType = data => data.filter(d => d[4] === spec.signalType);
+
                 if (signalSetCid) {
                     return <TableSelect
                         key={spec.id}
@@ -308,8 +315,8 @@ export default class ParamTypes {
                         selectMode={card.max === 1 ? TableSelectMode.SINGLE : TableSelectMode.MULTI}
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
-                        data={data}
                         dataUrl={`rest/signals-table-by-cid/${signalSetCid}`}
+                        dataFilter={filterByType}
                     />;
                 } else {
                     return <AlignedRow key={spec.id}>
