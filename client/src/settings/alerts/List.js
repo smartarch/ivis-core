@@ -45,8 +45,9 @@ export default class List extends Component {
         const columns = [
             { data: 1, title: t('Name') },
             { data: 2, title: t('Description') },
-            { data: 3, title: t('Created') },
-            { data: 4, title: t('Namespace') },
+            { data: 3, title: t('Enabled')},
+            { data: 4, title: t('Created') },
+            { data: 5, title: t('Namespace') },
         ];
 
         return (

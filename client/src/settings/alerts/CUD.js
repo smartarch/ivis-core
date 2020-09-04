@@ -53,23 +53,14 @@ export default class CUD extends Component {
         this.initForm();
     }
 
-    static propTypes = {
-        action: PropTypes.string.isRequired,
-        workspacesVisible: PropTypes.array,
-        entity: PropTypes.object
-    }
+    static propTypes = { }
 
     componentDidMount() {
         if (this.props.entity) {
             this.getFormValuesFromEntity(this.props.entity);
-
         } else {
             this.populateFormValues({
-                name: '',
-                description: '',
-                default_panel: null,
-                namespace: ivisConfig.user.namespace,
-                orderBefore: 'end'
+                namespace: ivisConfig.user.namespace
             });
         }
     }
@@ -83,21 +74,58 @@ export default class CUD extends Component {
             state.setIn(['name', 'error'], null);
         }
 
+        if (!state.getIn(['sigset', 'value'])) {
+            state.setIn(['sigset', 'error'], t('Signal Set must not be empty'));
+        } else {
+            state.setIn(['sigset', 'error'], null);
+        }
+
+        if (!state.getIn(['duration', 'value']) || isNaN(state.getIn(['duration', 'value'])) || state.getIn(['duration', 'value']) < 0) {
+            state.setIn(['duration', 'error'], t('This value must be a non-negative number'));
+        } else {
+            state.setIn(['duration', 'error'], null);
+        }
+
+        if (!state.getIn(['delay', 'value']) || isNaN(state.getIn(['delay', 'value'])) || state.getIn(['delay', 'value']) < 0) {
+            state.setIn(['delay', 'error'], t('This value must be a non-negative number'));
+        } else {
+            state.setIn(['delay', 'error'], null);
+        }
+
+        if (state.getIn(['interval', 'value']) && (isNaN(state.getIn(['interval', 'value'])) || state.getIn(['interval', 'value']) < 0)) {
+            state.setIn(['interval', 'error'], t('This value must be a non-negative number or empty'));
+        } else {
+            state.setIn(['interval', 'error'], null);
+        }
+
+        if (state.getIn(['repeat', 'value']) && (isNaN(state.getIn(['repeat', 'value'])) || state.getIn(['repeat', 'value']) < 0)) {
+            state.setIn(['repeat', 'error'], t('This value must be a non-negative number or empty'));
+        } else {
+            state.setIn(['repeat', 'error'], null);
+        }
+
         validateNamespace(t, state);
     }
 
     getFormValuesMutator(data) {
-        data.orderBefore = data.orderBefore.toString();
+        //data.orderBefore = data.orderBefore.toString();
     }
 
     submitFormValuesMutator(data) {
-        data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
         return filterData(data, [
             'name',
             'description',
-            'default_panel',
+            'sigset',
+            'duration',
+            'delay',
+            'interval',
+            'condition',
+            'emails',
+            'phones',
+            'repeat',
+            'finalnotification',
+            'enabled',
             'namespace',
-            'orderBefore'
         ]);
     }
 
@@ -111,7 +139,7 @@ export default class CUD extends Component {
             url = `rest/workspaces/${this.props.entity.id}`
         } else {
             sendMethod = FormSendMethod.POST;
-            url = 'rest/workspaces'
+            url = 'rest/alerts'
         }
 
         try {
@@ -123,7 +151,7 @@ export default class CUD extends Component {
             if (submitResult) {
                 if (this.props.entity) {
                     if (submitAndLeave) {
-                        this.navigateToWithFlashMessage('/settings/workspaces', 'success', t('Workspace updated'));
+                        this.navigateToWithFlashMessage('/settings/alerts', 'success', t('Workspace updated'));
                     } else {
                         await this.getFormValuesFromURL(`rest/workspaces/${this.props.entity.id}`);
                         this.enableForm();
@@ -131,7 +159,7 @@ export default class CUD extends Component {
                     }
                 } else {
                     if (submitAndLeave) {
-                        this.navigateToWithFlashMessage('/settings/workspaces', 'success', t('Workspace saved'));
+                        this.navigateToWithFlashMessage('/settings/alerts', 'success', t('Workspace saved'));
                     } else {
                         this.navigateToWithFlashMessage(`/settings/workspaces/${submitResult}/edit`, 'success', t('Workspace saved'));
                     }
@@ -150,46 +178,12 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
-        const actionOptions = [
-            {key: 'nan', label: t('Ignore')},
-            {key: 'register', label: t('Register')},
-            {key: 'email', label: t('Send email')},
-            {key: 'sms', label: t('Send SMS')}
-        ];
-
-        const orderOptions = [
-            {key: 'none', label: t('Not visible')},
-            ...this.props.workspacesVisible.filter(x => !this.props.entity || x.id !== this.props.entity.id).map(x => ({
-                key: x.id.toString(),
-                label: x.name
-            })),
-            {key: 'end', label: t('End of list')}
-        ];
-
-        const panelColumns = [
-            {data: 1, title: t('#')},
-            {data: 2, title: t('Name')},
-            {data: 3, title: t('Description')},
-            {
-                data: 4,
-                title: t('Template'),
-                render: (data, cmd, rowData) => data !== null ? data : getBuiltinTemplateName(rowData[5], t),
-                orderable: false
-            },
-            {data: 6, title: t('Created'), render: data => moment(data).fromNow()}
-        ];
-
         const sigSetColumns = [
-            {data: 1, title: t('Id')},
-            {data: 2, title: t('Name')},
-            {data: 3, title: t('Description')},
-            {data: 4, title: t('Status')},
-            {data: 5, title: t('Created'), render: data => moment(data).fromNow()}
-        ];
-        const taskColumns = [
-            {data: 1, title: t('Name')},
-            {data: 2, title: t('Description')},
-            {data: 4, title: t('Created'), render: data => moment(data).fromNow()}
+            { data: 1, title: t('Id') },
+            { data: 2, title: t('Name') },
+            { data: 3, title: t('Description') },
+            { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
+            { data: 7, title: t('Namespace') }
         ];
 
         return (
@@ -208,23 +202,17 @@ export default class CUD extends Component {
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                    <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/templates-table" columns={sigSetColumns} selectionLabelIndex={1}/>
-                    <InputField id="duration" label={t('Duration (minutes)')}/>
-                    <InputField id="delay" label={t('Delay (minutes)')}/>
-                    <InputField id="interval" label={t('Maximum interval (minutes)')}/>
-                    <TextArea id="condition" label={t('Condition')}/>
-                    <Dropdown id="action" label={t('Action')} options={actionOptions} />
-                    <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table" columns={taskColumns} selectionLabelIndex={1}/>
+                    <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2}/>
+                    <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
+                    <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
+                    <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes or leave empty!')}/>
+                    <TextArea id="condition" label={t('Condition')} help={t('If this condition is satisfied, the data from sensors are unsuitable.')}/>
+                    <TextArea id="emails" label={t('Email addresses')} help={t('Email addresses for notifications, one per line!')}/>
+                    <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line!')}/>
+                    <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes or leave empty!')}/>
+                    <CheckBox id="finalnotification" text={t('Issue a notification when the triggered alert is revoked')}/>
                     <CheckBox id="enabled" text={t('Enabled')}/>
-                    {isEdit &&
-                    <TableSelect id="default_panel" label={t('Default panel')} withHeader dropdown
-                                 dataUrl={`rest/panels-table/${this.props.entity.id}`} columns={panelColumns}
-                                 selectionLabelIndex={2}/>
-                    }
                     <NamespaceSelect/>
-                    <Dropdown id="orderBefore" label={t('Order (before)')} options={orderOptions}
-                              help={t('Select the alert before which this alert should appear in the menu. To exclude the alert from listings, select "Not visible".')}/>
-
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}

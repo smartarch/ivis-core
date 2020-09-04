@@ -49,7 +49,7 @@ export default class Sidebar extends Component {
             settings.push(<NavLink key='signalSets' to="/settings/signal-sets" icon="chart-line">{!em.get('settings.signalSetsAsSensors', false) ? t('Signal Sets') : t('Sensors')}</NavLink>);
 
         if (true)
-            settings.push(<NavLink key='alerts' to="/settings/alerts" icon="sitemap">{t('Alerts')}</NavLink>);
+            settings.push(<NavLink key='alerts' to="/settings/alerts" icon="bell">{t('Alerts')}</NavLink>);
 
         return (
             <>
