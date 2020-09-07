@@ -223,7 +223,6 @@ export default class ParamTypes {
                                                       label={spec.label} help={spec.help} options={spec.options}/>,
             upcast: (spec, value) => ensureOption(spec.options, value)
         };
-MM
 
         this.paramTypes.color = {
             adopt: (prefix, spec, state) => {
