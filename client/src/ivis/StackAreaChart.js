@@ -17,15 +17,6 @@ import tooltipStyles
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 
-function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
-    const val = signalData.avg //? 'ON' : 'OFF';
-
-    const unit = sigConf.unit;
-
-    return (
-        <span className={tooltipStyles.signalVal}>{val} {unit}</span>
-    );
-}
 
 @withComponentMixins([
     withTranslation
@@ -55,6 +46,8 @@ export class StackAreaChart extends Component {
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
         lineCurve: PropTypes.func,
+        signalAgg: PropTypes.string,
+        prepareData: PropTypes.func
     }
 
     static defaultProps = {
@@ -62,10 +55,15 @@ export class StackAreaChart extends Component {
         height: 500,
         withTooltip: true,
         withBrush: true,
-        lineCurve: d3Shape.curveLinear
+        lineCurve: d3Shape.curveLinear,
+        signalAgg: 'avg'
     }
 
     prepareData(base, signalSetsData, extraData) {
+        if (this.props.prepareData) {
+            this.props.prepareData(base, signalSetsData, extraData);
+        }
+
         const data = signalSetsData;
 
         const signalSetsReverse = this.props.config.signalSets.slice().reverse();
@@ -76,8 +74,8 @@ export class StackAreaChart extends Component {
             const changeData = data => {
                 let accumulator = 0;
                 for (const sigSpec of signalsReverse) {
-                    accumulator += data[sigSpec.cid].avg;
-                    data[sigSpec.cid].acc = data[sigSpec.cid].avg ? accumulator : 0;
+                    accumulator += data[sigSpec.cid][this.props.signalAgg];
+                    data[sigSpec.cid]._stackAccumulator = data[sigSpec.cid][this.props.signalAgg] ? accumulator : 0;
                 }
             };
 
@@ -109,7 +107,7 @@ export class StackAreaChart extends Component {
                         const minMaxArea = d3Shape.area()
                             .x(d => xScale(d.ts))
                             .y0(d => yScale(0))
-                            .y1(d => yScale(d.data[sigCid].acc))
+                            .y1(d => yScale(d.data[sigCid]._stackAccumulator))
                             .curve(this.props.lineCurve);
 
                         const minMaxAreaColor = rgb(sigConf.color);
@@ -132,18 +130,28 @@ export class StackAreaChart extends Component {
     render() {
         const props = this.props;
 
-        for (const sigSetConf of props.config.signalSets) {
-            this.areaPathSelection[sigSetConf.cid] = {};
+        function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
+            const val = signalData[this.props.signalAgg];
+
+            const unit = sigConf.unit;
+
+            return (
+                <span className={tooltipStyles.signalVal}>{val} {unit}</span>
+            );
         }
+
+            for (const sigSetConf of props.config.signalSets) {
+                this.areaPathSelection[sigSetConf.cid] = {};
+            }
 
         return (
             <LineChartBase
                 config={props.config}
                 height={props.height}
                 margin={props.margin}
-                signalAggs={['avg']}
-                lineAgg="avg"
-                getSignalValuesForDefaultTooltip={getSignalValuesForDefaultTooltip}
+                signalAggs={[props.signalAgg]}
+                lineAgg={props.signalAgg}
+                getSignalValuesForDefaultTooltip={getSignalValuesForDefaultTooltip.bind(this)}
                 prepareData={this.boundPrepareData}
                 createChart={this.boundCreateChart}
                 getSignalGraphContent={(base, sigSetCid, sigCid) => <path
@@ -158,6 +166,7 @@ export class StackAreaChart extends Component {
                 getLineColor={color => color.darker()}
                 lineVisibility={lineWithoutPoints}
                 lineCurve={props.lineCurve}
+                withZoom={true}
             />
         );
     }

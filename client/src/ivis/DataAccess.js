@@ -973,16 +973,18 @@ export class TimeSeriesLimitedPointsProvider extends Component {
                 },
             ];
 
-            queries.push({type: 'docs', args: [sigSetCid, signals, filter, sort, this.props.limit] });
+            queries.push({type: 'docs', args: [sigSetCid, signals, filter, sort, this.props.limit]});
         }
 
         const results = await dataAccessSession.getLatestMixed(queries);
 
         const data = {};
 
-        results.forEach((result, i) => {
-            data[sigSets[i]] = result;
-        })
+        if (results) {
+            results.forEach((result, i) => {
+                data[sigSets[i]] = result;
+            })
+        }
 
         return data;
     }
