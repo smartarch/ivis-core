@@ -7,6 +7,7 @@ import {
     Button,
     CheckBox,
     ColorPicker,
+    Dropdown,
     Fieldset,
     InputField,
     TableSelect,
