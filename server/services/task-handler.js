@@ -287,39 +287,54 @@ async function getEntitiesFromParams(job, jobParams, taskParams) {
                         throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
                     }
 
-                    const signalCid = jobParamsSpec[param.id];
-                    if (!signalCid) {
+                    let signalCids = jobParamsSpec[param.id];
+
+                    if (!signalCids) {
                         throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
                     }
 
-                    if (entities.signals[signalSetCid]) {
-                        if (entities.signals[signalSetCid][signalCid]) {
-                            // info already stored
-                            continue;
+                    // Single select
+                    if (!Array.isArray(signalCids)) {
+                        signalCids = [signalCids];
+                    }
+
+                    for (const signalCid of signalCids) {
+                        if (entities.signals[signalSetCid]) {
+                            if (entities.signals[signalSetCid][signalCid]) {
+                                // info already stored
+                                continue;
+                            }
+                        } else {
+                            entities.signals[signalSetCid] = {};
                         }
-                    } else {
-                        entities.signals[signalSetCid] = {};
+
+                        const signalSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                        if (!signalSet) {
+                            throw new Error(`Signal set with cid ${param.cid} not found.`);
+                        }
+
+
+                        const signal = await knex('signals').where({cid: signalCid, set: signalSet.id}).first();
+                        if (!signal) {
+                            throw new Error(`Signal with cid ${signalCid} in set ${signalSet.id} not found.`);
+                        }
+
+                        entities.signals[signalSetCid][signalCid] = getSignalEntitySpec(signal);
                     }
-
-                    const signalSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                    if (!signalSet) {
-                        throw new Error(`Signal set with cid ${param.cid} not found.`);
-                    }
-
-
-                    const signal = await knex('signals').where({cid: signalCid, set: signalSet.id}).first();
-                    if (!signal) {
-                        throw new Error(`Signal with cid ${signalCid} in set ${signalSet.id} not found.`);
-                    }
-
-                    entities.signals[signalSetCid][signalCid] = getSignalEntitySpec(signal);
                     break;
                 }
 
                 case 'fieldset': {
                     if (param.children) {
                         let idx = 0;
-                        for (const child of jobParamsSpec[param.id]) {
+
+                        let jobParamSpec = jobParamsSpec[param.id];
+
+                        if (!Array.isArray(jobParamSpec)) {
+                            jobParamSpec = [jobParamSpec];
+                        }
+
+                        for (const child of jobParamSpec) {
                             await loadFromParams(getFieldsetPrefix(prefix, param, idx), child, param.children);
                             idx++;
                         }
@@ -1184,7 +1199,7 @@ async function runTimeTriggers() {
 
         if (jobs) {
             for (let i = 0; i < jobs.length; i++) {
-                    await runTimeTrigger(jobs[i]).catch(logErr);
+                await runTimeTrigger(jobs[i]).catch(logErr);
             }
         }
         startIfNotRunning();
