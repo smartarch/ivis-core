@@ -40,5 +40,4 @@ router.postAsync('/workspaces-table', passport.loggedIn, async (req, res) => {
     return res.json(await workspaces.listDTAjax(req.context, req.body));
 });
 
-
 module.exports = router;

@@ -73,56 +73,23 @@ async function listDTAjax(context, params) {
     );
 }
 
-async function _sortIn(tx, entityId, sortInBefore) {
-    const ws = await tx('workspaces').whereNot('id', entityId).whereNotNull('order').orderBy('order', 'asc');
-
-    const order = {};
-
-    let sortedIn = false;
-    let idx = 1;
-    for (const row of ws) {
-        if (sortInBefore === row.id) {
-            order[entityId] = idx;
-            sortedIn = true;
-            idx += 1;
-        }
-
-        order[row.id] = idx;
-        idx += 1;
-    }
-
-    if (!sortedIn && sortInBefore !== 'none') {
-        order[entityId] = idx;
-    }
-
-    for (const id in order) {
-        await tx('workspaces').where('id', id).update({order: order[id]});
-    }
-}
-
 async function _validateAndPreprocess(tx, context, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
-
-    if (entity.default_panel) {
-        await shares.enforceEntityPermissionTx(tx, context, 'panel', entity.default_panel, 'view');
-    }
 }
 
 
 async function create(context, entity) {
     return await knex.transaction(async tx => {
-        //await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createWorkspace');
+        await shares.enforceEntityPermissionTx(tx, context, 'namespace', entity.namespace, 'createAlert');
 
-        //await _validateAndPreprocess(tx, context, entity, true);
+        await _validateAndPreprocess(tx, context, entity, true);
 
         const filteredEntity = filterObject(entity, allowedKeys);
 
         const ids = await tx('alerts').insert(filteredEntity);
         const id = ids[0];
 
-        //await _sortIn(tx, id, entity.orderBefore);
-
-        //await shares.rebuildPermissionsTx(tx, { entityTypeId: 'workspace', entityId: id });
+        await shares.rebuildPermissionsTx(tx, { entityTypeId: 'alert', entityId: id });
 
         return id;
     });
