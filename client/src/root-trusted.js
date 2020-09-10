@@ -286,24 +286,24 @@ const getStructure = t => {
                         link: '/settings/alerts',
                         panelComponent: AlertsList,
                         children: {
-                            ':templateId([0-9]+)': {
-                                title: resolved => t('Template "{{name}}"', {name: resolved.template.name}),
+                            ':alertId([0-9]+)': {
+                                title: resolved => t('Alert "{{name}}"', {name: resolved.alert.name}),
                                 resolve: {
-                                    template: params => `rest/templates/${params.templateId}`
+                                    alert: params => `rest/alerts/${params.alertId}`
                                 },
-                                link: params => `/settings/templates/${params.templateId}/edit`,
+                                link: params => `/settings/alerts/${params.alertId}/edit`,
                                 navs: {
                                     ':action(edit|delete)': {
                                         title: t('Settings'),
-                                        link: params => `/settings/templates/${params.templateId}/edit`,
-                                        visible: resolved => resolved.template.permissions.includes('edit'),
-                                        panelRender: props => <TemplatesCUD action={props.match.params.action} entity={props.resolved.template} />
+                                        link: params => `/settings/alerts/${params.alertId}/edit`,
+                                        visible: resolved => resolved.alert.permissions.includes('edit'),
+                                        panelRender: props => <AlertsCUD action={props.match.params.action} entity={props.resolved.alert} />
                                     },
                                     share: {
                                         title: t('Share'),
-                                        link: params => `/settings/templates/${params.templateId}/share`,
-                                        visible: resolved => resolved.template.permissions.includes('share'),
-                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.template} entityTypeId="template" />
+                                        link: params => `/settings/alerts/${params.alertId}/share`,
+                                        visible: resolved => resolved.alert.permissions.includes('share'),
+                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.alert} entityTypeId="alert" />
                                     }
                                 }
                             },
