@@ -281,74 +281,35 @@ const getStructure = t => {
                             }
                         }
                     },
-                    alerts: { // based on workspaces
+                    alerts: {
                         title: t('Alerts'),
                         link: '/settings/alerts',
                         panelComponent: AlertsList,
                         children: {
-                            ':workspaceId([0-9]+)': {
-                                title: resolved => t('Workspace "{{name}}"', {name: resolved.workspace.name}),
+                            ':templateId([0-9]+)': {
+                                title: resolved => t('Template "{{name}}"', {name: resolved.template.name}),
                                 resolve: {
-                                    workspace: params => `rest/workspaces/${params.workspaceId}`
+                                    template: params => `rest/templates/${params.templateId}`
                                 },
-                                link: params => `/settings/workspaces/${params.workspaceId}/edit`,
+                                link: params => `/settings/templates/${params.templateId}/edit`,
                                 navs: {
                                     ':action(edit|delete)': {
-                                        title: t('Edit'),
-                                        link: params => `/settings/workspaces/${params.workspaceId}/edit`,
-                                        visible: resolved => resolved.workspace.permissions.includes('edit'),
-                                        panelRender: props => <WorkspacesCUD action={props.match.params.action} entity={props.resolved.workspace} workspacesVisible={props.resolved.workspacesVisible}/>
-                                    },
-                                    panels: {
-                                        title: t('Panels'),
-                                        link: params => `/settings/workspaces/${params.workspaceId}/panels`,
-                                        panelRender: props => <PanelsList workspace={props.resolved.workspace}/>,
-                                        children: {
-                                            ':panelId([0-9]+)': {
-                                                title: resolved => t('Panel "{{name}}"', {name: resolved.panel.name}),
-                                                resolve: {
-                                                    panel: params => `rest/panels/${params.panelId}`
-                                                },
-                                                link: params => `/settings/workspaces/${params.workspaceId}/panels/${params.panelId}/edit`,
-                                                navs: {
-                                                    ':action(edit|delete)': {
-                                                        title: t('Edit'),
-                                                        resolve: {
-                                                            panelsVisible: params => `rest/panels-visible/${params.workspaceId}`
-                                                        },
-                                                        link: params => `/settings/workspaces/${params.workspaceId}/panels/${params.panelId}/edit`,
-                                                        visible: resolved => resolved.panel.permissions.includes('edit'),
-                                                        panelRender: props => <PanelsCUD action={props.match.params.action} entity={props.resolved.panel} workspace={props.resolved.workspace} panelsVisible={props.resolved.panelsVisible}/>
-                                                    },
-                                                    share: {
-                                                        title: t('Share'),
-                                                        link: params => `/settings/workspaces/${params.workspaceId}/panels/${params.panelId}/share`,
-                                                        visible: resolved => resolved.panel.permissions.includes('share'),
-                                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.panel} entityTypeId="panel" />
-                                                    }
-                                                }
-                                            },
-                                            create: {
-                                                title: t('Create'),
-                                                resolve: {
-                                                    panelsVisible: params => `rest/panels-visible/${params.workspaceId}`
-                                                },
-                                                panelRender: props => <PanelsCUD action="create" workspace={props.resolved.workspace} panelsVisible={props.resolved.panelsVisible}/>
-                                            },
-
-                                        }
+                                        title: t('Settings'),
+                                        link: params => `/settings/templates/${params.templateId}/edit`,
+                                        visible: resolved => resolved.template.permissions.includes('edit'),
+                                        panelRender: props => <TemplatesCUD action={props.match.params.action} entity={props.resolved.template} />
                                     },
                                     share: {
                                         title: t('Share'),
-                                        link: params => `/settings/workspaces/${params.workspaceId}/share`,
-                                        visible: resolved => resolved.workspace.permissions.includes('share'),
-                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.workspace} entityTypeId="workspace" />
+                                        link: params => `/settings/templates/${params.templateId}/share`,
+                                        visible: resolved => resolved.template.permissions.includes('share'),
+                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.template} entityTypeId="template" />
                                     }
                                 }
                             },
                             create: {
                                 title: t('Create'),
-                                panelRender: props => <AlertsCUD action="create" workspacesVisible={props.resolved.workspacesVisible}/>
+                                panelRender: props => <AlertsCUD action="create" />
                             }
                         }
                     },

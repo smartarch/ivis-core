@@ -39,15 +39,33 @@ export default class List extends Component {
         tableRestActionDialogInit(this);
     }
 
+    @withAsyncErrorHandler
+    async fetchPermissions() {
+        const result = await checkPermissions({
+            createAlert: {
+                entityTypeId: 'namespace',
+                requiredOperations: ['createAlert']
+            }
+        });
+
+        this.setState({
+            createPermitted: result.data.createAlert
+        });
+    }
+
+    componentDidMount() {
+        this.fetchPermissions();
+    }
+
     render() {
         const t = this.props.t;
 
         const columns = [
-            { data: 1, title: t('Name') },
-            { data: 2, title: t('Description') },
-            { data: 3, title: t('Enabled')},
-            { data: 4, title: t('Created') },
-            { data: 5, title: t('Namespace') },
+            { data: 0, title: t('Name') },
+            { data: 1, title: t('Description') },
+            { data: 2, title: t('Enabled'), render: data => data === 1 ? t('Yes') : t('No') },
+            { data: 3, title: t('Created'), render: data => moment(data).fromNow() },
+            { data: 4, title: t('Namespace') },
         ];
 
         return (
@@ -56,9 +74,8 @@ export default class List extends Component {
                     <Toolbar>
                         <LinkButton to="/settings/alerts/create" className="btn-primary" icon="plus" label={t('Create Alert')}/>
                     </Toolbar>
-                <Table ref={node => this.table = node} withHeader dataUrl="rest/workspaces-table" columns={columns} />
+                <Table ref={node => this.table = node} withHeader dataUrl="rest/alerts-table" columns={columns} />
             </Panel>
         );
     }
 }
-// based on ../workspaces/List.js

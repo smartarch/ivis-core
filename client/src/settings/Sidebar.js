@@ -48,7 +48,7 @@ export default class Sidebar extends Component {
         if (ivisConfig.globalPermissions.showAdminSignalSets)
             settings.push(<NavLink key='signalSets' to="/settings/signal-sets" icon="chart-line">{!em.get('settings.signalSetsAsSensors', false) ? t('Signal Sets') : t('Sensors')}</NavLink>);
 
-        if (true)
+        if (ivisConfig.globalPermissions.showAdminAlerts)
             settings.push(<NavLink key='alerts' to="/settings/alerts" icon="bell">{t('Alerts')}</NavLink>);
 
         return (

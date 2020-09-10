@@ -18,58 +18,22 @@ function hash(entity) {
 
 async function getById(context, id) {
     return await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'workspace', id, 'view');
+        await shares.enforceEntityPermissionTx(tx, context, 'alert', id, 'view');
 
-        const entity = await tx('workspaces').where('id', id).first();
-        entity.permissions = await shares.getPermissionsTx(tx, context, 'workspace', id);
+        const entity = await tx('alerts').where('id', id).first();
+        entity.permissions = await shares.getPermissionsTx(tx, context, 'alert', id);
 
         return entity;
-    });
-}
-
-async function listVisible(context) {
-    return await knex.transaction(async tx => {
-        if (context.user.admin) {
-            return await tx('workspaces')
-                .whereNotNull('order')
-                .orderBy('order', 'asc')
-                .select('id', 'name', 'description', 'default_panel');
-
-        } else {
-            const entityType = entitySettings.getEntityType('workspace');
-
-            const entities = await tx('workspaces')
-                .innerJoin(
-                    function () {
-                        return this.from(entityType.permissionsTable).select('entity').where('user', context.user.id).where('operation', 'view').as('permitted__workspace');
-                    },
-                    'permitted__workspace.entity', 'workspaces.id'
-                )
-                .whereNotNull('order')
-                .orderBy('order', 'asc')
-                .select('id', 'name', 'description', 'default_panel');
-
-            return entities.filter(panel => shares.isAccessibleByRestrictedAccessHandler(context, 'workspace', panel.id, ['view'], 'workspaces.listVisible'));
-        }
     });
 }
 
 async function listDTAjax(context, params) {
     return await dtHelpers.ajaxListWithPermissions(
         context,
-        [{ entityTypeId: 'workspace', requiredOperations: ['view'] }],
+        [{ entityTypeId: 'alert', requiredOperations: ['view'] }],
         params,
-        builder => builder.from('workspaces').innerJoin('namespaces', 'namespaces.id', 'workspaces.namespace'),
-        [ 'workspaces.id', 'workspaces.order', 'workspaces.name', 'workspaces.description', 'workspaces.created', 'namespaces.name', 'workspaces.default_panel' ],
-        {
-            orderByBuilder: (builder, orderColumn, orderDir) => {
-                if (orderColumn === 'workspaces.order') {
-                    builder.orderBy(knex.raw('-workspaces.order'), orderDir === 'asc' ? 'desc' : 'asc') // This is MySQL speciality. It sorts the rows in ascending order with NULL values coming last
-                } else {
-                    builder.orderBy(orderColumn, orderDir)
-                }
-            }
-        }
+        builder => builder.from('alerts').innerJoin('namespaces', 'namespaces.id', 'alerts.namespace'),
+        [ 'alerts.name', 'alerts.description', 'alerts.enabled', 'alerts.created', 'namespaces.name' ]
     );
 }
 
@@ -137,7 +101,6 @@ async function remove(context, id) {
 
 module.exports.hash = hash;
 module.exports.getById = getById;
-module.exports.listVisible = listVisible;
 module.exports.listDTAjax = listDTAjax;
 module.exports.create = create;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
