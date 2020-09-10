@@ -61,9 +61,9 @@ async function create(context, entity) {
 
 async function updateWithConsistencyCheck(context, entity) {
     await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'workspace', entity.id, 'edit');
+        await shares.enforceEntityPermissionTx(tx, context, 'alert', entity.id, 'edit');
 
-        const existing = await tx('workspaces').where('id', entity.id).first();
+        const existing = await tx('alerts').where('id', entity.id).first();
         if (!existing) {
             throw new interoperableErrors.NotFoundError();
         }
@@ -75,15 +75,13 @@ async function updateWithConsistencyCheck(context, entity) {
 
         await _validateAndPreprocess(tx, context, entity, false);
 
-        await namespaceHelpers.validateMove(context, entity, existing, 'workspace', 'createWorkspace', 'delete');
+        await namespaceHelpers.validateMove(context, entity, existing, 'alert', 'createAlert', 'delete');
 
         const filteredEntity = filterObject(entity, allowedKeys);
 
-        await tx('workspaces').where('id', entity.id).update(filteredEntity);
+        await tx('alerts').where('id', entity.id).update(filteredEntity);
 
-        await _sortIn(tx, entity.id, entity.orderBefore);
-
-        await shares.rebuildPermissionsTx(tx, { entityTypeId: 'workspace', entityId: entity.id });
+        await shares.rebuildPermissionsTx(tx, { entityTypeId: 'alert', entityId: entity.id });
     });
 }
 

@@ -1,9 +1,7 @@
 'use strict';
 
 const passport = require('../../lib/passport');
-const workspaces = require('../../models/workspaces');
 const alerts = require('../../models/alerts');
-
 const router = require('../../lib/router-async').create();
 const {castToInteger} = require('../../lib/helpers');
 
@@ -16,15 +14,15 @@ router.getAsync('/alerts/:alertId', passport.loggedIn, async (req, res) => {
 router.postAsync('/alerts', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     return res.json(await alerts.create(req.context, req.body));
 });
-/*
-router.putAsync('/workspaces/:workspaceId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    const workspace = req.body;
-    workspace.id = castToInteger(req.params.workspaceId);
 
-    await workspaces.updateWithConsistencyCheck(req.context, workspace);
+router.putAsync('/alerts/:alertId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    const alert = req.body;
+    alert.id = castToInteger(req.params.alertId);
+
+    await alerts.updateWithConsistencyCheck(req.context, alert);
     return res.json();
 });
-*/
+
 router.deleteAsync('/alerts/:alertId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     await alerts.remove(req.context, castToInteger(req.params.alertId));
     return res.json();
