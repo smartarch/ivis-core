@@ -2,13 +2,11 @@
 
 const knex = require('../lib/knex');
 const hasher = require('node-object-hash')();
-const { enforce, filterObject } = require('../lib/helpers');
+const { filterObject } = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const entitySettings = require('../lib/entity-settings');
-const dependencyHelpers = require('../lib/dependency-helpers');
 
 const allowedKeys = new Set(['name', 'description', 'sigset', 'duration', 'delay', 'interval', 'condition', 'emails', 'phones', 'repeat', 'finalnotification', 'enabled', 'namespace']);
 

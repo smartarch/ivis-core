@@ -11,7 +11,6 @@ import {
 import {
     Button,
     ButtonRow, CheckBox,
-    Dropdown,
     filterData,
     Form,
     FormSendMethod,
@@ -35,7 +34,7 @@ import moment
     from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {getBuiltinTemplateName} from "../../lib/builtin-templates";
+
 
 @withComponentMixins([
     withTranslation,
@@ -53,7 +52,10 @@ export default class CUD extends Component {
         this.initForm();
     }
 
-    static propTypes = { }
+    static propTypes = {
+        action: PropTypes.string.isRequired,
+        entity: PropTypes.object
+    }
 
     componentDidMount() {
         if (this.props.entity) {
@@ -105,10 +107,6 @@ export default class CUD extends Component {
         }
 
         validateNamespace(t, state);
-    }
-
-    getFormValuesMutator(data) {
-        //data.orderBefore = data.orderBefore.toString();
     }
 
     submitFormValuesMutator(data) {
@@ -225,4 +223,3 @@ export default class CUD extends Component {
         );
     }
 }
-//based on ../workspaces/CUD.js

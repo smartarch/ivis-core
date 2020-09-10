@@ -3,7 +3,7 @@
 const passport = require('../../lib/passport');
 const alerts = require('../../models/alerts');
 const router = require('../../lib/router-async').create();
-const {castToInteger} = require('../../lib/helpers');
+const { castToInteger } = require('../../lib/helpers');
 
 router.getAsync('/alerts/:alertId', passport.loggedIn, async (req, res) => {
     const alert = await alerts.getById(req.context, castToInteger(req.params.alertId));
