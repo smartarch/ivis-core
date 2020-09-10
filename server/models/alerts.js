@@ -89,13 +89,9 @@ async function updateWithConsistencyCheck(context, entity) {
 
 async function remove(context, id) {
     await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'workspace', id, 'delete');
+        await shares.enforceEntityPermissionTx(tx, context, 'alert', id, 'delete');
 
-        await dependencyHelpers.ensureNoDependencies(tx, context, id, [
-            { entityTypeId: 'panel', column: 'workspace' }
-        ]);
-
-        await tx('workspaces').where('id', id).del();
+        await tx('alerts').where('id', id).del();
     });
 }
 

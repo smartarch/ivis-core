@@ -24,12 +24,12 @@ router.putAsync('/workspaces/:workspaceId', passport.loggedIn, passport.csrfProt
     await workspaces.updateWithConsistencyCheck(req.context, workspace);
     return res.json();
 });
-
-router.deleteAsync('/workspaces/:workspaceId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    await workspaces.remove(req.context, castToInteger(req.params.workspaceId));
+*/
+router.deleteAsync('/alerts/:alertId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    await alerts.remove(req.context, castToInteger(req.params.alertId));
     return res.json();
 });
-*/
+
 router.postAsync('/alerts-table', passport.loggedIn, async (req, res) => {
     return res.json(await alerts.listDTAjax(req.context, req.body));
 });

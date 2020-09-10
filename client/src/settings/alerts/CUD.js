@@ -136,7 +136,7 @@ export default class CUD extends Component {
         let sendMethod, url;
         if (this.props.entity) {
             sendMethod = FormSendMethod.PUT;
-            url = `rest/workspaces/${this.props.entity.id}`
+            url = `rest/alerts/${this.props.entity.id}`
         } else {
             sendMethod = FormSendMethod.POST;
             url = 'rest/alerts'
@@ -151,17 +151,17 @@ export default class CUD extends Component {
             if (submitResult) {
                 if (this.props.entity) {
                     if (submitAndLeave) {
-                        this.navigateToWithFlashMessage('/settings/alerts', 'success', t('Workspace updated'));
+                        this.navigateToWithFlashMessage('/settings/alerts', 'success', t('Alert updated'));
                     } else {
-                        await this.getFormValuesFromURL(`rest/workspaces/${this.props.entity.id}`);
+                        await this.getFormValuesFromURL(`rest/alerts/${this.props.entity.id}`);
                         this.enableForm();
-                        this.setFormStatusMessage('success', t('Workspace updated'));
+                        this.setFormStatusMessage('success', t('Alert updated'));
                     }
                 } else {
                     if (submitAndLeave) {
-                        this.navigateToWithFlashMessage('/settings/alerts', 'success', t('Workspace saved'));
+                        this.navigateToWithFlashMessage('/settings/alerts', 'success', t('Alert saved'));
                     } else {
-                        this.navigateToWithFlashMessage(`/settings/workspaces/${submitResult}/edit`, 'success', t('Workspace saved'));
+                        this.navigateToWithFlashMessage(`/settings/alerts/${submitResult}/edit`, 'success', t('Alert saved'));
                     }
                 }
             } else {
@@ -192,9 +192,9 @@ export default class CUD extends Component {
                 <DeleteModalDialog
                     stateOwner={this}
                     visible={this.props.action === 'delete'}
-                    deleteUrl={`rest/workspaces/${this.props.entity.id}`}
-                    backUrl={`/settings/workspaces/${this.props.entity.id}/edit`}
-                    successUrl="/settings/workspaces"
+                    deleteUrl={`rest/alerts/${this.props.entity.id}`}
+                    backUrl={`/settings/alerts/${this.props.entity.id}/edit`}
+                    successUrl="/settings/alerts"
                     deletingMsg={t('Deleting alert ...')}
                     deletedMsg={t('Alert deleted')}/>
                 }
@@ -218,7 +218,7 @@ export default class CUD extends Component {
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
                                 onClickAsync={async () => await this.submitHandler(true)}/>
                         {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
-                                               to={`/settings/workspaces/${this.props.entity.id}/delete`}/>}
+                                               to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>
