@@ -61,11 +61,35 @@ export default class List extends Component {
         const t = this.props.t;
 
         const columns = [
-            { data: 0, title: t('Name') },
-            { data: 1, title: t('Description') },
-            { data: 2, title: t('Enabled'), render: data => data === 1 ? t('Yes') : t('No') },
-            { data: 3, title: t('Created'), render: data => moment(data).fromNow() },
-            { data: 4, title: t('Namespace') },
+            { data: 1, title: t('Name') },
+            { data: 2, title: t('Description') },
+            { data: 3, title: t('Enabled'), render: data => data === 1 ? t('Yes') : t('No') },
+            { data: 4, title: t('Created'), render: data => moment(data).fromNow() },
+            { data: 5, title: t('Namespace') },
+            {
+                actions: data => {
+                    const actions = [];
+                    const perms = data[6];
+
+                    if (perms.includes('edit')) {
+                        actions.push({
+                            label: <Icon icon="edit" title={t('Edit')}/>,
+                            link: `/settings/alerts/${data[0]}/edit`
+                        });
+                    }
+
+                    if (perms.includes('share')) {
+                        actions.push({
+                            label: <Icon icon="share" title={t('Share')}/>,
+                            link: `/settings/alerts/${data[0]}/share`
+                        });
+                    }
+
+                    tableAddDeleteButton(actions, this, perms, `rest/alerts/${data[0]}`, data[1], t('Deleting alert ...'), t('Alert deleted'));
+
+                    return actions;
+                }
+            }
         ];
 
         return (
