@@ -83,19 +83,19 @@ export default class CUD extends Component {
             state.setIn(['sigset', 'error'], null);
         }
 
-        if (!state.getIn(['duration', 'value']) || isNaN(state.getIn(['duration', 'value'])) || state.getIn(['duration', 'value']) < 0) {
+        if ((!state.getIn(['duration', 'value']) && state.getIn(['duration', 'value']) !== 0) || isNaN(state.getIn(['duration', 'value'])) || state.getIn(['duration', 'value']) < 0) {
             state.setIn(['duration', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['duration', 'error'], null);
         }
 
-        if (!state.getIn(['delay', 'value']) || isNaN(state.getIn(['delay', 'value'])) || state.getIn(['delay', 'value']) < 0) {
+        if ((!state.getIn(['delay', 'value']) && state.getIn(['delay', 'value']) !== 0) || isNaN(state.getIn(['delay', 'value'])) || state.getIn(['delay', 'value']) < 0) {
             state.setIn(['delay', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['delay', 'error'], null);
         }
 
-        if (!state.getIn(['interval', 'value']) || isNaN(state.getIn(['interval', 'value'])) || state.getIn(['interval', 'value']) < 0) {
+        if ((!state.getIn(['interval', 'value']) && state.getIn(['interval', 'value']) !== 0) || isNaN(state.getIn(['interval', 'value'])) || state.getIn(['interval', 'value']) < 0) {
             state.setIn(['interval', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['interval', 'error'], null);
@@ -103,7 +103,7 @@ export default class CUD extends Component {
 
         const minRepeat = 10;
 
-        if (!state.getIn(['repeat', 'value']) || isNaN(state.getIn(['repeat', 'value'])) || state.getIn(['repeat', 'value']) < 0 || (state.getIn(['repeat', 'value']) > 0 && state.getIn(['repeat', 'value']) < minRepeat))  {
+        if ((!state.getIn(['repeat', 'value']) && state.getIn(['repeat', 'value']) !== 0) || isNaN(state.getIn(['repeat', 'value'])) || state.getIn(['repeat', 'value']) < 0 || (state.getIn(['repeat', 'value']) > 0 && state.getIn(['repeat', 'value']) < minRepeat))  {
             state.setIn(['repeat', 'error'], t(`This value must be a number greater than ${minRepeat} or 0`));
         } else {
             state.setIn(['repeat', 'error'], null);
