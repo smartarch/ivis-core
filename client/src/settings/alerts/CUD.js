@@ -1,8 +1,7 @@
 'use strict';
 
 import React, {Component} from "react";
-import PropTypes
-    from "prop-types";
+import PropTypes from "prop-types";
 import {
     LinkButton,
     requiresAuthenticatedUser,
@@ -28,10 +27,8 @@ import {
 } from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
-import ivisConfig
-    from "ivisConfig";
-import moment
-    from "moment";
+import ivisConfig from "ivisConfig";
+import moment from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 
@@ -62,6 +59,10 @@ export default class CUD extends Component {
             this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
+                description: '',
+                condition: '',
+                emails: '',
+                phones: '',
                 namespace: ivisConfig.user.namespace
             });
         }
@@ -94,14 +95,16 @@ export default class CUD extends Component {
             state.setIn(['delay', 'error'], null);
         }
 
-        if (state.getIn(['interval', 'value']) && (isNaN(state.getIn(['interval', 'value'])) || state.getIn(['interval', 'value']) < 0)) {
-            state.setIn(['interval', 'error'], t('This value must be a non-negative number or empty'));
+        if (!state.getIn(['interval', 'value']) || isNaN(state.getIn(['interval', 'value'])) || state.getIn(['interval', 'value']) < 0) {
+            state.setIn(['interval', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['interval', 'error'], null);
         }
 
-        if (state.getIn(['repeat', 'value']) && (isNaN(state.getIn(['repeat', 'value'])) || state.getIn(['repeat', 'value']) < 0)) {
-            state.setIn(['repeat', 'error'], t('This value must be a non-negative number or empty'));
+        const minRepeat = 10;
+
+        if (!state.getIn(['repeat', 'value']) || isNaN(state.getIn(['repeat', 'value'])) || state.getIn(['repeat', 'value']) < 0 || (state.getIn(['repeat', 'value']) > 0 && state.getIn(['repeat', 'value']) < minRepeat))  {
+            state.setIn(['repeat', 'error'], t(`This value must be a number greater than ${minRepeat} or 0`));
         } else {
             state.setIn(['repeat', 'error'], null);
         }
@@ -203,11 +206,11 @@ export default class CUD extends Component {
                     <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2}/>
                     <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
-                    <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes or leave empty!')}/>
+                    <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes! Use 0 if not applicable!')}/>
                     <TextArea id="condition" label={t('Condition')} help={t('If this condition is satisfied, the data from sensors are unsuitable.')}/>
                     <TextArea id="emails" label={t('Email addresses')} help={t('Email addresses for notifications, one per line!')}/>
                     <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line!')}/>
-                    <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes or leave empty!')}/>
+                    <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes! Use 0 if not applicable!')}/>
                     <CheckBox id="finalnotification" text={t('Issue a notification when the triggered alert is revoked')}/>
                     <CheckBox id="enabled" text={t('Enabled')}/>
                     <NamespaceSelect/>

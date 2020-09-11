@@ -66,7 +66,7 @@ export default class List extends Component {
             { data: 3, title: t('Enabled'), render: data => data === 1 ? t('Yes') : t('No') },
             { data: 4, title: t('Created'), render: data => moment(data).fromNow() },
             { data: 5, title: t('Namespace') },
-            {
+            { title: t('Actions'),
                 actions: data => {
                     const actions = [];
                     const perms = data[6];
