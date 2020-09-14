@@ -64,8 +64,6 @@ export class StackAreaChart extends Component {
             this.props.prepareData(base, signalSetsData, extraData);
         }
 
-        const data = signalSetsData;
-
         const signalSetsReverse = this.props.config.signalSets.slice().reverse();
 
         for (const setSpec of signalSetsReverse) {
@@ -79,7 +77,7 @@ export class StackAreaChart extends Component {
                 }
             };
 
-            const sigSetData = data[setSpec.cid];
+            const sigSetData = signalSetsData[setSpec.cid];
             if (sigSetData.prev) {
                 changeData(sigSetData.prev.data);
             }
@@ -92,7 +90,7 @@ export class StackAreaChart extends Component {
         }
 
         return {
-            signalSetsData: data
+            signalSetsData: signalSetsData
         };
     }
 
@@ -140,9 +138,9 @@ export class StackAreaChart extends Component {
             );
         }
 
-            for (const sigSetConf of props.config.signalSets) {
-                this.areaPathSelection[sigSetConf.cid] = {};
-            }
+        for (const sigSetConf of props.config.signalSets) {
+            this.areaPathSelection[sigSetConf.cid] = {};
+        }
 
         return (
             <LineChartBase
