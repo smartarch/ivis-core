@@ -10,7 +10,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {IndexingStatus, IndexMethod, SignalType, isAggregatedType} = require('../../shared/signals');
+const {IndexingStatus, IndexMethod, SignalType, SignalSource, isAggregatedType} = require('../../shared/signals');
 const signals = require('./signals');
 const {
     SignalSetKind,
@@ -22,7 +22,6 @@ const {
 const {parseCardinality, getFieldsetPrefix, resolveAbs} = require('../../shared/param-types-helpers');
 const log = require('../lib/log');
 const synchronized = require('../lib/synchronized');
-const {SignalSource} = require('../../shared/signals');
 const moment = require('moment');
 const {toQuery, fromQueryResultToDTInput, MAX_RESULTS_WINDOW} = require('../lib/dt-es-query-adapter');
 const signalSetAggregations = require('./signal-set-aggregations');

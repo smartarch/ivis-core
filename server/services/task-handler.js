@@ -387,14 +387,12 @@ async function checkAndSetMsgRunStatus(runId, status, output) {
 }
 
 async function getOwnedEntities(job) {
-    const owned = {};
+    const owned = {
+        signalSets: {}
+    };
     const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
     for (const signalSet of ownedSignalSets) {
-        if (!owned.signalSets) {
-            owned.signalSets = [];
-        }
-
-        owned.signalSets.push(signalSet.cid);
+        owned.signalSets[signalSet.cid] = {}
     }
 
     return owned;
