@@ -355,6 +355,9 @@ export class LineChartBase extends Component {
                     throw new Error("At most 4 visible y axes are supported.");
                 }
 
+                if (typeof yAxes[axisIdx].yAxisTicksFormat === "function")
+                    yAxis.tickFormat(yAxes[axisIdx].yAxisTicksFormat);
+
                 base.yAxisSelection.append('g').attr("transform", "translate( " + shift + ", 0 )").call(yAxis);
                 base.yAxisSelection.append('text')
                         .attr("transform", "rotate(-90)")

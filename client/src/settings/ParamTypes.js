@@ -90,6 +90,20 @@ export default class ParamTypes {
             setFields: setStringFieldFromParam,
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
+                if (mode === "json") {
+                    const formId = this.getParamFormId(prefix, spec.id);
+                    const val = state.getIn([formId, 'value']);
+
+                    try {
+                        JSON.parse(val);
+                    }
+                    catch (e) {
+                        if (e instanceof SyntaxError) {
+                            state.setIn([formId, 'error'], t('Please enter a valid JSON.') + " (" + e.message + ")");
+                        }
+                        else throw e;
+                    }
+                }
             },
             render: (self, prefix, spec) => <ACEEditor key={spec.id} id={this.getParamFormId(prefix, spec.id)}
                                                        label={spec.label} help={spec.help} mode={mode}
@@ -129,7 +143,25 @@ export default class ParamTypes {
         };
 
 
-        this.paramTypes.number = {
+        this.paramTypes.integer = {
+            adopt: adoptString,
+            setFields: setStringFieldFromParam,
+            getParams: getParamsFromField,
+            validate: (prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                const val = state.getIn([formId, 'value']);
+
+                if ((spec.isRequired && val.trim() === '') || !Number.isInteger(val)) {
+                    state.setIn([formId, 'error'], t('Please enter an integer'));
+                }
+            },
+            render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
+                                                        label={spec.label} help={spec.help}/>,
+            upcast: (spec, value) => Number.parseInt(value)
+        };
+        this.paramTypes.number = this.paramTypes.integer; // for backwards compatibility
+
+        this.paramTypes.float = {
             adopt: adoptString,
             setFields: setStringFieldFromParam,
             getParams: getParamsFromField,
@@ -143,7 +175,7 @@ export default class ParamTypes {
             },
             render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
                                                         label={spec.label} help={spec.help}/>,
-            upcast: (spec, value) => Number.parseInt(value)
+            upcast: (spec, value) => Number.parseFloat(value)
         };
 
 
@@ -281,7 +313,14 @@ export default class ParamTypes {
                     {data: 6, title: t('Namespace')}
                 ];
 
-                let dataUrl, data;
+                // filter by type of signal
+                let filterByType;
+                if (spec.signalType)
+                    if (Array.isArray(spec.signalType))
+                        filterByType = data => data.filter(d => spec.signalType.includes(d[4]));
+                    else
+                        filterByType = data => data.filter(d => d[4] === spec.signalType);
+
                 if (signalSetCid) {
                     return <TableSelect
                         key={spec.id}
@@ -294,8 +333,8 @@ export default class ParamTypes {
                         selectMode={card.max === 1 ? TableSelectMode.SINGLE : TableSelectMode.MULTI}
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
-                        data={data}
                         dataUrl={`rest/signals-table-by-cid/${signalSetCid}`}
+                        dataFilter={filterByType}
                     />;
                 } else {
                     return <AlignedRow key={spec.id}>
