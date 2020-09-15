@@ -573,7 +573,7 @@ async function queryTx(tx, context, queries) {
                 for (const fltChild of flt.children) {
                     checkFilter(fltChild);
                 }
-            } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
+            } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard' || flt.type === 'terms') {
                 flt.sigCid = mutateSignalCid(flt.sigCid);
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
