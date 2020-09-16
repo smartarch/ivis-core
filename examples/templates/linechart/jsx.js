@@ -24,7 +24,8 @@ export default class LineChartTemplate extends Component {
             if (signalSet === undefined) {
                 signalSet = {
                     cid: sensor.sigSet,
-                    signals: []
+                    signals: [],
+                    tsSigCid: sensor.tsSigCid
                 }
                 signalSets.push(signalSet);
             }
@@ -33,7 +34,6 @@ export default class LineChartTemplate extends Component {
                     color: sensor.color,
                     cid: sensor.signal,
                     enabled: sensor.enabled,
-                    tsSigCid: sensor.tsSigCid
                 }
             );
         }
