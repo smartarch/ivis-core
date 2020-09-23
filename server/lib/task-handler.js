@@ -120,7 +120,6 @@ function onFilesUpload(type, subtype, entityId, files) {
         setImmediate(async () => {
             const dir = getFilesDir(type, subtype, entityId);
             const filesDir = path.join(getTaskDir(entityId), 'files');
-            await fs.emptyDirAsync(filesDir);
             for (const file of files) {
                 await fs.copyAsync(path.join(dir, file.name), path.join(filesDir, file.originalName), {});
             }
