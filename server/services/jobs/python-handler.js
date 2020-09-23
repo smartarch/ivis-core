@@ -19,8 +19,8 @@ const runningProc = new Map();
 const defaultPythonLibs = ['elasticsearch'];
 
 let dValuesWheelPath = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'ivis', 'dist');
-if (pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']) {
-    dValuesWheelPath = path.resolve(pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']);
+if (pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['wheelPath']) {
+    dValuesWheelPath = path.resolve(pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['wheelPath']);
 }
 
 const taskSubtypeSpecs = {
@@ -32,7 +32,7 @@ const taskSubtypeSpecs = {
         libs: [...defaultPythonLibs, 'numpy', 'dtw']
     },
     [PythonSubtypes.D_VALUE_ESTIMATION]: {
-        libs: [...defaultPythonLibs, 'numpy', 'gdal', 'xgboost', 'scikit-learn'],
+        libs: [...defaultPythonLibs, 'numpy', 'xgboost', 'scikit-learn'],
         cmds: [
             `pip install GDAL==${pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']} --global-option=build_ext --global-option="-I/usr/include/gdal"`,
             `pip install ${dValuesWheelPath}`

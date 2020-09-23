@@ -60,7 +60,7 @@ www:
 
 # Enable to use Redis session cache or disable if Redis is not installed
 redis:
-  enabled: true
+  enabled: false
   host: localhost
   port: 6379
   db: 5
@@ -95,7 +95,7 @@ tasks:
     subtypes:
       d_value_estimation:
         gdalVersion: 3.0.4
-        #wheelPath: '/d-value-estimation/dist/d_values-1.0-py3-none-any.whl'
+        wheelPath: '/media/sieglp/SSD_500GB/professional/mff/afshin_task/d-value-estimation/dist/d_values-1.0-py3-none-any.whl'
 
 roles:
   global:
