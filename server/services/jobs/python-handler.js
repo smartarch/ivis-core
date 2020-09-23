@@ -2,17 +2,43 @@
 const path = require('path');
 const fs = require('fs-extra-promise');
 const spawn = require('child_process').spawn;
-const {TaskType, taskSubtypeSpecs, subtypesByType} = require('../../../shared/tasks');
+const {TaskType, PythonSubtypes} = require('../../../shared/tasks');
 const readline = require('readline');
 const ivisConfig = require('../../lib/config');
+const pythonConfig = require('../../lib/config').tasks.python;
 
 // File name of every build output
 const JOB_FILE_NAME = 'job.py';
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
-const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'dist');
+const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'ivis', 'dist');
 
 const runningProc = new Map();
+
+
+const defaultPythonLibs = ['elasticsearch'];
+
+let dValuesWheelPath = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'ivis', 'dist');
+if (pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']) {
+    dValuesWheelPath = path.resolve(pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']);
+}
+
+const taskSubtypeSpecs = {
+    libs: defaultPythonLibs,
+    [PythonSubtypes.ENERGY_PLUS]: {
+        libs: [...defaultPythonLibs, 'eppy', 'requests']
+    },
+    [PythonSubtypes.NUMPY]: {
+        libs: [...defaultPythonLibs, 'numpy', 'dtw']
+    },
+    [PythonSubtypes.D_VALUE_ESTIMATION]: {
+        libs: [...defaultPythonLibs, 'numpy', 'gdal', 'xgboost', 'scikit-learn'],
+        cmds: [
+            `pip install GDAL==${pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']} --global-option=build_ext --global-option="-I/usr/include/gdal"`,
+            `pip install ${dValuesWheelPath}`
+        ]
+    }
+};
 
 /**
  * Run job
@@ -31,7 +57,7 @@ async function run({jobId, runId, taskDir, inputData}, onRequest, onSuccess, onF
 
         const dataInput = {
             params: {},
-            es:{
+            es: {
                 host: `${ivisConfig.elasticsearch.host}`,
                 port: `${ivisConfig.elasticsearch.port}`
             },
@@ -115,8 +141,11 @@ async function remove(id) {
 }
 
 function getPackages(subtype) {
-    const spec = taskSubtypeSpecs[TaskType.PYTHON];
-    return subtype ? spec[subtype].libs : spec.libs;
+    return subtype ? taskSubtypeSpecs[subtype].libs : taskSubtypeSpecs.libs;
+}
+
+function getCommands(subtype) {
+    return subtype ? taskSubtypeSpecs[subtype].cmds : null;
 }
 
 /**
@@ -153,9 +182,10 @@ async function build(config, onSuccess, onFail) {
  * @returns {Promise<void>}
  */
 async function init(config, onSuccess, onFail) {
-    const {id,subtype, code, destDir} = config;
+    const {id, subtype, code, destDir} = config;
     try {
         const packages = getPackages(subtype);
+        const commands = getCommands(subtype);
         const buildDir = path.join(destDir, '..', 'build');
         await fs.emptyDirAsync(buildDir);
 
@@ -165,8 +195,18 @@ async function init(config, onSuccess, onFail) {
         const envDir = path.join(buildDir, ENV_NAME);
 
         const virtDir = path.join(envDir, 'bin', 'activate');
+
+        const cmdsChain = []
+        cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envDir}`)
+        cmdsChain.push(`source ${virtDir}`)
+        cmdsChain.push(`pip install ${packages.join(' ')} `)
+        if (commands) {
+            cmdsChain.push(...commands)
+        }
+        cmdsChain.push(`pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis `)
+        cmdsChain.push(`deactivate`)
         const virtEnv = spawn(
-            `${ivisConfig.tasks.python.venvCmd} ${envDir} && source ${virtDir} && pip install ${packages.join(' ')} && pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis && deactivate`,
+            cmdsChain.join(' && '),
             {
                 shell: '/bin/bash'
             }
