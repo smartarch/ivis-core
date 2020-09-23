@@ -95,7 +95,7 @@ tasks:
     subtypes:
       d_value_estimation:
         gdalVersion: 3.0.4
-        wheelPath: '/media/sieglp/SSD_500GB/professional/mff/afshin_task/d-value-estimation/dist/d_values-1.0-py3-none-any.whl'
+        #wheelPath: '/d-value-estimation/dist/d_values-1.0-py3-none-any.whl'
 
 roles:
   global:
