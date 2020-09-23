@@ -151,7 +151,7 @@ export default class ParamTypes {
                 const formId = this.getParamFormId(prefix, spec.id);
                 const val = state.getIn([formId, 'value']);
 
-                if ((spec.isRequired && val.trim() === '') || !Number.isInteger(val)) {
+                if ((spec.isRequired && val.trim() === '') || !Number.isInteger(Number(val))) {
                     state.setIn([formId, 'error'], t('Please enter an integer'));
                 }
             },
