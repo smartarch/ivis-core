@@ -145,6 +145,12 @@ export default class ParamTypes {
             setFields: setStringFieldFromParam,
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                const val = state.getIn([formId, 'value']);
+
+                if ((spec.isRequired && val.trim() === '')) {
+                    state.setIn([formId, 'error'], t('Input is required'));
+                }
             },
             render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
                                                         label={spec.label} help={spec.help}/>,
