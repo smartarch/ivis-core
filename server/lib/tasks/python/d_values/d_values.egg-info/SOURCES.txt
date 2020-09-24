@@ -1,0 +1,10 @@
+README.md
+setup.py
+d_values/__init__.py
+d_values/data.py
+d_values/gdal_calc.py
+d_values/predict.py
+d_values.egg-info/PKG-INFO
+d_values.egg-info/SOURCES.txt
+d_values.egg-info/dependency_links.txt
+d_values.egg-info/top_level.txt

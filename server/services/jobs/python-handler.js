@@ -18,7 +18,7 @@ const runningProc = new Map();
 
 const defaultPythonLibs = ['elasticsearch'];
 
-let dValuesWheelPath = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'ivis', 'dist');
+let dValuesWheelPath = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'd_values', 'dist', 'd_values-1.0-py3-none-any.whl');
 if (pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['wheelPath']) {
     dValuesWheelPath = path.resolve(pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['wheelPath']);
 }
