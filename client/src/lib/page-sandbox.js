@@ -29,7 +29,7 @@ function getTheme(search){
     const searchParams = new URLSearchParams(search);
     let theme = Theme.LIGHT;
     if (searchParams.has('theme')) {
-        theme = searchParams.get('theme') === Theme.DARK ? Theme.DARK : Theme.LIGHT;
+        theme = searchParams.get('theme') === Theme.MMT ? Theme.MMT : Theme.LIGHT;
     }
     return theme;
 }
@@ -73,9 +73,9 @@ class PanelRoute extends Component {
 
                 let theme = getTheme(this.props.location.search);
 
-                let cls = "container-fluid";
-                if (theme === Theme.DARK) {
-                    cls = cls + ` ${styles.dark}`;
+                let cls = `container-fluid ${styles.panelSandbox}`;
+                if (theme === Theme.MMT) {
+                    cls = cls + ` ${styles.themeMmt}`;
                 }
 
                 return (

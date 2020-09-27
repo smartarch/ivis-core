@@ -2,7 +2,7 @@
 
 const Theme = {
     LIGHT: 'light',
-    DARK: 'dark'
+    MMT: 'mmt'
 }
 
 module.exports = {

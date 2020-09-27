@@ -72,17 +72,10 @@ export class Tooltip extends Component {
                 content = this.props.contentRender(contentProps);
             }
 
-            let cls = styles.tooltip;
-
-            let theme = this.context;
-            if (theme === Theme.DARK){
-                cls = cls + ` ${styles.dark}`;
-            }
-
             return (
                 <g transform={`translate(${x}, ${y})`}>
                     <foreignObject requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility" width={this.props.width} height={this.state.height}>
-                        <div ref={node => this.tooltipNode = node} className={cls}>
+                        <div ref={node => this.tooltipNode = node} className={styles.tooltip}>
                             {content}
                         </div>
                     </foreignObject>

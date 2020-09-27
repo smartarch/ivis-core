@@ -420,15 +420,12 @@ export class TimeRangeSelector extends Component {
     render() {
         const t = this.props.t;
 
-        let cls = 'card'
-        if (this.context === Theme.DARK){
-            cls = cls + ` ${styles.dark}`
-        }
+        let cls = `card ${styles.timeRangeSelector}`;
         // FIXME:
         // - add timezone selection
         return (
             <div className={cls}>
-                <div className="card-header" onClick={() => this.setState({ opened: !this.state.opened })}>
+                <div className={`card-header ${styles.header}`} onClick={() => this.setState({ opened: !this.state.opened })}>
                     <div className={styles.headingDescription}>{this.getDescription()}</div>
                     <div className={styles.headingButtons}>
                         <ActionLink onClickAsync={async () => this.setState({ opened: !this.state.opened })}><Icon icon="sliders-h" title={t('Open time settings')}/></ActionLink>
