@@ -55,6 +55,11 @@ class PanelRoute extends Component {
             jQuery(document.body).removeClass('inside-iframe');
         }
 
+        let theme = getTheme(this.props.location.search);
+        if (theme === Theme.MMT) {
+            jQuery(document.body).addClass('theme-mmt');
+        }
+
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
                 const compProps = {
@@ -71,12 +76,8 @@ class PanelRoute extends Component {
                     panel = route.panelRender(compProps);
                 }
 
-                let theme = getTheme(this.props.location.search);
 
-                let cls = `container-fluid ${styles.panelSandbox}`;
-                if (theme === Theme.MMT) {
-                    cls = cls + ` ${styles.themeMmt}`;
-                }
+                let cls = `container-fluid`;
 
                 return (
                     <div className={cls}>
