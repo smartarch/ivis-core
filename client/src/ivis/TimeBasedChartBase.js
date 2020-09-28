@@ -510,7 +510,12 @@ export class TimeBasedChartBase extends Component {
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
-            .wheelDelta(WheelDelta(3));
+            .wheelDelta(WheelDelta(3))
+            .filter(() => {
+                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+                    return false;
+                return !d3Event.ctrlKey && !d3Event.button;
+            });
         this.containerNodeSelection.call(this.zoom);
         if (!zoomExisted)
             this.resetZoom(); // this is called after data are reloaded

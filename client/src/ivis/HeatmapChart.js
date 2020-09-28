@@ -810,8 +810,9 @@ export class HeatmapChart extends Component {
             .translateExtent(translateExtent)
             .extent(zoomExtent)
             .filter(() => {
-                // noinspection JSUnresolvedVariable
-                return !d3Selection.event.ctrlKey && !d3Selection.event.button && !this.state.brushInProgress;
+                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+                    return false;
+                return !d3Event.ctrlKey && !d3Event.button && !this.state.brushInProgress;
             })
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
