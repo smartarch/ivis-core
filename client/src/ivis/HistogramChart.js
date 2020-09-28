@@ -630,7 +630,12 @@ export class HistogramChart extends Component {
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
-            .wheelDelta(WheelDelta(2));
+            .wheelDelta(WheelDelta(2))
+            .filter(() => {
+                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+                    return false;
+                return !d3Event.ctrlKey && !d3Event.button;
+            });
         this.svgContainerSelection.call(this.zoom);
         this.moveBrush(this.state.zoomTransform);
     }
