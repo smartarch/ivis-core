@@ -17,6 +17,9 @@ const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
 const {BuildState, TaskSource, getTransitionStates} = require('../../shared/tasks');
 const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
 
+const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
+const {emitter: filesEmitter, EventTypes: FilesEventTypes} = require('./files-events');
+
 const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'services', 'task-handler.js'));
 
 const LOG_ID = 'Task-handler-lib';
@@ -87,17 +90,13 @@ async function init() {
     });
 
     esEmitter
-        .on('insert', (cid) => reindexOccurred(cid))
-        .on('index', (cid) => reindexOccurred(cid))
-        .on('update', (cid) => {
-        })
-        .on('remove', (cid) => {
-        });
+        .on(EsEventTypes.INSERT, reindexOccurred)
+        .on(EsEventTypes.INDEX, reindexOccurred)
 
     filesEmitter
-        .on('files-change', onFilesUpload)
-        .on('files-remove-all', onRemoveAllFiles)
-        .on('files-remove', onRemoveFile);
+        .on(FilesEventTypes.CHANGE, onFilesUpload)
+        .on(FilesEventTypes.REMOVE_ALL, onRemoveAllFiles)
+        .on(FilesEventTypes.REMOVE, onRemoveFile);
 
     const logRetention = config.tasks.runLogRetentionTime;
     if (logRetention && logRetention !== 0) {
@@ -192,14 +191,14 @@ async function initBuiltin() {
 async function cleanRuns() {
     const runs = await knex('job_runs').whereIn('status', [RunStatus.INITIALIZATION, RunStatus.SCHEDULED, RunStatus.RUNNING]);
     if (runs) {
-        for (let i = 0; i < runs.length; i++) {
+        for (const run of runs) {
             try {
-                await knex('job_runs').where('id', runs[i].id).update({
+                await knex('job_runs').where('id', run.id).update({
                     status: RunStatus.FAILED,
                     output: 'Cancelled upon start'
                 })
             } catch (err) {
-                log.error(LOG_ID, `Failed to clear run with id ${runs[i].id}: ${err.stack}`);
+                log.error(LOG_ID, `Failed to clear run with id ${run.id}: ${err.stack}`);
             }
         }
     }
@@ -212,8 +211,7 @@ async function cleanRuns() {
 async function cleanBuilds() {
     const tasks = await knex('tasks').whereIn('build_state', getTransitionStates());
     if (tasks) {
-        for (let i = 0; i < tasks.length; i++) {
-            const task = tasks[i];
+        for (const task of tasks) {
             try {
                 await knex('tasks').where('id', task.id).update({
                     build_state: (task.build_state === BuildState.INITIALIZING) ? BuildState.UNINITIALIZED : BuildState.FAILED,
