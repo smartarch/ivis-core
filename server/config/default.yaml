@@ -129,7 +129,7 @@ roles:
         panel: ["view", "edit", "delete", "share"]
         signal: ["view", "edit", "delete", "query", "share"]
         signalSet: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts"]
-        alert: ["view", "edit", "delete", "share"]
+        alert: ["view", "edit", "delete", "share", "trigger"]
 
   template:
     master:
@@ -178,4 +178,4 @@ roles:
     master:
       name: "Master"
       description: "All permissions"
-      permissions: ["view", "edit", "delete", "share"]
+      permissions: ["view", "edit", "delete", "share", "trigger"]

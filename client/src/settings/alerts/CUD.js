@@ -31,6 +31,7 @@ import ivisConfig from "ivisConfig";
 import moment from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {testTrigger} from "../../../../server/lib/alerts-event-handler";
 
 
 @withComponentMixins([
@@ -234,8 +235,10 @@ export default class CUD extends Component {
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
                                 onClickAsync={async () => await this.submitHandler(true)}/>
-                        {isEdit && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                        {isEdit && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
+                        {isEdit && <Button className="btn-warning" icon='bolt' label={t('Trigger')} title={t('Test this alert with manual trigger')}
+                                onClickAsync={async () => {await testTrigger(this.props.entity.id); alert(t('The alert was manually triggered!'))}} /> }
                     </ButtonRow>
                 </Form>
             </Panel>

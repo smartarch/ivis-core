@@ -23,6 +23,7 @@ const jobsRest = require('./routes/rest/jobs');
 const tasksRest = require('./routes/rest/tasks');
 const workspacesRest = require('./routes/rest/workspaces');
 const alertsRest = require('./routes/rest/alerts');
+const alertsLogRest = require('./routes/rest/alerts-log');
 const panelsRest = require('./routes/rest/panels');
 const filesRest = require('./routes/rest/files');
 const embedRest = require('./routes/rest/embed');
@@ -189,6 +190,7 @@ function createApp(type) {
         app.use('/rest', tasksRest);
         app.use('/rest', workspacesRest);
         app.use('/rest', alertsRest);
+        app.use('/rest', alertsLogRest);
         app.use('/rest', filesRest);
         app.use('/rest', panelsRest);
         app.use('/rest', settingsRest);
