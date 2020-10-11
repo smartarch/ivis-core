@@ -237,7 +237,7 @@ export default class CUD extends Component {
                                 onClickAsync={async () => await this.submitHandler(true)}/>
                         {isEdit && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
-                        {isEdit && <Button className="btn-warning" icon='bolt' label={t('Trigger')} title={t('Test this alert with manual trigger')}
+                        {isEdit && <Button className="btn-warning" icon="bolt" label={t('Trigger')} title={t('Test this alert with manual trigger')}
                                 onClickAsync={async () => {await testTrigger(this.props.entity.id); alert(t('The alert was manually triggered!'))}} /> }
                     </ButtonRow>
                 </Form>

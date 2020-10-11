@@ -78,6 +78,13 @@ export default class List extends Component {
                         });
                     }
 
+                    if (perms.includes('view')) {
+                        actions.push({
+                            label: <Icon icon="book" title={t('Log')}/>,
+                            link: `/settings/alerts/${data[0]}/log`
+                        })
+                    }
+
                     if (perms.includes('share')) {
                         actions.push({
                             label: <Icon icon="share" title={t('Share')}/>,
