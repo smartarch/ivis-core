@@ -3,14 +3,13 @@ import {
     AnimationStatusContext,
     AnimationControlContext,
     AnimationDataContext,
-    SignalInterpolator
+    SigSetInterpolator
 } from "../lib/animation-helpers";
 import {withAsyncErrorHandler} from "../lib/error-handling";
 import {DataAccessSession} from "./DataAccess";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {intervalAccessMixin, TimeContext} from "./TimeContext";
 import {IntervalSpec} from "./TimeInterval";
-import {bisector} from "d3-array";
 import moment from "moment";
 import _ from "lodash";
 import PropTypes from "prop-types";
@@ -19,13 +18,13 @@ import PropTypes from "prop-types";
 //When the tab is inactive, setIntervals and setTimeouts that are scheduled within less than 1s are triggered after
 //1s. This means that we want to store at least 1s of keyframes ahead of the
 //current position.
-const minTimeLoadedAhead = 1000;
+const inactiveTabTimePillow = 1000;
 
-const defaultMaxLoadAheadMs = 30000;
-const defaultMinFramesPerKeyframe = 5;
-const defaultRefreshRate = 45;
+const defaultMaxTimeFetched = 30000;
+const defaultMaxKeyframesStored = 1000;
+const defaultPlaybackSpeedAggFactor = 5;
+const defaultRefreshRate = 1000/24;
 const minRefreshRate = 5;
-
 
 class RecordedAnimation extends Component {
     static propTypes = {
@@ -91,242 +90,334 @@ class GenericDataSource {
     constructor(config, dataAccess) {
         this.dataAccess = dataAccess;
 
-        const parseConfig = () => {
-            const conf = {
-                sigSetCid: config.sigSetCid,
-                tsSigCid: config.tsSigCid,
-                signals: config.signals,
+        this.conf = {
+            intpArity: config.interpolation.arity,
+            history: config.history || null,
+            playbackSpeedAggFactor: config.playbackSpeedAggFactor || defaultPlaybackSpeedAggFactor,
 
-                kfCount: config.interpolation.arity,
+            maxTimeStored: config.maxTimeStored || defaultMaxTimeFetched,
+            maxKeyframesStored: config.maxKeyframesStored || defaultMaxKeyframesStored,
 
-                maxLoadAheadMs: config.maxLoadAheadMs || defaultMaxLoadAheadMs,
-                minFramesPerKeyframe: config.minFramesPerKeyframe || defaultMinFramesPerKeyframe,
+            getAggStep: config.useGlobalAggInterval ?
+                () => this.dataAccess.getIntervalAbsolute().aggregationInterval :
+                () => this.dataAccess.getPlaybackSpeedFactorBasedAggStep(this.conf.playbackSpeedAggFactor),
+            getAggOffset: step =>
+                moment.duration(this.dataAccess.getIntervalAbsolute().from.valueOf() % step.asMilliseconds()),
 
-                withHistory: config.withHistory || false,
-            };
-
-            let getAggStep = null;
-            if (conf.withHistory) {
-                getAggStep = () => config.aggregationInterval || this.dataAccess.getIntervalAbsolute().aggregationInterval;
-            } else {
-                getAggStep = () => this.dataAccess.getPlaybackSpeedFactorBasedAggStep(conf.minFramesPerKeyframe);
-            }
-
-            const getAggOffset = (aggStep) => moment.duration(this.dataAccess.getIntervalAbsolute().from.valueOf() % aggStep.asMilliseconds());
-
-            conf.getAggStep = getAggStep;
-            conf.getAggOffset = getAggOffset;
-
-            return conf;
         };
 
-        this.conf = parseConfig();
+        const signalAggs = config.signalAggs && config.signalAggs.length > 0 ?
+            config.signalAggs :
+            ['avg']
+        ;
 
-        this.kfBuffer = [];
-        this.history = [];
-        this.missedFetches = 1;
+        this.sigSets = {};
+        for (const sigSetConf of config.sigSets) {
+            const signals = {};
 
-        this.nextChunkBeginTs = null;
-
-        this.intp = new SignalInterpolator(this.conf.signals, config.interpolation.func, this.conf.kfCount);
-    }
-
-    canShiftTo(ts) {
-        return !this.hasMoreData || this.kfBuffer[this.kfBuffer.length - 1].ts >= ts;
-    }
-
-    shiftTo(ts) {
-        if (this.conf.withHistory) {
-            const historyLastTs = this.history.length > 0 ? this.history[this.history.length - 1].ts : this.dataAccess.getIntervalAbsolute().from.valueOf() - 1;
-            const kfsToHistory = this.kfBuffer.filter(kf => kf.ts < ts && kf.ts > historyLastTs);
-            this.history.push(...kfsToHistory);
-        }
-
-        if (this.kfBuffer.length < this.conf.kfCount) {
-            while (this.kfBuffer.length > 0 && this.kfBuffer[0].ts < ts)
-                this.kfBuffer.shift();
-
-            this.intp.rebuildArgs(this.kfBuffer);
-
-        } else if (this.kfBuffer[this.kfBuffer.length - 1].ts < ts) {
-            this.kfBuffer = [];
-
-            this.intp.rebuildArgs(this.kfBuffer);
-
-        } else if (this.kfBuffer[this.conf.kfCount - 1].ts < ts) {
-            while (this.kfBuffer[this.conf.kfCount - 1].ts < ts) {
-                const newBeginIdx = Math.min(
-                    this.kfBuffer.length - this.conf.kfCount,
-                    this.conf.kfCount - 1
-                );
-
-                this.kfBuffer = this.kfBuffer.slice(newBeginIdx);
+            for (const sigConf of sigSetConf.signals) {
+                signals[sigConf.cid] = signalAggs;
             }
 
-            this.intp.rebuildArgs(this.kfBuffer);
-        } else if (!this.intp.hasCachedArgs) {
-            this.intp.rebuildArgs(this.kfBuffer);
+            this.sigSets[sigSetConf.cid] = {
+                cid: sigSetConf.cid,
+                tsSigCid: sigSetConf.tsSigCid,
+                signals,
+                intp: new SigSetInterpolator(
+                    sigSetConf.signals.map(s => s.cid),
+                    signalAggs,
+                    config.interpolation
+                ),
+            };
         }
 
-        if (this.conf.withHistory) {
-            return [...this.history, {ts, data: this.intp.interpolate(ts)}];
-        } else {
-            return this.intp.interpolate(ts);
-        }
+        this._reset();
     }
 
     getEmptyData() {
-        if (this.conf.withHistory) {
-            return [];
-        } else {
-            return this.intp.interpolate(-1);
+        const data = {};
+        for (const sigSet of Object.values(this.sigSets)) {
+            data[sigSet.cid] = this.conf.history ? [] : sigSet.intp.interpolate(-1);
         }
-    }
 
+        return data;
+    }
+    canShiftTo(ts) {
+        return Object.values(this.sigSets).every(sigSet =>
+            !sigSet.hasMoreData ||
+            (
+                sigSet.buffer.length >= this.conf.intpArity &&
+                sigSet.buffer[sigSet.buffer.length - 1].ts >= ts
+            )
+        );
+    }
     didMissFetch() {
-        this.missedFetches += 1;
+        this.timePillowFactor += 1;
     }
-    hasEnoughLoaded(maxPredictedFetchTime) {
-        const kfBuffer = this.kfBuffer;
-        const storedTime = kfBuffer.length <= 2*this.conf.kfCount ? 0 : kfBuffer[kfBuffer.length - 1].ts - kfBuffer[2*this.conf.kfCount].ts;
 
-        return !this.hasMoreData || (storedTime - minTimeLoadedAhead) / this.dataAccess.playbackSpeedFactor > this.missedFetches * maxPredictedFetchTime;
+    shiftTo(ts) {
+        if (this.conf.history) {
+            const historyFirstTs = ts - this.conf.history;
+
+            for (const sigSet of Object.values(this.sigSets)) {
+                const historyLastTs = sigSet.history.length > 0 ?
+                    sigSet.history[sigSet.history.length - 1].ts : -1;
+
+                let i = sigSet.buffer.findIndex(kf => kf.ts > historyLastTs);
+                while (i >= 0 && i < sigSet.buffer.length && sigSet.buffer[i].ts < ts) {
+                    sigSet.history.push(sigSet.buffer[i]);
+                    i++;
+                }
+
+                const historyFirstIdx = sigSet.history.findIndex(kf => kf.ts >= historyFirstTs);
+                sigSet.history.splice(0, historyFirstIdx);
+            }
+        }
+
+        const arity = this.conf.intpArity;
+        const data = {};
+        for (const sigSet of Object.values(this.sigSets)) {
+            const needsShift = () => sigSet.buffer[arity - 1].ts < ts;
+
+            if (sigSet.buffer.length < arity ||
+                sigSet.buffer[sigSet.buffer.length - 1].ts < ts) {
+                sigSet.buffer = [];
+                sigSet.intp.clearArgs();
+
+                sigSet.intp.rebuildArgs(sigSet.buffer);
+            } else if (needsShift()) {
+                while(needsShift()) {
+                    const kfsToDelete = Math.min(
+                        sigSet.buffer.length - arity,
+                        arity - 1
+                    );
+
+                    sigSet.buffer.splice(0, kfsToDelete);
+                }
+
+                sigSet.intp.rebuildArgs(sigSet.buffer);
+            } else if (!sigSet.intp.hasCachedArgs) {
+                sigSet.intp.rebuildArgs(sigSet.buffer);
+            }
+
+            data[sigSet.cid] = this.conf.history ?
+                [...sigSet.history, {ts, data: sigSet.intp.interpolate(ts)}] :
+                sigSet.intp.interpolate(ts)
+            ;
+        }
+
+        return data;
     }
 
     getSeekQueries(ts) {
         const queries = [];
+        for (const sigSet of Object.values(this.sigSets)) {
+            if (this.conf.history) {
+                queries.push(this._getHistoryQuery(sigSet, ts));
+            }
 
-        this.nextChunkBeginTs = ts;
-        this.nextKeyframeCount = 2*this.conf.kfCount;
+            queries.push(this._getFirstKeyframeQuery(sigSet, ts));
 
-        if (this.conf.withHistory) queries.push(this._getHistoryQuery());
-        queries.push(this._getFirstKeyframeQuery());
-        queries.push(this._getNextKeyframesQuery());
+            const bucketCount = 3 * this.conf.intpArity;
+            queries.push(this._getNextChunkQuery(sigSet, ts, bucketCount));
+        }
 
         return queries;
     }
-    processSeekQueries(qryResults) {
-        this.hasMoreData = true;
-        this.intp.clearArgs();
+    processSeekQueries(qryResults, queries) {
+        this._reset();
 
-        const realKeyframeCount = qryResults[qryResults.length - 1][0].buckets.length;
-        if (realKeyframeCount < this.nextKeyframeCount) {
-            this.hasMoreData = false;
+        const qrysPerSigSet = this.conf.history ? 3 : 2;
+        for (const sigSet of Object.values(this.sigSets)) {
+            const sigSetQrys = queries.splice(0, qrysPerSigSet);
+            const sigSetQryResults = qryResults.splice(0, qrysPerSigSet);
+
+            if (this.conf.history) {
+                const historyQryBuckets = sigSetQryResults.shift()[0].buckets;
+                sigSet.history.push(
+                    ...historyQryBuckets.map(this._bucketToKeyframe)
+                );
+            }
+
+            const firstKeyframeQryBuckets = sigSetQryResults.shift()[0].buckets;
+            if (firstKeyframeQryBuckets.length > 0) {
+                const firstBucket = firstKeyframeQryBuckets[0];
+                sigSet.buffer.push(this._bucketToKeyframe(firstBucket));
+            }
+
+            const nextChunkQryBuckets = sigSetQryResults.shift()[0].buckets;
+
+            this._processNextChunkBuckets(
+                sigSet,
+                nextChunkQryBuckets,
+                sigSetQrys[qrysPerSigSet - 1]
+            );
         }
-
-        if (this.conf.withHistory) {
-            const historyRes = qryResults.shift()[0].buckets;
-            this.history = this._processHistory(historyRes);
-        }
-
-        let keyframesRes = [].concat(...qryResults.map(result => result[0].buckets));
-        this.kfBuffer = this._processKeyframes(keyframesRes);
     }
 
-    getNextChunkQueries() {
-        return [ this._getNextKeyframesQuery() ];
-    }
-    processNextChunkQueries(qryResults) {
-        const buckets = qryResults[0][0].buckets;
-        if (buckets.length < this.nextKeyframeCount) {
-            this.hasMoreData = false;
+    getNextChunkQueries(maxPredictedFetchTime) {
+        const queries = [];
+        for (const sigSet of this._getSigSetsToFetch(maxPredictedFetchTime)) {
+            const buffLen = sigSet.buffer.length;
+
+            let timeStoredBucketLimit = Infinity;
+            if (buffLen > 1) {
+                const timeStored = sigSet.buffer[buffLen - 1].ts - sigSet.buffer[0].ts;
+                const realTimeStored = timeStored / this.dataAccess.playbackSpeedFactor;
+
+                const avgBucketCountPerMs = buffLen / realTimeStored;
+                timeStoredBucketLimit = Math.floor(
+                    (this.conf.maxTimeStored - realTimeStored) * avgBucketCountPerMs
+                );
+            }
+
+            const bucketCount = Math.min(
+                this.conf.maxKeyframesStored - buffLen,
+                timeStoredBucketLimit,
+                sigSet.lastBucketCount * 2
+            );
+
+            queries.push(this._getNextChunkQuery(
+                sigSet,
+                sigSet.nextChunkBeginTs,
+                bucketCount
+            ));
         }
 
-        let keyframes = this._processKeyframes(buckets);
+        return queries;
+    }
+    processNextChunkQueries(qryResults, queries) {
+        const fetchedSigSetCids = queries.map(qry => qry.args[0]);
+        for (const sigSetCid of fetchedSigSetCids) {
+            const sigSet = this.sigSets[sigSetCid];
+            const sigSetQryBuckets = qryResults.shift()[0].buckets;
+            const sigSetQries = queries.shift();
 
+            this._processNextChunkBuckets(
+                sigSet,
+                sigSetQryBuckets,
+                sigSetQries
+            );
+        }
+    }
 
+    _reset() {
+        for (const sigSet of Object.values(this.sigSets)) {
+            sigSet.buffer = [];
+            sigSet.history = [];
+            sigSet.hasMoreData = true;
+
+            sigSet.intp.clearArgs();
+        }
+
+        this.timePillowFactor = 1;
+    }
+    _getSigSetsToFetch(maxPredictedFetchTime) {
+        const intpArity = this.conf.intpArity;
+        const speedFact = this.dataAccess.playbackSpeedFactor;
+        return Object.values(this.sigSets).filter(sigSet => {
+            //Leaving out the currently interpolated keyframes, because in the
+            //worst case scenario, the keyframe window is goint to shift next
+            //refresh.
+            const storedTime = sigSet.buffer.length <= intpArity ? 0 :
+                sigSet.buffer[sigSet.buffer.length - 1].ts - sigSet.buffer[intpArity - 1].ts
+            ;
+
+            return sigSet.hasMoreData &&
+                (storedTime - inactiveTabTimePillow) / speedFact <= this.timePillowFactor * maxPredictedFetchTime;
+        });
+    }
+
+    _processNextChunkBuckets(sigSet, buckets, nextChunkQry) {
         //Due to aggregation intervals behaviour, we sometimes get a kf twice
-        const lastKfBufferTs = this.kfBuffer.length > 0 ? this.kfBuffer[this.kfBuffer.length - 1].ts : -1;
-        this.kfBuffer.push(...keyframes.filter(kf => kf.ts > lastKfBufferTs));
-    }
+        const lastBufferTs = sigSet.buffer.length > 0 ? sigSet.buffer[sigSet.buffer.length - 1].ts : -1;
+        const kfs = buckets.map(this._bucketToKeyframe);
+        const firstKfIdx = kfs.findIndex(kf => kf.ts > lastBufferTs);
 
-    _processKeyframes(buckets) {
-        const kfs = this._procesBuckets(buckets);
-
-        this.nextChunkBeginTs = kfs.length > 0 ? kfs[kfs.length - 1].ts : this.nextChunkBeginTs;
-
-        const timeFetched = kfs.length <= 1 ? 0 : kfs[kfs.length - 1].ts - kfs[0].ts;
-        if (timeFetched / this.dataAccess.playbackSpeedFactor < this.conf.maxLoadAheadMs) {
-            this.nextKeyframeCount = this.nextKeyframeCount * 2;
+        if (firstKfIdx >= 0) {
+            sigSet.buffer.push(...kfs.slice(firstKfIdx));
         }
 
-        return kfs;
+        const qryAggs = nextChunkQry.args[2];
+        const wantedBucketCount = qryAggs[0].limit;
+
+        sigSet.hasMoreData = buckets.length === wantedBucketCount;
+        sigSet.lastBucketCount = buckets.length;
+
+        sigSet.nextChunkBeginTs = sigSet.buffer.length > 0 ?
+            sigSet.buffer[sigSet.buffer.length - 1].ts :
+            //If no buckets were fetched, there is no more data (or chunks)
+            null;
     }
-    _processHistory(buckets) {
-        return this._procesBuckets(buckets);
-    }
-    _procesBuckets(buckets) {
-        const formattedBuckets = [];
-
-        for (const bucket of buckets) {
-            const ts = moment(bucket.key).valueOf();
-            const data = bucket.values;
-
-            formattedBuckets.push({ ts, data});
-        }
-
-        return formattedBuckets;
-    }
-
-    _getNextKeyframesQuery() {
+    _bucketToKeyframe(bucket) {
         return {
-            type: "aggs",
-            args: [
-                this.conf.sigSetCid,
-                {
-                    type: "range",
-                    sigCid: this.conf.tsSigCid,
-                    gt: moment(this.nextChunkBeginTs).toISOString(),
-                },
-                this._getQueryAggs(this.nextKeyframeCount, "asc")
-            ]
-        };
-    }
-    _getFirstKeyframeQuery() {
-        return {
-            type: "aggs",
-            args: [
-                this.conf.sigSetCid,
-                {
-                    type: "range",
-                    sigCid: this.conf.tsSigCid,
-                    lte: moment(this.nextChunkBeginTs).toISOString(),
-                },
-                this._getQueryAggs(1, "desc")
-            ]
-        };
-    }
-    _getHistoryQuery() {
-        return {
-            type: "aggs",
-            args: [
-                this.conf.sigSetCid,
-                {
-                    type: "range",
-                    sigCid: this.conf.tsSigCid,
-                    lt: moment(this.nextChunkBeginTs).toISOString(),
-                    gte: this.dataAccess.getIntervalAbsolute().from.toISOString(),
-                },
-                this._getQueryAggs(null, 'asc')
-            ]
+            ts: Date.parse(bucket.key),
+            data: bucket.values,
         };
     }
 
-    _getQueryAggs(limit, order) {
+    _getNextChunkQuery(sigSet, beginTs, bucketCount) {
+        return {
+            type: "aggs",
+            args: [
+                sigSet.cid,
+                {
+                    type: "range",
+                    sigCid: sigSet.tsSigCid,
+                    gt: moment(beginTs).toISOString(),
+                },
+                this._getQueryAggs(sigSet, bucketCount, "asc")
+            ]
+        };
+    }
+    _getFirstKeyframeQuery(sigSet, beginTs) {
+        return {
+            type: "aggs",
+            args: [
+                sigSet.cid,
+                {
+                    type: "range",
+                    sigCid: sigSet.tsSigCid,
+                    lte: moment(beginTs).toISOString(),
+                },
+                this._getQueryAggs(sigSet, 1, "desc")
+            ]
+        };
+    }
+    _getHistoryQuery(sigSet, beginTs) {
+        const lt = moment(beginTs);
+        const gte = moment(lt.valueOf() - this.conf.history);
+
+        return {
+            type: "aggs",
+            args: [
+                sigSet.cid,
+                {
+                    type: "range",
+                    sigCid: sigSet.tsSigCid,
+                    lt: lt.toISOString(),
+                    gte: gte.toISOString(),
+                },
+                this._getQueryAggs(sigSet, null, 'asc')
+            ]
+        };
+    }
+
+    _getQueryAggs(sigSet, limit, order) {
         const step = this.conf.getAggStep();
         const offset = this.conf.getAggOffset(step);
 
         return [
             {
-                sigCid: this.conf.tsSigCid,
+                sigCid: sigSet.tsSigCid,
                 step: step.toString(),
                 offset: offset.toString(),
                 minDocCount: 1,
-                signals: this.conf.signals,
+                signals: sigSet.signals,
                 limit,
                 order,
             }
-        ] ;
+        ];
     }
 }
 
@@ -334,27 +425,64 @@ class TimeSeriesDataSource {
     constructor(config, dataAccess) {
         this.dataAccess = dataAccess;
 
-        const parseConfig = () => {
-            const conf = {
-                sigSetCid: config.sigSetCid,
-                tsSigCid: config.tsSigCid,
-                signals: config.signals,
+        this.conf = {
+            intpArity: config.interpolation.arity,
 
-                kfCount: config.interpolation.arity,
-
-                getAggStep: () => this.dataAccess.getIntervalAbsolute().aggregationInterval,
-                getAggOffset: (aggStep) => moment.duration(this.dataAccess.getIntervalAbsolute().from.valueOf() % aggStep.asMilliseconds()),
-            };
-
-            return conf;
+            getAggStep: () => this.dataAccess.getIntervalAbsolute().aggregationInterval,
+            getAggOffset: (aggStep) => moment.duration(
+                this.dataAccess.getIntervalAbsolute().from.valueOf() % aggStep.asMilliseconds()
+            ),
         };
 
-        this.conf = parseConfig();
-        this.data = null;
-        this.kfStartIdx = null;
-        this.intp = new SignalInterpolator(this.conf.signals, config.interpolation.func, this.conf.kfCount);
+        const signalAggs = config.signalAggs || ['avg'];
 
+        this.querySigSets = {};
+        this.sigSets = [];
+        for (const sigSetConf of config.sigSets) {
+            const signals = {};
+
+            for (const sigConf of sigSetConf.signals) {
+                if (sigConf.generate) {
+                    signals[sigConf.cid] = {
+                        generate: sigConf.generate,
+                    };
+                } else if (sigConf.mutate) {
+                    signals[sigConf.cid] = {
+                        mutate: sigConf.mutate,
+                        aggs: signalAggs,
+                    };
+                } else {
+                    signals[sigConf.cid] = signalAggs;
+                }
+            }
+
+            this.querySigSets[sigSetConf.cid] = {
+                tsSigCid: sigSetConf.tsSigCid,
+                signals
+            };
+
+            this.sigSets.push({
+                cid: sigSetConf.cid,
+                intp: new SigSetInterpolator(
+                    sigSetConf.signals.map(s => s.cid),
+                    signalAggs,
+                    config.interpolation
+                ),
+            });
+        }
+
+        this._reset();
+    }
+
+    _reset() {
         this.lastSeekInterval = null;
+
+        for (const sigSet of this.sigSets) {
+            sigSet.data = {};
+            sigSet.startIdx = 0;
+
+            sigSet.intp.clearArgs();
+        }
     }
 
     canShiftTo() {
@@ -362,82 +490,80 @@ class TimeSeriesDataSource {
     }
 
     shiftTo(ts) {
-        const main = this.data.main;
+        const data = {};
+        const arity = this.conf.intpArity;
+        for (const sigSet of this.sigSets) {
+            const main = sigSet.data.main;
 
+            if (main.length === 0 || ts < main[0].ts.valueOf()) {
+                const shiftedData = {main: []};
 
-        if (main.length === 0 || ts < main[0].ts.valueOf()) {
-            return {
-                [this.conf.sigSetCid]: { main: [] }
-            };
-        } else if (ts >= main[main.length - 1].ts.valueOf()) {
-            const data = {
-                main: this.data.main
-            };
+                if (sigSet.data.prev && sigSet.data.prev.ts.valueOf() > ts) {
+                    shiftedData.prev = sigSet.data.prev;
+                }
 
-            if (this.data.prev) data.prev = this.data.prev;
-            if (this.data.next) data.next = this.data.next;
-
-            return {
-                [this.conf.sigSetCid]: data
-            };
-        }
-
-        const maxKfStartIdx = main.length - this.conf.kfCount;
-
-        let mainEndIdx = Math.max(0, bisector((kf) => kf.ts.valueOf()).left(main, ts) - 1);
-
-        if (this.kfStartIdx === null) {
-            if (mainEndIdx > maxKfStartIdx) {
-                this.kfStartIdx = maxKfStartIdx;
-            } else {
-                this.kfStartIdx = main[mainEndIdx + 1].ts.valueOf() === ts ? mainEndIdx + 1 : mainEndIdx;
+                data[sigSet.cid] = shiftedData;
+                continue;
             }
 
-            this.intp.rebuildArgs(main.slice(this.kfStartIdx, this.kfStartIdx + this.conf.kfCount));
+            if (ts >= main[main.length - 1].ts.valueOf()) {
+                const shiftedData = { main };
 
-        } else if (main[this.kfStartIdx + this.conf.kfCount - 1].ts.valueOf() < ts) {
-            while (main[this.kfStartIdx + this.conf.kfCount - 1].ts.valueOf() < ts) {
-                this.kfStartIdx = Math.min(
-                    maxKfStartIdx,
-                    this.kfStartIdx + this.conf.kfCount - 1
-                );
+                if (sigSet.data.prev) shiftedData.prev = sigSet.data.prev;
+                if (sigSet.data.next) shiftedData.next = sigSet.data.next;
+
+                data[sigSet.cid] = shiftedData;
+                continue;
             }
 
-            this.intp.rebuildArgs(main.slice(this.kfStartIdx, this.kfStartIdx + this.conf.kfCount));
-        } else if (!this.intp.hasCachedArgs) {
-            this.intp.rebuildArgs(main.slice(this.kfStartIdx, this.kfStartIdx + this.conf.kfCount));
+            const needsShift = () => main[sigSet.startIdx + arity - 1].ts.valueOf() < ts;
+            if (needsShift()) {
+                while (needsShift()) {
+                    sigSet.startIdx = Math.min(
+                        main.length - arity,
+                        sigSet.startIdx + arity - 1
+                    );
+                }
+
+                sigSet.intp.rebuildArgs(main, sigSet.startIdx);
+            } else if (!sigSet.intp.hasCachedArgs) {
+                sigSet.intp.rebuildArgs(main, sigSet.startIdx);
+            }
+
+            const shiftedData = {
+                main: main.slice(0, sigSet.startIdx + 1),
+            };
+
+            shiftedData.main.push({ts: moment(ts), data: sigSet.intp.interpolate(ts)});
+
+            if (sigSet.data.prev) shiftedData.prev = sigSet.data.prev;
+
+            data[sigSet.cid] = shiftedData;
         }
 
-        const data = {
-            main: main.slice(0, mainEndIdx + 1),
-        };
-
-        data.main.push({ts: moment(ts), data: this.intp.interpolate(ts)});
-
-        if (this.data.prev) data.prev = this.data.prev;
-
-        return {[this.conf.sigSetCid]: data};
+        return data;
     }
 
     getEmptyData() {
-        return {
-            [this.conf.sigSetCid]: {main: []}
-        };
+        const emptyData = {};
+        for (const sigSet of this.sigSets) {
+            emptyData[sigSet.cid] = { main: [] };
+        }
+
+        return emptyData;
     }
 
     didMissFetch() {}
-    hasEnoughLoaded() {
-        return true;
-    }
-
-    getSeekQueries() {
+    getSeekQueries(ts) {
+        this.lastSeekTo = ts;
         const intvAbs = this.dataAccess.getIntervalAbsolute();
 
         const sameAggregationInterval = () => {
             const prev = this.lastSeekInterval.aggregationInterval;
             const curr = intvAbs.aggregationInterval;
 
-            return (prev === null && curr === null) || (prev !== null && curr !== null && prev.asMilliseconds() === curr.asMilliseconds());
+            return (prev === null && curr === null) ||
+                (prev !== null && curr !== null && prev.asMilliseconds() === curr.asMilliseconds());
         };
 
         if (this.lastSeekInterval &&
@@ -448,40 +574,40 @@ class TimeSeriesDataSource {
             return [];
         }
 
-        const sigSets = {
-            [this.conf.sigSetCid]: {
-                tsSigCid: this.conf.tsSigCid,
-                signals: this.conf.signals,
-            },
-        };
-
         const queries = [
             {
                 type: "timeSeries",
-                args: [ sigSets, intvAbs ]
+                args: [ this.querySigSets, intvAbs ]
             }
         ];
 
         return queries;
     }
     processSeekQueries(qryResults, queries) {
-        this.kfStartIdx = null;
-        this.intp.clearArgs();
+        if (qryResults.length !== 0) {
 
-        if (qryResults.length === 0) return;
+            this._reset();
 
-        const intvAbs = queries[0].args[1];
-        this.lastSeekInterval = {
-            from: intvAbs.from.valueOf(),
-            to: intvAbs.to.valueOf(),
-            aggregationInterval: intvAbs.aggregationInterval
-        };
+            const intvAbs = queries[0].args[1];
+            this.lastSeekInterval = {
+                from: intvAbs.from.valueOf(),
+                to: intvAbs.to.valueOf(),
+                aggregationInterval: intvAbs.aggregationInterval
+            };
 
+            for (const sigSet of this.sigSets) {
+                sigSet.data = qryResults[0][sigSet.cid];
+            }
+        } else {
+            for (const sigSet of this.sigSets) {
+                sigSet.intp.clearArgs();
 
-        this.kfStartIdx = null;
-        this.intp.clearArgs();
-
-        this.data = qryResults[0][this.conf.sigSetCid];
+                sigSet.startIdx = Math.min(
+                    Math.max(0, sigSet.data.main.findIndex(kf => kf.ts.valueOf() > this.lastSeekTo)),
+                    sigSet.data.main.length - this.conf.intpArity
+                );
+            }
+        }
     }
 
     getNextChunkQueries() {
@@ -549,9 +675,9 @@ class AnimationDataAccess extends Component {
         }
 
         dataSourcesToFetch.map(dtSrcKey => this.dataSources[dtSrcKey].didMissFetch());
-        this.runQueries(dataSourcesToFetch, "getNextChunkQueries", [], "processNextChunkQueries");
+        this.runQueries(dataSourcesToFetch, "getNextChunkQueries", [this.maxFetchTime], "processNextChunkQueries");
         const promise = this.nextFetchPromise.then(wasLatestFetch => {
-            if (!wasLatestFetch) return null;
+            if (!wasLatestFetch || this.state.needsReseek) return null;
 
             return this.shiftTo(ts);
         });
@@ -573,6 +699,7 @@ class AnimationDataAccess extends Component {
     }
 
 
+    @withAsyncErrorHandler
     async runQueries(dataSrcKeys, getQueriesFuncName, getQueriesFuncArgs, processQueriesFuncName) {
         const _runQueries = async () => {
             const lengths = [];
@@ -581,25 +708,25 @@ class AnimationDataAccess extends Component {
 
             for (const dataSrcKey of dataSrcKeys) {
                 const querySet = this.dataSources[dataSrcKey][getQueriesFuncName](...getQueriesFuncArgs);
+
                 queries.push(...querySet);
                 lengths.push(querySet.length);
                 querySetOwners.push(dataSrcKey);
             }
 
+            if (queries.length == 0) return true;
+
             const results = await this.dataAccSession.getLatestMixed(queries);
 
             if (results === null) return false;
 
-            let i = 0;
-            while (i < querySetOwners.length) {
+            for (let i = 0; i < querySetOwners.length; i++) {
                 const owner = this.dataSources[querySetOwners[i]];
                 const querySetLength = lengths[i];
                 const resultSet = results.splice(0, querySetLength);
                 const querySet = queries.splice(0, querySetLength);
 
                 owner[processQueriesFuncName](resultSet, querySet);
-
-                i++;
             }
 
             return true;
@@ -622,22 +749,14 @@ class AnimationDataAccess extends Component {
             data[dataSrcKey] = this.dataSources[dataSrcKey].shiftTo(ts);
         }
 
-        this.startPreFetching();
+        this.runQueries(
+            Object.keys(this.dataSources),
+            "getNextChunkQueries",
+            [this.maxFetchTime],
+            "processNextChunkQueries"
+        );
+
         return data;
-    }
-    @withAsyncErrorHandler
-    async startPreFetching() {
-        if (this.state.needsReseek || this.nextFetchPromise) return;
-
-        let needFetch = Object.keys(this.dataSources).filter(dataSrcKey => !this.dataSources[dataSrcKey].hasEnoughLoaded(this.maxFetchTime));
-        while (needFetch.length > 0) {
-            const wasLatestFetch = await this.runQueries(needFetch, "getNextChunkQueries", [], "processNextChunkQueries");
-
-            if (!wasLatestFetch) return;
-
-            needFetch = Object.keys(this.dataSources).filter(dataSrcKey => !this.dataSources[dataSrcKey].hasEnoughLoaded(this.maxFetchTime));
-        }
-
     }
 
     errorHandler(error) {
@@ -816,8 +935,10 @@ class RecordedAnimationControl extends Component {
 
         const animData = await this.props.seek(clampedTs);
 
+        console.log(animData);
         if (animData !== null) {
             this.setState({animationData: animData});
+            console.log(this.state.status.isPlaying);
             this.setStatus({isBuffering: this.state.status.isPlaying});
         }
     }
