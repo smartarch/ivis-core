@@ -50,7 +50,7 @@ const taskSubtypeSpecs = {
  * @param onFail callback on failed run
  * @returns {Promise<void>}
  */
-async function run({jobId, runId, taskDir, inputData}, onRequest, onSuccess, onFail) {
+async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFail) {
     try {
         let output = '';
         let errOutput = '';
@@ -76,7 +76,7 @@ async function run({jobId, runId, taskDir, inputData}, onRequest, onSuccess, onF
         });
 
         jobOutStream.on('line', (input) => {
-            onRequest(input)
+            onEvent('request', input)
                 .then(msg => {
                     jobProc.stdin.write(JSON.stringify(msg) + '\n');
                 })
@@ -98,7 +98,9 @@ async function run({jobId, runId, taskDir, inputData}, onRequest, onSuccess, onF
 
         // Same as with error output
         jobProc.stdout.on('data', (data) => {
-            output += data;
+            const outputStr = data.toString();
+            onEvent('output', outputStr);
+            output += outputStr;
         });
 
         const pipeErrHandler = (err) => {

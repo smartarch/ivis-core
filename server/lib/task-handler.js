@@ -5,19 +5,18 @@ const fork = require('child_process').fork;
 
 const path = require('path');
 const log = require('./log');
-const esEmitter = require('./indexers/elasticsearch').emitter;
 const esClient = require('./elasticsearch');
-const filesEmitter = require('../models/files').emitter;
 const getFilesDir = require('../models/files').getEntityFilesDir;
 const fs = require('fs-extra-promise');
 const config = require("./config");
 
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
-const {BuildState, TaskSource, getTransitionStates} = require('../../shared/tasks');
+const {BuildState, getTransitionStates} = require('../../shared/tasks');
 const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
+const {emitter: taskEmitter} = require('./task-events');
 const {emitter: filesEmitter, EventTypes: FilesEventTypes} = require('./files-events');
 
 const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'services', 'task-handler.js'));
@@ -28,6 +27,7 @@ const TYPE_JOBS = '_doc';
 const STATE_FIELD = 'state';
 
 const tasksDir = path.join(__dirname, '..', 'files', 'task-content');
+
 
 /**
  * Returns path to the directory containing all task related files.
@@ -52,7 +52,7 @@ let handlerProcess;
 async function init() {
     log.info(LOG_ID, 'Spawning job handler process');
 
-    
+
     await initIndices();
 
     try {
@@ -87,6 +87,10 @@ async function init() {
 
     handlerProcess.on('close', (code, signal) => {
         log.info(LOG_ID, `Job-handler process exited with code ${code} signal ${signal}`);
+    });
+
+    handlerProcess.on('message', (msg) => {
+        taskEmitter.emit(msg.type, msg.data)
     });
 
     esEmitter

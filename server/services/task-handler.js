@@ -20,6 +20,8 @@ const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
 const INDEX_JOBS = require('../lib/task-handler').esConstants.INDEX_JOBS;
 const TYPE_JOBS = require('../lib/task-handler').esConstants.TYPE_JOBS;
 
+const {EventTypes}= require('../lib/task-events');
+
 const LOG_ID = 'Task-handler';
 
 // Job handlers
@@ -60,6 +62,13 @@ class HandlerNotFoundError extends Error {
 
 /* Message processing */
 process.on('message', handleMsg);
+
+function emit(eventType, data){
+    process.send({
+        type: eventType,
+        data: data
+    })
+}
 
 /**
  * The incoming messages logistic.
@@ -831,12 +840,23 @@ function parseRequest(req) {
 }
 
 /**
- * This function processes all requests coming from the type handlers.
+ * This function processes all events coming from the type handlers.
  * @param jobId
- * @param requestStr
+ * @param type event type
+ * @param data payload
  * @returns {Promise<Object>}
  */
-async function onRunRequest(jobId, requestStr) {
+async function onRunEvent(jobId, type, data) {
+    switch (type) {
+        case 'output':
+            emit(EventTypes.RUN_OUTPUT, data);
+            break;
+        case 'request':
+            return await handleRequest(jobId, data)
+    }
+}
+
+async function handleRequest(requestStr){
     let response = {};
 
     if (!requestStr) {
@@ -1075,7 +1095,7 @@ async function handleRun(workEntry) {
 
         handler.run(
             runConfig,
-            async (request) => await onRunRequest(jobId, request),
+            async (type, request) => await onRunEvent(jobId, type, request),
             (output, config) => onRunSuccess(jobId, runId, runData, output, config),
             (error) => onRunFail(jobId, runId, runData, error)
         );

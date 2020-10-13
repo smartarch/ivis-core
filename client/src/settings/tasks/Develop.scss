@@ -1,3 +1,5 @@
+@import "../../scss/variables.scss";
+
 .fullscreenOverlay {
   position: fixed;
   width: 100%;
@@ -62,7 +64,13 @@
     margin-bottom: 3px;
   }
 
-  .integrationTabContent {
+  .integrationTabRunStatus{
+    overflow: auto;
+    border-bottom: 1px solid $border-color;
+  }
+
+
+  .integrationTabRunOutput {
     padding-left: 3px;
     overflow: auto;
   }
@@ -72,7 +80,7 @@
 .withIntegration {
   .codePane {
     padding-right: 3px;
-    border-right: 1px solid #cccccc;
+    border-right: 1px solid $border-color;
   }
 
   .integrationPane {

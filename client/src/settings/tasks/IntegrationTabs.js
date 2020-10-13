@@ -29,7 +29,8 @@ export default class IntegrationTabs extends Component {
         taskHash: PropTypes.number,
         withBuild: PropTypes.bool,
         onJobChange: PropTypes.func,
-        run: PropTypes.object
+        runOutput: PropTypes.string,
+        runStatus: PropTypes.number
     };
 
     constructor(props) {
@@ -41,12 +42,13 @@ export default class IntegrationTabs extends Component {
             prevPropsTaskHash: this.props.taskHash
         };
         this.refreshTimeout = null;
-
+        this.initForm();
         this.initForm({
-            onChange: (newState, key) => {
+            onChange: (newState) => {
                 this.props.onJobChange(newState.formState.getIn(['data', 'developJob', 'value']));
             }
         });
+
     }
 
     @withAsyncErrorHandler
@@ -83,8 +85,11 @@ export default class IntegrationTabs extends Component {
             this.state.task !== nextState.task ||
             this.state.jobId !== nextState.jobId ||
             this.state.runId !== nextState.runId ||
-            this.props.run !== nextProps.run ||
-            this.state.activeTab !== nextState.activeTab
+            this.props.runOutput !== nextProps.runOutput ||
+            this.props.runStatus !== nextProps.runStatus ||
+            this.state.activeTab !== nextState.activeTab ||
+            this.state.formState !== nextState.formState
+
     }
 
 
@@ -210,7 +215,7 @@ export default class IntegrationTabs extends Component {
 
         return (
             <div className={developStyles.integrationTab}>
-                <div className={developStyles.integrationTabContent}>
+                <div className={developStyles.integrationTabRunOutput}>
                     {buildContent}
                 </div>
             </div>
@@ -218,8 +223,9 @@ export default class IntegrationTabs extends Component {
     }
 
     getRunContent(t) {
-        let runContent = null;
-        const run = this.props.run;
+        let runStatusElement = null;
+        let runOutput = null;
+        const status = this.props.runStatus;
         const jobColumns = [
             {data: 0, title: t('#')},
             {data: 1, title: t('Name')},
@@ -228,49 +234,55 @@ export default class IntegrationTabs extends Component {
             {data: 5, title: t('Namespace')}
         ];
 
-        const jobTable =
-            <Form stateOwner={this} format="wide" noStatus>
-                <TableSelect id="developJob" label={t('Job for testing')} format="wide" withHeader dropdown
-                             dataUrl={`rest/jobs-by-task-table/${this.props.taskId}`} columns={jobColumns}
-                             selectionLabelIndex={1}/>
-            </Form>;
-
-        if (!run) {
-            runContent = (
-                <div>{t('Not run in this panel yet.')}</div>
+        if (!status) {
+            runStatusElement = (
+                <div className='p-1 text-info'>{t('Not run in this panel yet.')}</div>
             );
         } else {
-            switch (run.status) {
+            switch (status) {
                 case (RunStatus.INITIALIZATION):
                 case (RunStatus.SCHEDULED):
-                    runContent = (
-                        <div>{t('Loading...')}</div>
+                    runStatusElement = (
+                        <div className='p-1 text-info'>{t('Loading...')}</div>
                     );
                     break;
                 case (RunStatus.RUNNING):
-                    runContent = (
-                        <div>{t('Running...')}</div>
+                    runStatusElement = (
+                        <div className='p-1 text-info'>{t('Running...')}</div>
                     );
                     break;
                 case (RunStatus.FAILED):
+                    runStatusElement = (
+                        <div className='p-1 text-danger'>{t('Finished with error')}</div>
+                    );
+                    break;
                 case (RunStatus.SUCCESS):
-                    if (run.output) {
-                        runContent = (
-                            <pre><code>{run.output}</code></pre>
-                        );
-                    }
+                    runStatusElement = (
+                        <div className='p-1 text-success'>{t('Finished successfully')}</div>
+                    );
                     break;
             }
 
+            runOutput = (
+                <pre><code>{this.props.runOutput || status.output || ''}</code></pre>
+            );
         }
+
 
         return (
             <div className={developStyles.integrationTab}>
                 <div className={developStyles.integrationTabHeader}>
-                    {jobTable}
+                    <Form stateOwner={this} format="wide" noStatus>
+                        <TableSelect id="developJob" label={t('Job for testing')} format="wide" withHeader dropdown
+                                     dataUrl={`rest/jobs-by-task-table/${this.props.taskId}`} columns={jobColumns}
+                                     selectionLabelIndex={1}/>
+                    </Form>
                 </div>
-                <div className={developStyles.integrationTabContent}>
-                    {runContent}
+                <div className={developStyles.integrationTabRunStatus}>
+                    {runStatusElement}
+                </div>
+                <div className={developStyles.integrationTabRunOutput}>
+                    {runOutput}
                 </div>
             </div>
         );

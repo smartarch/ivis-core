@@ -61,14 +61,13 @@ export default class Develop extends Component {
 
         this.saveLabels = {
             [SaveState.CHANGED]: t('Save'),
-            [SaveState.SAVED]: t('Saved'),
-            [SaveState.SAVING]: t('Saving...')
+            [SaveState.SAVING]: t('Saving...'),
+            [SaveState.SAVED]: t('Saved')
         };
 
         this.saveRunLabels = {
+            ...this.saveLabels,
             [SaveState.CHANGED]: t('Save and Run'),
-            [SaveState.SAVED]: t('Saved'),
-            [SaveState.SAVING]: t('Saving...')
         };
 
         this.initForm({
@@ -87,55 +86,78 @@ export default class Develop extends Component {
 
     changeJob(id) {
         if (this.state.jobId !== id) {
-            this.setState({jobId: id});
-            if (this.runRefreshTimeout) {
-                clearTimeout(this.runRefreshTimeout);
-            }
+            this.closeRunEventSource();
             this.setState({
                 run: null,
-                runId: null
+                runId: null,
+                jobId: id
             });
         }
     }
 
     @withAsyncErrorHandler
-    async fetchRun() {
-        const result = await axios.get(getUrl(`rest/jobs/${this.state.jobId}/run/${this.state.runId}`));
-
-        const run = result.data;
-
-        this.setState({
-            run: run
-        });
-
-        if (run.status == null
-            || run.status === RunStatus.INITIALIZATION
-            || run.status === RunStatus.SCHEDULED
-            || run.status === RunStatus.RUNNING) {
-            this.runRefreshTimeout = setTimeout(() => {
-                this.fetchRun();
-            }, 1000);
-        } else {
-
-        }
-    }
-
     async run() {
         if (this.state.jobId != null) {
             this.clearFormStatusMessage();
-            const runId = await axios.post(getUrl(`rest/job-run/${this.state.jobId}`));
+            const runIdData = await axios.post(getUrl(`rest/job-run/${this.state.jobId}`));
+            const runId = runIdData.data;
 
-            if (this.runRefreshTimeout) {
-                clearTimeout(this.runRefreshTimeout);
-            }
-            this.setState({
-                run: null,
-                runId: runId.data
+
+            this.runEventSource = new EventSource(getUrl(`sse/jobs/${this.state.jobId}/run/${runId}`));
+            this.runEventSource.addEventListener("changeRunStatus", (e) => {
+                this.state.runStatus = e.data;
+            });
+            this.runEventSource.addEventListener("init", (e) => {
+               const run = JSON.parse(e.data);
+
+                this.setState({
+                    runOutput: run.output || '',
+                    runStatus: run.status
+                });
+            });
+            this.runEventSource.addEventListener("output", (e) => {
+                if (e.origin + '/' !== getUrl()) {
+                    console.log(`Origin ${e.origin} not allowed; only events from ${getUrl()}`);
+                } else {
+
+                    let output = this.state.runOutput + JSON.parse(e.data);
+                    this.setState({
+                        runOutput: output,
+                        runStatus: RunStatus.RUNNING
+                    });
+                }
             });
 
-            this.fetchRun();
+            this.runEventSource.onmessage = function(e) {
+                console.log(e.data);
+            }
+
+            this.runEventSource.onerror = (e) => {
+                console.log('error event')
+                console.log(e)
+            };
+
+            this.setState({
+                runStatus: RunStatus.INITIALIZATION,
+                runOutput: '',
+                runId: runId
+            });
         } else {
             this.setFormStatusMessage('warning', this.props.t('Job is not selected. Nothing to run.'));
+        }
+    }
+
+    @withAsyncErrorHandler
+    async stop() {
+        if (this.state.runId) {
+            await axios.post(getUrl(`rest/job-stop/${this.state.runId}`));
+
+            this.closeRunEventSource();
+
+            this.setState({
+                runStatus: null,
+                runId: null
+            });
         }
     }
 
@@ -267,6 +289,13 @@ export default class Develop extends Component {
         ]);
     }
 
+    closeRunEventSource() {
+        if (this.runEventSource) {
+            this.runEventSource.close();
+            this.runEventSource = null;
+        }
+    }
+
     async save() {
         const t = this.props.t;
 
@@ -305,23 +334,10 @@ export default class Develop extends Component {
         });
     }
 
-    @withAsyncErrorHandler
-    async stop() {
-        if (this.state.runId) {
-            await axios.post(getUrl(`rest/job-stop/${this.state.runId}`));
-            if (this.runRefreshTimeout) {
-                clearTimeout(this.runRefreshTimeout);
-            }
-
-            this.setState({
-                run: null,
-                runId: null
-            });
-        }
-    }
 
     render() {
         const t = this.props.t;
+        const runStatus = this.state.runStatus;
 
         const statusMessageText = this.getFormStatusMessageText();
         const statusMessageSeverity = this.getFormStatusMessageSeverity();
@@ -356,9 +372,11 @@ export default class Develop extends Component {
             }
         }
 
-        const showStopBtn = this.state.run && (this.state.run.status === RunStatus.INITIALIZATION ||
-            this.state.run.status === RunStatus.RUNNING ||
-            this.state.run.status === RunStatus.SCHEDULED);
+        const showStopBtn = (
+            runStatus === RunStatus.INITIALIZATION ||
+            runStatus === RunStatus.RUNNING ||
+            runStatus === RunStatus.SCHEDULED
+        );
 
         let saveAndRunBtn = null;
         if (this.state.saveState === SaveState.SAVED) {
@@ -426,7 +444,8 @@ export default class Develop extends Component {
                     </div>
                     <div className={developStyles.integrationPane}>
                         <IntegrationTabs onJobChange={this.changeJob.bind(this)} taskId={this.props.entity.id}
-                                         taskHash={this.state.taskVersionId} run={this.state.run}/>
+                                         taskHash={this.state.taskVersionId} runStatus={this.state.runStatus}
+                                         runOutput={this.state.runOutput}/>
 
                     </div>
                 </div>
