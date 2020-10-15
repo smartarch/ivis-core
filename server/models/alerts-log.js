@@ -12,7 +12,7 @@ async function listLogForAlert(context, params, alertId) {
 
         await shares.enforceEntityPermissionTx(tx, context, 'alert', alertId, 'view');
 
-        return dtHelpers.ajaxListTx(tx, params, builder => builder.from('alerts_log').where('alert', alertId), [ 'type', 'time' ]);
+        return await dtHelpers.ajaxListTx(tx, params, builder => builder.from('alerts_log').where('alert', alertId), [ 'type', 'time' ]);
     });
 }
 
