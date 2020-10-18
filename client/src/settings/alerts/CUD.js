@@ -72,7 +72,7 @@ export default class CUD extends Component {
     validateNumericalInput(state, key, min) {
         const entered = state.getIn([key, 'value']);
 
-        return parseInt(entered) === 0 || (parseInt(entered) && (entered >= min || entered === 0));
+        return parseInt(entered) === 0 || parseInt(entered) >= min;
     }
 
     localValidateFormValues(state) {
