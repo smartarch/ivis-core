@@ -69,21 +69,10 @@ export default class CUD extends Component {
         }
     }
 
-    onlyWhites(txt) {
-        for (let i = 0; i < txt.length; i++) {
-            if (txt[i] !== ' ') return false;
-        }
-        return true;
-    }
-
     validateNumericalInput(state, key, min) {
         const entered = state.getIn([key, 'value']);
 
-        return !entered ||
-            this.onlyWhites(entered) ||
-            isNaN(entered) ||
-            entered < 0 ||
-            (entered > 0 && entered < min);
+        return parseInt(entered) === 0 || (parseInt(entered) && (entered >= min || entered === 0));
     }
 
     localValidateFormValues(state) {
@@ -101,26 +90,26 @@ export default class CUD extends Component {
             state.setIn(['sigset', 'error'], null);
         }
 
-        if (this.validateNumericalInput(state, 'duration', 0)) {
+        if (!this.validateNumericalInput(state, 'duration', 0)) {
             state.setIn(['duration', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['duration', 'error'], null);
         }
 
-        if (this.validateNumericalInput(state, 'delay', 0)) {
+        if (!this.validateNumericalInput(state, 'delay', 0)) {
             state.setIn(['delay', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['delay', 'error'], null);
         }
 
-        if (this.validateNumericalInput(state, 'interval', 0)) {
+        if (!this.validateNumericalInput(state, 'interval', 0)) {
             state.setIn(['interval', 'error'], t('This value must be a non-negative number'));
         } else {
             state.setIn(['interval', 'error'], null);
         }
 
         const minRepeat = 10;
-        if (this.validateNumericalInput(state, 'repeat', minRepeat)) {
+        if (!this.validateNumericalInput(state, 'repeat', minRepeat)) {
             state.setIn(['repeat', 'error'], t(`This value must be 0 or a number greater than ${minRepeat}`));
         } else {
             state.setIn(['repeat', 'error'], null);
