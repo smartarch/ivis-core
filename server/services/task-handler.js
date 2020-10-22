@@ -20,7 +20,7 @@ const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
 const INDEX_JOBS = require('../lib/task-handler').esConstants.INDEX_JOBS;
 const TYPE_JOBS = require('../lib/task-handler').esConstants.TYPE_JOBS;
 
-const {EventTypes}= require('../lib/task-events');
+const {EventTypes} = require('../lib/task-events');
 
 const LOG_ID = 'Task-handler';
 
@@ -63,7 +63,7 @@ class HandlerNotFoundError extends Error {
 /* Message processing */
 process.on('message', handleMsg);
 
-function emit(eventType, data){
+function emit(eventType, data) {
     process.send({
         type: eventType,
         data: data
@@ -785,7 +785,6 @@ async function onRunSuccess(jobId, runId, runData, output, config) {
     jobRunning.delete(jobId);
     runData.finished_at = new Date();
     runData.status = RunStatus.SUCCESS;
-    runData.output = output ? output : '';
     try {
         await updateRun(runId, runData);
         if (config) {
@@ -823,6 +822,8 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
         runData.status = RunStatus.FAILED;
         runData.output = errMsg ? errMsg : '';
         try {
+            const run = await knex('job_runs').select('output').where('id', runId).first();
+            runData.output =[errMsg, `Log:\n${run.output}`].join('\n\n');
             await updateRun(runId, runData);
         } catch (err) {
             log.error(LOG_ID, err);
@@ -842,21 +843,34 @@ function parseRequest(req) {
 /**
  * This function processes all events coming from the type handlers.
  * @param jobId
+ * @param runId
  * @param type event type
  * @param data payload
- * @returns {Promise<Object>}
+ * @returns {function(*=, *=, *, *=): *}
  */
-async function onRunEvent(jobId, type, data) {
-    switch (type) {
-        case 'output':
-            emit(EventTypes.RUN_OUTPUT, data);
-            break;
-        case 'request':
-            return await handleRequest(jobId, data)
-    }
+function createRunEventHandler(jobId, runId) {
+    let outputBytes = 0;
+    return async function onRunEvent(type, data) {
+        switch (type) {
+            case 'output':
+                emit(EventTypes.RUN_OUTPUT, data);
+                // Potential TODO Don't know how well this will scale
+                if (outputBytes < config.tasks.maxRunOutputBytes) {
+                    await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', data)}).where('id', runId);
+                    outputBytes += Buffer.byteLength(data, 'utf8');
+
+                    if (outputBytes < config.tasks.maxRunOutputBytes) {
+                        await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output reached\')')}).where('id', runId);
+                    }
+                }
+                break;
+            case 'request':
+                return await handleRequest(jobId, data)
+        }
+    };
 }
 
-async function handleRequest(requestStr){
+async function handleRequest(requestStr) {
     let response = {};
 
     if (!requestStr) {
@@ -1095,8 +1109,8 @@ async function handleRun(workEntry) {
 
         handler.run(
             runConfig,
-            async (type, request) => await onRunEvent(jobId, type, request),
-            (output, config) => onRunSuccess(jobId, runId, runData, output, config),
+            createRunEventHandler(jobId,runId),
+            (config) => onRunSuccess(jobId, runId, runData, config),
             (error) => onRunFail(jobId, runId, runData, error)
         );
 

@@ -111,7 +111,7 @@ async function init() {
 function checkLogRetention(logRetention) {
     knex('job_runs')
         .whereIn('status', [RunStatus.FAILED, RunStatus.SUCCESS])
-        .where('finished_at', '<', knex.raw(`now() - INTERVAL ${logRetention} DAY`))
+        .where('finished_at', '<', knex.raw('now() - INTERVAL ? DAY', logRetention))
         .del()
         .catch(err => log.error(LOG_ID, err));
 

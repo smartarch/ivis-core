@@ -52,7 +52,6 @@ const taskSubtypeSpecs = {
  */
 async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFail) {
     try {
-        let output = '';
         let errOutput = '';
 
         const dataInput = {
@@ -100,11 +99,11 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
         jobProc.stdout.on('data', (data) => {
             const outputStr = data.toString();
             onEvent('output', outputStr);
-            output += outputStr;
         });
 
         const pipeErrHandler = (err) => {
             errOutput += err;
+            onEvent('output', err);
         };
 
         jobProc.stdin.on('error', pipeErrHandler);
@@ -114,16 +113,16 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
 
         jobProc.on('error', (err) => {
             runningProc.delete(runId);
-            const failMsg = [err.toString(), 'Log:\n' + output, 'Error log:\n' + errOutput].join('\n\n');
+            const failMsg = [err.toString(), 'Error log:\n' + errOutput].join('\n\n');
             onFail(failMsg);
         });
 
         jobProc.on('exit', (code, signal) => {
             runningProc.delete(runId);
             if (code === 0) {
-                onSuccess(output, storeConfig);
+                onSuccess(storeConfig);
             } else {
-                const failMsg = [`Run failed with code ${code}`, 'Log:\n' + output, 'Error log:\n' + errOutput].join('\n\n');
+                const failMsg = [`Run failed with code ${code}`,  'Error log:\n' + errOutput].join('\n\n');
                 onFail(failMsg);
             }
         });
