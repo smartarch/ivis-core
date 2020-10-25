@@ -31,7 +31,7 @@ import ivisConfig from "ivisConfig";
 import moment from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {testTrigger} from "../../../../server/lib/alerts-event-handler";
+import testTrigger from "../../lib/alerts-trigger-tester";
 
 
 @withComponentMixins([
