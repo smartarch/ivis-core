@@ -224,7 +224,6 @@ export default class IntegrationTabs extends Component {
 
     getRunContent(t) {
         let runStatusElement = null;
-        let runOutput = null;
         const status = this.props.runStatus;
         const jobColumns = [
             {data: 0, title: t('#')},
@@ -263,11 +262,11 @@ export default class IntegrationTabs extends Component {
                     break;
             }
 
-            runOutput = (
-                <pre><code>{this.props.runOutput || status.output || ''}</code></pre>
-            );
         }
 
+        let runOutput = (
+            <pre><code>{this.props.runOutput || ( status && status.output ) || ''}</code></pre>
+        );
 
         return (
             <div className={developStyles.integrationTab}>
