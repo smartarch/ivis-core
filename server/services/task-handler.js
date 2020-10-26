@@ -854,12 +854,16 @@ function createRunEventHandler(jobId, runId) {
         switch (type) {
             case 'output':
                 emit(EventTypes.RUN_OUTPUT, data);
-                // Potential TODO Don't know how well this will scale
                 if (outputBytes < config.tasks.maxRunOutputBytes) {
+                    // TODO Don't know how well this will scale
+                    // --   it might be better to append to a file, but this will require further syncing
+                    // --   as we need full output for task development in the UI, not only output after registering to listen
+                    // --   therefore keeping it this way for now
                     await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', data)}).where('id', runId);
                     outputBytes += Buffer.byteLength(data, 'utf8');
 
-                    if (outputBytes < config.tasks.maxRunOutputBytes) {
+                    if (outputBytes > config.tasks.maxRunOutputBytes) {
+                        // Info about reaching limit should be present in the output
                         await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output reached\')')}).where('id', runId);
                     }
                 }
