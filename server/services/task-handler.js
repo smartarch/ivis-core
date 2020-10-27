@@ -844,8 +844,6 @@ function parseRequest(req) {
  * This function processes all events coming from the type handlers.
  * @param jobId
  * @param runId
- * @param type event type
- * @param data payload
  * @returns {function(*=, *=, *, *=): *}
  */
 function createRunEventHandler(jobId, runId) {
@@ -869,7 +867,10 @@ function createRunEventHandler(jobId, runId) {
                 }
                 break;
             case 'request':
-                return await handleRequest(jobId, data)
+                return await handleRequest(jobId, data);
+            default:
+                log.info(LOG_ID, `Job ${jobId} run ${runId}: unknown event ${type} `);
+                break;
         }
     };
 }

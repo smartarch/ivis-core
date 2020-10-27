@@ -108,13 +108,14 @@ export default class Develop extends Component {
                 this.state.runStatus = e.data;
             });
             this.runEventSource.addEventListener("init", (e) => {
-               const run = JSON.parse(e.data);
+                const run = JSON.parse(e.data);
 
                 this.setState({
                     runOutput: run.output || '',
                     runStatus: run.status
                 });
             });
+
             this.runEventSource.addEventListener("output", (e) => {
                 if (e.origin + '/' !== getUrl()) {
                     console.log(`Origin ${e.origin} not allowed; only events from ${getUrl()}`);
@@ -128,13 +129,16 @@ export default class Develop extends Component {
                 }
             });
 
-            this.runEventSource.onmessage = function(e) {
+            this.runEventSource.onmessage = function (e) {
                 console.log(e.data);
             }
 
             this.runEventSource.onerror = (e) => {
-                console.log('error event')
-                console.log(e)
+                let output = this.state.runOutput + `\nERROR: Output failed ${e}`;
+                this.setState({
+                    runOutput: output,
+                });
+                this.stop();
             };
 
             this.setState({
