@@ -2,10 +2,10 @@
 const path = require('path');
 const fs = require('fs-extra-promise');
 const spawn = require('child_process').spawn;
-const {TaskType, PythonSubtypes} = require('../../../shared/tasks');
+const {TaskType, PythonSubtypes, defaultSubtypeKey} = require('../../../shared/tasks');
 const readline = require('readline');
 const ivisConfig = require('../../lib/config');
-const pythonConfig = require('../../lib/config').tasks.python;
+const em = require('../../lib/extension-manager');
 
 // File name of every build output
 const JOB_FILE_NAME = 'job.py';
@@ -15,37 +15,27 @@ const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python',
 
 const runningProc = new Map();
 
-
 const defaultPythonLibs = ['elasticsearch'];
-
-let dValuesWheelPath = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'd_values', 'dist', 'd_values-1.0-py3-none-any.whl');
-if (pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['wheelPath']) {
-    dValuesWheelPath = path.resolve(pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['wheelPath']);
-}
-
 const taskSubtypeSpecs = {
-    libs: defaultPythonLibs,
+    [defaultSubtypeKey]: {
+        libs: defaultPythonLibs
+    },
     [PythonSubtypes.ENERGY_PLUS]: {
         libs: [...defaultPythonLibs, 'eppy', 'requests']
     },
     [PythonSubtypes.NUMPY]: {
         libs: [...defaultPythonLibs, 'numpy', 'dtw']
-    },
-    [PythonSubtypes.D_VALUE_ESTIMATION]: {
-        libs: [...defaultPythonLibs, 'numpy', 'xgboost', 'scikit-learn'],
-        cmds: [
-            `pip install GDAL==${pythonConfig['subtypes'][PythonSubtypes.D_VALUE_ESTIMATION]['gdalVersion']} --global-option=build_ext --global-option="-I/usr/include/gdal"`,
-            `pip install ${dValuesWheelPath}`
-        ]
     }
 };
+
+em.invoke('services.task-handler.python-handler.installSubtypeSpecs', taskSubtypeSpecs);
 
 /**
  * Run job
  * @param id Job id
  * @param runId Run ID, will be used by stop command
  * @param taskDir Directory with the task
- * @param onRequest Callback for handling request msgs from job.
+ * @param onEvent
  * @param onSuccess Callback on successful run
  * @param onFail callback on failed run
  * @returns {Promise<void>}
@@ -122,7 +112,7 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
             if (code === 0) {
                 onSuccess(storeConfig);
             } else {
-                const failMsg = [`Run failed with code ${code}`,  'Error log:\n' + errOutput].join('\n\n');
+                const failMsg = [`Run failed with code ${code}`, 'Error log:\n' + errOutput].join('\n\n');
                 onFail(failMsg);
             }
         });
@@ -142,11 +132,11 @@ async function remove(id) {
 }
 
 function getPackages(subtype) {
-    return subtype ? taskSubtypeSpecs[subtype].libs : taskSubtypeSpecs.libs;
+    return subtype ? taskSubtypeSpecs[subtype].libs : taskSubtypeSpecs[defaultSubtypeKey].libs;
 }
 
 function getCommands(subtype) {
-    return subtype ? taskSubtypeSpecs[subtype].cmds : null;
+    return subtype ? taskSubtypeSpecs[subtype].cmds : taskSubtypeSpecs[defaultSubtypeKey].cmds;
 }
 
 /**

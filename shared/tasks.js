@@ -8,6 +8,8 @@ if (Object.freeze) {
     Object.freeze(TaskType)
 }
 
+const defaultSubtypeKey = '__default__';
+
 const PythonSubtypes = {
     ENERGY_PLUS: 'energy_plus',
     NUMPY: 'numpy',
@@ -60,6 +62,7 @@ module.exports = {
     TaskType,
     subtypesByType,
     PythonSubtypes,
+    defaultSubtypeKey,
     BuildState,
     TaskSource,
     getFinalStates,

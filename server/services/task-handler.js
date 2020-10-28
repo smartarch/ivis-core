@@ -2,6 +2,8 @@
 
 const config = require('../lib/config');
 const knex = require('../lib/knex');
+const em = require('../lib/extension-manager');
+
 const {JobState, RunStatus, HandlerMsgType, JobMsgType} = require('../../shared/jobs');
 const {TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
 const {SignalSetType} = require('../../shared/signal-sets');
@@ -24,9 +26,6 @@ const {EventTypes} = require('../lib/task-events');
 
 const LOG_ID = 'Task-handler';
 
-// Job handlers
-const pythonHandler = require('./jobs/python-handler');
-
 // Stores all incoming messages, meant to be processed
 const workQueue = [];
 const delayedMap = new Map();
@@ -39,8 +38,12 @@ const inProcessMsgs = new Map();
 // Check interval is in seconds, so here is conversion
 const checkInterval = config.tasks.checkInterval * 1000;
 
+// Job handlers
+const pythonHandler = require('./jobs/python-handler');
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
+
+em.invoke('services.task-handler.installHandlers', handlers);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
