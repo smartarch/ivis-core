@@ -663,7 +663,7 @@ class DataAccess {
 
 
     /*
-        aggs = [ { sigCid, agg_type } ]
+        aggs = [ { sigCid, agg_type, <parameters of the aggregation> } ]
     */
     getAggsQueries(sigSetCid, filter, aggs) {
         const qry = {
@@ -784,6 +784,14 @@ export class DataAccessSession {
 
     async getLatestDocs(sigSetCid, signals, filter, sort, limit) {
         return await this._getLatestOne('docs', sigSetCid, signals, filter, sort, limit);
+    }
+
+    async getLatestSummary(sigSetCid, filter, summary) {
+        return await this._getLatestOne('summary', sigSetCid, filter, summary);
+    }
+
+    async getLatestAggs(sigSetCid, filter, aggs) {
+        return await this._getLatestOne('aggs', sigSetCid, filter, aggs);
     }
 
     async getLatestMixed(queries) {

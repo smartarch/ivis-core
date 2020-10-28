@@ -573,7 +573,7 @@ async function queryTx(tx, context, queries) {
                 for (const fltChild of flt.children) {
                     checkFilter(fltChild);
                 }
-            } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard') {
+            } else if (flt.type === 'range' || flt.type === 'mustExist' || flt.type === 'wildcard' || flt.type === 'terms') {
                 flt.sigCid = mutateSignalCid(flt.sigCid);
                 const sig = signalMap[flt.sigCid];
                 if (!sig) {
@@ -600,7 +600,7 @@ async function queryTx(tx, context, queries) {
                 const sig = signalMap[signals[i]];
                 if (!sig) {
                     log.verbose(`unknown signal ${sigSet.cid}.${signals[i]}`);
-                    shares.throwPermissionDenied();
+                    shares.throwPermissionDenied({sigCid: signals[i]});
                 }
 
                 // Can't mix aggregated types with non
@@ -641,7 +641,7 @@ async function queryTx(tx, context, queries) {
             if (sort) {
                 for (const srt of sort) {
                     // Ignores other types of sorts
-                    if (sort.sigCid) {
+                    if (srt.sigCid) {
                         srt.sigCid = mutateSignalCid(srt.sigCid);
                         const sig = signalMap[srt.sigCid];
                         if (!sig) {

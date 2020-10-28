@@ -146,6 +146,7 @@ export class LineChartBase extends Component {
         compareConfigs: PropTypes.func,
         getLineColor: PropTypes.func,
         lineCurve: PropTypes.func,
+        lineWidth: PropTypes.number,
 
         lineVisibility: PropTypes.func.isRequired,
 
@@ -158,7 +159,8 @@ export class LineChartBase extends Component {
     static defaultProps = {
         getLineColor: color => color,
         lineCurve: d3Shape.curveLinear,
-        withPoints: true
+        withPoints: true,
+        lineWidth: 1.5,
     }
 
     createChart(base, signalSetsData, baseState, abs, xScale) {
@@ -354,6 +356,9 @@ export class LineChartBase extends Component {
                 } else {
                     throw new Error("At most 4 visible y axes are supported.");
                 }
+
+                if (typeof yAxes[axisIdx].yAxisTicksFormat === "function")
+                    yAxis.tickFormat(yAxes[axisIdx].yAxisTicksFormat);
 
                 base.yAxisSelection.append('g').attr("transform", "translate( " + shift + ", 0 )").call(yAxis);
                 base.yAxisSelection.append('text')
@@ -585,6 +590,7 @@ export class LineChartBase extends Component {
                                 .curve(lineCurve);
 
                             const lineColor = this.props.getLineColor(rgb(sigConf.color));
+                            const lineWidth = sigConf.hasOwnProperty("lineWidth") ? sigConf.lineWidth : this.props.lineWidth;
                             this.linePathSelection[sigSetConf.cid][sigCid]
                                 .datum(points[sigSetConf.cid])
                                 .attr('visibility', lineVisible ? 'visible' : 'hidden')
@@ -592,7 +598,7 @@ export class LineChartBase extends Component {
                                 .attr('stroke', lineColor.toString())
                                 .attr('stroke-linejoin', 'round')
                                 .attr('stroke-linecap', 'round')
-                                .attr('stroke-width', 1.5)
+                                .attr('stroke-width', lineWidth)
                                 .attr('d', line);
 
                             if (pointsVisible === PointsVisibility.HOVER || pointsVisible === PointsVisibility.ALWAYS || selectedPointsVisible) {
