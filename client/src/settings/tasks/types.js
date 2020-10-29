@@ -5,8 +5,7 @@ import {TaskType, PythonSubtypes} from "../../../../shared/tasks";
 const taskSubtypeLabels = {
     [TaskType.PYTHON]: {
         [PythonSubtypes.ENERGY_PLUS]: 'EnergyPlus task',
-        [PythonSubtypes.NUMPY]: 'Numpy task',
-        [PythonSubtypes.D_VALUE_ESTIMATION]: 'D-Value Estimation'
+        [PythonSubtypes.NUMPY]: 'Numpy task'
     }
 };
 

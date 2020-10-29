@@ -12,8 +12,7 @@ const defaultSubtypeKey = '__default__';
 
 const PythonSubtypes = {
     ENERGY_PLUS: 'energy_plus',
-    NUMPY: 'numpy',
-    D_VALUE_ESTIMATION: 'd_value_estimation'
+    NUMPY: 'numpy'
 };
 
 if (Object.freeze) {
