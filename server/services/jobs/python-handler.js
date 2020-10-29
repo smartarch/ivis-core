@@ -2,7 +2,7 @@
 const path = require('path');
 const fs = require('fs-extra-promise');
 const spawn = require('child_process').spawn;
-const {TaskType, PythonSubtypes, defaultSubtypeKey} = require('../../../shared/tasks');
+const {PythonSubtypes, defaultSubtypeKey} = require('../../../shared/tasks');
 const readline = require('readline');
 const ivisConfig = require('../../lib/config');
 const em = require('../../lib/extension-manager');

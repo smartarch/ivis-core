@@ -58,7 +58,7 @@ export default class CUD extends Component {
                 description: '',
                 namespace: ivisConfig.user.namespace,
                 type: TaskType.PYTHON,
-                subtype: null,
+                subtype: '',
                 wizard: WizardType.BLANK
             });
         }

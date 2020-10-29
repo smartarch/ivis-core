@@ -1,6 +1,7 @@
 'use strict';
-import {TaskType, PythonSubtypes} from "../../../../shared/tasks";
+import em from '../../../src/lib/extension-manager';
 
+import {TaskType, PythonSubtypes} from "../../../../shared/tasks";
 const taskSubtypeLabels = {
     [TaskType.PYTHON]: {
         [PythonSubtypes.ENERGY_PLUS]: 'EnergyPlus task',
@@ -8,6 +9,8 @@ const taskSubtypeLabels = {
         [PythonSubtypes.D_VALUE_ESTIMATION]: 'D-Value Estimation'
     }
 };
+
+em.invoke('tasks.installLabels', taskSubtypeLabels);
 
 export function getSubtypeLabel(t, type, subtype) {
     let label = t(subtype);
