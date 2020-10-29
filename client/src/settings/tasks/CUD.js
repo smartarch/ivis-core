@@ -23,9 +23,10 @@ import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {WizardType, getWizard, getWizardsForType} from "./wizards";
-import {TaskType, subtypesByType, taskSubtypeSpecs} from "../../../../shared/tasks";
+import {TaskType, subtypesByType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {getSubtypeLabel} from "./types";
 
 @withComponentMixins([
     withTranslation,
@@ -57,7 +58,7 @@ export default class CUD extends Component {
                 description: '',
                 namespace: ivisConfig.user.namespace,
                 type: TaskType.PYTHON,
-                subtype: null,
+                subtype: '',
                 wizard: WizardType.BLANK
             });
         }
@@ -183,7 +184,7 @@ export default class CUD extends Component {
             Object.values(subtypes).forEach((subtype) => {
                 subtypeOptions.push({
                     key: subtype,
-                    label: t(taskSubtypeSpecs[TaskType.PYTHON][subtype].label)
+                    label: getSubtypeLabel(t,taskType,subtype)
                 });
             });
         }

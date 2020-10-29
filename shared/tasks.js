@@ -8,9 +8,12 @@ if (Object.freeze) {
     Object.freeze(TaskType)
 }
 
+const defaultSubtypeKey = '__default__';
+
 const PythonSubtypes = {
     ENERGY_PLUS: 'energy_plus',
-    NUMPY: 'numpy'
+    NUMPY: 'numpy',
+    D_VALUE_ESTIMATION: 'd_value_estimation'
 };
 
 if (Object.freeze) {
@@ -19,22 +22,6 @@ if (Object.freeze) {
 
 const subtypesByType = {
     [TaskType.PYTHON]: PythonSubtypes
-};
-
-const defaultPythonLibs = ['elasticsearch'];
-
-const taskSubtypeSpecs = {
-    [TaskType.PYTHON]: {
-        libs: defaultPythonLibs,
-        [PythonSubtypes.ENERGY_PLUS]: {
-            label: 'EnergyPlus task',
-            libs: [...defaultPythonLibs, 'eppy', 'requests']
-        },
-        [PythonSubtypes.NUMPY]: {
-            label: 'Numpy task',
-            libs: [...defaultPythonLibs, 'numpy', 'dtw']
-        }
-    }
 };
 
 const BuildState = {
@@ -71,24 +58,11 @@ function isTransitionState(state) {
     return getTransitionStates().includes(state);
 }
 
-function getSpecsForType(type, subtype = null) {
-    const spec = taskSubtypeSpecs[type];
-
-    if (!spec) {
-        return null;
-    }
-
-    if (subtype) {
-        return spec[subtype] ? spec[subtype] : null;
-    }
-
-    return spec;
-}
-
 module.exports = {
     TaskType,
     subtypesByType,
-    taskSubtypeSpecs,
+    PythonSubtypes,
+    defaultSubtypeKey,
     BuildState,
     TaskSource,
     getFinalStates,

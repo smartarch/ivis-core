@@ -145,6 +145,12 @@ export default class ParamTypes {
             setFields: setStringFieldFromParam,
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                const val = state.getIn([formId, 'value']);
+
+                if ((spec.isRequired && val.trim() === '')) {
+                    state.setIn([formId, 'error'], t('Input is required'));
+                }
             },
             render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
                                                         label={spec.label} help={spec.help}/>,
@@ -265,7 +271,7 @@ export default class ParamTypes {
                     {data: 1, title: t('Id')},
                     {data: 2, title: t('Name')},
                     {data: 3, title: t('Description')},
-                    {data: 5, title: t('Created'), render: data => moment(data).fromNow()},
+                    {data: 6, title: t('Created'), render: data => moment(data).fromNow()},
                     {data: 8, title: t('Namespace')}
                 ];
 
