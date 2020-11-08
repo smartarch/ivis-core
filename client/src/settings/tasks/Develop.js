@@ -54,8 +54,11 @@ export default class Develop extends Component {
             editorHeight: defaultEditorHeight,
             taskVersionId: 0,
             fileToDeleteName: null,
-            fileToDeleteId: null
+            fileToDeleteId: null,
+            chunkCounter: 0
         };
+
+        this.runOutputChunks = [];
 
         const t = props.t;
 
@@ -103,10 +106,13 @@ export default class Develop extends Component {
             const runId = runIdData.data;
 
 
+            let outputs = [];
+            this.runOutputChunks = [];
             this.runEventSource = new EventSource(getUrl(`sse/jobs/${this.state.jobId}/run/${runId}`));
             this.runEventSource.addEventListener("changeRunStatus", (e) => {
                 this.state.runStatus = e.data;
             });
+
             this.runEventSource.addEventListener("init", (e) => {
                 const run = JSON.parse(e.data);
 
@@ -120,21 +126,28 @@ export default class Develop extends Component {
                 if (e.origin + '/' !== getUrl()) {
                     console.log(`Origin ${e.origin} not allowed; only events from ${getUrl()}`);
                 } else {
+                    // TODO much better would be circular queue
+                    //if (this.state.chunkCounter > 3) {
+                    //    this.runOutputChunks.shift();
+                    //}
 
-                    let output = this.state.runOutput + JSON.parse(e.data);
+                    this.runOutputChunks.push({
+                        id: this.state.chunkCounter,
+                        data: JSON.parse(e.data)
+                    });
+
                     this.setState({
-                        runOutput: output,
-                        runStatus: RunStatus.RUNNING
+                        chunkCounter: this.state.chunkCounter + 1
                     });
                 }
             });
 
             this.runEventSource.onmessage = function (e) {
-                console.log(e.data);
+                //console.log(e.data);
             }
 
             this.runEventSource.onerror = (e) => {
-                let output = this.state.runOutput + `\nERROR: Output failed ${e}`;
+                let output = outputs.join('\n') + `\nERROR: Output failed ${e}`;
                 this.setState({
                     runOutput: output,
                 });
@@ -144,7 +157,8 @@ export default class Develop extends Component {
             this.setState({
                 runStatus: RunStatus.INITIALIZATION,
                 runOutput: '',
-                runId: runId
+                runId: runId,
+                chunkCounter: 0
             });
         } else {
             this.setFormStatusMessage('warning', this.props.t('Job is not selected. Nothing to run.'));
@@ -449,7 +463,8 @@ export default class Develop extends Component {
                     <div className={developStyles.integrationPane}>
                         <IntegrationTabs onJobChange={this.changeJob.bind(this)} taskId={this.props.entity.id}
                                          taskHash={this.state.taskVersionId} runStatus={this.state.runStatus}
-                                         runOutput={this.state.runOutput}/>
+                                         lastOutputChunkId={this.state.chunkCounter}
+                                         runOutputChunks={this.runOutputChunks}/>
 
                     </div>
                 </div>

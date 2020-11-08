@@ -826,7 +826,7 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
         runData.output = errMsg ? errMsg : '';
         try {
             const run = await knex('job_runs').select('output').where('id', runId).first();
-            runData.output =[errMsg, `Log:\n${run.output}`].join('\n\n');
+            runData.output = [errMsg, `Log:\n${run.output}`].join('\n\n');
             await updateRun(runId, runData);
         } catch (err) {
             log.error(LOG_ID, err);
@@ -851,22 +851,51 @@ function parseRequest(req) {
  */
 function createRunEventHandler(jobId, runId) {
     let outputBytes = 0;
+    let limitReached = false;
+    let outputBuffer = [];
+    let timer;
+
+    async function cleanBuffer() {
+        try {
+            let output = outputBuffer.join('');
+            outputBuffer = [];
+            emit(EventTypes.RUN_OUTPUT, output);
+            if (!limitReached) {
+                await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', output)}).where('id', runId);
+            }
+            timer = null;
+        } catch (e) {
+            log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
+            outputBuffer = [];
+            timer = null;
+        }
+    }
+
     return async function onRunEvent(type, data) {
         switch (type) {
             case 'output':
-                emit(EventTypes.RUN_OUTPUT, data);
-                if (outputBytes < config.tasks.maxRunOutputBytes) {
+                try {
+                    outputBuffer.push(data);
+                    outputBytes += Buffer.byteLength(data, 'utf8');
+                    if (!limitReached && (outputBytes >= config.tasks.maxRunOutputBytes)) {
+                        limitReached = true;
+                        if (config.tasks.printLimitReachedMessage === true) {
+                            try {
+                                await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output storage capacity reached\')')}).where('id', runId);
+                            } catch (e) {
+                                log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
+                            }
+                        }
+                    }
                     // TODO Don't know how well this will scale
                     // --   it might be better to append to a file, but this will require further syncing
-                    // --   as we need full output for task development in the UI, not only output after registering to listen
+                    // --   as we need full output for task development in the UI, not only output after the register of listener
                     // --   therefore keeping it this way for now
-                    await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', data)}).where('id', runId);
-                    outputBytes += Buffer.byteLength(data, 'utf8');
-
-                    if (outputBytes > config.tasks.maxRunOutputBytes) {
-                        // Info about reaching limit should be present in the output
-                        await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output reached\')')}).where('id', runId);
+                    if (!timer) {
+                        timer = setTimeout(cleanBuffer, 1000);
                     }
+                } catch (e) {
+                    log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
                 }
                 break;
             case 'request':
@@ -1117,7 +1146,7 @@ async function handleRun(workEntry) {
 
         handler.run(
             runConfig,
-            createRunEventHandler(jobId,runId),
+            createRunEventHandler(jobId, runId),
             (config) => onRunSuccess(jobId, runId, runData, config),
             (error) => onRunFail(jobId, runId, runData, error)
         );

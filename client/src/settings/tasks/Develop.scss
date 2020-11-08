@@ -56,7 +56,9 @@
 
 
 .integrationTab {
-  display: block;
+  display: flex;
+  flex-flow: column nowrap;
+  flex: 1;
 
   .integrationTabHeader {
     background-color: #E6E9ED;
@@ -74,6 +76,8 @@
     padding-top: 5px;
     padding-left: 3px;
     overflow: auto;
+    flex: 1 1 0;
+    border-bottom: 1px solid $border-color;
   }
 
 }
@@ -85,7 +89,8 @@
   }
 
   .integrationPane {
-    display: block;
+    display: flex;
+    flex-flow: column nowrap;
   }
 }
 

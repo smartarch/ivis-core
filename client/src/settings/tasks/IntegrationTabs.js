@@ -29,7 +29,8 @@ export default class IntegrationTabs extends Component {
         taskHash: PropTypes.number,
         withBuild: PropTypes.bool,
         onJobChange: PropTypes.func,
-        runOutput: PropTypes.string,
+        runOutputChunks: PropTypes.array,
+        lastOutputChunkId: PropTypes.number,
         runStatus: PropTypes.number
     };
 
@@ -85,7 +86,8 @@ export default class IntegrationTabs extends Component {
             this.state.task !== nextState.task ||
             this.state.jobId !== nextState.jobId ||
             this.state.runId !== nextState.runId ||
-            this.props.runOutput !== nextProps.runOutput ||
+            this.props.runOutputChunks !== nextProps.runOutputChunks ||
+            this.props.lastOutputChunkId !== nextProps.lastOutputChunkId ||
             this.props.runStatus !== nextProps.runStatus ||
             this.state.activeTab !== nextState.activeTab ||
             this.state.formState !== nextState.formState
@@ -184,11 +186,7 @@ export default class IntegrationTabs extends Component {
                     const warnings = [];
                     let idx = 0;
                     if (task.build_output && task.build_output.warnings && task.build_output.warnings.length > 0) {
-                        for (const
-                            warning
-                            of
-                            task.build_output.warnings
-                            ) {
+                        for (const warning of task.build_output.warnings) {
                             warnings.push(<div key={idx}>{warning}</div>);
                             idx++;
                         }
@@ -264,9 +262,14 @@ export default class IntegrationTabs extends Component {
 
         }
 
-        let runOutput = (
-            <pre><code>{this.props.runOutput || ( status && status.output ) || ''}</code></pre>
-        );
+        let runOutput = '';
+        if (this.props.runOutputChunks && (this.props.runOutputChunks.length > 0)) {
+            runOutput = this.props.runOutputChunks.map((output) => {
+                return <span key={output.id}>{output.data}</span>;
+            });
+        } else if (status && status.output) {
+            runOutput = status.output;
+        }
 
         return (
             <div className={developStyles.integrationTab}>
@@ -281,7 +284,11 @@ export default class IntegrationTabs extends Component {
                     {runStatusElement}
                 </div>
                 <div className={developStyles.integrationTabRunOutput}>
-                    {runOutput}
+                    <pre>
+                        <code>
+                            {runOutput}
+                        </code>
+                    </pre>
                 </div>
             </div>
         );
