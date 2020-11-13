@@ -12,7 +12,7 @@ async function addLogEntry(alertId, type){
 }
 
 async function handleSignalTrigger(cid){
-    const alerts = await knex.transaction(async tx =>{
+    const alerts = await knex.transaction(async tx => {
         const sigSetId = await tx('signal_sets').where('cid', cid).first('id');
         const alertsIds = await tx('alerts').where('sigset', sigSetId.id);
         return alertsIds;

@@ -123,6 +123,7 @@ export default class CUD extends Component {
             'name',
             'description',
             'sigset',
+            'sortsig',
             'duration',
             'delay',
             'interval',
@@ -192,6 +193,11 @@ export default class CUD extends Component {
             { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
             { data: 7, title: t('Namespace') }
         ];
+        const sortSigColumns = [
+            { data: 1, title: t('Id') },
+            { data: 2, title: t('Name') },
+            { data: 3, title: t('Description') }
+        ];
 
         return (
             <Panel title={isEdit ? t('Edit Alert') : t('Create Alert')}>
@@ -209,7 +215,9 @@ export default class CUD extends Component {
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                    <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2}/>
+                    <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2} help={t('Select signal set to watch.')}/>
+                    {this.getFormValue('sigset') &&
+                        <TableSelect id="sortsig" label={t('Sorting signal')} withHeader dropdown dataUrl={`rest/signals-table/${this.getFormValue('sigset')}`} columns={sortSigColumns} selectionLabelIndex={2} help={t('Select signal of the signal set that will sort records chronologically. Leave empty to use default auto increment.')}/> }
                     <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
                     <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes! Use 0 if not applicable!')}/>
