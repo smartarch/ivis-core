@@ -45,6 +45,7 @@ export default class Log extends Component {
             { data: 1, title: t('Relative time'), render: data => moment(data).fromNow() },
             { data: 1, title: t('Exact time'), render: data => moment(data).format() },
             { data: 0, title: t('Type'), render: data => {if (data === 'test') return t('Test');
+                                                          if (data === 'condition') return t('Condition');
                                                             else return data;} }
         ];
         return (
