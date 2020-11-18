@@ -32,6 +32,14 @@ async function getById(context, id) {
     });
 }
 
+async function getBySigSetId(context, sigSetId) {
+    return await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSetId, 'view');
+        const output = await tx('signals').where('set', sigSetId);
+        return output;
+    });
+}
+
 async function listVisibleForXXXTx(tx, context, sigSetId, weightCol, onlyWithQueryPerm) {
     const entityType = entitySettings.getEntityType('signal');
 
@@ -291,6 +299,7 @@ async function remove(context, id) {
 
 module.exports.hash = hash;
 module.exports.getById = getById;
+module.exports.getBySigSetId = getBySigSetId;
 module.exports.listDTAjax = listDTAjax;
 module.exports.listByCidDTAjax = listByCidDTAjax;
 module.exports.create = create;
