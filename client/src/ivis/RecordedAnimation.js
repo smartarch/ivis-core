@@ -66,7 +66,7 @@ class RecordedAnimation extends Component {
                 getMinAggregationInterval={this.props.defaultGetMinAggregationInterval}
             >
 
-                <AnimationDataAccess
+                <DataAccess
                     dataSources={this.props.dataSources}
                     render={childrenRender}
                 />
@@ -123,6 +123,8 @@ class GenericDataSource {
         this._reset();
     }
 
+    //TODO: refactor interface, only method for asking the last timestamp,
+    // canShiftTo, and if nextChunkQries.length > 0 can be determined from this
     getEmptyData() {
         const data = {};
         for (const sigSet of Object.values(this.sigSets)) {
@@ -614,7 +616,7 @@ const dataSources = {
 };
 
 @withComponentMixins([intervalAccessMixin()])
-class AnimationDataAccess extends Component {
+class DataAccess extends Component {
     static propTypes = {
         dataSources: PropTypes.object.isRequired,
         render: PropTypes.func.isRequired,
@@ -788,9 +790,7 @@ class Animation extends Component {
         refreshTo: PropTypes.func.isRequired,
         setPlaybackSpeedFactor: PropTypes.func.isRequired,
         getEmptyData: PropTypes.func.isRequired,
-
         needsReseek: PropTypes.bool,
-
         fetchError: PropTypes.object,
 
         children: PropTypes.node,
@@ -849,8 +849,7 @@ class Animation extends Component {
         const is = this.props.initialStatus;
         const startingPos = is.position !== null && !Number.isNaN(is.position) ?
             this.clampPos(is.position) :
-            this.getIntervalAbsolute().from.valueOf()
-        ;
+            this.getIntervalAbsolute().from.valueOf();
 
         let speedFactor = is.playbackSpeedFactor;
         if (speedFactor == undefined || Number.isNaN(speedFactor) || speedFactor <= 0) {
@@ -972,7 +971,7 @@ class Animation extends Component {
         });
 
 
-        if (nextPosition !== endPosition && this.isRefreshing) {
+        if (nextPosition !== endPosition) {
             this.nextFrameId = requestAnimationFrame(this.refreshBound);
         } else {
             this.pauseHandler();
