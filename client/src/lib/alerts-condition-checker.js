@@ -3,6 +3,7 @@
 import { evaluate } from "mathjs";
 import axios from "./axios";
 import { getUrl } from "./urls";
+import { SignalType } from "../../../shared/signals";
 
 export default function checkCondition(condition, sigSetId){
     if (!sigSetId) return "You should fill in a signal set first!";
@@ -28,6 +29,10 @@ async function setupScope(sigSetId){
     const result = await axios.get(getUrl(`rest/signals-simple-table/${sigSetId}`));
     scope = {};
     result.data.forEach(item => {
-        scope['$' + item.cid] = 1;
+        let aux;
+        if (item.type === SignalType.KEYWORD || item.type === SignalType.TEXT) aux = 'text';
+        else aux = 1;
+        scope['$' + item.cid] = aux;
     });
+    scope['$id'] = 'text';
 }

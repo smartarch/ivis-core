@@ -33,6 +33,7 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import testTrigger from "../../lib/alerts-trigger-tester";
 import checkCondition from "../../lib/alerts-condition-checker";
+import {getSignalTypes} from "../signal-sets/signals/signal-types";
 
 @withComponentMixins([
     withTranslation,
@@ -46,6 +47,8 @@ export default class CUD extends Component {
         super(props);
 
         this.state = {};
+
+        this.signalTypes = getSignalTypes(props.t);
 
         this.initForm();
     }
@@ -203,7 +206,7 @@ export default class CUD extends Component {
         const sortSigColumns = [
             { data: 1, title: t('Id') },
             { data: 2, title: t('Name') },
-            { data: 3, title: t('Description') }
+            { data: 4, title: t('Type'), render: data => this.signalTypes[data] }
         ];
 
         return (
