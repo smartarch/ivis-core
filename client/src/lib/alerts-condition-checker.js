@@ -30,7 +30,8 @@ async function setupScope(sigSetId){
     scope = {};
     result.data.forEach(item => {
         let aux;
-        if (item.type === SignalType.KEYWORD || item.type === SignalType.TEXT) aux = 'text';
+        if (item.type === SignalType.KEYWORD || item.type === SignalType.TEXT || item.type === SignalType.DATE_TIME) aux = 'text';
+        else if (item.type === SignalType.BOOLEAN) aux = true;
         else aux = 1;
         scope['$' + item.cid] = aux;
     });
