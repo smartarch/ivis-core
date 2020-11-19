@@ -108,11 +108,11 @@ export default class CUD extends Component {
             state.setIn(['interval', 'error'], null);
         }
 
-        checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value'])).then(result => this.conTest = result);
-        if (this.conTest && typeof this.conTest === 'boolean') {
-            state.setIn(['condition', 'error'], null);
+        const conTest = checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
+        if (conTest !== 'ok') {
+            state.setIn(['condition', 'error'], conTest);
         } else {
-            state.setIn(['condition', 'error'], this.conTest);
+            state.setIn(['condition', 'error'], null);
         }
 
         const minRepeat = 10;
@@ -228,7 +228,7 @@ export default class CUD extends Component {
                     <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
                     <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes! Use 0 if not applicable!')}/>
-                    <TextArea id="condition" label={t('Condition')} help={t('If this condition is satisfied, the data from sensors are unsuitable. Mind that the error check is one step delayed.')}/>
+                    <TextArea id="condition" label={t('Condition')} help={t('If this condition is satisfied, the data from sensors are unsuitable. Mind that the error check might be one step delayed.')}/>
                     <TextArea id="emails" label={t('Email addresses')} help={t('Email addresses for notifications, one per line!')}/>
                     <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line!')}/>
                     <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes! Use 0 if not applicable!')}/>
