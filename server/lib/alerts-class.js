@@ -71,7 +71,11 @@ class Alert{
         await knex.transaction(async tx => {
             const alert = await tx('alerts').where('id', this.id).first();
             if (!alert) return;
-            if (!alert.enabled) return;
+            if (!alert.enabled) {
+                await this.revoke('disabled');
+                this.state = 'good';
+                return;
+            }
             const result = await evaluate(alert.condition, alert.sigset, alert.sortsig);
             if (typeof result === 'boolean') await this.changeState(result, alert.duration, alert.delay);
             else await this.addLogEntryTx(tx, result);
