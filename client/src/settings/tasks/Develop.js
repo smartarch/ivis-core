@@ -172,8 +172,10 @@ export default class Develop extends Component {
 
             this.closeRunEventSource();
 
+            // FIXME this might cause race condition in the case job finishes on the server, at the same time
+            // -- in that case this will be incorrect
             this.setState({
-                runStatus: null,
+                runStatus: RunStatus.FAILED,
                 runId: null
             });
         }
