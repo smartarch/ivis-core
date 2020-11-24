@@ -6,10 +6,32 @@ const emitter = new events.EventEmitter();
 
 const EventTypes = {
     RUN_OUTPUT: 'output',
-    INIT: 'init'
+    INIT: 'init',
+    STOP: 'stop',
+    FAIL: 'fail'
+}
+
+function getOutputEventType(runId) {
+    return `run/${runId}/${EventTypes.RUN_OUTPUT}`
+}
+
+function getStopEventType(runId) {
+    return `run/${runId}/${EventTypes.STOP}`;
+}
+
+function getFailEventType(runId) {
+    return `run/${runId}/${EventTypes.FAIL}`;
+}
+
+function getSuccessEventType(runId) {
+    return `run/${runId}/${EventTypes.FAIL}`;
 }
 
 module.exports = {
     EventTypes,
+    getOutputEventType,
+    getStopEventType,
+    getFailEventType,
+    getSuccessEventType,
     emitter
 }

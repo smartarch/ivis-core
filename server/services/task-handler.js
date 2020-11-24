@@ -18,11 +18,9 @@ const createSignal = require('../models/signals').createTx;
 const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helpers');
 
 const es = require('../lib/elasticsearch');
-const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
-const INDEX_JOBS = require('../lib/task-handler').esConstants.INDEX_JOBS;
-const TYPE_JOBS = require('../lib/task-handler').esConstants.TYPE_JOBS;
+const {TYPE_JOBS, INDEX_JOBS, STATE_FIELD} = require('../lib/task-handler').esConstants
 
-const {EventTypes} = require('../lib/task-events');
+const {getSuccessEventType,getFailEventType,getOutputEventType, getStopEventType} = require('../lib/task-events');
 
 const LOG_ID = 'Task-handler';
 
@@ -47,13 +45,6 @@ em.invoke('services.task-handler.installHandlers', handlers);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
-
-module.exports = class RunFailedError extends Error {
-    constructor(msg, data) {
-        super(msg);
-        this.data = data;
-    }
-};
 
 
 class HandlerNotFoundError extends Error {
@@ -152,6 +143,8 @@ async function stop(msg) {
             }
         }
     }
+
+    emit(getStopEventType(runId))
 }
 
 /**
@@ -778,11 +771,10 @@ async function handleInit(workEntry) {
  * @param jobId
  * @param runId
  * @param runData
- * @param output
  * @param config
  * @returns {Promise<void>}
  */
-async function onRunSuccess(jobId, runId, runData, output, config) {
+async function onRunSuccess(jobId, runId, runData, config) {
 
     inProcessMsgs.delete(runId);
     jobRunning.delete(jobId);
@@ -796,6 +788,7 @@ async function onRunSuccess(jobId, runId, runData, output, config) {
     } catch (err) {
         log.error(LOG_ID, err);
     }
+    emit(getSuccessEventType(runId));
 }
 
 /**
@@ -812,7 +805,7 @@ async function onRunFail(jobId, runId, runData, errMsg) {
     inProcessMsgs.delete(runId);
 
     await handleRunFail(jobId, runId, runData, errMsg);
-
+    emit(getFailEventType(runId), errMsg);
 }
 
 async function handleRunFail(jobId, runId, runData, errMsg) {
@@ -850,6 +843,7 @@ function parseRequest(req) {
  * @returns {function(*=, *=, *, *=): *}
  */
 function createRunEventHandler(jobId, runId) {
+    const maxOutput = config.tasks.maxRunOutputBytes || 1000000;
     let outputBytes = 0;
     let limitReached = false;
     let outputBuffer = [];
@@ -859,7 +853,7 @@ function createRunEventHandler(jobId, runId) {
         try {
             let output = outputBuffer.join('');
             outputBuffer = [];
-            emit(EventTypes.RUN_OUTPUT, output);
+            emit(getOutputEventType(runId), output);
             if (!limitReached) {
                 await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', output)}).where('id', runId);
             }
@@ -875,22 +869,26 @@ function createRunEventHandler(jobId, runId) {
         switch (type) {
             case 'output':
                 try {
+                    let byteLength = Buffer.byteLength(data, 'utf8');
+
                     outputBuffer.push(data);
-                    outputBytes += Buffer.byteLength(data, 'utf8');
-                    if (!limitReached && (outputBytes >= config.tasks.maxRunOutputBytes)) {
+                    outputBytes += byteLength
+                    if (!limitReached && (outputBytes >= maxOutput)) {
                         limitReached = true;
                         if (config.tasks.printLimitReachedMessage === true) {
                             try {
                                 await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output storage capacity reached\')')}).where('id', runId);
+                                emit(getOutputEventType(runId), ' max output storage capacity reached');
                             } catch (e) {
                                 log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
                             }
                         }
+                        // TODO Don't know how well this will scale
+                        // --   it might be better to append to a file, but this will require further syncing
+                        // --   as we need full output for task development in the UI, not only output after the register of listener
+                        // --   therefore keeping it this way for now
                     }
-                    // TODO Don't know how well this will scale
-                    // --   it might be better to append to a file, but this will require further syncing
-                    // --   as we need full output for task development in the UI, not only output after the register of listener
-                    // --   therefore keeping it this way for now
+
                     if (!timer) {
                         timer = setTimeout(cleanBuffer, 1000);
                     }

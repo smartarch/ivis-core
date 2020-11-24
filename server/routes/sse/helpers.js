@@ -12,6 +12,17 @@ function initEventSource(res) {
     res.flush();
 }
 
+function sendEvent(res, eventType, data) {
+    res.write(`event: ${eventType}\n`);
+    if (data != null) {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } else {
+        res.write(`\n`);
+    }
+    res.flush();
+}
+
 module.exports = {
-   initEventSource
+    initEventSource,
+    sendEvent
 }

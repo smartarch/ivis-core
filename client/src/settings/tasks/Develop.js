@@ -98,6 +98,80 @@ export default class Develop extends Component {
         }
     }
 
+    initRunEventSource(runId){
+        this.runOutputChunks = [];
+        this.runEventSource = new EventSource(getUrl(`sse/jobs/${this.state.jobId}/run/${runId}`));
+        this.runEventSource.addEventListener("changeRunStatus", (e) => {
+            this.state.runStatus = e.data;
+        });
+
+        this.runEventSource.addEventListener("init", (e) => {
+            const run = JSON.parse(e.data);
+
+            this.setState({
+                runStatus: run.status
+            });
+        });
+
+
+        this.runEventSource.addEventListener("output", (e) => {
+            if (e.origin + '/' !== getUrl()) {
+                console.log(`Origin ${e.origin} not allowed; only events from ${getUrl()}`);
+            } else {
+                // TODO much better would be circular queue
+                //if (this.state.chunkCounter > 3) {
+                //    this.runOutputChunks.shift();
+                //}
+
+                console.log(this.state.chunkCounter);
+                this.runOutputChunks.push({
+                    id: this.state.chunkCounter,
+                    data: JSON.parse(e.data)
+                });
+
+                this.setState({
+                    chunkCounter: this.state.chunkCounter + 1
+                });
+            }
+        });
+
+        this.runEventSource.addEventListener("success", (e) => {
+            this.setState({
+                runStatus: RunStatus.SUCCESS
+            });
+            this.closeRunEventSource();
+        });
+        this.runEventSource.addEventListener("stop", (e) => {
+
+            this.runOutputChunks.push({
+                id: this.state.chunkCounter,
+                data: `ERROR: Run has been stopped`
+            });
+
+            this.setState({
+                runStatus: RunStatus.FAILED,
+                chunkCounter: this.state.chunkCounter + 1
+            });
+            this.closeRunEventSource();
+        });
+
+        this.runEventSource.onmessage = function (e) {
+            //console.log(e.data);
+        }
+
+        this.runEventSource.onerror = (e) => {
+            console.log(e);
+            this.runOutputChunks.push({
+                id: this.state.chunkCounter,
+                data: `ERROR: ${JSON.parse(e.data)}`
+            });
+            this.setState({
+                chunkCounter: this.state.chunkCounter + 1
+            });
+            this.stop();
+        };
+    }
+
     @withAsyncErrorHandler
     async run() {
         if (this.state.jobId != null) {
@@ -105,58 +179,10 @@ export default class Develop extends Component {
             const runIdData = await axios.post(getUrl(`rest/job-run/${this.state.jobId}`));
             const runId = runIdData.data;
 
-
-            let outputs = [];
-            this.runOutputChunks = [];
-            this.runEventSource = new EventSource(getUrl(`sse/jobs/${this.state.jobId}/run/${runId}`));
-            this.runEventSource.addEventListener("changeRunStatus", (e) => {
-                this.state.runStatus = e.data;
-            });
-
-            this.runEventSource.addEventListener("init", (e) => {
-                const run = JSON.parse(e.data);
-
-                this.setState({
-                    runOutput: run.output || '',
-                    runStatus: run.status
-                });
-            });
-
-            this.runEventSource.addEventListener("output", (e) => {
-                if (e.origin + '/' !== getUrl()) {
-                    console.log(`Origin ${e.origin} not allowed; only events from ${getUrl()}`);
-                } else {
-                    // TODO much better would be circular queue
-                    //if (this.state.chunkCounter > 3) {
-                    //    this.runOutputChunks.shift();
-                    //}
-
-                    this.runOutputChunks.push({
-                        id: this.state.chunkCounter,
-                        data: JSON.parse(e.data)
-                    });
-
-                    this.setState({
-                        chunkCounter: this.state.chunkCounter + 1
-                    });
-                }
-            });
-
-            this.runEventSource.onmessage = function (e) {
-                //console.log(e.data);
-            }
-
-            this.runEventSource.onerror = (e) => {
-                let output = outputs.join('\n') + `\nERROR: Output failed ${e}`;
-                this.setState({
-                    runOutput: output,
-                });
-                this.stop();
-            };
+            this.initRunEventSource(runId);
 
             this.setState({
                 runStatus: RunStatus.INITIALIZATION,
-                runOutput: '',
                 runId: runId,
                 chunkCounter: 0
             });
