@@ -62,7 +62,7 @@ export default class IntegrationTabs extends Component {
             task: task
         });
 
-        if (task.build_state == null
+    if (task.build_state == null
             || task.build_state === BuildState.SCHEDULED
             || task.build_state === BuildState.PROCESSING) {
             this.refreshTimeout = setTimeout(() => {
@@ -231,7 +231,8 @@ export default class IntegrationTabs extends Component {
             {data: 5, title: t('Namespace')}
         ];
 
-        if (!status) {
+        console.log(status)
+        if (status == null) {
             runStatusElement = (
                 <div className='p-1 text-info'>{t('Not run in this panel yet.')}</div>
             );
