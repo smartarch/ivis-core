@@ -81,6 +81,11 @@ export default class Develop extends Component {
                 }
             }
         });
+
+        this.save = ::this.save
+        this.changeJob = ::this.changeJob;
+        this.toggleMaximized = ::this.toggleMaximized;
+        this.toggleIntegration = ::this.toggleIntegration;
     }
 
     static propTypes = {
@@ -98,7 +103,7 @@ export default class Develop extends Component {
         }
     }
 
-    initRunEventSource(runId){
+    initRunEventSource(runId) {
         this.runOutputChunks = [];
         this.runEventSource = new EventSource(getUrl(`sse/jobs/${this.state.jobId}/run/${runId}`));
         this.runEventSource.addEventListener("changeRunStatus", (e) => {
@@ -118,19 +123,24 @@ export default class Develop extends Component {
             if (e.origin + '/' !== getUrl()) {
                 console.log(`Origin ${e.origin} not allowed; only events from ${getUrl()}`);
             } else {
-                // TODO much better would be circular queue
-                //if (this.state.chunkCounter > 3) {
-                //    this.runOutputChunks.shift();
-                //}
-
-                console.log(this.state.chunkCounter);
-                this.runOutputChunks.push({
-                    id: this.state.chunkCounter,
-                    data: JSON.parse(e.data)
-                });
+                const data = JSON.parse(e.data);
+                let counter = this.state.chunkCounter;
+                if (Array.isArray(data)) {
+                    data.forEach(d => {
+                        this.runOutputChunks.push({
+                            id: counter++,
+                            data: d
+                        });
+                    })
+                } else {
+                    this.runOutputChunks.push({
+                        id: counter++,
+                        data: data
+                    });
+                }
 
                 this.setState({
-                    chunkCounter: this.state.chunkCounter + 1
+                    chunkCounter:counter
                 });
             }
         });
@@ -380,6 +390,13 @@ export default class Develop extends Component {
         });
     }
 
+    toggleMaximized() {
+        this.setState({isMaximized: !this.state.isMaximized});
+    }
+
+    toggleIntegration() {
+        this.setState({withIntegration: !this.state.withIntegration});
+    }
 
     render() {
         const t = this.props.t;
@@ -441,7 +458,7 @@ export default class Develop extends Component {
                 <div
                     className={developStyles.develop + ' ' + (this.state.isMaximized ? developStyles.fullscreenOverlay : '') + ' ' + (this.state.withIntegration ? developStyles.withIntegration : '')}>
                     <div className={developStyles.codePane}>
-                        <Form stateOwner={this} onSubmitAsync={::this.save} format="wide" noStatus>
+                        <Form stateOwner={this} onSubmitAsync={this.save} format="wide" noStatus>
                             <div className={developStyles.tabPane}>
                                 <div id="headerPane" className={developStyles.tabPaneHeader}>
                                     <div className={developStyles.buttons}>
@@ -456,10 +473,10 @@ export default class Develop extends Component {
                                         }
                                         <Button className="btn-primary"
                                                 icon={this.state.isMaximized ? "compress-arrows-alt" : "expand-arrows-alt"}
-                                                onClickAsync={() => this.setState({isMaximized: !this.state.isMaximized})}/>
+                                                onClickAsync={this.toggleMaximized}/>
                                         <Button className="btn-primary"
                                                 icon={this.state.withIntegration ? 'arrow-right' : 'arrow-left'}
-                                                onClickAsync={() => this.setState({withIntegration: !this.state.withIntegration})}/>
+                                                onClickAsync={this.toggleIntegration}/>
                                     </div>
                                     <ul className="nav nav-pills">
                                         {tabs}
@@ -489,7 +506,7 @@ export default class Develop extends Component {
                         </Form>
                     </div>
                     <div className={developStyles.integrationPane}>
-                        <IntegrationTabs onJobChange={this.changeJob.bind(this)} taskId={this.props.entity.id}
+                        <IntegrationTabs onJobChange={this.changeJob} taskId={this.props.entity.id}
                                          taskHash={this.state.taskVersionId} runStatus={this.state.runStatus}
                                          lastOutputChunkId={this.state.chunkCounter}
                                          runOutputChunks={this.runOutputChunks}/>

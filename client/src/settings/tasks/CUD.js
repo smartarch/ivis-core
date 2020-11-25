@@ -42,6 +42,7 @@ export default class CUD extends Component {
         this.state = {};
 
         this.initForm();
+        this.submitHandler = ::this.submitHandler;
     }
 
     static propTypes = {
@@ -184,7 +185,7 @@ export default class CUD extends Component {
             Object.values(subtypes).forEach((subtype) => {
                 subtypeOptions.push({
                     key: subtype,
-                    label: getSubtypeLabel(t,taskType,subtype)
+                    label: getSubtypeLabel(t, taskType, subtype)
                 });
             });
         }
@@ -217,7 +218,7 @@ export default class CUD extends Component {
                     deletedMsg={t('Task deleted')}/>
                 }
 
-                <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
+                <Form stateOwner={this} onSubmitAsync={this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
                     <Dropdown id="type" label={t('Type')} options={typeOptions} disabled={isEdit}/>

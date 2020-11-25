@@ -16,6 +16,8 @@ import moment from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 
+const Span = props=> <span>{props.data}</span>
+
 @withComponentMixins([
     withTranslation,
     withForm,
@@ -49,6 +51,16 @@ export default class IntegrationTabs extends Component {
                 this.props.onJobChange(newState.formState.getIn(['data', 'developJob', 'value']));
             }
         });
+
+
+        const t = props.t;
+        this.jobColumns = [
+            {data: 0, title: t('#')},
+            {data: 1, title: t('Name')},
+            {data: 2, title: t('Description')},
+            {data: 4, title: t('Created'), render: data => moment(data).fromNow()},
+            {data: 5, title: t('Namespace')}
+        ];
 
     }
 
@@ -223,15 +235,8 @@ export default class IntegrationTabs extends Component {
     getRunContent(t) {
         let runStatusElement = null;
         const status = this.props.runStatus;
-        const jobColumns = [
-            {data: 0, title: t('#')},
-            {data: 1, title: t('Name')},
-            {data: 2, title: t('Description')},
-            {data: 4, title: t('Created'), render: data => moment(data).fromNow()},
-            {data: 5, title: t('Namespace')}
-        ];
 
-        console.log(status)
+
         if (status == null) {
             runStatusElement = (
                 <div className='p-1 text-info'>{t('Not run in this panel yet.')}</div>
@@ -266,7 +271,8 @@ export default class IntegrationTabs extends Component {
         let runOutput = '';
         if (this.props.runOutputChunks && (this.props.runOutputChunks.length > 0)) {
             runOutput = this.props.runOutputChunks.map((output) => {
-                return <span key={output.id}>{output.data}</span>;
+                //return <span key={output.id}>{output.data}</span>;
+                return <Span key={output.id} data={output.data}/>;
             });
         } else if (status && status.output) {
             runOutput = status.output;
@@ -277,7 +283,7 @@ export default class IntegrationTabs extends Component {
                 <div className={developStyles.integrationTabHeader}>
                     <Form stateOwner={this} format="wide" noStatus>
                         <TableSelect id="developJob" label={t('Job for testing')} format="wide" withHeader dropdown
-                                     dataUrl={`rest/jobs-by-task-table/${this.props.taskId}`} columns={jobColumns}
+                                     dataUrl={`rest/jobs-by-task-table/${this.props.taskId}`} columns={this.jobColumns}
                                      selectionLabelIndex={1}/>
                     </Form>
                 </div>

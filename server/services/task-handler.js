@@ -20,7 +20,7 @@ const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helper
 const es = require('../lib/elasticsearch');
 const {TYPE_JOBS, INDEX_JOBS, STATE_FIELD} = require('../lib/task-handler').esConstants
 
-const {getSuccessEventType,getFailEventType,getOutputEventType, getStopEventType} = require('../lib/task-events');
+const {getSuccessEventType, getFailEventType, getOutputEventType, getStopEventType} = require('../lib/task-events');
 
 const LOG_ID = 'Task-handler';
 
@@ -851,12 +851,10 @@ function createRunEventHandler(jobId, runId) {
 
     async function cleanBuffer() {
         try {
-            let output = outputBuffer.join('');
+            let output = [...outputBuffer];
             outputBuffer = [];
             emit(getOutputEventType(runId), output);
-            if (!limitReached) {
-                await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', output)}).where('id', runId);
-            }
+            await knex('job_runs').update({output: knex.raw('CONCAT(COALESCE(`output`,\'\'), ?)', output.join(''))}).where('id', runId);
             timer = null;
         } catch (e) {
             log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
@@ -869,29 +867,37 @@ function createRunEventHandler(jobId, runId) {
         switch (type) {
             case 'output':
                 try {
-                    let byteLength = Buffer.byteLength(data, 'utf8');
+                    if (!limitReached) {
+                        let byteLength = Buffer.byteLength(data, 'utf8');
+                        outputBytes += byteLength
+                        if (outputBytes >= maxOutput) {
+                            limitReached = true;
+                            if (config.tasks.printLimitReachedMessage === true) {
+                                try {
+                                    await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output storage capacity reached\')')}).where('id', runId);
 
-                    outputBuffer.push(data);
-                    outputBytes += byteLength
-                    if (!limitReached && (outputBytes >= maxOutput)) {
-                        limitReached = true;
-                        if (config.tasks.printLimitReachedMessage === true) {
-                            try {
-                                await knex('job_runs').update({output: knex.raw('CONCAT(`output`, \'INFO: max output storage capacity reached\')')}).where('id', runId);
-                                emit(getOutputEventType(runId), ' max output storage capacity reached');
-                            } catch (e) {
-                                log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
+                                    const maxMsg = 'INFO: max output capacity reached'
+                                    if (!timer) {
+                                        emit(getOutputEventType(runId), maxMsg);
+                                    } else {
+                                        outputBuffer.push(maxMsg);
+                                    }
+                                } catch (e) {
+                                    log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
+                                }
+                            }
+                        } else {
+                            outputBuffer.push(data);
+                            // TODO Don't know how well this will scale
+                            // --   it might be better to append to a file, but this will require further syncing
+                            // --   as we need full output for task development in the UI, not only output after the register of listener
+                            // --   therefore keeping it this way for now
+                            if (!timer) {
+                                timer = setTimeout(cleanBuffer, 1000);
                             }
                         }
-                        // TODO Don't know how well this will scale
-                        // --   it might be better to append to a file, but this will require further syncing
-                        // --   as we need full output for task development in the UI, not only output after the register of listener
-                        // --   therefore keeping it this way for now
                     }
 
-                    if (!timer) {
-                        timer = setTimeout(cleanBuffer, 1000);
-                    }
                 } catch (e) {
                     log.error(LOG_ID, `Output handling for the run ${runId} failed`, e);
                 }
