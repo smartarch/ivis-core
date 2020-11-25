@@ -89,8 +89,8 @@ tasks:
   runLogRetentionTime: 1
   # upper limit for run's output
   maxRunOutputBytes: 1000000
-  # Uncomment to print info message about reaching output limit to the output
-  # printLimitReachedMessage: true
+  # print info message about reaching output limit to the output
+  printLimitReachedMessage: true
   python:
     # On Centos7 with SCL use: scl enable rh-python36 -- python3 -m venv
     # [Ubuntu 18.04] If there is error message with Unable to symlink '' to '...',
