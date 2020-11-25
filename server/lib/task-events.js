@@ -8,7 +8,8 @@ const EventTypes = {
     RUN_OUTPUT: 'output',
     INIT: 'init',
     STOP: 'stop',
-    FAIL: 'fail'
+    FAIL: 'fail',
+    SUCCESS: 'success'
 }
 
 function getOutputEventType(runId) {
@@ -24,7 +25,7 @@ function getFailEventType(runId) {
 }
 
 function getSuccessEventType(runId) {
-    return `run/${runId}/${EventTypes.FAIL}`;
+    return `run/${runId}/${EventTypes.SUCCESS}`;
 }
 
 module.exports = {
