@@ -29,7 +29,7 @@ function getTheme(search){
     const searchParams = new URLSearchParams(search);
     let theme = Theme.LIGHT;
     if (searchParams.has('theme')) {
-        theme = searchParams.get('theme') === Theme.MMT ? Theme.MMT : Theme.LIGHT;
+        theme = searchParams.get('theme') === Theme.DARK ? Theme.DARK : Theme.LIGHT;
     }
     return theme;
 }
@@ -56,8 +56,8 @@ class PanelRoute extends Component {
         }
 
         let theme = getTheme(this.props.location.search);
-        if (theme === Theme.MMT) {
-            jQuery(document.body).addClass('theme-mmt');
+        if (theme === Theme.DARK) {
+            jQuery(document.body).addClass('theme-dark');
         }
 
         const render = (resolved, permissions) => {
