@@ -911,7 +911,7 @@ function createRunEventHandler(jobId, runId) {
     };
 }
 
-async function handleRequest(requestStr) {
+async function handleRequest(jobId, requestStr) {
     let response = {};
 
     if (!requestStr) {
