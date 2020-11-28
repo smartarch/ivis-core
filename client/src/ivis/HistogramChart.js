@@ -21,6 +21,8 @@ import {Icon} from "../lib/bootstrap-components";
 import styles from "./CorrelationCharts.scss";
 import {brushHandlesLeftRight, ConfigDifference, isInExtent, transitionInterpolate, WheelDelta, ZoomEventSources, AreZoomTransformsEqual, TimeIntervalDifference} from "./common";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
+import StatusMsg from "./StatusMsg";
+import commonStyles from "./commons.scss";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -783,9 +785,10 @@ export class HistogramChart extends Component {
             return (
                 <svg ref={node => this.containerNode = node} height={this.props.height} width="100%"
                      className={this.props.className} style={this.props.style} >
-                    <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+
+                    <StatusMsg>
                         {this.state.statusMsg}
-                    </text>
+                    </StatusMsg>
                 </svg>
             );
 
@@ -812,10 +815,10 @@ export class HistogramChart extends Component {
                         <g ref={node => this.yAxisSelection = select(node)} transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
 
                         {!this.state.zoomInProgress &&
-                        <line ref={node => this.cursorSelection = select(node)} strokeWidth="1" stroke="rgb(50,50,50)" visibility="hidden"/>}
-                        <text textAnchor="middle" x="50%" y="50%" fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px">
+                        <line ref={node => this.cursorSelection = select(node)} className={commonStyles.cursorLine} visibility="hidden"/>}
+                        <StatusMsg>
                             {this.state.statusMsg}
-                        </text>
+                        </StatusMsg>
                         {this.props.withTooltip && !this.state.zoomInProgress &&
                         <Tooltip
                             config={this.props.config}

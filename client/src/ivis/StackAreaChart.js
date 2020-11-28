@@ -14,27 +14,15 @@ import PropTypes
     from "prop-types";
 import tooltipStyles
     from "./Tooltip.scss";
-import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 
-function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
-    const numberFormat = d3Format('.3f');
-
-    const max = numberFormat(signalData.max);
-
-    const unit = sigConf.unit;
-
-    return (
-        <span className={tooltipStyles.signalVal}>{max} {unit}</span>
-    );
-}
 
 @withComponentMixins([
     withTranslation
 ])
-export class AreaChart extends Component {
-    constructor(props){
+export class StackAreaChart extends Component {
+    constructor(props) {
         super(props);
 
         const t = props.t;
@@ -58,17 +46,55 @@ export class AreaChart extends Component {
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
         lineCurve: PropTypes.func,
+        signalAgg: PropTypes.string,
+        prepareData: PropTypes.func
     }
 
     static defaultProps = {
-        margin: { left: 60, right: 5, top: 5, bottom: 20 },
+        margin: {left: 5, right: 5, top: 5, bottom: 20},
         height: 500,
         withTooltip: true,
         withBrush: true,
-        lineCurve: d3Shape.curveLinear
+        lineCurve: d3Shape.curveLinear,
+        signalAgg: 'avg'
     }
 
-    createChart(base, signalSetsData, abs, xScale, yScales, points) {
+    prepareData(base, signalSetsData, extraData) {
+        if (this.props.prepareData) {
+            this.props.prepareData(base, signalSetsData, extraData);
+        }
+
+        const signalSetsReverse = this.props.config.signalSets.slice().reverse();
+
+        for (const setSpec of signalSetsReverse) {
+            const signalsReverse = setSpec.signals.slice().reverse();
+
+            const changeData = data => {
+                let accumulator = 0;
+                for (const sigSpec of signalsReverse) {
+                    accumulator += data[sigSpec.cid][this.props.signalAgg];
+                    data[sigSpec.cid]._stackAccumulator = data[sigSpec.cid][this.props.signalAgg] ? accumulator : 0;
+                }
+            };
+
+            const sigSetData = signalSetsData[setSpec.cid];
+            if (sigSetData.prev) {
+                changeData(sigSetData.prev.data);
+            }
+            for (const main of sigSetData.main) {
+                changeData(main.data);
+            }
+            if (sigSetData.next) {
+                changeData(sigSetData.next.data);
+            }
+        }
+
+        return {
+            signalSetsData: signalSetsData
+        };
+    }
+
+    createChart(base, signalSetsData, baseState, abs, xScale, yScales, points) {
         for (const sigSetConf of this.props.config.signalSets) {
             if (points[sigSetConf.cid]) {
                 for (const sigConf of sigSetConf.signals) {
@@ -79,11 +105,10 @@ export class AreaChart extends Component {
                         const minMaxArea = d3Shape.area()
                             .x(d => xScale(d.ts))
                             .y0(d => yScale(0))
-                            .y1(d => yScale(d.data[sigCid].max))
+                            .y1(d => yScale(d.data[sigCid]._stackAccumulator))
                             .curve(this.props.lineCurve);
 
                         const minMaxAreaColor = rgb(sigConf.color);
-                        minMaxAreaColor.opacity = 0.5;
 
                         this.areaPathSelection[sigSetConf.cid][sigCid]
                             .datum(points[sigSetConf.cid])
@@ -100,16 +125,18 @@ export class AreaChart extends Component {
         return RenderStatus.SUCCESS;
     }
 
-    prepareData(base, signalSetsData, extraData) {
-        const stateUpdate = {
-            signalSetsData
-        };
-
-        return stateUpdate;
-    }
-
     render() {
         const props = this.props;
+
+        function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
+            const val = signalData[this.props.signalAgg];
+
+            const unit = sigConf.unit;
+
+            return (
+                <span className={tooltipStyles.signalVal}>{val} {unit}</span>
+            );
+        }
 
         for (const sigSetConf of props.config.signalSets) {
             this.areaPathSelection[sigSetConf.cid] = {};
@@ -120,22 +147,24 @@ export class AreaChart extends Component {
                 config={props.config}
                 height={props.height}
                 margin={props.margin}
-                signalAggs={['max']}
-                lineAgg="max"
-                getSignalValuesForDefaultTooltip={getSignalValuesForDefaultTooltip}
+                signalAggs={[props.signalAgg]}
+                lineAgg={props.signalAgg}
+                getSignalValuesForDefaultTooltip={getSignalValuesForDefaultTooltip.bind(this)}
                 prepareData={this.boundPrepareData}
                 createChart={this.boundCreateChart}
-                getSignalGraphContent={(base, sigSetCid, sigCid) => <path ref={node => this.areaPathSelection[sigSetCid][sigCid] = select(node)}/>}
+                getSignalGraphContent={(base, sigSetCid, sigCid) => <path
+                    ref={node => this.areaPathSelection[sigSetCid][sigCid] = select(node)}/>}
                 withTooltip={props.withTooltip}
                 withBrush={props.withBrush}
                 contentComponent={props.contentComponent}
                 contentRender={props.contentRender}
-                tooltipContentComponent={this.props.tooltipContentComponent}
-                tooltipContentRender={this.props.tooltipContentRender}
-                tooltipExtraProps={this.props.tooltipExtraProps}
+                tooltipContentComponent={props.tooltipContentComponent}
+                tooltipContentRender={props.tooltipContentRender}
+                tooltipExtraProps={props.tooltipExtraProps}
                 getLineColor={color => color.darker()}
                 lineVisibility={lineWithoutPoints}
-                lineCurve={this.props.lineCurve}
+                lineCurve={props.lineCurve}
+                withZoom={true}
             />
         );
     }

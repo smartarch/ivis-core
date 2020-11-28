@@ -205,7 +205,8 @@ export class LineChartBase extends Component {
 
                     for (const sigConf of sigSetConf.signals) {
                         if (isSignalVisible(sigConf)) {
-                            prevInterpolated.data[sigConf.cid] = {};
+
+                            prevInterpolated.data[sigConf.cid] = prev.data[sigConf.cid];
 
                             for (const agg of signalAggs) {
                                 const delta = (abs.from - prev.ts) / (pts[0].ts - prev.ts);
@@ -225,7 +226,9 @@ export class LineChartBase extends Component {
 
                     for (const sigConf of sigSetConf.signals) {
                         if (isSignalVisible(sigConf)) {
-                            nextInterpolated.data[sigConf.cid] = {};
+                            //nextInterpolated.data[sigConf.cid] = {};
+                            nextInterpolated.data[sigConf.cid] = next.data[sigConf.cid];
+
 
                             for (const agg of signalAggs) {
                                 const delta = (next.ts - abs.to) / (next.ts - pts[pts.length - 1].ts);

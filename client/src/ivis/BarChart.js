@@ -143,6 +143,8 @@ export class StaticBarChart extends Component {
 
             this.zoom = null;
             return;
+        } else {
+            this.statusMsgSelection.text("");
         }
 
         //<editor-fold desc="Scales">
