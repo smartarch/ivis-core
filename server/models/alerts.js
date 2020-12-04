@@ -7,9 +7,8 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const { enforce } = require('../lib/helpers');
 
-const allowedKeys = new Set(['name', 'description', 'sigset', 'duration', 'delay', 'interval', 'condition', 'emails', 'phones', 'repeat', 'finalnotification', 'enabled', 'namespace', 'sortsig']);
+const allowedKeys = new Set(['name', 'description', 'sigset', 'duration', 'delay', 'interval', 'condition', 'emails', 'phones', 'repeat', 'finalnotification', 'enabled', 'namespace']);
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, allowedKeys));
@@ -38,11 +37,6 @@ async function listDTAjax(context, params) {
 
 async function _validateAndPreprocess(tx, context, entity, isCreate) {
     await namespaceHelpers.validateEntity(tx, entity);
-
-    if (entity.sortsig) {
-        const sigsetOfsortsig = await tx('signals').where('id', entity.sortsig).first('set');
-        enforce(sigsetOfsortsig.set === entity.sigset, "The sortsig does not belong to the sigset!");
-    }
 }
 
 async function create(context, entity) {

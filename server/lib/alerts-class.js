@@ -76,7 +76,7 @@ class Alert{
                 this.state = 'good';
                 return;
             }
-            const result = await evaluate(alert.condition, alert.sigset, alert.sortsig);
+            const result = await evaluate(alert.condition, alert.sigset);
             if (typeof result === 'boolean') await this.changeState(result, alert.duration, alert.delay);
             else await this.addLogEntryTx(tx, result);
         });

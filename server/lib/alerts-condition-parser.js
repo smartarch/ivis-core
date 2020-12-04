@@ -5,10 +5,10 @@ const knex = require('./knex');
 const dataModel = require('../models/signal-sets');
 const adminContext = require('./context-helpers').getAdminContext();
 
-async function evaluate(condition, sigSetId, sortSigId){
+async function evaluate(condition, sigSetId){
     let result;
     try {
-        const scope = await setupScope(sigSetId, sortSigId);
+        const scope = await setupScope(sigSetId);
         result = math.evaluate(condition, scope);
     }
     catch(error){
@@ -18,7 +18,7 @@ async function evaluate(condition, sigSetId, sortSigId){
     else return 'NotBoolError';
 }
 
-async function setupScope(sigSetId, sortSigId){
+async function setupScope(sigSetId){
     const sigSetCid = (await knex('signal_sets').where('id', sigSetId).first('cid')).cid;
     const signals = [];
     (await knex('signals').where('set', sigSetId).select('cid')).forEach(item => signals.push(item.cid));
@@ -32,14 +32,13 @@ async function setupScope(sigSetId, sortSigId){
                 limit: 1,
                 sort: [
                     {
+                        field: 'id',
                         order: 'desc'
                     }
                 ]
             }
         }
     ];
-    if (sortSigId) query[0].docs.sort[0].sigCid = (await knex('signals').where('id', sortSigId).first('cid')).cid;
-    else query[0].docs.sort[0].field = 'id';
 
     const results = await dataModel.query(adminContext, query);
     const latest = results[0].docs[0];
