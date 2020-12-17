@@ -4,6 +4,7 @@ const math = require('mathjs');
 const knex = require('./knex');
 const dataModel = require('../models/signal-sets');
 const adminContext = require('./context-helpers').getAdminContext();
+const config = require('./config');
 
 async function evaluate(condition, sigSetId){
     let result;
@@ -29,7 +30,7 @@ async function setupScope(sigSetId){
             sigSetCid: sigSetCid,
             docs:{
                 signals: signals,
-                limit: 1,
+                limit: config.alerts.maxResultsWindow,
                 sort: [
                     {
                         field: 'id',
@@ -44,7 +45,17 @@ async function setupScope(sigSetId){
     const latest = results[0].docs[0];
     const scope = {};
     Object.keys(latest).forEach(key => scope['$' + key] = latest[key])
+
+    const rest = results[0].docs;
+    scope.past = (cid, distance) => lookBack(rest, cid, distance);
+
     return scope;
+}
+
+function lookBack(array, key, distance){
+    let index = distance;
+    if(distance >= array.length) index = array.length - 1;
+    return array[index][key];
 }
 
 module.exports.evaluate = evaluate;

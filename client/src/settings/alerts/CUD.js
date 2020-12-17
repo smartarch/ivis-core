@@ -33,7 +33,6 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import testTrigger from "../../lib/alerts-trigger-tester";
 import checkCondition from "../../lib/alerts-condition-checker";
-import {getSignalTypes} from "../signal-sets/signals/signal-types";
 
 @withComponentMixins([
     withTranslation,
@@ -47,8 +46,6 @@ export default class CUD extends Component {
         super(props);
 
         this.state = {};
-
-        this.signalTypes = getSignalTypes(props.t);
 
         this.initForm();
     }
@@ -110,8 +107,8 @@ export default class CUD extends Component {
         } else {
             state.setIn(['interval', 'error'], null);
         }
-
-        const conTest = checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
+        //TODO: add functions to condition checker
+        const conTest = 'ok'; //checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
         if (conTest !== 'ok') {
             state.setIn(['condition', 'error'], conTest);
         } else {

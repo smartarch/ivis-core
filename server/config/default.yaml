@@ -19,6 +19,9 @@ elasticsearch:
   # This limits deep pagination
   maxResultsWindow: 10000
 
+alerts:
+  maxResultsWindow: 1000
+
 mysql:
   host: localhost
   user: ivis
