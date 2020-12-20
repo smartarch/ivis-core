@@ -42,6 +42,8 @@ export class StackAreaChart extends Component {
         margin: PropTypes.object,
         withTooltip: PropTypes.bool,
         withBrush: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -55,6 +57,7 @@ export class StackAreaChart extends Component {
         height: 500,
         withTooltip: true,
         withBrush: true,
+        withZoom: true,
         lineCurve: d3Shape.curveLinear,
         signalAgg: 'avg'
     }
@@ -164,7 +167,8 @@ export class StackAreaChart extends Component {
                 getLineColor={color => color.darker()}
                 lineVisibility={lineWithoutPoints}
                 lineCurve={props.lineCurve}
-                withZoom={true}
+                withZoom={props.withZoom}
+                zoomUpdateReloadInterval={props.zoomUpdateReloadInterval}
             />
         );
     }
