@@ -107,8 +107,8 @@ export default class CUD extends Component {
         } else {
             state.setIn(['interval', 'error'], null);
         }
-        //TODO: add functions to condition checker
-        const conTest = 'ok'; //checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
+
+        const conTest = checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
         if (conTest !== 'ok') {
             state.setIn(['condition', 'error'], conTest);
         } else {
