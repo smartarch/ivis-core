@@ -58,6 +58,7 @@ export class AreaChart extends Component {
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
         lineCurve: PropTypes.func,
+        discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
     }
 
     static defaultProps = {
@@ -77,6 +78,7 @@ export class AreaChart extends Component {
                         const yScale = yScales[getAxisIdx(sigConf)];
 
                         const minMaxArea = d3Shape.area()
+                            .defined(d => d !== null)
                             .x(d => xScale(d.ts))
                             .y0(d => yScale(0))
                             .y1(d => yScale(d.data[sigCid].max))
@@ -136,6 +138,7 @@ export class AreaChart extends Component {
                 getLineColor={color => color.darker()}
                 lineVisibility={lineWithoutPoints}
                 lineCurve={this.props.lineCurve}
+                discontinuityInterval={this.props.discontinuityInterval}
             />
         );
     }

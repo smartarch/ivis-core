@@ -49,7 +49,8 @@ export class StackAreaChart extends Component {
         tooltipExtraProps: PropTypes.object,
         lineCurve: PropTypes.func,
         signalAgg: PropTypes.string,
-        prepareData: PropTypes.func
+        prepareData: PropTypes.func,
+        discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
     }
 
     static defaultProps = {
@@ -106,6 +107,7 @@ export class StackAreaChart extends Component {
                         const yScale = yScales[getAxisIdx(sigConf)];
 
                         const minMaxArea = d3Shape.area()
+                            .defined(d => d !== null)
                             .x(d => xScale(d.ts))
                             .y0(d => yScale(0))
                             .y1(d => yScale(d.data[sigCid]._stackAccumulator))
@@ -169,6 +171,7 @@ export class StackAreaChart extends Component {
                 lineCurve={props.lineCurve}
                 withZoom={props.withZoom}
                 zoomUpdateReloadInterval={props.zoomUpdateReloadInterval}
+                discontinuityInterval={this.props.discontinuityInterval}
             />
         );
     }

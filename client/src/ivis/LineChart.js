@@ -92,6 +92,7 @@ export class LineChart extends Component {
         lineVisibility: PropTypes.func,
         lineCurve: PropTypes.func,
         lineWidth: PropTypes.number,
+        discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
 
         controlTimeIntervalChartWidth: PropTypes.bool
     }
@@ -116,7 +117,7 @@ export class LineChart extends Component {
                         const sigCid = sigConf.cid;
                         const yScale = yScales[getAxisIdx(sigConf)];
                         const minMaxArea = d3Shape.area()
-                            .defined(d => d.data[sigCid].min !== null && d.data[sigCid].max)
+                            .defined(d => d !== null && d.data[sigCid].min !== null && d.data[sigCid].max)
                             .x(d => xScale(d.ts))
                             .y0(d => yScale(d.data[sigCid].min))
                             .y1(d => yScale(d.data[sigCid].max))
@@ -203,6 +204,7 @@ export class LineChart extends Component {
                 lineWidth={this.props.lineWidth}
                 controlTimeIntervalChartWidth={this.props.controlTimeIntervalChartWidth}
                 lineCurve={this.props.lineCurve}
+                discontinuityInterval={this.props.discontinuityInterval}
             />
         );
     }
