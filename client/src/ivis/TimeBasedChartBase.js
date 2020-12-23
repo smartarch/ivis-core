@@ -21,6 +21,7 @@ import {AreZoomTransformsEqual, ConfigDifference, setZoomTransform, transitionIn
 import * as d3Zoom from "d3-zoom";
 import commonStyles from "./commons.scss";
 import timeBasedChartBaseStyles from "./TimeBasedChartBase.scss";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 export function createBase(base, self) {
     self.base = base;
@@ -201,6 +202,8 @@ export class TimeBasedChartBase extends Component {
         withTooltip: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        loadingOverlayColor: PropType_d3Color(),
+        displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
 
@@ -223,7 +226,8 @@ export class TimeBasedChartBase extends Component {
         tooltipExtraProps: {},
         minimumIntervalMs: 10000,
         getSvgDefs: () => null,
-        zoomUpdateReloadInterval: 1000
+        zoomUpdateReloadInterval: 1000,
+        displayLoadingTextWhenUpdating: true,
     }
 
     updateTimeIntervalChartWidth() {
@@ -302,7 +306,10 @@ export class TimeBasedChartBase extends Component {
     @withAsyncErrorHandler
     async fetchData() {
         const t = this.props.t;
-        this.setState({statusMsg: t('Loading...'), loading: true});
+        const newState = { loading: true }
+        if (this.props.displayLoadingTextWhenUpdating)
+            newState.statusMsg = t('Loading...');
+        this.setState(newState);
 
         try {
             const queries = this.props.getQueries(this, this.getIntervalAbsolute(), this.props.config);
@@ -594,7 +601,10 @@ export class TimeBasedChartBase extends Component {
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
                        clipPath="url(#plotRect)" ref={node => this.GraphContentSelection = select(node)}>
                         {(!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
-                        <rect className={timeBasedChartBaseStyles.loadingOverlay}/>}
+                            <rect className={timeBasedChartBaseStyles.loadingOverlay}
+                                  style={{fill: this.props.loadingOverlayColor }}
+                            />
+                        }
                         {this.props.getGraphContent(this)}
                     </g>
                     <g ref={node => this.xAxisSelection = select(node)}

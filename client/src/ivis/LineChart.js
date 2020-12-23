@@ -12,6 +12,7 @@ import {Icon} from "../lib/bootstrap-components";
 import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData, isAgg) {
     const isAvg = signalData.avg !== null;
@@ -79,6 +80,8 @@ export class LineChart extends Component {
         withBrush: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        loadingOverlayColor: PropType_d3Color(),
+        displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -205,6 +208,8 @@ export class LineChart extends Component {
                 controlTimeIntervalChartWidth={this.props.controlTimeIntervalChartWidth}
                 lineCurve={this.props.lineCurve}
                 discontinuityInterval={this.props.discontinuityInterval}
+                loadingOverlayColor={this.props.loadingOverlayColor}
+                displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
             />
         );
     }

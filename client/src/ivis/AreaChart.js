@@ -17,6 +17,7 @@ import tooltipStyles
 import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
     const numberFormat = d3Format('.3f');
@@ -54,6 +55,10 @@ export class AreaChart extends Component {
         margin: PropTypes.object,
         withTooltip: PropTypes.bool,
         withBrush: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        loadingOverlayColor: PropType_d3Color(),
+        displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -130,6 +135,8 @@ export class AreaChart extends Component {
                 getSignalGraphContent={(base, sigSetCid, sigCid) => <path ref={node => this.areaPathSelection[sigSetCid][sigCid] = select(node)}/>}
                 withTooltip={props.withTooltip}
                 withBrush={props.withBrush}
+                withZoom={props.withZoom}
+                zoomUpdateReloadInterval={props.zoomUpdateReloadInterval}
                 contentComponent={props.contentComponent}
                 contentRender={props.contentRender}
                 tooltipContentComponent={this.props.tooltipContentComponent}
@@ -139,6 +146,8 @@ export class AreaChart extends Component {
                 lineVisibility={lineWithoutPoints}
                 lineCurve={this.props.lineCurve}
                 discontinuityInterval={this.props.discontinuityInterval}
+                loadingOverlayColor={this.props.loadingOverlayColor}
+                displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
             />
         );
     }

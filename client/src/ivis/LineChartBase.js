@@ -13,6 +13,7 @@ import PropTypes from "prop-types";
 import {DataPathApproximator} from "./DataPathApproximator";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 
 const SelectedState = {
@@ -132,6 +133,8 @@ export class LineChartBase extends Component {
         withBrush: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        loadingOverlayColor: PropType_d3Color(),
+        displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -754,6 +757,8 @@ export class LineChartBase extends Component {
                 tooltipExtraProps={this.props.tooltipExtraProps}
                 getSignalValuesForDefaultTooltip={this.props.getSignalValuesForDefaultTooltip}
                 controlTimeIntervalChartWidth={this.props.controlTimeIntervalChartWidth}
+                loadingOverlayColor={this.props.loadingOverlayColor}
+                displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
             />
         );
     }
