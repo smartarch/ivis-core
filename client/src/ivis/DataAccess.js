@@ -128,7 +128,8 @@ class DataAccess {
         [sigSetCid]: {
           tsSigCid: 'ts',
           signals: [sigCid],
-          mustExist: [sigCid]
+          mustExist: [sigCid],
+          horizon: moment.duration,
         }
       }
     */
@@ -139,17 +140,16 @@ class DataAccess {
             const sigSet = sigSets[sigSetCid];
             const tsSig = getTsSignalCid(sigSet);
 
+            const tsRange = {
+                type: 'range',
+                sigCid: tsSig,
+                [timeSeriesPointType]: ts.toISOString()
+            };
             const qry = {
                 sigSetCid,
                 filter: {
                     type: 'and',
-                    children: [
-                        {
-                            type: 'range',
-                            sigCid: tsSig,
-                            [timeSeriesPointType]: ts.toISOString()
-                        }
-                    ]
+                    children: [ tsRange ]
                 }
             };
 
