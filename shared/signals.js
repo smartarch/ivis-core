@@ -13,6 +13,7 @@ const SignalType = {
     TEXT: 'text',
     DATE_TIME: 'date',
     JSON: 'json',
+    BLOB: 'blob',
 };
 
 if (Object.freeze) {
@@ -72,6 +73,7 @@ const deserializeFromDb = {
     [SignalType.TEXT]: x => x,
     [SignalType.DATE_TIME]: x => moment.utc(x).toDate(),
     [SignalType.JSON]: x => JSON.parse(x),
+    [SignalType.BLOB]: x => x.toString(),
 };
 
 const serializeToDb = {
@@ -88,6 +90,7 @@ const serializeToDb = {
             throw new TypeError("Only JSON objects are allowed.")
         return JSON.stringify(x)
     },
+    [SignalType.BLOB]: x => x,
 };
 
 
