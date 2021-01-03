@@ -102,6 +102,8 @@ export default class ParamTypes {
                 if (mode === "json") {
                     const formId = this.getParamFormId(prefix, spec.id);
                     const val = state.getIn([formId, 'value']);
+                    if (val === '')
+                        return;
 
                     try {
                         JSON.parse(val);

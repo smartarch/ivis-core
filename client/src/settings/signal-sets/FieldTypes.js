@@ -86,6 +86,8 @@ export default class FieldTypes {
         this.fieldTypes[SignalType.JSON] = {
             localValidate: (sigSpec, state, formId) => {
                 const val = state.getIn([formId, 'value']);
+                if (val === '')
+                    return;
 
                 try {
                     const o = JSON.parse(val);

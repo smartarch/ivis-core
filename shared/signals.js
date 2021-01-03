@@ -73,7 +73,7 @@ const deserializeFromDb = {
     [SignalType.TEXT]: x => x,
     [SignalType.DATE_TIME]: x => moment.utc(x).toDate(),
     [SignalType.JSON]: x => JSON.parse(x),
-    [SignalType.BLOB]: x => x.toString(),
+    [SignalType.BLOB]: x => x !== null ? x.toString() : null,
 };
 
 const serializeToDb = {
