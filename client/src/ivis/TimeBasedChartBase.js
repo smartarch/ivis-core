@@ -576,9 +576,9 @@ export class TimeBasedChartBase extends Component {
             const tooltipExtraProps = {...this.props.tooltipExtraProps};
 
             if (this.props.tooltipContentComponent) {
-                tooltipExtraProps.contentComponent = tooltipContentComponent;
-            } else if (this.props.contentRender) {
-                tooltipExtraProps.contentRender = tooltipContentRender;
+                tooltipExtraProps.contentComponent = this.props.tooltipContentComponent;
+            } else if (this.props.tooltipContentRender) {
+                tooltipExtraProps.contentRender = this.props.tooltipContentRender;
             } else {
                 tooltipExtraProps.contentRender = (props) => <TooltipContent
                     getSignalValues={this.props.getSignalValuesForDefaultTooltip} {...props}/>;
