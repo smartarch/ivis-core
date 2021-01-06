@@ -31,5 +31,6 @@ export * from './FrequencyPieChart';
 export * from './BoxPlot';
 export * from './ViolinPlot';
 export * from './MinMaxLoader';
+export * from './SwimlaneChart';
 export * from './dot_shapes';
 export * from './common';
