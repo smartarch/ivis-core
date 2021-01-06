@@ -312,30 +312,32 @@ export class StaticBarChart extends Component {
     };
 
     render() {
+        const plotRectId = _.uniqueId("plotRect");
+        const bottomAxisId = _.uniqueId("bottomAxis");
         return (
             <div ref={node => this.svgContainerSelection = select(node)}
                  className={this.props.className ? `${styles.touchActionNone} ${this.props.className}` : styles.touchActionNone}
                  style={this.props.style} >
                 <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width={"100%"}>
                     <defs>
-                        <clipPath id="plotRect">
+                        <clipPath id={plotRectId}>
                             <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right}
                                   height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
                         </clipPath>
-                        <clipPath id="bottomAxis">
+                        <clipPath id={bottomAxisId}>
                             <rect x={-6} y={0} width={this.state.width - this.props.margin.left - this.props.margin.right + 6}
                                   height={this.props.margin.bottom} /* same reason for 6 as in HeatmapChart */ />
                         </clipPath>
                     </defs>
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
-                       clipPath="url(#plotRect)">
+                       clipPath={`url(#${plotRectId})`}>
                         <g ref={node => this.barsSelection = select(node)}/>
                         {!this.state.zoomInProgress &&
                         <g ref={node => this.highlightSelection = select(node)}/>}
                     </g>
                     <g ref={node => this.xAxisSelection = select(node)}
                        transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}
-                       clipPath="url(#bottomAxis)"/>
+                       clipPath={`url(#${bottomAxisId})`}/>
                     <g ref={node => this.yAxisSelection = select(node)}
                        transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
                     <text ref={node => this.statusMsgSelection = select(node)} textAnchor="middle" x="50%" y="50%"

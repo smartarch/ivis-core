@@ -584,7 +584,7 @@ export class TimeBasedChartBase extends Component {
                     getSignalValues={this.props.getSignalValuesForDefaultTooltip} {...props}/>;
             }
 
-
+            const plotRectId = _.uniqueId("plotRect");
             return (
                 <svg id="cnt" ref={node => {
                     this.containerNode = node;
@@ -592,14 +592,14 @@ export class TimeBasedChartBase extends Component {
                 }} height={this.props.height} width="100%">
                     {this.props.getSvgDefs(this)}
                     <defs>
-                        <clipPath id="plotRect">
+                        <clipPath id={plotRectId}>
                             <rect x="0" y="0"
                                   width={this.state.width - this.props.margin.left - this.props.margin.right}
                                   height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
                         </clipPath>
                     </defs>
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
-                       clipPath="url(#plotRect)" ref={node => this.GraphContentSelection = select(node)}>
+                       clipPath={`url(#${plotRectId})`} ref={node => this.GraphContentSelection = select(node)}>
                         {(!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
                             <rect className={timeBasedChartBaseStyles.loadingOverlay}
                                   style={{fill: this.props.loadingOverlayColor }}

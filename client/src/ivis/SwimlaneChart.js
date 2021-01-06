@@ -151,15 +151,16 @@ export class StaticSwimlaneChart extends Component {
     }
 
     render() {
+        const plotRectId = _.uniqueId("plotRect");
         return (
             <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
                 {this.props.getSvgDefs(this)}
                 <defs>
-                    <clipPath id="plotRect">
+                    <clipPath id={plotRectId}>
                         <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                     </clipPath>
                 </defs>
-                <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)">
+                <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${plotRectId})`}>
                     <g name={"rows"} ref={node => this.rowsSelection = select(node)}/>
                     {this.props.getGraphContent(this)}
                 </g>
