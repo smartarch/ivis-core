@@ -13,6 +13,12 @@ import {DataAccessSession} from "./DataAccess";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {ConfigDifference, TimeIntervalDifference} from "./common";
+import {withPageHelpers} from "../lib/page-common";
+
+/** get moment object exactly in between two moment object */
+function midpoint(ts1, ts2) {
+    return ts1.clone().add(ts2.diff(ts1) / 2);
+}
 
 /**
  * Displays horizontal lanes with bars
@@ -260,8 +266,6 @@ export class BooleanSwimlaneChart extends Component {
         const config = this.props.config;
         const rows = [];
 
-        const midpoint = (ts1, ts2) => ts1.clone().add(ts2.diff(ts1) / 2);
-
         for (const sigSetConf of config.signalSets) {
             const main = signalSetsData[sigSetConf.cid].main;
 
@@ -329,6 +333,180 @@ export class BooleanSwimlaneChart extends Component {
         const abs = this.getIntervalAbsolute();
         const config = {
             rows,
+            xMin: abs.from,
+            xMax: abs.to,
+        };
+        return <StaticSwimlaneChart
+            {...this.props}
+            config={config}
+            statusMsg={this.state.statusMsg}
+        />
+    }
+}
+
+/**
+ * Displays only one lane with bar of the color of the signal with highest value
+ */
+@withComponentMixins([
+    intervalAccessMixin(),
+    withTranslation,
+    withPageHelpers,
+])
+export class MaximumSwimlaneChart extends Component {
+    constructor(props) {
+        super(props);
+        const t = props.t;
+
+        this.state = {
+            bars: [],
+            statusMsg: t('Loading...'),
+        }
+
+        this.dataAccessSession = new DataAccessSession();
+
+        if (props.config.signalSets.length !== 1)
+            this.setFlashMessage("warning", "The MaximumSwimlaneChart component currently works for only one signal set. Only the first signal set will be displayed.");
+    }
+
+    static propTypes = {
+        config: PropTypes.shape({
+            signalSets: PropTypes.arrayOf(PropTypes.shape({
+                cid: PropTypes.string.isRequired,
+                tsSigCid: PropTypes.string,
+                signals: PropTypes.arrayOf(PropTypes.shape({
+                    cid: PropTypes.string.isRequired,
+                    label: PropTypes.string.isRequired,
+                    color: PropType_d3Color,
+                })),
+            })).isRequired,
+        }).isRequired,
+        height: PropTypes.number.isRequired,
+        margin: PropTypes.object,
+        getSvgDefs: PropTypes.func,
+        getGraphContent: PropTypes.func,
+        createChart: PropTypes.func,
+        signalAgg: PropTypes.string,
+    }
+
+    static defaultProps = {
+        signalAgg: 'avg'
+    }
+
+    componentDidMount() {
+        // noinspection JSIgnoredPromiseFromCall
+        this.fetchData();
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        if (!Object.is(this.props.config, prevProps.config) // TODO: better compare configs
+            || TimeIntervalDifference(this, prevProps) !== ConfigDifference.NONE)
+            // noinspection JSIgnoredPromiseFromCall
+            this.fetchData();
+    }
+
+    async fetchData() {
+        this.setState({ statusMsg: this.props.t("Loading...") });
+        const config = this.props.config;
+        const signalSets = {};
+        for (const sigSetConf of config.signalSets) {
+            const signals = {};
+            for (const signal of sigSetConf.signals) {
+                signals[signal.cid] = [this.props.signalAgg];
+            }
+            signalSets[sigSetConf.cid] = {
+                tsSigCid: sigSetConf.tsSigCid || "ts",
+                signals,
+            }
+        }
+        const abs = this.getIntervalAbsolute();
+
+        const data = await this.dataAccessSession.getLatestTimeSeries(signalSets, abs);
+        if (data) { // Results is null if the results returned are not the latest ones
+            const bars = this.processData(data);
+            const newState = {
+                bars,
+                statusMsg: bars.length > 0 ? "" : this.props.t("No data."),
+            };
+            this.setState(newState)
+        }
+    }
+
+    processData(data) {
+        const config = this.props.config;
+        const sigSetConf = config.signalSets[0];
+        const main = data[sigSetConf.cid].main;
+
+        const maxs = [];
+        for (const point of main) {
+            let max = Number.NEGATIVE_INFINITY;
+            let maxSignal = null;
+            for (const signal of sigSetConf.signals) {
+                const d = point.data[signal.cid][this.props.signalAgg];
+                if (d > max) {
+                    max = d;
+                    maxSignal = signal;
+                }
+            }
+            if (maxSignal != null) {
+                maxs.push({
+                    value: max,
+                    signal: maxSignal,
+                    ts: point.ts,
+                });
+            }
+        }
+
+        if (maxs.length === 0) {
+            return [];
+        }
+
+        const bars = [];
+        let previous = null;
+        let startTs = maxs[0].ts;
+        for (const point of maxs) {
+            if (previous === null) {
+                previous = point;
+                continue;
+            }
+            if (point.ts.diff(previous.ts, 'seconds') > this.props.discontinuityInterval) {
+                bars.push({
+                    begin: startTs,
+                    end: previous.ts,
+                    color: previous.signal.color,
+                    label: previous.signal.label,
+                });
+                startTs = point.ts;
+            }
+            else if (point.signal !== previous.signal) {
+                bars.push({
+                    begin: startTs,
+                    end: midpoint(previous.ts, point.ts),
+                    color: previous.signal.color,
+                    label: previous.signal.label,
+                });
+                startTs = midpoint(previous.ts, point.ts);
+            }
+            previous = point;
+        }
+        // end of last bar
+        const last = maxs[maxs.length - 1];
+        bars.push({
+            begin: startTs,
+            end: last.ts,
+            color: last.signal.color,
+            label: last.signal.label,
+        });
+
+        return bars;
+    }
+
+    render() {
+        const abs = this.getIntervalAbsolute();
+        const config = {
+            rows: [{
+                label: "",
+                bars: this.state.bars,
+            }],
             xMin: abs.from,
             xMax: abs.to,
         };
