@@ -4,6 +4,7 @@ import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import {select} from "d3-selection";
+import * as d3Selection from "d3-selection";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
@@ -14,6 +15,8 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {ConfigDifference, TimeIntervalDifference} from "./common";
 import {withPageHelpers} from "../lib/page-common";
+import {Tooltip} from "./Tooltip";
+import commonStyles from "./commons.scss";
 
 /** get moment object exactly in between two moment object */
 function midpoint(ts1, ts2) {
@@ -31,7 +34,9 @@ export class StaticSwimlaneChart extends Component {
         super(props);
 
         this.state = {
-            width: 0
+            width: 0,
+            mousePosition: null,
+            tooltip: null,
         };
 
         this.resizeListener = () => this.createChart();
@@ -57,6 +62,9 @@ export class StaticSwimlaneChart extends Component {
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
         statusMsg: PropTypes.string,
+        paddingInner: PropTypes.number,
+        withCursor: PropTypes.bool,
+        withTooltip: PropTypes.bool,
     }
 
     static defaultProps = {
@@ -69,6 +77,9 @@ export class StaticSwimlaneChart extends Component {
         getSvgDefs: () => null,
         getGraphContent: () => null,
         createChart: () => null,
+        paddingInner: 0.2,
+        withCursor: true,
+        withTooltip: true,
     }
 
     componentDidMount() {
@@ -114,7 +125,7 @@ export class StaticSwimlaneChart extends Component {
         const yScale = d3Scale.scaleBand()
             .domain(this.props.config.rows.map(r => r.label))
             .rangeRound([innerHeight, 0])
-            .paddingInner(0.2);
+            .paddingInner(this.props.paddingInner);
         const yAxis = d3Axis.axisLeft(yScale);
         this.yAxisSelection.call(yAxis);
 
@@ -146,8 +157,50 @@ export class StaticSwimlaneChart extends Component {
         bars.exit().remove();
         rows.exit().remove();
 
+        this.createChartCursor(innerWidth, innerHeight);
+
         if (this.props.createChart)
             this.props.createChart(this, this.props.config, xScale, yScale);
+    }
+
+    /** Handles mouse movement to display cursor line.
+     *  Called from this.createChart(). */
+    createChartCursor(xSize, ySize) {
+        const self = this;
+
+        const mouseMove = function (bar = null) {
+            const containerPos = d3Selection.mouse(self.containerNode);
+
+            self.cursorSelection
+                .attr('x1', containerPos[0])
+                .attr('x2', containerPos[0])
+                .attr('y1', self.props.margin.top)
+                .attr('y2', ySize + self.props.margin.top)
+                .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
+
+            const mousePosition = { x: containerPos[0], y: -10 + self.props.margin.top };
+            self.setState({
+                mousePosition,
+                tooltip: bar,
+            });
+        };
+
+        const mouseLeave = function () {
+            self.cursorSelection.attr('visibility', 'hidden');
+            self.setState({
+                tooltip: null,
+                mousePosition: null
+            });
+        }
+
+        this.cursorAreaSelection
+            .on('mouseenter', mouseMove)
+            .on('mousemove', mouseMove)
+            .on('mouseleave', mouseLeave);
+        this.rowsSelection.selectAll('g').selectAll('rect')
+            .on('mouseenter', mouseMove)
+            .on('mousemove', mouseMove)
+            .on('mouseleave', mouseLeave);
     }
 
     render() {
@@ -160,20 +213,47 @@ export class StaticSwimlaneChart extends Component {
                         <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                     </clipPath>
                 </defs>
+
+                {/* cursor area */}
+                <rect ref={node => this.cursorAreaSelection = select(node)}
+                      x={this.props.margin.left} y={this.props.margin.top}
+                      width={this.state.width - this.props.margin.left - this.props.margin.right}
+                      height={this.props.height - this.props.margin.top - this.props.margin.bottom}
+                      pointerEvents={"all"} cursor={"crosshair"} visibility={"hidden"}
+                />
+
+                {/* main content */}
                 <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${plotRectId})`}>
-                    <g name={"rows"} ref={node => this.rowsSelection = select(node)}/>
+                    <g name={"rows"} ref={node => this.rowsSelection = select(node)} cursor={"crosshair"} />
                     {this.props.getGraphContent(this)}
                 </g>
+
                 {/* axes */}
                 <g ref={node => this.xAxisSelection = select(node)}
                    transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
                 <g ref={node => this.yAxisSelection = select(node)}
                    transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                {/* cursor line */}
+                <line ref={node => this.cursorSelection = select(node)} className={commonStyles.cursorLine} visibility="hidden" pointerEvents="none"/>
+                {/* status message */}
                 <text textAnchor="middle" x="50%" y="50%"
                       fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"
                       fill="currentColor">
                     {this.props.statusMsg}
                 </text>
+
+                {/* tooltip */}
+                {this.props.withTooltip &&
+                <Tooltip
+                    config={this.props.config}
+                    containerHeight={this.props.height + 50}
+                    containerWidth={this.state.width}
+                    mousePosition={this.state.mousePosition}
+                    selection={this.state.tooltip}
+                    signalSetsData={this.state.signalSetsData}
+                    width={100}
+                    contentRender={props => props.selection.label}
+                />}
             </svg>
         );
     }
@@ -341,6 +421,7 @@ export class BooleanSwimlaneChart extends Component {
             {...this.props}
             config={config}
             statusMsg={this.state.statusMsg}
+            withTooltip={false}
         />
     }
 }
