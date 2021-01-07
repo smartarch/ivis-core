@@ -13,7 +13,7 @@ import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {ConfigDifference, TimeIntervalDifference} from "./common";
+import {ConfigDifference, getTextColor, TimeIntervalDifference} from "./common";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
 import commonStyles from "./commons.scss";
@@ -65,6 +65,8 @@ export class StaticSwimlaneChart extends Component {
         paddingInner: PropTypes.number,
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
+        withLabels: PropTypes.bool,
+        getLabelColor: PropTypes.func,
     }
 
     static defaultProps = {
@@ -80,6 +82,8 @@ export class StaticSwimlaneChart extends Component {
         paddingInner: 0.2,
         withCursor: true,
         withTooltip: true,
+        withLabels: true,
+        getLabelColor: getTextColor,
     }
 
     componentDidMount() {
@@ -157,6 +161,33 @@ export class StaticSwimlaneChart extends Component {
         bars.exit().remove();
         rows.exit().remove();
 
+        if (this.props.withLabels) {
+            const labelRows = this.labelsSelection.selectAll('g').data(this.props.config.rows);
+            const labels = labelRows.enter().append('g')
+                .attr('key', d => d.label)
+                .merge(labelRows)
+                .selectAll('text')
+                .data(d => d.bars);
+
+            labels.enter()
+                .append('text')
+                .merge(labels)
+                .text(d => d.label || '')
+                .attr('text-anchor', "middle")
+                .attr('dominant-baseline', "middle")
+                .attr('x', d => (xScale(d.beginTime) + xScale(d.endTime)) / 2)
+                .attr('y', d => yScale(d.row) + barHeight / 2)
+                .attr('font-family', "'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif")
+                .attr('font-size', "12px")
+                .attr('pointer-events', "none")
+                .attr('fill', d => this.props.getLabelColor(d.color))
+                .attr('visibility', function(d) {
+                    if (this.getBBox().width > xScale(d.endTime) - xScale(d.beginTime))
+                        return 'hidden';
+                    return 'visible';
+                });
+        }
+
         this.createChartCursor(innerWidth, innerHeight);
 
         if (this.props.createChart)
@@ -225,6 +256,7 @@ export class StaticSwimlaneChart extends Component {
                 {/* main content */}
                 <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${plotRectId})`}>
                     <g name={"rows"} ref={node => this.rowsSelection = select(node)} cursor={"crosshair"} />
+                    <g name={"labels"} ref={node => this.labelsSelection = select(node)} />
                     {this.props.getGraphContent(this)}
                 </g>
 
@@ -593,6 +625,7 @@ export class MaximumSwimlaneChart extends Component {
             xMax: abs.to,
         };
         return <StaticSwimlaneChart
+            withTooltip={false}
             {...this.props}
             config={config}
             statusMsg={this.state.statusMsg}

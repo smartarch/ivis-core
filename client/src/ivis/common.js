@@ -207,3 +207,34 @@ export function TimeIntervalDifference(self, props) {
     return ConfigDifference.NONE;
 }
 
+/**
+ * Gets a contrasting text color for the `backgroundColor`.
+ * Based on https://stackoverflow.com/a/3943023
+ */
+export function getTextColor(backgroundColor) {
+    const {r, g, b} = d3Color.rgb(backgroundColor);
+    if (r * 0.299 + g * 0.587 + b * 0.114 > 186) {
+        return d3Color.color('black');
+    } else {
+        return d3Color.color('white');
+    }
+}
+
+/**
+ * Gets a contrasting text color for the `backgroundColor`.
+ * Based on https://www.w3.org/TR/WCAG20/ via https://stackoverflow.com/a/3943023
+ */
+export function getTextColorW3C(backgroundColor) {
+    let {r, g, b} = d3Color.rgb(backgroundColor);
+    const colorTerm = (c) => {
+        c /= 255;
+        if (c <= 0.03928) return c/12.92;
+        else return Math.pow((c+0.055)/1.055, 2.4);
+    }
+    const L = colorTerm(r) * 0.2126 + colorTerm(g) * 0.7152 + colorTerm(b) * 0.0722;
+    if (L > 0.179) {
+        return d3Color.color('black');
+    } else {
+        return d3Color.color('white');
+    }
+}
