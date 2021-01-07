@@ -67,6 +67,7 @@ export class StaticSwimlaneChart extends Component {
         withTooltip: PropTypes.bool,
         withLabels: PropTypes.bool,
         getLabelColor: PropTypes.func,
+        tooltipExtraProps: PropTypes.object,
     }
 
     static defaultProps = {
@@ -285,6 +286,7 @@ export class StaticSwimlaneChart extends Component {
                     signalSetsData={this.state.signalSetsData}
                     width={100}
                     contentRender={props => props.selection.label}
+                    {...this.props.tooltipExtraProps}
                 />}
             </svg>
         );
@@ -329,6 +331,12 @@ export class BooleanSwimlaneChart extends Component {
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
         discontinuityInterval: PropTypes.number,
+        paddingInner: PropTypes.number,
+        withCursor: PropTypes.bool,
+        withTooltip: PropTypes.bool,
+        withLabels: PropTypes.bool,
+        getLabelColor: PropTypes.func,
+        tooltipExtraProps: PropTypes.object,
     }
 
     componentDidMount() {
@@ -499,7 +507,14 @@ export class MaximumSwimlaneChart extends Component {
         getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
+        discontinuityInterval: PropTypes.number,
         signalAgg: PropTypes.string,
+        paddingInner: PropTypes.number,
+        withCursor: PropTypes.bool,
+        withTooltip: PropTypes.bool,
+        withLabels: PropTypes.bool,
+        getLabelColor: PropTypes.func,
+        tooltipExtraProps: PropTypes.object,
     }
 
     static defaultProps = {
