@@ -187,6 +187,9 @@ export class StaticSwimlaneChart extends Component {
                         return 'hidden';
                     return 'visible';
                 });
+
+            labels.exit().remove();
+            labelRows.exit().remove();
         }
 
         this.createChartCursor(innerWidth, innerHeight);
