@@ -14,7 +14,7 @@ class Ivis:
         self._data = json.loads(sys.stdin.readline())
         self._elasticsearch = Elasticsearch([{'host': self._data['es']['host'], 'port': int(self._data['es']['port'])}])
         self.state = self._data.get('state')
-        self.parameters = self._data['params']
+        self.params = self._data['params']
         self.entities = self._data['entities']
         self.owned = self._data['owned']
 
@@ -49,10 +49,19 @@ class Ivis:
         response = Ivis._get_response_message()
 
         # Add newly created to owned
-        for sigSetCid, value in response.items():
-            self.owned.setdefault('signalSets', {}).setdefault(sigSetCid, {})
-            for sigCid in value['fields']:
-                self.owned['signalSets'][sigSetCid].setdefault(sigCid, {})
+        for sig_set_cid, set_props in response.items():
+            signals_created = set_props.pop('signals', {})
+            if signal_sets is not None:
+                # Function allows passing in either array of signal sets or one signal set
+                if (isinstance(signal_sets, list) and any(map(lambda s: s["cid"] == sig_set_cid, signal_sets))) or (
+                        not isinstance(signal_sets, list) and signal_sets["cid"] == sig_set_cid):
+                    self.owned.setdefault('signalSets', {}).setdefault(sig_set_cid, {})
+            self.entities['signalSets'].setdefault(sig_set_cid, set_props)
+            if signals_created:
+                self.owned.setdefault('signals', {}).setdefault(sig_set_cid, {})
+                for sigCid, sig_props in signals_created.items():
+                    self.owned['signals'][sig_set_cid].setdefault(sigCid, {})
+                    self.entities['signals'].setdefault(sig_set_cid, {}).setdefault(sigCid, sig_props)
 
         return response
 
@@ -74,7 +83,8 @@ class Ivis:
 
         return self.create_signals(signal_sets=signal_set)
 
-    def create_signal(self, signal_set_cid, cid, namespace, type, name=None, description=None, indexed=None, settings=None,
+    def create_signal(self, signal_set_cid, cid, namespace, type, name=None, description=None, indexed=None,
+                      settings=None,
                       weight_list=None, weight_edit=None, **extra_keys):
 
         # built-in type is shadowed here because this way we are able to call create_signal(set_cid, **signal),
@@ -101,8 +111,7 @@ class Ivis:
 
         signal.update(extra_keys)
 
-        signals = {}
-        signals[signal_set_cid]: signal
+        signals = {signal_set_cid: signal}
 
         return self.create_signals(signals=signals)
 

@@ -16,6 +16,9 @@ const {getAdminContext} = require('../lib/context-helpers');
 const createSigSet = require('../models/signal-sets').createTx;
 const createSignal = require('../models/signals').createTx;
 const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helpers');
+const {allowedKeysCreate: allowedSignalKeysCreate} = require('../lib/signal-helpers')
+const {allowedKeysCreate: allowedSignalSetKeysCreate} = require('../lib/signal-set-helpers')
+const {filterObject} = require('../lib/helpers');
 
 const es = require('../lib/elasticsearch');
 const {TYPE_JOBS, INDEX_JOBS, STATE_FIELD} = require('../lib/task-handler').esConstants
@@ -173,6 +176,20 @@ async function afterDelay(msg, task, job) {
 }
 
 
+function getSignalEntitySpec(signal) {
+    return {
+        ...signal,
+        field: getFieldName(signal.id),
+    };
+}
+
+function getSignalSetEntitySpec(signalSet) {
+    return {
+        ...signalSet,
+        index: getIndexName(signalSet),
+    };
+}
+
 /**
  * Prepare entities specifications for a job, like index name in es.
  * @param job
@@ -214,34 +231,20 @@ async function getEntitiesFromParams(job, jobParams, taskParams) {
     }
 
     async function addAllSignalsOfSignalSet(signalSet) {
-
-        if (!entities.signals[signalSet.cid]) {
-            entities.signals[signalSet.cid] = {};
-        }
+        const specSignals = entities.signals[signalSet.cid] || {};
 
         const signals = await knex('signals').where({set: signalSet.id});
         for (const signal of signals) {
-            if (entities.signals[signalSet.cid][signal.cid]) {
+            if (specSignals[signal.cid]) {
                 // info already stored
                 continue;
             }
-            entities.signals[signalSet.cid][signal.cid] = getSignalEntitySpec(signal);
+            specSignals[signal.cid] = getSignalEntitySpec(signal);
         }
+
+        entities.signals[signalSet.cid] = specSignals;
     }
 
-    function getSignalEntitySpec(signal) {
-        return {
-            ...signal,
-            field: getFieldName(signal.id),
-        };
-    }
-
-    function getSignalSetEntitySpec(signalSet) {
-        return {
-            ...signalSet,
-            index: getIndexName(signalSet),
-        };
-    }
 
     // Walks all subtrees of params and gets info for signals and signalSets found
     async function loadFromParams(prefix, jobParamsSpec, taskParamsSpec) {
@@ -895,49 +898,6 @@ async function handleRequest(jobId, requestStr) {
 async function processCreateRequest(jobId, signalSets, signalsSpec) {
     const esInfo = {};
 
-    async function createSignalSetWithSignals(tx, signalSet) {
-
-        const esSetInfo = {};
-
-        let signals = signalSet.signals;
-        delete signalSet.signals;
-
-        signalSet.type = SignalSetType.COMPUTED;
-
-        signalSet.id = await createSigSet(tx, getAdminContext(), signalSet);
-        esSetInfo.index = getIndexName(signalSet);
-        esSetInfo.type = TYPE_JOBS;
-
-        esSetInfo.fields = {};
-        if (signals) {
-            if (!Array.isArray(signals)) {
-                signals = [signals];
-            }
-
-            for (const signal of signals) {
-                // Here are possible overwrites of input from job
-                signal.weight_list = 0;
-                signal.weight_edit = null;
-                signal.source = SignalSource.JOB;
-                const sigId = await createSignal(tx, getAdminContext(), signalSet.id, signal);
-                esSetInfo['fields'][signal.cid] = getFieldName(sigId);
-            }
-        }
-
-        await tx('signal_sets_owners').insert({job: jobId, set: signalSet.id});
-        return esSetInfo;
-    }
-
-    async function createComputedSignal(tx, signalSetId, signal) {
-        // Here are possible overwrites of input form job
-        signal.weight_list = 0;
-        signal.weight_edit = null;
-        signal.source = SignalSource.JOB;
-        const sigId = await createSignal(tx, getAdminContext(), signalSetId, signal);
-
-        // TODO should add something like signal_sets_owners for signals probably
-        return getFieldName(sigId);
-    }
 
     try {
         await knex.transaction(async (tx) => {
@@ -960,15 +920,14 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
 
                     esInfo[sigSetCid] = {};
                     esInfo[sigSetCid]['index'] = getIndexName(sigSet);
-                    esInfo[sigSetCid]['type'] = TYPE_JOBS;
-                    esInfo[sigSetCid]['fields'] = {};
+                    esInfo[sigSetCid]['signals'] = {};
 
                     if (!Array.isArray(signals)) {
                         signals = [signals];
                     }
 
                     for (let signal of signals) {
-                        esInfo[sigSetCid]['fields'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
+                        esInfo[sigSetCid]['signals'][signal.cid] = await createComputedSignal(tx, sigSet.id, signal);
                     }
 
                 }
@@ -980,6 +939,44 @@ async function processCreateRequest(jobId, signalSets, signalsSpec) {
     }
 
     return esInfo;
+
+
+    async function createSignalSetWithSignals(tx, signalSet) {
+        let signals = signalSet.signals;
+        const filteredSignalSet = filterObject(signalSet, allowedSignalSetKeysCreate);
+
+        filteredSignalSet.type = SignalSetType.COMPUTED;
+
+        filteredSignalSet.id = await createSigSet(tx, getAdminContext(), filteredSignalSet);
+        const ceatedSignalSet = await tx('signal_sets').where('id', filteredSignalSet.id).first();
+        const signalSetSpec = getSignalSetEntitySpec(ceatedSignalSet);
+
+        const createdSignalsSpecs = {};
+        if (signals) {
+            if (!Array.isArray(signals)) {
+                signals = [signals];
+            }
+
+            for (const signal of signals) {
+                createdSignalsSpecs[signal.cid] = await createComputedSignal(tx, filteredSignalSet.id, signal);
+            }
+        }
+        await tx('signal_sets_owners').insert({job: jobId, set: filteredSignalSet.id});
+
+        signalSetSpec['signals'] = createdSignalsSpecs;
+        return signalSetSpec;
+    }
+
+    async function createComputedSignal(tx, signalSetId, signal) {
+        const filteredSignal = filterObject(signal, allowedSignalKeysCreate);
+        // Here are possible overwrites of input from job
+        filteredSignal.source = SignalSource.JOB;
+        const sigId = await createSignal(tx, getAdminContext(), signalSetId, filteredSignal);
+        const createdSignal = await tx('signals').where('id', sigId).first();
+
+        // TODO should add something like signal_sets_owners for signals probably
+        return getSignalEntitySpec(createdSignal);
+    }
 }
 
 /**
