@@ -104,9 +104,7 @@ if owned.get('signalSets').get('api_set') is None:
     "settings": {}
   })
 
-  state = ivis.create_signal_set("api_set",ns,"API test", "API test", None, signals)
-    
-  ivis.store_state(state)
+  ivis.create_signal_set("api_set",ns,"API test", "API test", None, signals)
 
 # FILES
 with open('../files/test.txt', 'r') as file: 
@@ -139,10 +137,13 @@ print()
 
 # Elasticsearch indexing
 doc = {
-  state['api_set']['fields']['api_signal']: value
+  entities['signals']['api_set']['api_signal']['field']: value
 }
-res = es.index(index=state['api_set']['index'], doc_type='_doc', body=doc)
+res = es.index(index=entities['signalSets']['api_set']['index'], doc_type='_doc', body=doc)
 
+state = {
+  'last': value
+}
 ivis.store_state(state)
 `
     };
