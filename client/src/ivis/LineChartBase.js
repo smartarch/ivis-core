@@ -153,6 +153,7 @@ export class LineChartBase extends Component {
 
         lineVisibility: PropTypes.func.isRequired,
         discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
+        minimumIntervalMs: PropTypes.number,
 
         getExtraQueries: PropTypes.func,
         processGraphContent: PropTypes.func,
@@ -759,6 +760,7 @@ export class LineChartBase extends Component {
                 controlTimeIntervalChartWidth={this.props.controlTimeIntervalChartWidth}
                 loadingOverlayColor={this.props.loadingOverlayColor}
                 displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
+                minimumIntervalMs={this.props.minimumIntervalMs}
             />
         );
     }

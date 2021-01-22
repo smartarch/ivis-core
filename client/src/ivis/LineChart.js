@@ -85,6 +85,7 @@ export class LineChart extends Component {
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
+        getSignalValuesForDefaultTooltip: PropTypes.func,
 
         getExtraQueries: PropTypes.func,
         prepareExtraData: PropTypes.func,
@@ -96,6 +97,7 @@ export class LineChart extends Component {
         lineCurve: PropTypes.func,
         lineWidth: PropTypes.number,
         discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
+        minimumIntervalMs: PropTypes.number,
 
         controlTimeIntervalChartWidth: PropTypes.bool
     }
@@ -108,7 +110,8 @@ export class LineChart extends Component {
         withZoom: true,
         lineVisibility: pointsOnNoAggregation,
         controlTimeIntervalChartWidth: true,
-        lineCurve: d3Shape.curveLinear
+        lineCurve: d3Shape.curveLinear,
+        getSignalValuesForDefaultTooltip: getSignalValuesForDefaultTooltip,
     }
 
     createChart(base, signalSetsData, baseState, abs, xScale, yScales, points, lineVisibility) {
@@ -186,7 +189,7 @@ export class LineChart extends Component {
                 margin={props.margin}
                 signalAggs={['min', 'max', 'avg']}
                 lineAgg="avg"
-                getSignalValuesForDefaultTooltip={getSignalValuesForDefaultTooltip}
+                getSignalValuesForDefaultTooltip={this.props.getSignalValuesForDefaultTooltip}
                 prepareData={this.boundPrepareData}
                 getExtraQueries={this.props.getExtraQueries}
                 getGraphContent={this.boundGetGraphContent}
@@ -210,6 +213,7 @@ export class LineChart extends Component {
                 discontinuityInterval={this.props.discontinuityInterval}
                 loadingOverlayColor={this.props.loadingOverlayColor}
                 displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
+                minimumIntervalMs={this.props.minimumIntervalMs}
             />
         );
     }
