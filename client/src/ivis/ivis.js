@@ -16,6 +16,7 @@ export * from './OnOffAreaChart';
 export * from './AreaChart';
 export * from './StackAreaChart';
 export * from './PieChart';
+export * from './Gauge';
 export * from './HistogramChart';
 export * from './Legend';
 export * from './SVG';
