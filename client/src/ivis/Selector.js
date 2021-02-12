@@ -66,7 +66,8 @@ class StaticSelector extends Component {
         className: PropTypes.string,
         data: PropTypes.array,
         columns: PropTypes.array,
-        labelColumn: PropTypes.string
+        labelColumn: PropTypes.string,
+        dataFilter: PropTypes.func, // data_array => filtered_data_array
     }
 
     static defaultProps = {
@@ -191,6 +192,7 @@ class StaticSelector extends Component {
                             onSelectionDataAsync={::this.onSelectionDataAsync}
                             onSelectionChangedAsync={::this.onSelectionChangedAsync}
                             {...dataProps}
+                            dataFilter={this.props.dataFilter}
                         />
                     </div>
                 </div>
@@ -209,7 +211,8 @@ export class SignalSetSelector extends Component {
         statePath: PropTypes.array,
         className: PropTypes.string,
         data: PropTypes.array,
-        columns: PropTypes.array
+        columns: PropTypes.array,
+        dataFilter: PropTypes.func, // data_array => filtered_data_array
     }
 
     render() {
@@ -223,6 +226,7 @@ export class SignalSetSelector extends Component {
                         onChange={sigSetCid => onChange([], sigSetCid)}
                         className={this.props.className}
                         columns={this.props.columns}
+                        dataFilter={this.props.dataFilter}
                     />
             }/>
         );
@@ -240,7 +244,8 @@ export class SignalSelector extends Component {
         statePath: PropTypes.array,
         className: PropTypes.string,
         data: PropTypes.array,
-        columns: PropTypes.array
+        columns: PropTypes.array,
+        dataFilter: PropTypes.func, // data_array => filtered_data_array
     }
 
     render() {
@@ -255,6 +260,7 @@ export class SignalSelector extends Component {
                         onChange={sigCid => onChange([], sigCid)}
                         className={this.props.className}
                         columns={this.props.columns}
+                        dataFilter={this.props.dataFilter}
                     />
             }/>
         );
