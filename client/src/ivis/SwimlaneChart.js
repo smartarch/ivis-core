@@ -18,6 +18,9 @@ import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
 import commonStyles from "./commons.scss";
 
+const DATETIME = "datetime";
+const NUMBER = "number";
+
 /** get moment object exactly in between two moment object */
 function midpoint(ts1, ts2) {
     return ts1.clone().add(ts2.diff(ts1) / 2);
@@ -48,29 +51,38 @@ export class StaticSwimlaneChart extends Component {
                 label: PropTypes.string.isRequired,
                 color: PropType_d3Color(), // used if not specified in bar
                 bars: PropTypes.arrayOf(PropTypes.shape({
-                    begin: PropTypes.oneOfType([PropTypes.string, PropTypes.object]).isRequired,
-                    end: PropTypes.oneOfType([PropTypes.string, PropTypes.object]).isRequired,
+                    begin: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]).isRequired,
+                    end: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]).isRequired,
                     color: PropType_d3Color(),
+                    label: PropTypes.string,
                 }))
             })).isRequired,
-            xMin: PropTypes.oneOfType([PropTypes.string, PropTypes.object]).isRequired,
-            xMax: PropTypes.oneOfType([PropTypes.string, PropTypes.object]).isRequired,
+            xMin: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]).isRequired,
+            xMax: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]).isRequired,
         }).isRequired,
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
+
+        xType: PropTypes.oneOf([DATETIME, NUMBER]).isRequired, // data type on the x-axis
+        xAxisTicksCount: PropTypes.number,
+        xAxisTicksFormat: PropTypes.func,
+
         getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
         statusMsg: PropTypes.string,
         paddingInner: PropTypes.number,
+
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
         withLabels: PropTypes.bool,
+
         getLabelColor: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
     }
 
     static defaultProps = {
+        xType: DATETIME,
         margin: {
             left: 60,
             right: 5,
@@ -121,10 +133,15 @@ export class StaticSwimlaneChart extends Component {
         const innerWidth = width - this.props.margin.left - this.props.margin.right;
         const innerHeight = this.props.height - this.props.margin.top - this.props.margin.bottom;
 
-        const xScale = d3Scale.scaleTime()
-            .domain([moment(this.props.config.xMin), moment(this.props.config.xMax)])
+        const xIsDate = this.props.xType === DATETIME;
+        const xMin = xIsDate ? moment(this.props.config.xMin) : this.props.config.xMin;
+        const xMax = xIsDate ? moment(this.props.config.xMax) : this.props.config.xMax;
+        const xScale = (xIsDate ? d3Scale.scaleTime() : d3Scale.scaleLinear())
+            .domain([xMin, xMax])
             .range([0, innerWidth]);
         const xAxis = d3Axis.axisBottom(xScale);
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.xAxisSelection.call(xAxis);
 
         const yScale = d3Scale.scaleBand()
@@ -135,8 +152,8 @@ export class StaticSwimlaneChart extends Component {
         this.yAxisSelection.call(yAxis);
 
         this.props.config.rows.forEach(r => r.bars.forEach(b => {
-            b.beginTime = moment(b.begin);
-            b.endTime = moment(b.end);
+            b.beginValue = xIsDate ? moment(b.begin) : b.begin;
+            b.endValue = xIsDate ? moment(b.end) : b.end;
             b.row = r.label;
             if (b.color === undefined)
                 b.color = r.color;
@@ -153,9 +170,9 @@ export class StaticSwimlaneChart extends Component {
             .append('rect')
             .merge(bars)
             .attr('key', d => d.begin)
-            .attr('x', d => xScale(d.beginTime))
+            .attr('x', d => xScale(d.beginValue))
             .attr('y', d => yScale(d.row))
-            .attr('width', d => xScale(d.endTime) - xScale(d.beginTime))
+            .attr('width', d => xScale(d.endValue) - xScale(d.beginValue))
             .attr('height', barHeight)
             .attr('fill', d => d.color);
 
@@ -176,14 +193,14 @@ export class StaticSwimlaneChart extends Component {
                 .text(d => d.label || '')
                 .attr('text-anchor', "middle")
                 .attr('dominant-baseline', "middle")
-                .attr('x', d => (xScale(d.beginTime) + xScale(d.endTime)) / 2)
+                .attr('x', d => (xScale(d.beginValue) + xScale(d.endValue)) / 2)
                 .attr('y', d => yScale(d.row) + barHeight / 2)
                 .attr('font-family', "'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif")
                 .attr('font-size', "12px")
                 .attr('pointer-events', "none")
                 .attr('fill', d => this.props.getLabelColor(d.color))
                 .attr('visibility', function(d) {
-                    if (this.getBBox().width > xScale(d.endTime) - xScale(d.beginTime))
+                    if (this.getBBox().width > xScale(d.endValue) - xScale(d.beginValue))
                         return 'hidden';
                     return 'visible';
                 });
