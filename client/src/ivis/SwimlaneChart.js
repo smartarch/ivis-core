@@ -172,8 +172,8 @@ export class StaticSwimlaneChart extends Component {
             xMin = range[0];
             xMax = range[1];
         } else {
-            xMin = this.props.xMin;
-            xMax = this.props.xMax;
+            xMin = this.props.config.xMin;
+            xMax = this.props.config.xMax;
         }
         const xIsDate = this.props.xType === DATETIME;
         if (xIsDate) {

@@ -68,11 +68,14 @@ export const rangeAccessMixin = createComponentMixin({
 
         inst.getRange = function (props) {
             props = props || this.props;
-            return props.rangeContext.range;
+            if (props.rangeContext !== undefined && props.rangeContext !== null)
+                return props.rangeContext.range;
+            return null;
         };
 
         inst.setRange = function (newRange) {
-            this.props.rangeContext.self.setRange(newRange);
+            if (this.props.rangeContext !== undefined && this.props.rangeContext !== null)
+                this.props.rangeContext.self.setRange(newRange);
         }
 
         return {};
