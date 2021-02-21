@@ -3,8 +3,10 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
-import {select} from "d3-selection";
+import {event as d3Event, select} from "d3-selection";
 import * as d3Selection from "d3-selection";
+import * as d3Zoom from "d3-zoom";
+import * as d3Brush from "d3-brush";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
@@ -13,10 +15,18 @@ import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {ConfigDifference, getTextColor, TimeIntervalDifference} from "./common";
+import {
+    AreZoomTransformsEqual,
+    ConfigDifference,
+    getTextColor,
+    setZoomTransform,
+    TimeIntervalDifference,
+    transitionInterpolate, WheelDelta
+} from "./common";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
 import commonStyles from "./commons.scss";
+import {rangeAccessMixin} from "./RangeContext";
 
 const DATETIME = "datetime";
 const NUMBER = "number";
@@ -26,11 +36,17 @@ function midpoint(ts1, ts2) {
     return ts1.clone().add(ts2.diff(ts1) / 2);
 }
 
+/* TODO: There is a lot of code copied from TimeBasedChartBase. It should be possible to use TimeBasedChartBase as a base for this class. Notes:
+    - This class currently supports not only datetime on the x-axis but also any numeric values – this needs to be implemented in TimeBasedChartBase.
+    - this.state.brushInProgress is not used in TimeBasedChartBase to hide the Tooltip when selecting by brush.
+    - TimeBasedChartBase has brushSelection if front of the chart; here, the brushSelection is behind the drawn rectangles to facilitate selecting them for Tooltip.
+ */
 /**
  * Displays horizontal lanes with bars
  */
 @withComponentMixins([
     withErrorHandling,
+    rangeAccessMixin,
 ])
 export class StaticSwimlaneChart extends Component {
     constructor(props) {
@@ -40,7 +56,10 @@ export class StaticSwimlaneChart extends Component {
             width: 0,
             mousePosition: null,
             tooltip: null,
+            zoomTransform: d3Zoom.zoomIdentity,
+            brushInProgress: false,
         };
+        this.zoom = null;
 
         this.resizeListener = () => this.createChart();
     }
@@ -57,8 +76,8 @@ export class StaticSwimlaneChart extends Component {
                     label: PropTypes.string,
                 }))
             })).isRequired,
-            xMin: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]).isRequired,
-            xMax: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]).isRequired,
+            xMin: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]),
+            xMax: PropTypes.oneOfType([PropTypes.string, PropTypes.object, PropTypes.number]),
         }).isRequired,
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
@@ -76,6 +95,11 @@ export class StaticSwimlaneChart extends Component {
         withCursor: PropTypes.bool,
         withTooltip: PropTypes.bool,
         withLabels: PropTypes.bool,
+
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to `null` to disable updates
+        useRangeContext: PropTypes.bool,
+        withBrush: PropTypes.bool,
 
         getLabelColor: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -96,6 +120,10 @@ export class StaticSwimlaneChart extends Component {
         withCursor: true,
         withTooltip: true,
         withLabels: true,
+        withZoom: false,
+        zoomUpdateReloadInterval: 1000,
+        useRangeContext: false,
+        withBrush: false,
         getLabelColor: getTextColor,
     }
 
@@ -105,8 +133,12 @@ export class StaticSwimlaneChart extends Component {
     }
 
     componentDidUpdate(prevProps, prevState, prevContext) {
+        const prevRange = this.getRange(prevProps);
+        if (!_.isEqual(prevRange, this.getRange()))
+            this.zoom = null;
         const forceRefresh = this.prevContainerNode !== this.containerNode
-            || !Object.is(prevProps.config, this.props.config);
+            || !Object.is(prevProps.config, this.props.config)
+            || !AreZoomTransformsEqual(prevState.zoomTransform, this.state.zoomTransform);
 
         this.createChart(forceRefresh);
         this.prevContainerNode = this.containerNode;
@@ -114,6 +146,7 @@ export class StaticSwimlaneChart extends Component {
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.resizeListener);
+        clearTimeout(this.zoomUpdateReloadTimeoutID);
     }
 
     createChart(forceRefresh) {
@@ -133,12 +166,26 @@ export class StaticSwimlaneChart extends Component {
         const innerWidth = width - this.props.margin.left - this.props.margin.right;
         const innerHeight = this.props.height - this.props.margin.top - this.props.margin.bottom;
 
+        const range = this.getRange();
+        let xMin, xMax;
+        if (range !== null) {
+            xMin = range[0];
+            xMax = range[1];
+        } else {
+            xMin = this.props.xMin;
+            xMax = this.props.xMax;
+        }
         const xIsDate = this.props.xType === DATETIME;
-        const xMin = xIsDate ? moment(this.props.config.xMin) : this.props.config.xMin;
-        const xMax = xIsDate ? moment(this.props.config.xMax) : this.props.config.xMax;
-        const xScale = (xIsDate ? d3Scale.scaleTime() : d3Scale.scaleLinear())
+        if (xIsDate) {
+            xMin = moment(xMin);
+            xMax = moment(xMax);
+        }
+        const xScale = this.state.zoomTransform.rescaleX(
+            (xIsDate ? d3Scale.scaleTime() : d3Scale.scaleLinear())
             .domain([xMin, xMax])
-            .range([0, innerWidth]);
+            .range([0, innerWidth])
+        );
+        this.xScaleDomain = xScale.domain().map(d => d.valueOf());
         const xAxis = d3Axis.axisBottom(xScale);
         if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
         if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
@@ -209,10 +256,57 @@ export class StaticSwimlaneChart extends Component {
             labelRows.exit().remove();
         }
 
+        this.createChartBrush(innerWidth, innerHeight, xScale);
         this.createChartCursor(innerWidth, innerHeight);
+
+        if (this.props.withZoom)
+            this.createChartZoom();
 
         if (this.props.createChart)
             this.props.createChart(this, this.props.config, xScale, yScale);
+    }
+
+    createChartBrush(xSize, ySize, xScale) {
+        const self = this;
+        if (this.props.withBrush) {
+            const brush = d3Brush.brushX()
+                .extent([[0, 0], [xSize, ySize]])
+                .filter(() => { // TODO what to do when withZoom == false
+                    // noinspection JSUnresolvedVariable
+                    return d3Event.ctrlKey && !d3Event.button; // enable brush only when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
+                })
+                .on("start", () => self.setState({ brushInProgress: true }))
+                .on("end", function brushed() {
+                    const sel = d3Event.selection;
+                    self.setState({ brushInProgress: false })
+
+                    if (sel) {
+                        const selFrom = xScale.invert(sel[0]).valueOf();
+                        let selTo = xScale.invert(sel[1]).valueOf();
+
+                        self.setInterval(selFrom, selTo);
+
+                        self.brushSelection.call(brush.move, null);
+                    }
+                });
+
+            this.brushSelection
+                .call(brush);
+
+        } else {
+            this.brushSelection
+                .selectAll('rect')
+                .remove();
+
+            this.brushSelection.append('rect')
+                .attr('pointer-events', 'all')
+                .attr('cursor', 'crosshair')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('width', xSize)
+                .attr('height', ySize)
+                .attr('visibility', 'hidden');
+        }
     }
 
     /** Handles mouse movement to display cursor line.
@@ -228,7 +322,7 @@ export class StaticSwimlaneChart extends Component {
                 .attr('x2', containerPos[0])
                 .attr('y1', self.props.margin.top)
                 .attr('y2', ySize + self.props.margin.top)
-                .attr('visibility', self.props.withCursor ? 'visible' : "hidden");
+                .attr('visibility', self.props.withCursor && !self.state.brushInProgress ? 'visible' : "hidden");
 
             const mousePosition = { x: containerPos[0], y: -10 + self.props.margin.top };
             self.setState({
@@ -245,7 +339,7 @@ export class StaticSwimlaneChart extends Component {
             });
         }
 
-        this.cursorAreaSelection
+        this.brushSelection
             .on('mouseenter', mouseMove)
             .on('mousemove', mouseMove)
             .on('mouseleave', mouseLeave);
@@ -255,10 +349,82 @@ export class StaticSwimlaneChart extends Component {
             .on('mouseleave', mouseLeave);
     }
 
+    setInterval(from, to) {
+        if (this.props.xType === NUMBER) {
+            if (this.props.useRangeContext)
+                this.setRange([from, to]);
+        }
+    }
+
+    createChartZoom() {
+        const self = this;
+
+        const handleZoom = function () {
+            // noinspection JSUnresolvedVariable
+            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+                transitionInterpolate(self.containerNodeSelection, self.state.zoomTransform, d3Event.transform, setZoomTransform(self));
+            } else {
+                // noinspection JSUnresolvedVariable
+                self.setState({zoomTransform: d3Event.transform});
+            }
+        };
+
+        const handleZoomStart = function () {
+            clearTimeout(self.zoomUpdateReloadTimeoutID);
+        };
+
+        const handleZoomEnd = function () {
+            // noinspection JSUnresolvedVariable
+            if (self.props.zoomUpdateReloadInterval === null || self.props.zoomUpdateReloadInterval === undefined) // don't update automatically
+                return;
+            // noinspection JSUnresolvedVariable
+            if (!Object.is(d3Event.transform, d3Zoom.zoomIdentity))
+                if (self.props.zoomUpdateReloadInterval > 0) {
+                    clearTimeout(self.zoomUpdateReloadTimeoutID);
+                    self.zoomUpdateReloadTimeoutID = setTimeout(() => {
+                        self.setInterval(...self.xScaleDomain)
+                    }, self.props.zoomUpdateReloadInterval);
+                } else if (self.props.zoomUpdateReloadInterval >= 0)
+                    self.setInterval(...self.xScaleDomain);
+        };
+
+        const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
+        const zoomExtent = [[0, 0], [this.renderedWidth - this.props.margin.left - this.props.margin.right, ySize]];
+        const translateExtent = [[-Infinity, 0], [Infinity, this.props.height - this.props.margin.top - this.props.margin.bottom]];
+        const zoomExisted = this.zoom !== null;
+        this.zoom = zoomExisted ? this.zoom : d3Zoom.zoom();
+        this.zoom
+            .translateExtent(translateExtent)
+            .extent(zoomExtent)
+            .on("zoom", handleZoom)
+            .on("end", handleZoomEnd)
+            .on("start", handleZoomStart)
+            .wheelDelta(WheelDelta(3))
+            .filter(() => {
+                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+                    return false;
+                return !d3Event.ctrlKey && !d3Event.button;
+            });
+        this.containerNodeSelection.call(this.zoom);
+        if (!zoomExisted)
+            this.resetZoom(); // this is called after data are reloaded
+    }
+
+    setZoom(transform) {
+        if (this.props.withZoom && this.zoom)
+            this.containerNodeSelection.call(this.zoom.transform, transform);
+        else
+            this.setState({zoomTransform: transform})
+    }
+
+    resetZoom() {
+        this.setZoom(d3Zoom.zoomIdentity);
+    }
+
     render() {
         const plotRectId = _.uniqueId("plotRect");
         return (
-            <svg ref={node => this.containerNode = node} height={this.props.height} width="100%">
+            <svg ref={node => { this.containerNode = node; this.containerNodeSelection = select(node) }} height={this.props.height} width="100%">
                 {this.props.getSvgDefs(this)}
                 <defs>
                     <clipPath id={plotRectId}>
@@ -267,12 +433,8 @@ export class StaticSwimlaneChart extends Component {
                 </defs>
 
                 {/* cursor area */}
-                <rect ref={node => this.cursorAreaSelection = select(node)}
-                      x={this.props.margin.left} y={this.props.margin.top}
-                      width={this.state.width - this.props.margin.left - this.props.margin.right}
-                      height={this.props.height - this.props.margin.top - this.props.margin.bottom}
-                      pointerEvents={"all"} cursor={"crosshair"} visibility={"hidden"}
-                />
+                <g ref={node => this.brushSelection = select(node)}
+                   transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
 
                 {/* main content */}
                 <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${plotRectId})`}>
@@ -296,7 +458,7 @@ export class StaticSwimlaneChart extends Component {
                 </text>
 
                 {/* tooltip */}
-                {this.props.withTooltip &&
+                {this.props.withTooltip && !this.state.brushInProgress &&
                 <Tooltip
                     config={this.props.config}
                     containerHeight={this.props.height + 50}
