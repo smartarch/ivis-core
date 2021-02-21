@@ -180,7 +180,8 @@ export class TimeBasedChartBase extends Component {
             statusMsg: t('Loading...'),
             width: 0,
             zoomTransform: d3Zoom.zoomIdentity,
-            loading: true
+            loading: true,
+            brushInProgress: false,
         };
         this.zoom = null;
 
@@ -199,6 +200,7 @@ export class TimeBasedChartBase extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
         withBrush: PropTypes.bool,
+        drawBrushAreaBehindData: PropTypes.bool, // set to `true` if you need to use pointer (mouse) events on the drawn data. By default, the brush area is drawn on top of the data – it is not visible but it catches the events.
         withTooltip: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
@@ -228,6 +230,7 @@ export class TimeBasedChartBase extends Component {
         getSvgDefs: () => null,
         zoomUpdateReloadInterval: 1000,
         displayLoadingTextWhenUpdating: true,
+        drawBrushAreaBehindData: false,
     }
 
     updateTimeIntervalChartWidth() {
@@ -245,6 +248,8 @@ export class TimeBasedChartBase extends Component {
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
+        window.addEventListener('keydown', ::this.keydownListener);
+        window.addEventListener('keyup', ::this.keyupListener);
 
         // This causes the absolute interval to change, which in turn causes a data fetch
         this.updateTimeIntervalChartWidth();
@@ -254,6 +259,16 @@ export class TimeBasedChartBase extends Component {
         }
 
         // this.createChart(this.state.signalSetsData) is not needed here because at this point, we are missing too many things to actually execute it
+    }
+
+    // If control key is held down, brush should be enabled.
+    keydownListener(event) {
+        if (event.key === "Control" && !this.state.brushInProgress)
+            this.setState({brushInProgress: true});
+    }
+    keyupListener(event) {
+        if (event.key === "Control" && this.state.brushInProgress && !this.state.zoomInProgress)
+            this.setState({brushInProgress: false});
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -300,6 +315,8 @@ export class TimeBasedChartBase extends Component {
 
     componentWillUnmount() {
         window.removeEventListener('resize', this.resizeListener);
+        window.removeEventListener('keydown', ::this.keydownListener);
+        window.removeEventListener('keyup', ::this.keyupListener);
         clearTimeout(this.zoomUpdateReloadTimeoutID);
     }
 
@@ -590,6 +607,8 @@ export class TimeBasedChartBase extends Component {
                     this.containerNode = node;
                     this.containerNodeSelection = select(node)
                 }} height={this.props.height} width="100%">
+
+                    {/* SVG definitions */}
                     {this.props.getSvgDefs(this)}
                     <defs>
                         <clipPath id={plotRectId}>
@@ -598,6 +617,13 @@ export class TimeBasedChartBase extends Component {
                                   height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
                         </clipPath>
                     </defs>
+
+                    {/* brush (if drawn behind data) */}
+                    { (this.props.drawBrushAreaBehindData && !this.state.brushInProgress) &&
+                    <g ref={node => this.brushSelection = select(node)}
+                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>}
+
+                    {/* main graph content */}
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
                        clipPath={`url(#${plotRectId})`} ref={node => this.GraphContentSelection = select(node)}>
                         {(!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
@@ -607,18 +633,26 @@ export class TimeBasedChartBase extends Component {
                         }
                         {this.props.getGraphContent(this)}
                     </g>
+
+                    {/* axes */}
                     <g ref={node => this.xAxisSelection = select(node)}
                        transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}/>
                     <g ref={node => this.yAxisSelection = select(node)}
                        transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+
+                    {/* cursor line */}
                     <line ref={node => this.cursorSelection = select(node)} className={commonStyles.cursorLine}
-                          visibility="hidden"/>
+                          pointerEvents="none" visibility="hidden"/>
+
+                    {/* status message */}
                     <text textAnchor="middle" x="50%" y="50%"
                           fontFamily="'Open Sans','Helvetica Neue',Helvetica,Arial,sans-serif" fontSize="14px"
                           fill="currentColor">
                         {this.state.statusMsg}
                     </text>
-                    {this.props.withTooltip &&
+
+                    {/* tooltip */}
+                    {this.props.withTooltip && !this.state.brushInProgress &&
                     <Tooltip
                         config={this.props.config.signalSets}
                         signalSetsData={this.state.signalSetsData}
@@ -627,11 +661,14 @@ export class TimeBasedChartBase extends Component {
                         mousePosition={this.state.mousePosition}
                         selection={this.state.selection}
                         {...tooltipExtraProps}
-                    />
-                    }
+                    />}
+
                     {content}
+
+                    {/* brush (default) */}
+                    { (!this.props.drawBrushAreaBehindData || this.state.brushInProgress) &&
                     <g ref={node => this.brushSelection = select(node)}
-                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>
+                       transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}/>}
                 </svg>
             );
         }

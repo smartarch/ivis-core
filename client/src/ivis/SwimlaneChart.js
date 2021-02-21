@@ -3,6 +3,7 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
+import * as d3Selection from "d3-selection";
 import {select} from "d3-selection";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
@@ -91,6 +92,7 @@ export class SwimlaneChart extends Component {
         useRangeContext: false,
         withBrush: false,
         getLabelColor: getTextColor,
+        tooltipContentRender: (props) => props.selection.label,
     }
 
     /**
@@ -175,9 +177,50 @@ export class SwimlaneChart extends Component {
             labelRows.exit().remove();
         }
 
+        if (this.props.withCursor)
+            this.createChartCursor(base, innerWidth, innerHeight);
+
         if (this.props.createChart)
             return this.props.createChart(createBase(base, this), signalSetsData, baseState, interval, xScale, yScale);
         return RenderStatus.SUCCESS;
+    }
+
+    /** Handles mouse movement to display cursor line.
+     *  Called from this.createChart(). */
+    createChartCursor(base, xSize, ySize) {
+        const self = this;
+
+        const mouseMove = function (bar = null) {
+            const containerPos = d3Selection.mouse(base.containerNode);
+
+            base.cursorSelection
+                .attr('x1', containerPos[0])
+                .attr('x2', containerPos[0])
+                .attr('visibility', self.props.withCursor && !base.state.brushInProgress ? 'visible' : "hidden");
+
+            const mousePosition = { x: containerPos[0], y: -10 + self.props.margin.top }; // TODO
+            base.setState({
+                mousePosition,
+                selection: bar,
+            });
+        };
+
+        const mouseLeave = function () {
+            base.cursorSelection.attr('visibility', 'hidden');
+            base.setState({
+                selection: null,
+                mousePosition: null
+            });
+        }
+
+        base.brushSelection
+            .on('mouseenter', mouseMove)
+            .on('mousemove', mouseMove)
+            .on('mouseleave', mouseLeave);
+        this.rowsSelection.selectAll('g').selectAll('rect')
+            .on('mouseenter', mouseMove)
+            .on('mousemove', mouseMove)
+            .on('mouseleave', mouseLeave);
     }
 
     getGraphContent(base) {
@@ -227,6 +270,7 @@ export class SwimlaneChart extends Component {
                 xType={props.xType}
                 xAxisTicksCount={props.xAxisTicksCount}
                 xAxisTicksFormat={props.xAxisTicksFormat}
+                drawBrushAreaBehindData={true}
             />
         )
     }
@@ -255,7 +299,7 @@ export class BooleanSwimlaneChart extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
 
-        xType: PropTypes.oneOf([DATETIME, NUMBER]).isRequired, // data type on the x-axis
+        xType: PropTypes.oneOf([DATETIME, NUMBER]), // data type on the x-axis
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
 
@@ -369,9 +413,9 @@ export class BooleanSwimlaneChart extends Component {
     render() {
         return <SwimlaneChart
             withTooltip={false}
-            {...this.props}
             getQueries={::this.getQueries}
             prepareData={::this.prepareData}
+            {...this.props}
         />
     }
 }
@@ -405,7 +449,7 @@ export class MaximumSwimlaneChart extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
 
-        xType: PropTypes.oneOf([DATETIME, NUMBER]).isRequired, // data type on the x-axis
+        xType: PropTypes.oneOf([DATETIME, NUMBER]), // data type on the x-axis
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
 
@@ -535,9 +579,9 @@ export class MaximumSwimlaneChart extends Component {
     render() {
         return <SwimlaneChart
             withTooltip={false}
-            {...this.props}
             getQueries={::this.getQueries}
             prepareData={::this.prepareData}
+            {...this.props}
         />
     }
 }
