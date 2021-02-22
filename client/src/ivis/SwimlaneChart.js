@@ -65,6 +65,7 @@ export class SwimlaneChart extends Component {
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
+        tooltipYPosition: PropTypes.number,
     }
 
     static defaultProps = {
@@ -191,7 +192,10 @@ export class SwimlaneChart extends Component {
                 .attr('x2', containerPos[0])
                 .attr('visibility', self.props.withCursor && !base.state.brushInProgress ? 'visible' : "hidden");
 
-            const mousePosition = { x: containerPos[0], y: -10 + self.props.margin.top }; // TODO
+            const y = self.props.tooltipYPosition !== undefined
+                ? self.props.tooltipYPosition + self.props.margin.top
+                : containerPos[1];
+            const mousePosition = { x: containerPos[0], y };
             base.setState({
                 mousePosition,
                 selection: bar,
@@ -313,6 +317,7 @@ export class BooleanSwimlaneChart extends Component {
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
+        tooltipYPosition: PropTypes.number,
     }
 
     getQueries(base, abs, config) {
@@ -464,6 +469,7 @@ export class MaximumSwimlaneChart extends Component {
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
+        tooltipYPosition: PropTypes.number,
     }
 
     static defaultProps = {
@@ -572,6 +578,7 @@ export class MaximumSwimlaneChart extends Component {
     render() {
         return <SwimlaneChart
             withTooltip={false}
+            tooltipYPosition={-10}
             getQueries={::this.getQueries}
             prepareData={::this.prepareData}
             {...this.props}
