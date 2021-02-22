@@ -12,21 +12,13 @@ import moment from "moment";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {getTextColor} from "./common";
 import {withPageHelpers} from "../lib/page-common";
-import {createBase, RenderStatus, TimeBasedChartBase} from "./TimeBasedChartBase";
-
-const DATETIME = "datetime";
-const NUMBER = "number";
+import {createBase, RenderStatus, TimeBasedChartBase, XAxisType} from "./TimeBasedChartBase";
 
 /** get moment object exactly in between two moment object */
 function midpoint(ts1, ts2) {
     return ts1.clone().add(ts2.diff(ts1) / 2);
 }
 
-/* TODO: There is a lot of code copied from TimeBasedChartBase. It should be possible to use TimeBasedChartBase as a base for this class. Notes:
-    - This class currently supports not only datetime on the x-axis but also any numeric values – this needs to be implemented in TimeBasedChartBase.
-    - this.state.brushInProgress is not used in TimeBasedChartBase to hide the Tooltip when selecting by brush.
-    - TimeBasedChartBase has brushSelection if front of the chart; here, the brushSelection is behind the drawn rectangles to facilitate selecting them for Tooltip.
- */
 /**
  * Displays horizontal lanes with bars
  */
@@ -47,7 +39,7 @@ export class SwimlaneChart extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
 
-        xType: PropTypes.oneOf([DATETIME, NUMBER]).isRequired, // data type on the x-axis
+        xAxisType: PropTypes.oneOf([XAxisType.DATETIME, XAxisType.NUMBER]).isRequired, // data type on the x-axis
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
 
@@ -68,6 +60,7 @@ export class SwimlaneChart extends Component {
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to `null` to disable updates
         withBrush: PropTypes.bool,
         minimumIntervalMs: PropTypes.number,
+        loadingOverlayColor: PropType_d3Color(),
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
@@ -75,7 +68,7 @@ export class SwimlaneChart extends Component {
     }
 
     static defaultProps = {
-        xType: DATETIME,
+        xAxisType: XAxisType.DATETIME,
         margin: {
             left: 60,
             right: 5,
@@ -118,7 +111,7 @@ export class SwimlaneChart extends Component {
         if (signalSetsData.length === 0 || signalSetsData.every(d => d.bars.length === 0))
             return RenderStatus.NO_DATA;
 
-        const xIsDate = this.props.xType === DATETIME;
+        const xIsDate = this.props.xAxisType === XAxisType.DATETIME;
         signalSetsData.forEach(r => r.bars.forEach(b => {
             b.beginValue = xIsDate ? moment(b.begin) : b.begin;
             b.endValue = xIsDate ? moment(b.end) : b.end;
@@ -267,7 +260,7 @@ export class SwimlaneChart extends Component {
                 loadingOverlayColor={props.loadingOverlayColor}
                 displayLoadingTextWhenUpdating={props.displayLoadingTextWhenUpdating}
                 minimumIntervalMs={props.minimumIntervalMs}
-                xType={props.xType}
+                xAxisType={props.xAxisType}
                 xAxisTicksCount={props.xAxisTicksCount}
                 xAxisTicksFormat={props.xAxisTicksFormat}
                 drawBrushAreaBehindData={true}
@@ -299,7 +292,7 @@ export class BooleanSwimlaneChart extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
 
-        xType: PropTypes.oneOf([DATETIME, NUMBER]), // data type on the x-axis
+        xAxisType: PropTypes.oneOf([XAxisType.DATETIME, XAxisType.NUMBER]), // data type on the x-axis
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
 
@@ -449,7 +442,7 @@ export class MaximumSwimlaneChart extends Component {
         height: PropTypes.number.isRequired,
         margin: PropTypes.object,
 
-        xType: PropTypes.oneOf([DATETIME, NUMBER]), // data type on the x-axis
+        xAxisType: PropTypes.oneOf([XAxisType.DATETIME, XAxisType.NUMBER]), // data type on the x-axis
         xAxisTicksCount: PropTypes.number,
         xAxisTicksFormat: PropTypes.func,
 

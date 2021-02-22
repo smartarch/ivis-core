@@ -22,6 +22,7 @@ import * as d3Zoom from "d3-zoom";
 import commonStyles from "./commons.scss";
 import timeBasedChartBaseStyles from "./TimeBasedChartBase.scss";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
+import {rangeAccessMixin} from "./RangeContext";
 
 export function createBase(base, self) {
     self.base = base;
@@ -97,6 +98,10 @@ export const RenderStatus = {
     SUCCESS: 0,
     NO_DATA: 1
 };
+export const XAxisType = {
+    DATETIME: "datetime",
+    NUMBER: "number",
+}
 
 export {ConfigDifference} from "./common";
 
@@ -164,7 +169,8 @@ function compareConfigs(conf1, conf2, customComparator) {
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
-    intervalAccessMixin()
+    intervalAccessMixin(),
+    rangeAccessMixin,
 ])
 export class TimeBasedChartBase extends Component {
     constructor(props) {
@@ -216,6 +222,7 @@ export class TimeBasedChartBase extends Component {
         getGraphContent: PropTypes.func.isRequired,
         getSvgDefs: PropTypes.func,
         compareConfigs: PropTypes.func,
+        xAxisType: PropTypes.oneOf([XAxisType.DATETIME, XAxisType.NUMBER]).isRequired, // data type on the x-axis
 
         tooltipExtraProps: PropTypes.object,
 
@@ -231,18 +238,21 @@ export class TimeBasedChartBase extends Component {
         zoomUpdateReloadInterval: 1000,
         displayLoadingTextWhenUpdating: true,
         drawBrushAreaBehindData: false,
+        xAxisType: XAxisType.DATETIME,
     }
 
-    updateTimeIntervalChartWidth() {
-        const intv = this.getInterval();
-        const width = this.containerNode.getClientRects()[0].width;
+    updateTimeIntervalChartWidth() { // TODO: XAxisType.NUMBER – do we need to do anything?
+        if (this.props.xAxisType === XAxisType.DATETIME) {
+            const intv = this.getInterval();
+            const width = this.containerNode.getClientRects()[0].width;
 
-        if (this.props.controlTimeIntervalChartWidth && intv.conf.chartWidth !== width) {
-            intv.setConf({
-                chartWidth: width
-            });
+            if (this.props.controlTimeIntervalChartWidth && intv.conf.chartWidth !== width) {
+                intv.setConf({
+                    chartWidth: width
+                });
 
-            this.delayedFetchDueToTimeIntervalChartWidthUpdate = true;
+                this.delayedFetchDueToTimeIntervalChartWidthUpdate = true;
+            }
         }
     }
 
@@ -255,6 +265,7 @@ export class TimeBasedChartBase extends Component {
         this.updateTimeIntervalChartWidth();
 
         if (!this.delayedFetchDueToTimeIntervalChartWidthUpdate) {
+            // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
         }
 
@@ -273,39 +284,50 @@ export class TimeBasedChartBase extends Component {
 
     componentDidUpdate(prevProps, prevState) {
         let signalSetsData = this.state.signalSetsData;
+        const xIsDate = this.props.xAxisType === XAxisType.DATETIME;
 
         const t = this.props.t;
 
         const configDiff = compareConfigs(prevProps.config, this.props.config, this.props.compareConfigs);
 
-        const prevAbs = this.getIntervalAbsolute(prevProps);
-        const prevSpec = this.getIntervalSpec(prevProps);
+        // compare time intervals or ranges
+        const absIntervalDiffers = xIsDate
+            ? this.getIntervalAbsolute(prevProps) !== this.getIntervalAbsolute()
+            : false;
+        const specDiffers = xIsDate
+            ? this.getIntervalSpec(prevProps) !== this.getIntervalSpec()
+            : this.getRange(prevProps) !== this.getRange();
+
         if (configDiff === ConfigDifference.DATA) {
             this.setState({
                 signalSetsData: null
             });
             this.zoom = null;
 
+            // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
-
             signalSetsData = null;
 
-        } else if (prevSpec !== this.getIntervalSpec()) {
+        } else if (specDiffers) {
             this.zoom = null;
+            // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
-        } else if (this.delayedFetchDueToTimeIntervalChartWidthUpdate || prevAbs !== this.getIntervalAbsolute()) { // If its just a regular refresh, don't clear the chart
+        } else if (this.delayedFetchDueToTimeIntervalChartWidthUpdate || absIntervalDiffers) { // If its just a regular refresh, don't clear the chart
             this.delayedFetchDueToTimeIntervalChartWidthUpdate = false;
 
-            if (!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity)) // update time interval based on what is currently visible
+            // update time interval based on what is currently visible
+            if (!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity))
                 this.setInterval(...this.xScaleDomain);
 
+            // noinspection JSIgnoredPromiseFromCall
             this.fetchData();
 
         } else {
             const forceRefresh = this.prevContainerNode !== this.containerNode
                 || prevState.signalSetsData !== this.state.signalSetsData
                 || configDiff !== ConfigDifference.NONE
-                || this.getIntervalAbsolute(prevProps) !== this.getIntervalAbsolute()
+                || absIntervalDiffers
+                || prevState.brushInProgress !== this.state.brushInProgress
                 || !AreZoomTransformsEqual(prevState.zoomTransform, this.state.zoomTransform);
 
             this.createChart(signalSetsData, forceRefresh);
@@ -329,7 +351,10 @@ export class TimeBasedChartBase extends Component {
         this.setState(newState);
 
         try {
-            const queries = this.props.getQueries(this, this.getIntervalAbsolute(), this.props.config);
+            const interval = this.props.xAxisType === XAxisType.DATETIME
+                ? this.getIntervalAbsolute()
+                : this.getRange();
+            const queries = this.props.getQueries(this, interval, this.props.config);
 
             const results = await this.dataAccessSession.getLatestMixed(queries);
 
@@ -391,6 +416,7 @@ export class TimeBasedChartBase extends Component {
     createChart(signalSetsData, forceRefresh) {
         const t = this.props.t;
         const self = this;
+        const xIsDate = this.props.xAxisType === XAxisType.DATETIME;
 
         const width = this.containerNode.getClientRects()[0].width;
 
@@ -404,30 +430,44 @@ export class TimeBasedChartBase extends Component {
             return;
         }
         this.renderedWidth = width;
+        const innerWidth = width - this.props.margin.left - this.props.margin.right;
+        const innerHeight = this.props.height - this.props.margin.top - this.props.margin.bottom;
 
         if (!signalSetsData) {
             return;
         }
 
-        const abs = this.getIntervalAbsolute();
-
-        const xScale = this.state.zoomTransform.rescaleX(
-            d3Scale.scaleTime()
-                .domain([abs.from, abs.to])
-                .range([0, width - this.props.margin.left - this.props.margin.right])
-        );
+        let xScale;
+        let interval;
+        if (xIsDate) {
+            const abs = this.getIntervalAbsolute();
+            interval = abs;
+            xScale = this.state.zoomTransform.rescaleX(
+                d3Scale.scaleTime()
+                    .domain([abs.from, abs.to])
+                    .range([0, innerWidth])
+            );
+        } else {
+            const range = this.getRange();
+            interval = range;
+            xScale = this.state.zoomTransform.rescaleX(
+                d3Scale.scaleLinear()
+                    .domain(range)
+                    .range([0, innerWidth])
+            );
+        }
         this.xScaleDomain = xScale.domain().map(d => d.valueOf());
 
         const xAxis = d3Axis.axisBottom(xScale)
             .tickSizeOuter(0);
-
+        if (this.props.xAxisTicksCount) xAxis.ticks(this.props.xAxisTicksCount);
+        if (this.props.xAxisTicksFormat) xAxis.tickFormat(this.props.xAxisTicksFormat);
         this.xAxisSelection
             .call(xAxis);
 
-
         if (this.props.withBrush) {
             const brush = d3Brush.brushX()
-                .extent([[0, 0], [width - this.props.margin.left - this.props.margin.right, this.props.height - this.props.margin.top - this.props.margin.bottom]])
+                .extent([[0, 0], [innerWidth, innerHeight]])
                 .filter(() => { // TODO what to do when withZoom == false
                     // noinspection JSUnresolvedVariable
                     return d3Event.ctrlKey && !d3Event.button; // enable brush only when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
@@ -458,8 +498,8 @@ export class TimeBasedChartBase extends Component {
                 .attr('cursor', 'crosshair')
                 .attr('x', 0)
                 .attr('y', 0)
-                .attr('width', width - this.props.margin.left - this.props.margin.right)
-                .attr('height', this.props.height - this.props.margin.top - this.props.margin.bottom)
+                .attr('width', innerWidth)
+                .attr('height', innerHeight)
                 .attr('visibility', 'hidden');
         }
 
@@ -472,28 +512,32 @@ export class TimeBasedChartBase extends Component {
             .attr('y2', this.props.height - this.props.margin.bottom);
 
 
-        const renderStatus = this.props.createChart(this, signalSetsData, this.state, abs, xScale);
+        const renderStatus = this.props.createChart(this, signalSetsData, this.state, interval, xScale);
 
         if (renderStatus === RenderStatus.NO_DATA && this.state.statusMsg === "")
             this.setState({statusMsg: t('No data.')});
     }
 
     setInterval(from, to) {
-        const intv = this.getInterval();
+        if (this.props.xAxisType === XAxisType.DATETIME) {
+            const intv = this.getInterval();
 
-        if (to - from < this.props.minimumIntervalMs) {
-            to = from + this.props.minimumIntervalMs;
+            if (to - from < this.props.minimumIntervalMs) {
+                to = from + this.props.minimumIntervalMs;
+            }
+
+            const rounded = intv.roundToMinAggregationInterval(from, to);
+
+            const spec = new IntervalSpec(
+                rounded.from,
+                rounded.to,
+                null
+            );
+
+            intv.setSpec(spec);
+        } else {
+            this.setRange([from, to]);
         }
-
-        const rounded = intv.roundToMinAggregationInterval(from, to);
-
-        const spec = new IntervalSpec(
-            rounded.from,
-            rounded.to,
-            null
-        );
-
-        intv.setSpec(spec);
     }
 
     createChartZoom() {
