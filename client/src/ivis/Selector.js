@@ -67,7 +67,8 @@ class StaticSelector extends Component {
         data: PropTypes.array,
         columns: PropTypes.array,
         labelColumn: PropTypes.string,
-        dataFilter: PropTypes.func, // data_array => filtered_data_array
+        search: PropTypes.func, // initial value of the search field
+        searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
     }
 
     static defaultProps = {
@@ -192,7 +193,8 @@ class StaticSelector extends Component {
                             onSelectionDataAsync={::this.onSelectionDataAsync}
                             onSelectionChangedAsync={::this.onSelectionChangedAsync}
                             {...dataProps}
-                            dataFilter={this.props.dataFilter}
+                            search={this.props.search}
+                            searchCols={this.props.searchCols}
                         />
                     </div>
                 </div>
@@ -212,7 +214,8 @@ export class SignalSetSelector extends Component {
         className: PropTypes.string,
         data: PropTypes.array,
         columns: PropTypes.array,
-        dataFilter: PropTypes.func, // data_array => filtered_data_array
+        search: PropTypes.func, // initial value of the search field
+        searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
     }
 
     render() {
@@ -226,7 +229,8 @@ export class SignalSetSelector extends Component {
                         onChange={sigSetCid => onChange([], sigSetCid)}
                         className={this.props.className}
                         columns={this.props.columns}
-                        dataFilter={this.props.dataFilter}
+                        search={this.props.search}
+                        searchCols={this.props.searchCols}
                     />
             }/>
         );
@@ -245,7 +249,8 @@ export class SignalSelector extends Component {
         className: PropTypes.string,
         data: PropTypes.array,
         columns: PropTypes.array,
-        dataFilter: PropTypes.func, // data_array => filtered_data_array
+        search: PropTypes.func, // data_array => filtered_data_array
+        searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
     }
 
     render() {
@@ -260,7 +265,8 @@ export class SignalSelector extends Component {
                         onChange={sigCid => onChange([], sigCid)}
                         className={this.props.className}
                         columns={this.props.columns}
-                        dataFilter={this.props.dataFilter}
+                        search={this.props.search}
+                        searchCols={this.props.searchCols}
                     />
             }/>
         );

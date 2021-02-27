@@ -1343,7 +1343,8 @@ class TableSelect extends Component {
     static propTypes = {
         dataUrl: PropTypes.string,
         data: PropTypes.array,
-        dataFilter: PropTypes.func, // data_array => filtered_data_array
+        search: PropTypes.func, // initial value of the search field
+        searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
         columns: PropTypes.array,
         selectionKeyIndex: PropTypes.number,
         selectionLabelIndex: PropTypes.number,
@@ -1430,7 +1431,7 @@ class TableSelect extends Component {
                     <div
                         className={styles.tableSelectTable + (this.state.open ? '' : ' ' + styles.tableSelectTableHidden)}>
                         <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
-                               dataFilter={props.dataFilter}
+                               search={props.search} searchCols={props.searchCols}
                                columns={props.columns} selectMode={props.selectMode}
                                selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
                                selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
@@ -1444,7 +1445,7 @@ class TableSelect extends Component {
                 <div>
                     <div>
                         <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
-                               dataFilter={props.dataFilter}
+                               search={props.search} searchCols={props.searchCols}
                                columns={props.columns} pageLength={props.pageLength} selectMode={props.selectMode}
                                selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
                                selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
