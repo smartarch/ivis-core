@@ -165,11 +165,14 @@ export class NanosecondsRangeSelector extends Component {
     }
 
     zoom(factor) {
-
+        const middle = (this.state.from + this.state.to) / 2;
+        const halfLength = (this.state.to - this.state.from) * factor / 2;
+        this.setRange([middle - halfLength, middle + halfLength]);
     }
 
     move(factor) {
-
+        const offset = (this.state.to - this.state.from) * factor;
+        this.setRange([this.state.from + offset, this.state.to + offset]);
     }
 
     render() {
@@ -181,7 +184,6 @@ export class NanosecondsRangeSelector extends Component {
                     <div className={styles.headingDescription}>{this.getDescription()}</div>
                     <div className={styles.headingButtons}>
                         <ActionLink onClickAsync={async () => this.setState({ opened: !this.state.opened })}><Icon icon="sliders-h" title={t('Open time settings')}/></ActionLink>
-                        <ActionLink onClickAsync={async () => this.getInterval().refresh()}><Icon icon="redo" title={t('Refresh')}/></ActionLink>
                         <ActionLink className={styles.cursorZoomIn} onClickAsync={async () => this.zoom(0.5)}><Icon icon="search-plus" title={t('Zoom in')}/></ActionLink>
                         <ActionLink className={styles.cursorZoomOut} onClickAsync={async () => this.zoom(2)}><Icon icon="search-minus" title={t('Zoom out')}/></ActionLink>
                         <ActionLink onClickAsync={async () => this.move(-0.8)}><Icon icon="arrow-left" title={t('Move left')}/></ActionLink>

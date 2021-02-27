@@ -35,13 +35,19 @@ export class RangeContext extends Component {
     setRange(newRange) {
         if (!Array.isArray(newRange)) throw new TypeError('Range must be an array.');
         if (newRange.length !== 2) throw new TypeError('Range must contain exactly two elements.');
+        if (this.props.min !== undefined && newRange[0] < this.props.min)
+            newRange[0] = this.props.min;
+        if (this.props.max !== undefined && newRange[1] > this.props.max)
+            newRange[1] = this.props.max;
         if (this.state.range[0] !== newRange[0] || this.state.range[1] !== newRange[1])
             this.setState({range: newRange}, ::this.exportData);
     }
 
     static propTypes = {
         initialRange: PropTypes.array,
-        configPath: PropTypes.array
+        configPath: PropTypes.array,
+        min: PropTypes.number,
+        max: PropTypes.number,
     }
 
     static defaultProps = {
