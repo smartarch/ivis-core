@@ -125,6 +125,10 @@ export class HeatmapChart extends Component {
         this.resizeListener = () => {
             this.createChart(true);
         };
+
+        this.plotRectId = _.uniqueId("plotRect");
+        this.leftAxisId = _.uniqueId("leftAxis");
+        this.bottomAxisId = _.uniqueId("bottomAxis");
     }
 
     static propTypes = {
@@ -1123,9 +1127,6 @@ export class HeatmapChart extends Component {
             );
 
         } else {
-            const plotRectId = _.uniqueId("plotRect");
-            const leftAxisId = _.uniqueId("leftAxis");
-            const bottomAxisId = _.uniqueId("bottomAxis");
             return (
                 <div className={this.props.className} style={this.props.style}>
                     {this.props.withOverviewLeft &&
@@ -1149,23 +1150,23 @@ export class HeatmapChart extends Component {
                          }}>
                         <svg id="cnt" ref={node => this.containerNode = node} height={"100%"} width={"100%"}>
                             <defs>
-                                <clipPath id={plotRectId}>
+                                <clipPath id={this.plotRectId}>
                                     <rect x="0" y="0"
                                           width={this.state.width - this.props.margin.left - this.props.margin.right}
                                           height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
                                 </clipPath>
-                                <clipPath id={leftAxisId}>
+                                <clipPath id={this.leftAxisId}>
                                     <rect x={-this.props.margin.left + 1} y={0} width={this.props.margin.left}
                                           height={this.props.height - this.props.margin.top - this.props.margin.bottom + 6} /* 6 is default size of axis ticks, so we can add extra space in the bottom left corner for this axis and still don't collide with the other axis. Thanks to this, the first tick text should not be cut in half. */ />
                                 </clipPath>
-                                <clipPath id={bottomAxisId}>
+                                <clipPath id={this.bottomAxisId}>
                                     <rect x={-6} y={0}
                                           width={this.state.width - this.props.margin.left - this.props.margin.right + 6}
                                           height={this.props.margin.bottom} /* same reason for 6 as above */ />
                                 </clipPath>
                             </defs>
                             <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
-                               clipPath={`url(#${plotRectId})`}>
+                               clipPath={`url(#${this.plotRectId})`}>
                                 <g ref={node => this.columnsSelection = select(node)}/>
                                 {!this.state.zoomInProgress &&
                                 <g ref={node => this.highlightSelection = select(node)}/>}
@@ -1174,12 +1175,12 @@ export class HeatmapChart extends Component {
                             {/* axes */}
                             <g ref={node => this.xAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.height - this.props.margin.bottom})`}
-                               clipPath={`url(#${bottomAxisId})`}/>
+                               clipPath={`url(#${this.bottomAxisId})`}/>
                             <text ref={node => this.xAxisLabelSelection = select(node)}
                                   transform={`translate(${this.props.margin.left + (this.state.width - this.props.margin.left - this.props.margin.right) / 2}, ${this.props.height - 5})`}/>
                             <g ref={node => this.yAxisSelection = select(node)}
                                transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
-                               clipPath={`url(#${leftAxisId})`}/>
+                               clipPath={`url(#${this.leftAxisId})`}/>
                             <text ref={node => this.yAxisLabelSelection = select(node)}
                                   transform={`translate(${15}, ${this.props.margin.top + (this.props.height - this.props.margin.top - this.props.margin.bottom) / 2}) rotate(-90)`}/>
 

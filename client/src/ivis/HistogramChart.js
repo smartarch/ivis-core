@@ -98,6 +98,8 @@ export class HistogramChart extends Component {
         this.resizeListener = () => {
             this.createChart(true);
         };
+
+        this.plotRectId = _.uniqueId("plotRect");
     }
 
     static propTypes = {
@@ -793,17 +795,16 @@ export class HistogramChart extends Component {
             );
 
         } else {
-            const plotRectId = _.uniqueId("plotRect");
             return (
                 <div className={this.props.className} style={this.props.style} >
                     <div ref={node => this.svgContainerSelection = select(node)} className={styles.touchActionPanY}>
                     <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                         <defs>
-                            <clipPath id={plotRectId}>
+                            <clipPath id={this.plotRectId}>
                                 <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                             </clipPath>
                         </defs>
-                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${plotRectId})`} >
+                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${this.plotRectId})`} >
                             <g ref={node => this.barsSelection = select(node)}/>
                             <g ref={node => this.barsHighlightSelection = select(node)}/>
                         </g>

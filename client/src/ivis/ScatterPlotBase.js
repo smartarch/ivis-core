@@ -339,6 +339,8 @@ export class ScatterPlotBase extends Component {
             maxDotCount: props.maxDotCount,
             noData: true
         };
+
+        this.plotRectId = _.uniqueId("plotRect");
     }
 
     static propTypes = {
@@ -1872,8 +1874,7 @@ export class ScatterPlotBase extends Component {
                 <g key={signalSet.cid + "-" + i}
                    ref={node => this.dotsGlobalSelection[signalSet.cid + "-" + i] = select(node)}/>
             );
-
-            const plotRectId = _.uniqueId("plotRect");
+            
             return (
                 <div className={this.props.className} style={this.props.style} >
                     {this.props.withToolbar &&
@@ -1900,13 +1901,13 @@ export class ScatterPlotBase extends Component {
                     <div ref={node => this.svgContainerSelection = select(node)} className={`${styles.touchActionNone} ${styles.clearBoth}`}>
                         <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                             <defs>
-                                <clipPath id={plotRectId}>
+                                <clipPath id={this.plotRectId}>
                                     <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                                 </clipPath>
                                 {/* dot shape definitions */}
                                 {dotShapes}
                             </defs>
-                            <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${plotRectId})`} ref={node => this.chartSelection = select(node)} >
+                            <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${this.plotRectId})`} ref={node => this.chartSelection = select(node)} >
                                 <g name={"regressions"} ref={node => this.regressionsSelection = select(node)}/>
                                 <g name={"dots_global"}>{dotsGlobalSelectionGroups}</g>
                                 <g name={"dots"}>{dotsSelectionGroups}</g>

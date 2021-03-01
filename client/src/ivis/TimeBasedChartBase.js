@@ -197,6 +197,8 @@ export class TimeBasedChartBase extends Component {
         };
 
         this.delayedFetchDueToTimeIntervalChartWidthUpdate = false;
+
+        this.plotRectId = _.uniqueId("plotRect");
     }
 
     static propTypes = {
@@ -406,6 +408,7 @@ export class TimeBasedChartBase extends Component {
                 });
                 return;
             }
+            this.setState({statusMsg: t("Error loading data.")});
 
             throw err;
         } finally {
@@ -644,8 +647,7 @@ export class TimeBasedChartBase extends Component {
                 tooltipExtraProps.contentRender = (props) => <TooltipContent
                     getSignalValues={this.props.getSignalValuesForDefaultTooltip} {...props}/>;
             }
-
-            const plotRectId = _.uniqueId("plotRect");
+            
             return (
                 <svg id="cnt" ref={node => {
                     this.containerNode = node;
@@ -655,7 +657,7 @@ export class TimeBasedChartBase extends Component {
                     {/* SVG definitions */}
                     {this.props.getSvgDefs(this)}
                     <defs>
-                        <clipPath id={plotRectId}>
+                        <clipPath id={this.plotRectId}>
                             <rect x="0" y="0"
                                   width={this.state.width - this.props.margin.left - this.props.margin.right}
                                   height={this.props.height - this.props.margin.top - this.props.margin.bottom}/>
@@ -669,7 +671,7 @@ export class TimeBasedChartBase extends Component {
 
                     {/* main graph content */}
                     <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`}
-                       clipPath={`url(#${plotRectId})`} ref={node => this.GraphContentSelection = select(node)}>
+                       clipPath={`url(#${this.plotRectId})`} ref={node => this.GraphContentSelection = select(node)}>
                         {(!AreZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
                             <rect className={timeBasedChartBaseStyles.loadingOverlay}
                                   style={{fill: this.props.loadingOverlayColor }}
