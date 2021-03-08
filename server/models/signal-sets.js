@@ -28,8 +28,8 @@ const signalSetAggregations = require('./signal-set-aggregations');
 
 const dependencyHelpers = require('../lib/dependency-helpers');
 
-const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template', 'settings', 'kind']);
-const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template', 'settings', 'kind']);
+const allowedKeysCreate = new Set(['cid', 'type', 'name', 'description', 'namespace', 'record_id_template', 'settings', 'kind', 'metadata']);
+const allowedKeysUpdate = new Set(['name', 'description', 'namespace', 'record_id_template', 'settings', 'kind', 'metadata']);
 
 const handlebars = require('handlebars');
 
@@ -59,6 +59,8 @@ async function _getBy(context, key, id, withPermissions, withSignalByCidMap) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', entity.id, 'view');
 
         entity.settings = JSON.parse(entity.settings);
+        if (entity.metadata !== undefined && entity.metadata !== null)
+            entity.metadata = JSON.parse(entity.metadata);
 
         if (withPermissions) {
             entity.permissions = await shares.getPermissionsTx(tx, context, 'signalSet', entity.id);
@@ -189,6 +191,7 @@ async function createTx(tx, context, entity) {
     }
 
     filteredEntity.settings = JSON.stringify({...filteredEntity.settings});
+    filteredEntity.metadata = filteredEntity.metadata === undefined ? null : JSON.stringify(filteredEntity.metadata);
     const ids = await tx('signal_sets').insert(filteredEntity);
     const id = ids[0];
 
@@ -232,6 +235,7 @@ async function updateWithConsistencyCheck(context, entity) {
         }
 
         existing.settings = JSON.parse(existing.settings);
+        existing.metadata = JSON.parse(existing.metadata);
         const existingHash = hash(existing);
         if (existingHash !== entity.originalHash) {
             throw new interoperableErrors.ChangedError();
@@ -250,6 +254,7 @@ async function updateWithConsistencyCheck(context, entity) {
 
         const filteredEntity = filterObject(entity, allowedKeysUpdate);
         filteredEntity.settings = JSON.stringify(filteredEntity.settings);
+        filteredEntity.metadata = JSON.stringify(filteredEntity.metadata);
         await tx('signal_sets').where('id', entity.id).update(filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, {entityTypeId: 'signalSet', entityId: entity.id});
@@ -298,7 +303,8 @@ async function _ensure(context, signalSetConfig, schema) {
         description,
         namespace,
         kind = SignalSetKind.GENERIC,
-        settings = {}
+        settings = {},
+        metadata,
     } = signalSetConfig;
 
     return await knex.transaction(async tx => {
@@ -310,7 +316,8 @@ async function _ensure(context, signalSetConfig, schema) {
                 description,
                 namespace,
                 kind,
-                settings
+                settings,
+                metadata,
             };
 
             const id = await createTx(tx, context, signalSet);

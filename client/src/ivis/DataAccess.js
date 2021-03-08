@@ -1000,3 +1000,10 @@ export class TimeSeriesLimitedPointsProvider extends Component {
         );
     }
 }
+
+export async function getSignalSetMetadata(sigSetCid) {
+    const response = await axios.get(getUrl(`rest/signal-sets-by-cid/${sigSetCid}`));
+    if (response && response.data && response.data.metadata)
+        return response.data.metadata;
+    return null;
+}

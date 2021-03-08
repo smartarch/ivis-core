@@ -9,6 +9,7 @@ import {
     withPageHelpers
 } from "../../lib/page";
 import {
+    ACEEditor,
     Button,
     ButtonRow, Dropdown, Fieldset,
     filterData,
@@ -115,7 +116,8 @@ export default class CUD extends Component {
                     record_id_template: '',
                     namespace: ivisConfig.user.namespace,
                     settings: {},
-                    kind: SignalSetKind.GENERIC
+                    kind: SignalSetKind.GENERIC,
+                    metadata: '',
                 }
             );
         }
@@ -130,6 +132,10 @@ export default class CUD extends Component {
             data.ts = data.settings.ts;
         }
 
+        if (data.metadata === undefined || data.metadata === null)
+            data.metadata = '';
+        else
+            data.metadata = JSON.stringify(data.metadata, null, '  ');
     }
 
 
@@ -166,6 +172,19 @@ export default class CUD extends Component {
         }
 
         validateNamespace(t, state);
+
+        const metadata = state.getIn(['metadata', 'value']);
+        state.setIn(['metadata', 'error'], null);
+        if (metadata === '') return;
+        try {
+            JSON.parse(metadata);
+        }
+        catch (e) {
+            if (e instanceof SyntaxError) {
+                state.setIn(['metadata', 'error'], t('Please enter a valid JSON.') + " (" + e.message + ")");
+            }
+            else throw e;
+        }
     }
 
     submitFormValuesMutator(data) {
@@ -182,6 +201,11 @@ export default class CUD extends Component {
             }
         }
 
+        if (data.metadata.trim() === '') {
+            data.metadata = null;
+        } else {
+            data.metadata = JSON.parse(data.metadata);
+        }
 
         const allowedKeys = [
             'name',
@@ -190,7 +214,8 @@ export default class CUD extends Component {
             'namespace',
             'cid',
             'settings',
-            'kind'
+            'kind',
+            'metadata',
         ];
 
         if (!this.props.entity) {
@@ -308,6 +333,8 @@ export default class CUD extends Component {
                         </Fieldset>
                     )
                     }
+
+                    <ACEEditor id="metadata" label={t('Metadata')} mode="json" height={"250px"} />
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
