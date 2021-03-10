@@ -941,7 +941,12 @@ export class TimeSeriesLimitedPointsProvider extends Component {
         signalSets: PropTypes.object.isRequired,
         limit: PropTypes.number.isRequired,
         renderFun: PropTypes.func.isRequired,
-        loadingRenderFun: PropTypes.func
+        loadingRenderFun: PropTypes.func,
+        tsSpec: PropTypes.object,
+    }
+
+    static defaultProps = {
+        tsSpec: TimeSeriesPointPredefs.CURRENT
     }
 
     async fetchDataFun(dataAccessSession, intervalAbsolute) {
@@ -959,7 +964,7 @@ export class TimeSeriesLimitedPointsProvider extends Component {
                     {
                         type: 'range',
                         sigCid: tsSig,
-                        [TimeSeriesPointType.LTE]: moment().toISOString()
+                        [this.props.tsSpec.pointType]: this.props.tsSpec.getTs(intervalAbsolute).toISOString()
                     }
                 ]
             }
