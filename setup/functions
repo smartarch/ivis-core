@@ -3,6 +3,7 @@ cd ${SCRIPT_PATH}/..
 
 productId=${productId:-"ivis-core"}
 productLabel=${productLabel:-"IVIS Core"}
+ivisCorePath=${ivisCorePath:-"."}
 
 case "$hostType" in
     centos8|centos8-aws)
@@ -177,7 +178,7 @@ function installTasksPrerequisities {
 
     # Install 'ivis' library for tasks
     python3 -m pip install --user --upgrade setuptools wheel
-    (cd ./server/lib/tasks/python/ && python3 setup.py sdist bdist_wheel)
+    (cd "$ivisCorePath/server/lib/tasks/python/ivis" && python3 setup.py sdist bdist_wheel)
 }
 
 
@@ -192,7 +193,7 @@ function installPrerequisities {
         centos8-aws|centos8-minimal)
             dnf -y install epel-release
 
-            curl --silent --location https://rpm.nodesource.com/setup_13.x | bash -
+            curl --silent --location https://rpm.nodesource.com/setup_14.x | bash -
 
             dnf -y install mariadb-server nodejs redis pwgen gcc-c++ make bzip2 java-1.8.0-openjdk git libXScrnSaver at-spi2-atk gtk3
             rpm -Uhv --force https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.rpm
