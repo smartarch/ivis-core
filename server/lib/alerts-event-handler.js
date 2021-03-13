@@ -7,26 +7,27 @@ const { Alert } = require('./alerts-class');
 const alerts = new Map();
 
 async function init(){
+    const tmp = await knex('alerts').select('id', 'state', 'state_changed', 'delay', 'duration');
+    for (let i = 0; i < tmp.length; i++) {
+        const aux = new Alert(tmp[i].id);
+        await aux.setupTimers(tmp[i].state, tmp[i].state_changed, tmp[i].delay, tmp[i].duration);
+        alerts.set(tmp[i].id, aux);
+    }
+
     esEmitter.on('insert', cid => {setTimeout(() => handleSignalTrigger(cid), 3000)}); //time delay to compensate for slow ElasticSearch
     setInterval(purge, 60 * 60 * 1000);
 }
 
 async function handleSignalTrigger(cid){
-    const alertIds = await knex.transaction(async tx => {
-        const sigSetId = await tx('signal_sets').where('cid', cid).first('id');
-        const tmp = [];
-        (await tx('alerts').where('sigset', sigSetId.id).select('id')).forEach(item => tmp.push(item.id));
-        return tmp;
-    });
-
-    alertIds.forEach(alert => {
-        if (alerts.has(alert)) alerts.get(alert).execute();
+    const alertIds = await knex('alerts').innerJoin('signal_sets', 'alerts.sigset', 'signal_sets.id').where('signal_sets.cid', cid).select('alerts.id');
+    for (let i = 0; i < alertIds.length; i++) {
+        if (alerts.has(alertIds[i].id)) alerts.get(alertIds[i].id).execute();
         else {
-            const aux = new Alert(alert);
-            alerts.set(alert, aux);
-            aux.execute();
+            const aux = new Alert(alertIds[i].id);
+            await aux.execute();
+            alerts.set(alertIds[i].id, aux);
         }
-    });
+    }
 }
 
 async function purge(){

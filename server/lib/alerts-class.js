@@ -2,69 +2,27 @@
 
 const knex = require('./knex');
 const { evaluate } = require('./alerts-condition-parser');
+const moment = require('moment');
 
 class Alert{
     constructor(id){
         this.id = id;
-        this.state = 'good';
+    }
+
+    async setupTimers(state, state_changed, delay, duration) {
+        const elapsed = moment().diff(state_changed);
+        if (state === 'worse') {
+            if (elapsed >= duration * 60 * 1000) await this.conditionClockHandler();
+            else this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), (duration * 60 * 1000) - elapsed);
+        }
+        else if (state === 'better') {
+            if (elapsed >= delay * 60 * 1000) await this.conditionClockHandler();
+            else this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), (delay * 60 * 1000) - elapsed);
+        }
     }
 
     terminate(){
-        if (this.conditionClock) clearTimeout(this.conditionClock);
-    }
-
-    /*
-    * Possible states are: good, worse, bad, better.
-    * result means wrong incoming data, !result means right incoming data
-    * */
-    async changeState(result, duration, delay){
-        if (this.state === 'good' && result) {
-            if (duration === 0) {
-                this.state = 'bad';
-                await this.trigger('condition')
-            }
-            else {
-                this.state = 'worse';
-                if (this.conditionClock) clearTimeout(this.conditionClock);
-                this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), duration * 60 * 1000);
-            }
-        }
-        else if (this.state === 'worse' && !result) {
-            this.state = 'good'
-        }
-        else if (this.state === 'bad' && !result) {
-            if (delay === 0) {
-                this.state = 'good';
-                await this.revoke('condition');
-            }
-            else {
-                this.state = 'better';
-                if (this.conditionClock) clearTimeout(this.conditionClock);
-                this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), delay * 60 * 1000);
-            }
-        }
-        else if (this.state === 'better' && result) {
-            this.state = 'bad';
-        }
-    }
-
-    async conditionClockHandler(){
-        if (this.state === 'worse') {
-            this.state = 'bad';
-            await this.trigger('condition');
-        }
-        else if (this.state === 'better') {
-            this.state = 'good';
-            await this.revoke('condition');
-        }
-    }
-
-    async trigger(type){
-        await this.addLogEntry(type);
-    }
-
-    async revoke(type){
-
+        clearTimeout(this.conditionClock);
     }
 
     async execute(){
@@ -72,35 +30,84 @@ class Alert{
             const alert = await tx('alerts').where('id', this.id).first();
             if (!alert) return;
             if (!alert.enabled) {
-                await this.revoke('disabled');
-                this.state = 'good';
+                await this.revoke(tx);
                 return;
             }
             const result = await evaluate(alert.condition, alert.sigset);
-            if (typeof result === 'boolean') await this.changeState(result, alert.duration, alert.delay);
+            if (typeof result === 'boolean') await this.changeState(tx, result, alert.duration, alert.delay, alert.state);
             else await this.addLogEntryTx(tx, result);
         });
     }
 
-    async addLogEntryTx(tx, value){
-        if (await this.existsTx(tx)) await tx('alerts_log').insert({alert: this.id, type: value});
+    /*
+    * Possible states are: good, worse, bad, better.
+    * result means wrong incoming data, !result means right incoming data
+    */
+    async changeState(tx, result, duration, delay, currentState){
+        if (result) {
+            if (currentState === 'good') {
+                if (duration === 0) {
+                    await this.triggerTx(tx);
+                }
+                else {
+                    await this.writeStateTx(tx, 'worse');
+                    this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), duration * 60 * 1000);
+                }
+            }
+            else if (currentState === 'better') {
+                clearTimeout(this.conditionClock);
+                await this.writeStateTx(tx, 'bad');
+            }
+        }
+        else {
+            if (currentState === 'bad') {
+                if (delay === 0) {
+                    await this.revoke(tx);
+                }
+                else {
+                    await this.writeStateTx(tx, 'better');
+                    this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), delay * 60 * 1000);
+                }
+            }
+            else if (currentState === 'worse') {
+                clearTimeout(this.conditionClock);
+                await this.writeStateTx(tx, 'good');
+            }
+        }
     }
 
-    async addLogEntry(value){
+    async conditionClockHandler(){
         await knex.transaction(async tx => {
-            await this.addLogEntryTx(tx, value);
+            const alert = await tx('alerts').where('id', this.id).first();
+            if (!alert) return;
+            if (!alert.enabled) {
+                await this.revoke(tx);
+                return;
+            }
+            if (alert.state === 'worse') {
+                await this.triggerTx(tx);
+            }
+            else if (alert.state === 'better') {
+                await this.revoke(tx);
+            }
         });
     }
 
-    async existsTx(tx){
-        const test = await tx('alerts').where('id', this.id).first('id');
-        return !!test;
+    async triggerTx(tx){
+        await this.writeStateTx(tx, 'bad');
+        await this.addLogEntryTx(tx, 'condition');
     }
 
-    async exists(){
-        return await knex.transaction(async tx => {
-            return await this.existsTx(tx);
-        });
+    async revoke(tx){
+        await this.writeStateTx(tx, 'good');
+    }
+
+    async writeStateTx(tx, newState) {
+        await tx('alerts').where('id', this.id).update({state: newState, state_changed: moment().format('YYYY-MM-DD HH:mm:ss')});
+    }
+
+    async addLogEntryTx(tx, value){
+        await tx('alerts_log').insert({alert: this.id, type: value});
     }
 }
 
