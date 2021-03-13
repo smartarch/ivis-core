@@ -19,6 +19,7 @@ const internalLibs = {
     'axios': 'lib/axios',
     'ivis': 'ivis/ivis',
     'decorator-helpers': 'lib/decorator-helpers',
+    'bootstrap-components': 'lib/bootstrap-components',
 };
 
 const libs = [];
