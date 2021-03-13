@@ -1,7 +1,7 @@
 'use strict';
 
 import React, {Component} from "react";
-import {createBase, isSignalVisible, RenderStatus, TimeBasedChartBase} from "./TimeBasedChartBase";
+import {createBase, isSignalVisible, RenderStatus, TimeBasedChartBase, XAxisType} from "./TimeBasedChartBase";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Array from "d3-array";
@@ -150,6 +150,7 @@ export class LineChartBase extends Component {
         getLineColor: PropTypes.func,
         lineCurve: PropTypes.func,
         lineWidth: PropTypes.number,
+        xAxisType: PropTypes.oneOf([XAxisType.DATETIME, XAxisType.NUMBER]), // data type on the x-axis, TODO
 
         lineVisibility: PropTypes.func.isRequired,
         discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
@@ -761,6 +762,7 @@ export class LineChartBase extends Component {
                 loadingOverlayColor={this.props.loadingOverlayColor}
                 displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
                 minimumIntervalMs={this.props.minimumIntervalMs}
+                xAxisType={this.props.xAxisType}
             />
         );
     }

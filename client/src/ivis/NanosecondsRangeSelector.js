@@ -1,32 +1,16 @@
 'use strict';
 
 import React, {Component} from "react";
-import PropTypes
-    from "prop-types";
-import {
-    DateTimePicker,
-    Dropdown,
-    Form,
-    withForm
-} from "../lib/form";
 import styles
     from "./NanosecondsRangeSelector.scss";
-import moment
-    from "moment";
 import {
     ActionLink,
     Button,
     Icon
 } from "../lib/bootstrap-components";
-import * as dateMath
-    from "../lib/datemath";
-import {intervalAccessMixin} from "./TimeContext";
 import _ from "lodash";
-import {IntervalSpec} from "./TimeInterval";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
-import {ThemeContext} from "../lib/theme-context";
-import {Theme} from "../../../shared/themes"
 import {rangeAccessMixin} from "./RangeContext";
 
 /* helper function to split nanoseconds into readable values */
