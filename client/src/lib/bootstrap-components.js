@@ -343,7 +343,7 @@ export class RelativeTime extends Component {
         const relative = moment(ts).fromNow();
         const exact = moment(ts).format('YYYY-MM-DD HH:mm:ss');
 
-        if (moment().diff(ts) < td * 24 * 60 * 60 * 1000) return <span title = {exact}>{relative}</span>;
+        if (moment().diff(ts, 'days') < td) return <span title = {exact}>{relative}</span>;
         else return <span title = {relative}>{exact}</span>;
     }
 }
