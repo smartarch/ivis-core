@@ -204,7 +204,7 @@ export class DropdownActionLinkKeepOpen extends Component {
 
     @withAsyncErrorHandler
     onClick(evt) {
-        if (this.props.onClick) {
+        if (this.props.onClickAsync) {
             evt.preventDefault();
             evt.stopPropagation();
 
