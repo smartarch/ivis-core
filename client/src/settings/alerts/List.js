@@ -9,13 +9,11 @@ import {
     Toolbar,
     withPageHelpers
 } from "../../lib/page";
-import {Icon} from "../../lib/bootstrap-components";
+import {Icon, RelativeTime} from "../../lib/bootstrap-components";
 import {
     withAsyncErrorHandler,
     withErrorHandling
 } from "../../lib/error-handling";
-import moment
-    from "moment";
 import {checkPermissions} from "../../lib/permissions";
 import {
     tableAddDeleteButton,
@@ -64,7 +62,7 @@ export default class List extends Component {
             { data: 1, title: t('Name') },
             { data: 2, title: t('Description') },
             { data: 3, title: t('Enabled'), render: data => data === 1 ? t('Yes') : t('No') },
-            { data: 4, title: t('Created'), render: data => moment(data).fromNow() },
+            { data: 4, title: t('Created'), render: data => <RelativeTime timeStamp={data} /> },
             { data: 5, title: t('Namespace') },
             { title: t('Actions'),
                 actions: data => {

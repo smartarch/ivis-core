@@ -30,11 +30,11 @@ class Alert{
             const alert = await tx('alerts').where('id', this.id).first();
             if (!alert) return;
             if (!alert.enabled) {
-                await this.revoke(tx);
+                await this.revokeTx(tx);
                 return;
             }
             const result = await evaluate(alert.condition, alert.sigset);
-            if (typeof result === 'boolean') await this.changeState(tx, result, alert.duration, alert.delay, alert.state);
+            if (typeof result === 'boolean') await this.changeStateTx(tx, result, alert.duration, alert.delay, alert.state);
             else await this.addLogEntryTx(tx, result);
         });
     }
@@ -43,7 +43,7 @@ class Alert{
     * Possible states are: good, worse, bad, better.
     * result means wrong incoming data, !result means right incoming data
     */
-    async changeState(tx, result, duration, delay, currentState){
+    async changeStateTx(tx, result, duration, delay, currentState){
         if (result) {
             if (currentState === 'good') {
                 if (duration === 0) {
@@ -62,7 +62,7 @@ class Alert{
         else {
             if (currentState === 'bad') {
                 if (delay === 0) {
-                    await this.revoke(tx);
+                    await this.revokeTx(tx);
                 }
                 else {
                     await this.writeStateTx(tx, 'better');
@@ -81,14 +81,14 @@ class Alert{
             const alert = await tx('alerts').where('id', this.id).first();
             if (!alert) return;
             if (!alert.enabled) {
-                await this.revoke(tx);
+                await this.revokeTx(tx);
                 return;
             }
             if (alert.state === 'worse') {
                 await this.triggerTx(tx);
             }
             else if (alert.state === 'better') {
-                await this.revoke(tx);
+                await this.revokeTx(tx);
             }
         });
     }
@@ -98,7 +98,7 @@ class Alert{
         await this.addLogEntryTx(tx, 'condition');
     }
 
-    async revoke(tx){
+    async revokeTx(tx){
         await this.writeStateTx(tx, 'good');
     }
 

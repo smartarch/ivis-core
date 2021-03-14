@@ -5,6 +5,7 @@ import {withTranslation} from './i18n';
 import PropTypes from 'prop-types';
 import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import {withComponentMixins} from "./decorator-helpers";
+import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
@@ -327,3 +328,22 @@ export class ModalDialog extends Component {
     }
 }
 
+export class RelativeTime extends Component {
+    static propTypes = {
+        timeStamp: PropTypes.string.isRequired,
+        thresholdDays: PropTypes.number
+    }
+    static defaultProps = {
+        thresholdDays: 100
+    }
+
+    render() {
+        const ts = this.props.timeStamp;
+        const td = this.props.thresholdDays;
+        const relative = moment(ts).fromNow();
+        const exact = moment(ts).format('YYYY-MM-DD HH:mm:ss');
+
+        if (moment().diff(ts) < td * 24 * 60 * 60 * 1000) return <span title = {exact}>{relative}</span>;
+        else return <span title = {relative}>{exact}</span>;
+    }
+}

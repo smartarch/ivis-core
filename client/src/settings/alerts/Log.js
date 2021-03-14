@@ -11,14 +11,13 @@ import {
 import {
     withErrorHandling
 } from "../../lib/error-handling";
-import moment
-    from "moment";
 import {
     tableRestActionDialogInit,
     tableRestActionDialogRender
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {RelativeTime} from "../../lib/bootstrap-components";
 
 @withComponentMixins([
     withTranslation,
@@ -42,8 +41,7 @@ export default class Log extends Component {
         const t = this.props.t;
 
         const columns = [
-            { data: 1, title: t('Relative time'), render: data => moment(data).fromNow() },
-            { data: 1, title: t('Exact time'), render: data => moment(data).format() },
+            { data: 1, title: t('Logged'), render: data => <RelativeTime timeStamp={data} thresholdDays={7} /> },
             { data: 0, title: t('Type'), render: data => {if (data === 'test') return t('Test');
                                                           if (data === 'condition') return t('Condition');
                                                             else return data;} }
