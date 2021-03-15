@@ -2,4 +2,4 @@
 from training import *
 
 if __name__ == "__main__":
-    run_training()
+    run_training({"architecture": None}, [], "./models/example_h5.h5")
