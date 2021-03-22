@@ -28,7 +28,7 @@ import {
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
-import moment from "moment";
+import {RelativeTime} from "../../lib/bootstrap-components";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import testTrigger from "../../lib/alerts-trigger-tester";
@@ -57,13 +57,22 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
+            this.populateFormValues({ concheck: true });
             this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
+                name: '',
                 description: '',
+                duration: '',
+                delay: '',
+                interval: '',
                 condition: '',
+                concheck: true,
                 emails: '',
                 phones: '',
+                repeat: '',
+                finalnotification: false,
+                enabled: true,
                 namespace: ivisConfig.user.namespace
             });
         }
@@ -108,12 +117,15 @@ export default class CUD extends Component {
             state.setIn(['interval', 'error'], null);
         }
 
-        const conTest = checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
-        if (conTest !== 'ok') {
-            state.setIn(['condition', 'error'], conTest);
-        } else {
-            state.setIn(['condition', 'error'], null);
+        if (state.getIn(['concheck', 'value'])) {
+            const conTest = checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
+            if (conTest !== 'ok') {
+                state.setIn(['condition', 'error'], conTest);
+            } else {
+                state.setIn(['condition', 'error'], null);
+            }
         }
+        else state.setIn(['condition', 'error'], null);
 
         const minRepeat = 10;
         if (!this.validateNumericalInput(state, 'repeat', minRepeat)) {
@@ -196,7 +208,7 @@ export default class CUD extends Component {
             { data: 1, title: t('Id') },
             { data: 2, title: t('Name') },
             { data: 3, title: t('Description') },
-            { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
+            { data: 6, title: t('Created'), render: data => <RelativeTime timeStamp={data} /> },
             { data: 7, title: t('Namespace') }
         ];
 
@@ -221,6 +233,7 @@ export default class CUD extends Component {
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
                     <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes! Use 0 if not applicable!')}/>
                     <TextArea id="condition" label={t('Condition')} help={t('If this condition is satisfied, the data from sensors are unsuitable. Mind that the error check might be one step delayed.')}/>
+                    <CheckBox id="concheck" text={t('Check condition syntax (recommended)')}/>
                     <TextArea id="emails" label={t('Email addresses')} help={t('Email addresses for notifications, one per line!')}/>
                     <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line!')}/>
                     <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes! Use 0 if not applicable!')}/>
