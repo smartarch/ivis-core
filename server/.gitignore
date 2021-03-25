@@ -3,3 +3,5 @@
 /config/development.yaml
 /config/production.yaml
 /lib/tasks/python/build/
+
+.eslintrc.json

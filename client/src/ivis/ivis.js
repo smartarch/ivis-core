@@ -20,7 +20,6 @@ export * from './Legend';
 export * from './SVG';
 export * from './Records';
 export * from './Selector';
-export * from './Debug';
 export * from './ScatterPlot';
 export * from './BubblePlot';
 export * from './HeatmapChart';

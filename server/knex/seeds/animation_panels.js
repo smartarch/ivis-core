@@ -5,7 +5,11 @@ const path = require('path');
 const promisify = require('bluebird').promisify;
 const readFileAsync = promisify(fs.readFile);
 
-const exampleDirs = ['area_bar_rec', 'svg_line_pie_rec', 'server_monitor_live'].map(
+const exampleDirs = [
+    'recorded_animation_area_bar_charts',
+    'recorded_animation_svg_line_pie_charts',
+    'live_animation_server_monitor'
+].map(
     dirName => path.join('..', '..', 'examples', 'templates', dirName)
 );
 const templates = [

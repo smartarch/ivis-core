@@ -1,7 +1,2 @@
 /.idea
-
-*.swp
-
 /node_modules
-
-Session.vim

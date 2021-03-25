@@ -64,8 +64,8 @@ case "$hostType" in
         redisService=redis-server
         apacheConf="/etc/apache2/conf-available/${productId}.conf"
         apacheLogsPath="/var/log/apache2"
-        userId=dburian
-        groupId=dburian
+        userId=ubuntu
+        groupId=ubuntu
 
         if hash ufw 2>/dev/null; then
             firewallCmdExists=true
@@ -97,7 +97,7 @@ EOF
     fi
 
     installPrerequisities
-    installIvis http://localhost:8080 http://localhost:8081 0.0.0.0 false "${apiUsesClientCerts}" 
+    installIvis http://localhost:8080 http://localhost:8081 0.0.0.0 false "${apiUsesClientCerts}"
     installService
 
     echo
@@ -251,7 +251,7 @@ certs:
     mysql -u root -e "CREATE USER '$productId'@'localhost' IDENTIFIED BY '$mysqlPassword';"
     mysql -u root -e "GRANT ALL PRIVILEGES ON \`$productId\`.* TO '$productId'@'localhost';"
     mysql -u $productId --password="$mysqlPassword" -e "CREATE database \`$productId\`;"
-    
+
     # Setup installation configuration
     cat > server/config/production.yaml <<EOT
 $emailCnf
@@ -301,7 +301,6 @@ function doForAllModules {
             ($1 $idx)
         fi
     done
-    echo Reinstalling done
 }
 
 function reinstallModules {
@@ -326,8 +325,8 @@ function installHttpd {
             systemctl start httpd
             systemctl enable httpd
 
-	    #enable SELinux first && set policy
-            #setsebool -P httpd_can_network_connect 1
+            #enable SELinux first && set policy
+            setsebool -P httpd_can_network_connect 1
 
             if [ "$firewallCmdExists" == "true" ]; then
                 # Enable SSL ports on the firewall
