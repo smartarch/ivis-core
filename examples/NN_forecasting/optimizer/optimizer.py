@@ -86,6 +86,7 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     training_params.query = get_els_docs_query(parameters)
     training_params.index = get_els_index(parameters)
     training_params.inputSchema = get_schema(parameters["inputSignals"], parameters)
+    training_params.targetSchema = get_schema(parameters["targetSignals"], parameters)
 
     print(training_params)
 

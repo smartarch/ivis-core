@@ -1,0 +1,28 @@
+{
+  "architecture": "LSTM",
+  "query": {
+    "size": 5,
+    "_source": [
+      "s37",
+      "s38",
+      "s39"
+    ],
+    "sort": [
+      {
+        "s36": "desc"
+      }
+    ],
+    "query": {
+      "match_all": {}
+    }
+  },
+  "index": "signal_set_13",
+  "inputSchema": {
+    "s37": "float",
+    "s38": "integer"
+  },
+  "targetSchema": {
+    "s39": "float"
+  },
+  "tsField": null
+}
