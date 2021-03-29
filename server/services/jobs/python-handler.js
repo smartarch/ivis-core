@@ -178,12 +178,14 @@ async function init(config, onSuccess, onFail) {
         const packages = getPackages(subtype);
         const commands = getCommands(subtype);
         const buildDir = path.join(destDir, '..', 'build');
+        const envBuildDir = path.join(destDir, '..', 'envbuild');
         await fs.emptyDirAsync(buildDir);
+        await fs.emptyDirAsync(envBuildDir);
 
         const filePath = path.join(buildDir, JOB_FILE_NAME);
         await fs.writeFileAsync(filePath, code);
 
-        const envDir = path.join(buildDir, ENV_NAME);
+        const envDir = path.join(envBuildDir, ENV_NAME);
 
         const virtDir = path.join(envDir, 'bin', 'activate');
 
@@ -207,6 +209,7 @@ async function init(config, onSuccess, onFail) {
             console.log(error);
             onFail(null, [error.toString()]);
             await fs.removeAsync(buildDir);
+            await fs.removeAsync(envBuildDir);
         });
 
         let output = '';
@@ -223,11 +226,14 @@ async function init(config, onSuccess, onFail) {
         virtEnv.on('exit', async (code, signal) => {
             if (code === 0) {
                 await fs.moveAsync(buildDir, destDir, {overwrite: true});
+                const envDir = path.join(destDir, '..');
+                await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
                 await onSuccess(null);
             } else {
                 await onFail(null, [`Init ended with code ${code} and the following error:\n${output}`]);
             }
             await fs.removeAsync(buildDir);
+            await fs.removeAsync(envBuildDir);
         });
     } catch (error) {
         console.log(error);
