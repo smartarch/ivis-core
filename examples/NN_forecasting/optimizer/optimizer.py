@@ -22,6 +22,11 @@ class TrainingParams:
             str(self.targetSchema)
 
 
+#########################
+# Elasticsearch queries #
+#########################
+
+
 def get_entities_signals(parameters):
     sigSetCid = parameters["signalSet"]
     return parameters["entities"]["signals"][sigSetCid]
@@ -99,6 +104,11 @@ def get_schema(signals, parameters):
         signal = entities_signals[sig["cid"]]
         schema[signal["field"]] = signal["type"]
     return schema
+
+
+########
+# Main #
+########
 
 
 def run_optimizer(parameters, run_training_callback, finish_training_callback, log_callback):

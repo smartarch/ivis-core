@@ -2,12 +2,24 @@
 import numpy as np
 # import tensorflow as tf
 
+#########################
+# Elasticsearch results #
+#########################
 
-def parse_signal_values(field, docs):
+
+def parse_signal_values_from_docs(field, docs):
     """Returns the values of one signal as np array (vector)"""
     values = []
     for d in docs:
         values.append(d["_source"][field])
+    return np.array(values)
+
+
+def parse_signal_values_from_buckets(field, buckets):
+    """Returns the values of one signal as np array (vector)"""
+    values = []
+    for b in buckets:
+        values.append(b[field]["value"])
     return np.array(values)
 
 
@@ -34,6 +46,10 @@ def get_hits(data):
     return data["hits"]["hits"]
 
 
+def get_buckets(data):
+    return data["aggregations"]["aggregated_data"]["buckets"]
+
+
 def parse_els_docs(training_parameters, data):
     docs = get_hits(data)
     input_schema = training_parameters["inputSchema"]
@@ -41,19 +57,46 @@ def parse_els_docs(training_parameters, data):
 
     inputValues = [] 
     for sig, sig_type in input_schema.items():
-        sig_values = parse_signal_values(sig, docs)
+        sig_values = parse_signal_values_from_docs(sig, docs)
         sig_values = preprocess_signal_values(sig_values, sig_type)
         inputValues.append(sig_values)
     X = np.hstack(inputValues)
 
     targetValues = []
     for sig, sig_type in target_schema.items():
-        sig_values = parse_signal_values(sig, docs)
+        sig_values = parse_signal_values_from_docs(sig, docs)
         sig_values = preprocess_signal_values(sig_values, sig_type)
         targetValues.append(sig_values)
     Y = np.hstack(targetValues)
 
     return X, Y
+
+
+def parse_els_histogram(training_parameters, data):
+    buckets = get_buckets(data)
+    input_schema = training_parameters["inputSchema"]
+    target_schema = training_parameters["targetSchema"]
+
+    inputValues = []
+    for sig, sig_type in input_schema.items():
+        sig_values = parse_signal_values_from_buckets(sig, buckets)  # TODO: more than just avg aggregation
+        sig_values = preprocess_signal_values(sig_values, sig_type)
+        inputValues.append(sig_values)
+    X = np.hstack(inputValues)
+
+    targetValues = []
+    for sig, sig_type in target_schema.items():
+        sig_values = parse_signal_values_from_buckets(sig, buckets)
+        sig_values = preprocess_signal_values(sig_values, sig_type)
+        targetValues.append(sig_values)
+    Y = np.hstack(targetValues)
+
+    return X, Y
+
+
+########
+# Main #
+########
 
 
 def run_training(training_parameters, data, model_save_path):
@@ -77,7 +120,7 @@ def run_training(training_parameters, data, model_save_path):
 
     """
 
-    X, Y = parse_els_docs(training_parameters, data)
+    X, Y = parse_els_histogram(training_parameters, data)
     print(X)
     print(Y)
 
