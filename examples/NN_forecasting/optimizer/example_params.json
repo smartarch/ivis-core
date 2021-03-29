@@ -1,0 +1,100 @@
+{
+  "signalSet": "top:gapminder",
+  "tsSigCid": "year",
+  "inputSignals": [{
+    "cid": "fertility_rate"
+  }, {
+    "cid": "income_per_person"
+  }],
+  "targetSignals": [{
+    "cid": "life_expectancy"
+  }],
+
+  "entities": {
+    "signalSets": {
+      "top:gapminder": {
+        "id": 13,
+        "cid": "top:gapminder",
+        "name": "gapminder",
+        "description": "",
+        "state": "{\"indexing\":{\"status\":0}}",
+        "created": "2020-03-13T17:39:51.000Z",
+        "namespace": 2,
+        "record_id_template": null,
+        "type": "normal",
+        "settings": "{}",
+        "kind": "generic",
+        "metadata": null,
+        "index": "signal_set_13"
+      }
+    },
+    "signals": {
+      "top:gapminder": {
+        "year": {
+          "id": 36,
+          "cid": "year",
+          "name": "year",
+          "description": null,
+          "type": "date",
+          "settings": "{}",
+          "created": "2020-03-13T17:39:51.000Z",
+          "set": 13,
+          "namespace": 2,
+          "indexed": 1,
+          "weight_list": null,
+          "weight_edit": 0,
+          "source": "raw",
+          "field": "s36"
+        },
+        "fertility_rate": {
+          "id": 37,
+          "cid": "fertility_rate",
+          "name": "fertility_rate",
+          "description": null,
+          "type": "float",
+          "settings": "{}",
+          "created": "2020-03-13T17:39:51.000Z",
+          "set": 13,
+          "namespace": 2,
+          "indexed": 1,
+          "weight_list": null,
+          "weight_edit": 0,
+          "source": "raw",
+          "field": "s37"
+        },
+        "income_per_person": {
+          "id": 38,
+          "cid": "income_per_person",
+          "name": "income_per_person",
+          "description": null,
+          "type": "integer",
+          "settings": "{}",
+          "created": "2020-03-13T17:39:51.000Z",
+          "set": 13,
+          "namespace": 2,
+          "indexed": 1,
+          "weight_list": null,
+          "weight_edit": 0,
+          "source": "raw",
+          "field": "s38"
+        },
+        "life_expectancy": {
+          "id": 39,
+          "cid": "life_expectancy",
+          "name": "life_expectancy",
+          "description": null,
+          "type": "float",
+          "settings": "{}",
+          "created": "2020-03-13T17:39:51.000Z",
+          "set": 13,
+          "namespace": 2,
+          "indexed": 1,
+          "weight_list": null,
+          "weight_edit": 0,
+          "source": "raw",
+          "field": "s39"
+        }
+      }
+    }
+  }
+}

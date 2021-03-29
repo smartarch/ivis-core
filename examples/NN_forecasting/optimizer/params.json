@@ -1,0 +1,40 @@
+[
+  {
+    "id": "signalSet",
+    "help": "Signal Set to predict",
+    "type": "signalSet",
+    "label": "Signal Set"
+  },
+  {
+    "id": "tsSigCid",
+    "label": "TS Signal",
+    "type": "signal",
+    "signalSetRef": "signalSet"
+  },
+  {
+    "id": "inputSignals",
+    "label": "Input Signals",
+    "help": "Signals to use for prediction.",
+    "type": "fieldset",
+    "cardinality": "1..n",
+    "children": [{
+      "id": "cid",
+      "label": "Signal",
+      "type": "signal",
+      "signalSetRef": "../../signalSet"
+    }]
+  },
+  {
+    "id": "targetSignals",
+    "label": "Target Signals",
+    "help": "Signals to predict.",
+    "type": "fieldset",
+    "cardinality": "1..n",
+    "children": [{
+      "id": "cid",
+      "label": "Signal",
+      "type": "signal",
+      "signalSetRef": "../../signalSet"
+    }]
+  }
+]

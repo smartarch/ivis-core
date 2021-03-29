@@ -1,0 +1,86 @@
+{
+  "took": 2,
+  "timed_out": false,
+  "_shards": {
+    "total": 5,
+    "successful": 5,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": 2232,
+    "max_score": null,
+    "hits": [
+      {
+        "_index": "signal_set_13",
+        "_type": "_doc",
+        "_id": "0023",
+        "_score": null,
+        "_source": {
+          "s37": 1.65,
+          "s39": 77.64,
+          "s38": 9928
+        },
+        "sort": [
+          1262304000000
+        ]
+      },
+      {
+        "_index": "signal_set_13",
+        "_type": "_doc",
+        "_id": "0107",
+        "_score": null,
+        "_source": {
+          "s37": 1.44,
+          "s39": 80.58,
+          "s38": 43336
+        },
+        "sort": [
+          1262304000000
+        ]
+      },
+      {
+        "_index": "signal_set_13",
+        "_type": "_doc",
+        "_id": "0119",
+        "_score": null,
+        "_source": {
+          "s37": 1.96,
+          "s39": 69.3,
+          "s38": 16216
+        },
+        "sort": [
+          1262304000000
+        ]
+      },
+      {
+        "_index": "signal_set_13",
+        "_type": "_doc",
+        "_id": "0143",
+        "_score": null,
+        "_source": {
+          "s37": 2.14,
+          "s39": 78.23,
+          "s38": 40571
+        },
+        "sort": [
+          1262304000000
+        ]
+      },
+      {
+        "_index": "signal_set_13",
+        "_type": "_doc",
+        "_id": "0167",
+        "_score": null,
+        "_source": {
+          "s37": 1.78,
+          "s39": 76.74,
+          "s38": 16276
+        },
+        "sort": [
+          1262304000000
+        ]
+      }
+    ]
+  }
+}

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 from optimizer import *
+import json
 
 
 def run_training(training_params):
-    pass
+    return {
+        "train_loss": 1.22,
+        "test_loss": 3.4,
+    }
 
 
 def finish_training(save_model):
@@ -15,4 +19,6 @@ def print_log(message):
 
 
 if __name__ == "__main__":
-    run_optimizer({'architecture': None}, run_training, finish_training, print_log)
+    with open('example_params.json') as params_file:
+        params = json.load(params_file)
+    run_optimizer(params, run_training, finish_training, print_log)
