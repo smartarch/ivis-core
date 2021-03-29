@@ -27,14 +27,22 @@ def get_entities_signals(parameters):
     return parameters["entities"]["signals"][sigSetCid]
 
 
-def get_els_docs_query(parameters):
-    signals = parameters["inputSignals"] + parameters["targetSignals"]
+def get_signal_helpers(parameters):
     entities_signals = get_entities_signals(parameters)
 
     def cid_to_field(cid):
         return entities_signals[cid]["field"]
+
     def sig_to_field(sig):
         return cid_to_field(sig["cid"])
+
+    return cid_to_field, sig_to_field
+
+
+def get_els_docs_query(parameters):
+    """Creates a query for ES to return the docs (in their original form)."""
+    signals = parameters["inputSignals"] + parameters["targetSignals"]
+    cid_to_field, sig_to_field = get_signal_helpers(parameters)
     ts_field = cid_to_field(parameters["tsSigCid"])
 
     return {
@@ -43,6 +51,38 @@ def get_els_docs_query(parameters):
        'sort': [{ts_field: 'desc'}],  # TODO: time sort direction
        'query': {  # TODO: add filtering? (time interval)
           "match_all": {}
+       }
+    }
+
+
+def get_els_histogram_query(parameters):
+    """Creates a query for ES to return a date histogram aggregation."""
+    signals = parameters["inputSignals"] + parameters["targetSignals"]
+    cid_to_field, sig_to_field = get_signal_helpers(parameters)
+    ts_field = cid_to_field(parameters["tsSigCid"])
+
+    signal_aggs = dict()
+    for sig in signals:
+        field = sig_to_field(sig)
+        signal_aggs[field] = {
+            "avg": {  # TODO: min, max? possibly more at the same time (one key in signal_aggs is needed for each agg)
+                "field": field
+            }
+        }
+    # TODO: Is it necessary to add sort? → possibly for size?
+
+    return {
+       "size": 0,
+       "aggs": {
+           "aggregated_data": {
+               "date_histogram": {
+                   "field": ts_field,
+                   "interval": "3652d",  # 10 years # TODO
+                   "offset": "0d",
+                   "min_doc_count": 1  # TODO: what to do with missing data?
+               },
+               "aggs": signal_aggs
+           }
        }
     }
 
@@ -83,7 +123,8 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     # prepare the parameters
     training_params = TrainingParams()
     training_params.architecture = "LSTM"
-    training_params.query = get_els_docs_query(parameters)
+    # training_params.query = get_els_docs_query(parameters)
+    training_params.query = get_els_histogram_query(parameters)
     training_params.index = get_els_index(parameters)
     training_params.inputSchema = get_schema(parameters["inputSignals"], parameters)
     training_params.targetSchema = get_schema(parameters["targetSignals"], parameters)
