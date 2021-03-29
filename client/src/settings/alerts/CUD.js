@@ -227,7 +227,7 @@ export default class CUD extends Component {
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
-                    <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
+                    <TextArea id="description" label={t('Description')} help={t('This description is used in notifications.')}/>
                     <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2} help={t('Select signal set to watch.')}/>
                     <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
@@ -247,7 +247,7 @@ export default class CUD extends Component {
                         {isEdit && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
                         {isEdit && <Button className="btn-warning" icon="bolt" label={t('Trigger')} title={t('Test this alert with manual trigger')}
-                                onClickAsync={async () => {await testTrigger(this.props.entity.id); alert(t('The alert was manually triggered!'))}} /> }
+                                onClickAsync={async () => {if (await testTrigger(this.props.entity.id)) alert(t('The alert was manually triggered!'))}} /> }
                     </ButtonRow>
                 </Form>
             </Panel>

@@ -5,6 +5,12 @@ import {getUrl} from "./urls";
 
 const addUrl = 'rest/alerts-log';
 
+let testReady = true;
+
 export default async function testTrigger (alertId){
-    await axios.method(HTTPMethod.POST, getUrl(addUrl), {alert: alertId, type: 'test'});
+    if (!testReady) return false;
+    testReady = false;
+    axios.method(HTTPMethod.POST, getUrl(addUrl), {alert: alertId, type: 'test'});
+    setTimeout(() => testReady = true, 10 * 1000);
+    return true;
 }

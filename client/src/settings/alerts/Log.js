@@ -43,7 +43,8 @@ export default class Log extends Component {
         const columns = [
             { data: 1, title: t('Logged'), render: data => <RelativeTime timeStamp={data} thresholdDays={7} /> },
             { data: 0, title: t('Type'), render: data => {if (data === 'test') return t('Test');
-                                                          if (data === 'condition') return t('Condition');
+                                                          if (data === 'trigger') return t('Triggered');
+                                                          if (data === 'revoke') return t('Revoked');
                                                             else return data;} }
         ];
         return (

@@ -22,6 +22,14 @@ elasticsearch:
 alerts:
   maxResultsWindow: 1000
 
+# FILL IN BEFORE USE !!!
+# Tested configuration is - host: "smtp.seznam.cz", port: 465, account: "yourname@seznam.cz", password: "yourpassword"
+email:
+  host:
+  port:
+  account:
+  password:
+
 mysql:
   host: localhost
   user: ivis
