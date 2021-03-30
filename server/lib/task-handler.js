@@ -12,7 +12,7 @@ const config = require("./config");
 
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
-const {BuildState, getTransitionStates} = require('../../shared/tasks');
+const {BuildState, getTransitionStates, PYTHON_JOB_FILE_NAME} = require('../../shared/tasks');
 const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
@@ -122,7 +122,7 @@ function onFilesUpload(type, subtype, entityId, files) {
     if (type === 'task') {
         setImmediate(async () => {
             const dir = getFilesDir(type, subtype, entityId);
-            const filesDir = path.join(getTaskDir(entityId), 'files');
+            const filesDir = getTaskBuildOutputDir(entityId);
             for (const file of files) {
                 await fs.copyAsync(path.join(dir, file.name), path.join(filesDir, file.originalName), {});
             }
@@ -133,7 +133,7 @@ function onFilesUpload(type, subtype, entityId, files) {
 function onRemoveFile(type, subtype, entityId, file) {
     if (type === 'task') {
         setImmediate(async () => {
-            const filePath = path.join(getTaskDir(entityId), 'files', file.originalName);
+            const filePath = path.join(getTaskBuildOutputDir(entityId), file.originalName);
             await fs.removeAsync(filePath);
         })
     }
@@ -142,8 +142,17 @@ function onRemoveFile(type, subtype, entityId, file) {
 function onRemoveAllFiles(type, subtype, entityId) {
     if (type === 'task') {
         setImmediate(async () => {
-            const filesDir = path.join(getTaskDir(entityId), 'files');
-            await fs.emptyDirAsync(filesDir);
+            try {
+                const filesDir = path.join(getTaskBuildOutputDir(entityId));
+                const files = await fs.readdirAsync(filesDir);
+                for (const file of files) {
+                    if (file != PYTHON_JOB_FILE_NAME) {
+                        await fs.removeAsync(path.join(filesDir, file));
+                    }
+                }
+            } catch (e) {
+                log.error(e);
+            }
         })
     }
 }

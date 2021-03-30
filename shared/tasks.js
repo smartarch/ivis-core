@@ -11,6 +11,9 @@ const PythonSubtypes = {
     NUMPY: 'numpy'
 };
 
+// File name of every build output
+const PYTHON_JOB_FILE_NAME = 'job.py';
+
 const subtypesByType = {
     [TaskType.PYTHON]: PythonSubtypes
 };
@@ -50,5 +53,6 @@ module.exports = {
     TaskSource,
     getFinalStates,
     getTransitionStates,
-    isTransitionState
+    isTransitionState,
+    PYTHON_JOB_FILE_NAME
 };

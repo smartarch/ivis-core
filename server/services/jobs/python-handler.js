@@ -2,13 +2,11 @@
 const path = require('path');
 const fs = require('fs-extra-promise');
 const spawn = require('child_process').spawn;
-const {PythonSubtypes, defaultSubtypeKey} = require('../../../shared/tasks');
+const {PythonSubtypes, defaultSubtypeKey, PYTHON_JOB_FILE_NAME: JOB_FILE_NAME} = require('../../../shared/tasks');
 const readline = require('readline');
 const ivisConfig = require('../../lib/config');
 const em = require('../../lib/extension-manager');
 
-// File name of every build output
-const JOB_FILE_NAME = 'job.py';
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
 const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'ivis', 'dist');
@@ -53,7 +51,7 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
             ...inputData
         };
 
-        const pythonExec = path.join(taskDir, ENV_NAME, 'bin', 'python');
+        const pythonExec = path.join(taskDir, '..', ENV_NAME, 'bin', 'python');
         const jobProc = spawn(`${pythonExec} ${JOB_FILE_NAME}`, {
             cwd: taskDir,
             shell: '/bin/bash',
@@ -177,6 +175,8 @@ async function init(config, onSuccess, onFail) {
     try {
         const packages = getPackages(subtype);
         const commands = getCommands(subtype);
+
+        const envDir = path.join(destDir, '..', ENV_NAME);
         const buildDir = path.join(destDir, '..', 'build');
         const envBuildDir = path.join(destDir, '..', 'envbuild');
         await fs.emptyDirAsync(buildDir);
@@ -185,12 +185,11 @@ async function init(config, onSuccess, onFail) {
         const filePath = path.join(buildDir, JOB_FILE_NAME);
         await fs.writeFileAsync(filePath, code);
 
-        const envDir = path.join(envBuildDir, ENV_NAME);
 
-        const virtDir = path.join(envDir, 'bin', 'activate');
+        const virtDir = path.join(envBuildDir, 'bin', 'activate');
 
         const cmdsChain = []
-        cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envDir}`)
+        cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envBuildDir}`)
         cmdsChain.push(`source ${virtDir}`)
         cmdsChain.push(`pip install ${packages.join(' ')} `)
         if (commands) {
@@ -226,7 +225,6 @@ async function init(config, onSuccess, onFail) {
         virtEnv.on('exit', async (code, signal) => {
             if (code === 0) {
                 await fs.moveAsync(buildDir, destDir, {overwrite: true});
-                const envDir = path.join(destDir, '..');
                 await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
                 await onSuccess(null);
             } else {
@@ -236,7 +234,7 @@ async function init(config, onSuccess, onFail) {
             await fs.removeAsync(envBuildDir);
         });
     } catch (error) {
-        console.log(error);
+        console.error(error);
         onFail(null, [error.toString()]);
     }
 }
