@@ -224,6 +224,18 @@ async function init(config, onSuccess, onFail) {
 
         virtEnv.on('exit', async (code, signal) => {
             if (code === 0) {
+                // TODO this should involve better system for handling stored files / copying them on built to dist dir
+                // for now we'll see what the required functionality will be, so we just keep the old files present
+                const destExists = await fs.existsAsync(destDir);
+                if (destExists) {
+                    const files = await fs.readdirAsync(destDir);
+                    for (const file of files) {
+                        if (file != JOB_FILE_NAME) {
+                            await fs.copyAsync(path.join(destDir, file), path.join(buildDir, file), {overwrite: false});
+                        }
+                    }
+                }
+
                 await fs.moveAsync(buildDir, destDir, {overwrite: true});
                 await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
                 await onSuccess(null);

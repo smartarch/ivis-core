@@ -13,7 +13,7 @@ const config = require("./config");
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
 const {BuildState, getTransitionStates, PYTHON_JOB_FILE_NAME} = require('../../shared/tasks');
-const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
+const {storeBuiltinTasks, list} = require('../models/builtin-tasks');
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
 const {emitter: taskEmitter} = require('./task-events');
@@ -195,6 +195,22 @@ async function initIndices() {
 
 async function initBuiltin() {
     await storeBuiltinTasks();
+
+    // Copy the builtin-files to dist folder
+    const builtinTaskFilesDir = path.join(__dirname, '..', 'builtin-files');
+    const builtinTasks = await list();
+    for (const task of builtinTasks) {
+        const filesPath = path.join(builtinTaskFilesDir, task.name);
+        const hasFiles = await fs.existsAsync(filesPath);
+        if (hasFiles) {
+            const files = await fs.readdirAsync(filesPath);
+            for (const file of files) {
+                console.log(task.id);
+                console.log(path.join(getTaskBuildOutputDir(task.id), file));
+                await fs.copyAsync(path.join(filesPath, file), path.join(getTaskBuildOutputDir(task.id), file), {overwrite: true});
+            }
+        }
+    }
 }
 
 /**

@@ -401,7 +401,7 @@ async function getBuiltinTask(name) {
 }
 
 /**
- * Check if builtin in task with fiven name alredy exists
+ * Check if builtin in task with given name already exists
  * @param tx
  * @param name
  * @return {Promise<any>} undefined if not found, found task otherwise
