@@ -12,6 +12,7 @@ export function getSignalTypes(t) {
         [SignalType.TEXT]: t('Text'),
         [SignalType.DATE_TIME]: t('Date/Time'),
         [SignalType.JSON]: t('JSON'),
+        [SignalType.BLOB]: t('BLOB'),
     }
 }
 

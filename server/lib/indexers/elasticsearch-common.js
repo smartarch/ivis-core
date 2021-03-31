@@ -22,6 +22,7 @@ const fieldTypes = {
     [SignalType.TEXT]: 'text',
     [SignalType.DATE_TIME]: 'date',
     [SignalType.JSON]: 'object',
+    [SignalType.BLOB]: 'binary',
 };
 
 async function createIndex(sigSet, signalByCidMap) {

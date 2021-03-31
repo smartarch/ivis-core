@@ -102,6 +102,8 @@ export default class ParamTypes {
                 if (mode === "json") {
                     const formId = this.getParamFormId(prefix, spec.id);
                     const val = state.getIn([formId, 'value']);
+                    if (val === '')
+                        return;
 
                     try {
                         JSON.parse(val);
@@ -347,13 +349,11 @@ export default class ParamTypes {
                     {data: 6, title: t('Namespace')}
                 ];
 
-                // filter by type of signal
                 let filterByType;
-                if (spec.signalType)
-                    if (Array.isArray(spec.signalType))
-                        filterByType = data => data.filter(d => spec.signalType.includes(d[4]));
-                    else
-                        filterByType = data => data.filter(d => d[4] === spec.signalType);
+                if (spec.signalType) {
+                    const types = Array.isArray(spec.signalType) ? spec.signalType.join(" ") : spec.signalType;
+                    filterByType = [null, null, null, types, null, null]; // this should have the same length as signalColumns
+                }
 
                 if (signalSetCid) {
                     return <TableSelect
@@ -368,7 +368,7 @@ export default class ParamTypes {
                         selectionLabelIndex={2}
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSetCid}`}
-                        dataFilter={filterByType}
+                        searchCols={filterByType}
                     />;
                 } else {
                     return <AlignedRow key={spec.id}>

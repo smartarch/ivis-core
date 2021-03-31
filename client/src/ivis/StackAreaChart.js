@@ -16,6 +16,7 @@ import tooltipStyles
     from "./Tooltip.scss";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 
 @withComponentMixins([
@@ -42,12 +43,17 @@ export class StackAreaChart extends Component {
         margin: PropTypes.object,
         withTooltip: PropTypes.bool,
         withBrush: PropTypes.bool,
+        withZoom: PropTypes.bool,
+        zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        loadingOverlayColor: PropType_d3Color(),
+        displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
         lineCurve: PropTypes.func,
         signalAgg: PropTypes.string,
-        prepareData: PropTypes.func
+        prepareData: PropTypes.func,
+        discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
     }
 
     static defaultProps = {
@@ -55,6 +61,7 @@ export class StackAreaChart extends Component {
         height: 500,
         withTooltip: true,
         withBrush: true,
+        withZoom: true,
         lineCurve: d3Shape.curveLinear,
         signalAgg: 'avg'
     }
@@ -103,6 +110,7 @@ export class StackAreaChart extends Component {
                         const yScale = yScales[getAxisIdx(sigConf)];
 
                         const minMaxArea = d3Shape.area()
+                            .defined(d => d !== null)
                             .x(d => xScale(d.ts))
                             .y0(d => yScale(0))
                             .y1(d => yScale(d.data[sigCid]._stackAccumulator))
@@ -164,7 +172,11 @@ export class StackAreaChart extends Component {
                 getLineColor={color => color.darker()}
                 lineVisibility={lineWithoutPoints}
                 lineCurve={props.lineCurve}
-                withZoom={true}
+                withZoom={props.withZoom}
+                zoomUpdateReloadInterval={props.zoomUpdateReloadInterval}
+                discontinuityInterval={this.props.discontinuityInterval}
+                loadingOverlayColor={this.props.loadingOverlayColor}
+                displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
             />
         );
     }

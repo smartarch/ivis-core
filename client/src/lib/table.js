@@ -44,7 +44,6 @@ class Table extends Component {
     static propTypes = {
         dataUrl: PropTypes.string,
         data: PropTypes.array,
-        dataFilter: PropTypes.func, // data_array => filtered_data_array
         columns: PropTypes.array,
         selectMode: PropTypes.number,
         selection: PropTypes.oneOfType([PropTypes.array, PropTypes.string, PropTypes.number]),
@@ -54,7 +53,9 @@ class Table extends Component {
         onSelectionDataAsync: PropTypes.func,
         withHeader: PropTypes.bool,
         refreshInterval: PropTypes.number,
-        pageLength: PropTypes.number
+        pageLength: PropTypes.number,
+        search: PropTypes.string, // initial value of the search field
+        searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
     }
 
     static defaultProps = {
@@ -130,15 +131,7 @@ class Table extends Component {
     async fetchData(data, callback) {
         // This custom ajax fetch function allows us to properly handle the case when the user is not authenticated.
         const response = await axios.post(getUrl(this.props.dataUrl), data);
-        callback(this.filterData(response.data));
-    }
-
-    filterData(data) {
-        if (typeof this.props.dataFilter === "function") {
-            data.data = this.props.dataFilter(data.data)
-            data.recordsFiltered = data.data.length;
-        }
-        return data;
+        callback(response.data);
     }
 
     @withAsyncErrorHandler
@@ -293,6 +286,13 @@ class Table extends Component {
                 "<'row'<'col-sm-12'<'" + styles.dataTableTable + "'tr>>>" +
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
         };
+        if (this.props.search)
+            dtOptions.search = { search: this.props.search };
+        if (this.props.searchCols) {
+            dtOptions.searchCols = this.props.searchCols.map(value => value !== null ? ({
+                search: value,
+            }) : null)
+        }
 
         const self = this;
         dtOptions.createdRow = function(row, data) {
@@ -336,8 +336,6 @@ class Table extends Component {
 
         if (this.props.data) {
             dtOptions.data = this.props.data;
-            if (typeof this.props.dataFilter === "function")
-                dtOptions.data = this.props.dataFilter(dtOptions.data)
         } else {
             dtOptions.serverSide = true;
             dtOptions.ajax = ::this.fetchData;

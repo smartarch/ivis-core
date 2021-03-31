@@ -128,7 +128,8 @@ class DataAccess {
         [sigSetCid]: {
           tsSigCid: 'ts',
           signals: [sigCid],
-          mustExist: [sigCid]
+          mustExist: [sigCid],
+          horizon: moment.duration,
         }
       }
     */
@@ -139,17 +140,16 @@ class DataAccess {
             const sigSet = sigSets[sigSetCid];
             const tsSig = getTsSignalCid(sigSet);
 
+            const tsRange = {
+                type: 'range',
+                sigCid: tsSig,
+                [timeSeriesPointType]: ts.toISOString()
+            };
             const qry = {
                 sigSetCid,
                 filter: {
                     type: 'and',
-                    children: [
-                        {
-                            type: 'range',
-                            sigCid: tsSig,
-                            [timeSeriesPointType]: ts.toISOString()
-                        }
-                    ]
+                    children: [ tsRange ]
                 }
             };
 
@@ -941,7 +941,12 @@ export class TimeSeriesLimitedPointsProvider extends Component {
         signalSets: PropTypes.object.isRequired,
         limit: PropTypes.number.isRequired,
         renderFun: PropTypes.func.isRequired,
-        loadingRenderFun: PropTypes.func
+        loadingRenderFun: PropTypes.func,
+        tsSpec: PropTypes.object,
+    }
+
+    static defaultProps = {
+        tsSpec: TimeSeriesPointPredefs.CURRENT
     }
 
     async fetchDataFun(dataAccessSession, intervalAbsolute) {
@@ -959,7 +964,7 @@ export class TimeSeriesLimitedPointsProvider extends Component {
                     {
                         type: 'range',
                         sigCid: tsSig,
-                        [TimeSeriesPointType.LTE]: moment().toISOString()
+                        [this.props.tsSpec.pointType]: this.props.tsSpec.getTs(intervalAbsolute).toISOString()
                     }
                 ]
             }
@@ -999,4 +1004,11 @@ export class TimeSeriesLimitedPointsProvider extends Component {
             />
         );
     }
+}
+
+export async function getSignalSetMetadata(sigSetCid) {
+    const response = await axios.get(getUrl(`rest/signal-sets-by-cid/${sigSetCid}`));
+    if (response && response.data && response.data.metadata)
+        return response.data.metadata;
+    return null;
 }

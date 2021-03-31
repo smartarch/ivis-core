@@ -1,7 +1,7 @@
 'use strict';
 
 import React from "react";
-import {ACEEditor, CheckBox, DateTimePicker, InputField} from "../../lib/form";
+import {ACEEditor, CheckBox, DateTimePicker, InputField, TextArea} from "../../lib/form";
 import moment from "moment";
 
 const { SignalType, SignalSource } = require('../../../../shared/signals');
@@ -86,6 +86,8 @@ export default class FieldTypes {
         this.fieldTypes[SignalType.JSON] = {
             localValidate: (sigSpec, state, formId) => {
                 const val = state.getIn([formId, 'value']);
+                if (val === '')
+                    return;
 
                 try {
                     const o = JSON.parse(val);
@@ -102,6 +104,15 @@ export default class FieldTypes {
             render: (sigSpec, self, formId) => <ACEEditor key={sigSpec.cid} id={formId} label={sigSpec.name} mode={"json"} height={100} />,
             getSignal: (sigSpec, data, formId) => data[formId] === '' ? null : JSON.parse(data[formId]),
             populateFields: (sigSpec, data, value, formId) => data[formId] = value === null ? '' : JSON.stringify(value)
+        };
+
+        this.fieldTypes[SignalType.BLOB] = {
+            localValidate: (sigSpec, state, formId) => {
+                // TODO: validate (possibly using https://www.npmjs.com/package/is-base64)
+            },
+            render: (sigSpec, self, formId) => <TextArea key={sigSpec.cid} id={formId} label={sigSpec.name}/>,
+            getSignal: (sigSpec, data, formId) => data[formId] === '' ? null : data[formId],
+            populateFields: (sigSpec, data, value, formId) => data[formId] = value === null ? '' : value
         };
     }
 

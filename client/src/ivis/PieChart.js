@@ -56,6 +56,8 @@ export class StaticPieChart extends Component {
         getArcColor: PropTypes.func,
         getLabelColor: PropTypes.func,
         colors: PropTypes.arrayOf(PropType_d3Color_Required()),
+        arcWidth: PropTypes.number,
+        drawPercentageLabels: PropTypes.bool,
         legendWidth: PropTypes.number,
         legendPosition: PropTypes.number,
         legendRowClass: PropTypes.string
@@ -81,6 +83,8 @@ export class StaticPieChart extends Component {
         legendRowClass: 'col-12',
         legendPosition: LegendPosition.RIGHT,
         colors: d3Scheme.schemeCategory10,
+        arcWidth: 60,
+        drawPercentageLabels: true,
     }
 
     componentDidMount() {
@@ -143,7 +147,7 @@ export class StaticPieChart extends Component {
 
         const arcGen = d3Shape.arc()
             .outerRadius(radius)
-            .innerRadius(radius - 60);
+            .innerRadius(radius - this.props.arcWidth);
 
         const shadows = this.shadowsSelection.selectAll('path').data(pieGen(this.props.config.arcs));
         shadows.enter().append('path')
@@ -161,17 +165,19 @@ export class StaticPieChart extends Component {
         arcs.exit().remove();
 
         const labels = this.labelsSelection.selectAll('text').data(pieGen(this.props.config.arcs));
-        labels.enter().append('text')
-            .merge(labels)
-            .attr('transform', d => `translate(${arcGen.centroid(d)})`)
-            .attr('dy', '0.35em')
-            .attr('text-anchor', 'middle')
-            .attr('class', styles.label)
-            .attr('fill', d => this.props.getLabelColor(d.data.color))
-            .text(d => {
-                const ratio = Math.floor(d.data.value * 100 / total);
-                return ratio > 5 ? `${ratio}%` : '';
-            })
+        if (this.props.drawPercentageLabels) {
+            labels.enter().append('text')
+                .merge(labels)
+                .attr('transform', d => `translate(${arcGen.centroid(d)})`)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', 'middle')
+                .attr('class', styles.label)
+                .attr('fill', d => this.props.getLabelColor(d.data.color))
+                .text(d => {
+                    const ratio = Math.floor(d.data.value * 100 / total);
+                    return ratio > 5 ? `${ratio}%` : '';
+                })
+        }
         labels.exit().remove();
     }
 

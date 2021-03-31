@@ -1,7 +1,7 @@
 'use strict';
 
 import React, {Component} from "react";
-import {createBase, isSignalVisible, RenderStatus, TimeBasedChartBase} from "./TimeBasedChartBase";
+import {createBase, isSignalVisible, RenderStatus, TimeBasedChartBase, XAxisType} from "./TimeBasedChartBase";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Array from "d3-array";
@@ -13,6 +13,7 @@ import PropTypes from "prop-types";
 import {DataPathApproximator} from "./DataPathApproximator";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 
 const SelectedState = {
@@ -132,6 +133,8 @@ export class LineChartBase extends Component {
         withBrush: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        loadingOverlayColor: PropType_d3Color(),
+        displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
@@ -147,8 +150,11 @@ export class LineChartBase extends Component {
         getLineColor: PropTypes.func,
         lineCurve: PropTypes.func,
         lineWidth: PropTypes.number,
+        xAxisType: PropTypes.oneOf([XAxisType.DATETIME, XAxisType.NUMBER]), // data type on the x-axis, TODO
 
         lineVisibility: PropTypes.func.isRequired,
+        discontinuityInterval: PropTypes.number, // if two data points are further apart than this interval (in seconds), the lines are split into segments
+        minimumIntervalMs: PropTypes.number,
 
         getExtraQueries: PropTypes.func,
         processGraphContent: PropTypes.func,
@@ -580,6 +586,20 @@ export class LineChartBase extends Component {
             if (points[sigSetConf.cid]) {
                 const {main} = signalSetsData[sigSetConf.cid];
 
+                // we might want to split the data into several line segments if there is a big gap between the data points
+                if (this.props.discontinuityInterval !== undefined) {
+                    const result = [];
+                    let last = null;
+
+                    for (const d of points[sigSetConf.cid]) {
+                        if (last != null && d.ts.diff(last.ts, 'seconds') > this.props.discontinuityInterval)
+                            result.push(null); // insert a dummy data point into the gap, this will be later detected by 'defined' method from d3.line()
+                        result.push(d);
+                        last = d;
+                    }
+                    points[sigSetConf.cid] = result;
+                }
+
                 for (const sigConf of sigSetConf.signals) {
                     if (isSignalVisible(sigConf)) {
                         const sigCid = sigConf.cid;
@@ -587,7 +607,7 @@ export class LineChartBase extends Component {
 
                         if (yScale) { // yScale is null if we don't have any data on the particular scale. That happens when the data points for the scale are all "undefined"
                             const line = d3Shape.line()
-                                .defined(d => d.data[sigCid][lineAgg] !== null)
+                                .defined(d => d !== null && d.data[sigCid][lineAgg] !== null)
                                 .x(d => xScale(d.ts))
                                 .y(d => yScale(d.data[sigCid][lineAgg]))
                                 .curve(lineCurve);
@@ -739,6 +759,10 @@ export class LineChartBase extends Component {
                 tooltipExtraProps={this.props.tooltipExtraProps}
                 getSignalValuesForDefaultTooltip={this.props.getSignalValuesForDefaultTooltip}
                 controlTimeIntervalChartWidth={this.props.controlTimeIntervalChartWidth}
+                loadingOverlayColor={this.props.loadingOverlayColor}
+                displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
+                minimumIntervalMs={this.props.minimumIntervalMs}
+                xAxisType={this.props.xAxisType}
             />
         );
     }

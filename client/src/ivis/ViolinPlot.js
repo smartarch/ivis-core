@@ -112,6 +112,8 @@ export class ViolinPlot extends Component {
         this.resizeListener = () => {
             this.createChart(true);
         };
+
+        this.plotRectId = _.uniqueId("plotRect");
     }
 
     static propTypes = {
@@ -910,17 +912,17 @@ export class ViolinPlot extends Component {
                     )}
                 </g>
             );
-
+            
             return (
                 <div ref={node => this.svgContainerSelection = select(node)}
                      className={this.props.className} style={this.props.style}>
                     <svg id="cnt" ref={node => this.containerNode = node} height={this.props.height} width="100%">
                         <defs>
-                            <clipPath id="plotRect">
+                            <clipPath id={this.plotRectId}>
                                 <rect x="0" y="0" width={this.state.width - this.props.margin.left - this.props.margin.right} height={this.props.height - this.props.margin.top - this.props.margin.bottom} />
                             </clipPath>
                         </defs>
-                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath="url(#plotRect)" >
+                        <g transform={`translate(${this.props.margin.left}, ${this.props.margin.top})`} clipPath={`url(#${this.plotRectId})`} >
                             {violinSelectionPaths}
                             {additionalLines}
                             <circle cx="0" cy="0" r="5" visibility="hidden" ref={node => this.highlightDotSelection1 = select(node)} />
