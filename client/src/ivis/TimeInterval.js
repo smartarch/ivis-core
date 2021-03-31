@@ -44,7 +44,7 @@ export function defaultGetMinAggregationInterval(minPointDistance = 0) {
     return (intv, absFrom, absTo) => {
         const dif = (absTo - absFrom) / (intv.conf.chartWidth || defaultChartWidth);
 
-        if (dif * 10 <= minPointDistance) { // individual points should be at least 10 pixels apart
+        if (dif * 20 <= minPointDistance) { // individual points should be at least 20 pixels apart
             return moment.duration(0, 's');
         }
 

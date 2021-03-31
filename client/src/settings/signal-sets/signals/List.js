@@ -9,7 +9,7 @@ import {Icon} from "../../../lib/bootstrap-components";
 import {HTTPMethod} from "../../../lib/axios";
 import {withAsyncErrorHandler, withErrorHandling} from "../../../lib/error-handling";
 import moment from "moment";
-import {getSignalTypes} from "./signal-types";
+import {getSignalSources, getSignalTypes} from "./signal-types";
 import {
     RestActionModalDialog,
     tableAddDeleteButton,
@@ -17,7 +17,7 @@ import {
     tableRestActionDialogRender
 } from "../../../lib/modals";
 import {checkPermissions} from "../../../lib/permissions";
-import {IndexingStatus, DerivedSignalTypes} from "../../../../../shared/signals";
+import {IndexingStatus, SignalSource} from "../../../../../shared/signals";
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"
@@ -35,7 +35,8 @@ export default class List extends Component {
         this.state = {};
         tableRestActionDialogInit(this);
 
-        this.signalTypes = getSignalTypes(props.t)
+        this.signalTypes = getSignalTypes(props.t);
+        this.signalSources = getSignalSources(props.t);
     }
 
     static propTypes = {
@@ -59,8 +60,8 @@ export default class List extends Component {
     }
 
     needsReindex(){
-        const indexing = JSON.parse(this.props.signalSet.indexing);
-        return indexing.status === IndexingStatus.REQUIRED;
+        const state = JSON.parse(this.props.signalSet.state);
+        return state.indexing.status === IndexingStatus.REQUIRED;
     }
 
     componentDidMount() {
@@ -75,16 +76,18 @@ export default class List extends Component {
             { data: 2, title: t('Name') },
             { data: 3, title: t('Description') },
             { data: 4, title: t('Type'), render: data => this.signalTypes[data] },
-            { data: 5, title: t('Indexed'), render: data => data ? t('Y') : t('N') },
-            { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
-            { data: 7, title: t('Namespace') },
+            { data: 5, title: t('Source'), render: data => this.signalSources[data] },
+            { data: 6, title: t('Indexed'), render: data => data ? t('Y') : t('N') },
+            { data: 7, title: t('Created'), render: data => moment(data).fromNow() },
+            { data: 8, title: t('Namespace') },
             {
                 actions: data => {
                     const actions = [];
-                    const perms = data[8];
+                    const perms = data[9];
                     const signalType = data[4];
+                    const source = data[5];
 
-                    if (perms.includes('edit') && (!DerivedSignalTypes.has(signalType) || this.props.signalSet.permissions.includes('manageScripts'))) {
+                    if (perms.includes('edit') && (source !== SignalSource.DERIVED || this.props.signalSet.permissions.includes('manageScripts'))) {
                         actions.push({
                             label: <Icon icon="edit" title={t('Edit')}/>,
                             link: `/settings/signal-sets/${this.props.signalSet.id}/signals/${data[0]}/edit`
@@ -98,6 +101,7 @@ export default class List extends Component {
                         });
                     }
 
+                    // TODO change based on source ?
                     if (this.props.signalSet.type !== SignalSetType.COMPUTED) {
                         tableAddDeleteButton(actions, this, perms, `rest/signals/${data[0]}`, data[2], t('Deleting signal ...'), t('Signal deleted'));
                     }

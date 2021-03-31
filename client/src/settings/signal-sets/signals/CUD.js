@@ -12,12 +12,12 @@ import {
     Button,
     ButtonRow,
     CheckBox,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../../lib/form";
 import {
     withAsyncErrorHandler,
@@ -31,17 +31,18 @@ import {DeleteModalDialog} from "../../../lib/modals";
 import {Panel} from "../../../lib/panel";
 import ivisConfig
     from "ivisConfig";
-import {getSignalTypes} from "./signal-types";
+import {getSignalSources, getSignalTypes} from "./signal-types";
 import {
-    DerivedSignalTypes,
-    SignalType
+    SignalSource,
+    SignalType,
+    getTypesBySource
 } from "../../../../../shared/signals"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
 import {withTranslation} from "../../../lib/i18n";
 import {SignalSetType} from "../../../../../shared/signal-sets"
 
-function isPainless(type) {
-    return type === SignalType.PAINLESS || type === SignalType.PAINLESS_DATE_TIME;
+function isPainless(source) {
+    return source === SignalSource.DERIVED;
 }
 
 @withComponentMixins([
@@ -62,16 +63,35 @@ export default class CUD extends Component {
                 url: `rest/signals-validate/${props.signalSet.id}`,
                 changed: ['cid'],
                 extra: ['id']
+            },
+            onChange: {
+                source: ::this.onSourceChange,
             }
         });
+
+        this.signalSources = getSignalSources(props.t);
+        this.sourceOptions = [];
+        for (const source in this.signalSources) {
+
+            if (source === SignalSource.JOB) {
+                continue;
+            }
+
+            if (source === SignalSource.DERIVED && !props.signalSet.permissions.includes('manageScripts')) {
+                continue;
+            }
+
+            this.sourceOptions.push({
+                key: source,
+                label: this.signalSources[source]
+            });
+        }
 
         this.signalTypes = getSignalTypes(props.t);
 
         this.typeOptions = [];
         for (const type in this.signalTypes) {
-            if (!DerivedSignalTypes.has(type) || props.signalSet.permissions.includes('manageScripts')) {
-                this.typeOptions.push({key: type, label: this.signalTypes[type]});
-            }
+            this.typeOptions.push({key: type, label: this.signalTypes[type]});
         }
     }
 
@@ -79,34 +99,18 @@ export default class CUD extends Component {
         action: PropTypes.string.isRequired,
         signalSet: PropTypes.object,
         entity: PropTypes.object
-    }
+    };
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
+    onSourceChange(state, key, oldVal, newVal) {
+        if (oldVal !== newVal) {
+            const type = getTypesBySource(newVal)[0];
+            state.formState = state.formState.setIn(['data', 'type', 'value'], type);
+        }
     }
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.painlessScript = data.settings && data.settings.painlessScript;
-
-                if (data.weight_list === null) {
-                    data.shownInList = false;
-                    data.weight_list = '0';
-                } else {
-                    data.shownInList = true;
-                    data.weight_list = data.weight_list.toString();
-                }
-
-                if (data.weight_edit === null) {
-                    data.shownInEdit = false;
-                    data.weight_edit = '0';
-                } else {
-                    data.shownInEdit = true;
-                    data.weight_edit = data.weight_edit.toString();
-                }
-            });
+            this.getFormValuesFromEntity(this.props.entity);
             if (this.props.signalSet.type === SignalSetType.COMPUTED) {
                 this.disableForm();
             }
@@ -116,6 +120,7 @@ export default class CUD extends Component {
                 name: '',
                 description: '',
                 type: SignalType.DOUBLE,
+                source: SignalSource.RAW,
                 indexed: false,
                 settings: {},
                 shownInList: false,
@@ -166,7 +171,55 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    async submitHandler() {
+    getFormValuesMutator(data) {
+        data.painlessScript = data.settings && data.settings.painlessScript;
+
+        if (data.weight_list === null) {
+            data.shownInList = false;
+            data.weight_list = '0';
+        } else {
+            data.shownInList = true;
+            data.weight_list = data.weight_list.toString();
+        }
+
+        if (data.weight_edit === null) {
+            data.shownInEdit = false;
+            data.weight_edit = '0';
+        } else {
+            data.shownInEdit = true;
+            data.weight_edit = data.weight_edit.toString();
+        }
+    }
+
+    submitFormValuesMutator(data) {
+        if (isPainless(data.source)) {
+            data.settings = {painlessScript: data.painlessScript};
+            data.weight_list = null;
+            data.indexed = false;
+        } else {
+            data.settings = {};
+            data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
+        }
+
+        data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
+
+        return filterData(data, [
+            'cid',
+            'name',
+            'description',
+            'type',
+            'indexed',
+            'settings',
+            'namespace',
+            'type',
+            'source',
+            'weight_edit',
+            'weight_list'
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -181,23 +234,25 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (isPainless(data.type)) {
-                data.settings = {painlessScript: data.painlessScript};
-                data.weight_list = null;
-                data.weight_edit = null;
-                data.indexed = false;
-            } else {
-                data.settings = {};
-                data.weight_list = data.shownInList ? Number.parseInt(data.weight_list || '0') : null;
-                data.weight_edit = data.shownInEdit ? Number.parseInt(data.weight_edit || '0') : null;
-            }
-            delete data.shownInList;
-            delete data.shownInEdit;
-        });
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-        if (submitSuccessful) {
-            this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal saved'));
+        if (submitResult) {
+
+            if (this.props.entity) {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/signals/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Signal updated'));
+                }
+            } else {
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals`, 'success', t('Signal saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/signals/${submitResult}/edit`, 'success', t('Signal saved'));
+                }
+            }
         } else {
             this.enableForm();
             this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -208,6 +263,15 @@ export default class CUD extends Component {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
+
+        this.typeOptions = [];
+        const source = this.getFormValue('source');
+        if (source) {
+            for (const type of getTypesBySource(source)) {
+                this.typeOptions.push({key: type, label: this.signalTypes[type]});
+            }
+        }
+
 
         return (
             <Panel title={isEdit ? t('Edit Signal') : t('Create Signal')}>
@@ -221,39 +285,50 @@ export default class CUD extends Component {
                     deletingMsg={t('Deleting signal ...')}
                     deletedMsg={t('Signal deleted')}/>
                 }
-
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="cid" label={t('Id')}/>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                    <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
 
+                    <Dropdown id="source" label={t('Source')} options={this.sourceOptions}/>
 
-                    {isPainless(this.getFormValue('type')) &&
-                        <TextArea id="painlessScript" label={t('Painless script')}/>
+                    {source ?
+                        <Dropdown id="type" label={t('Type')} options={this.typeOptions}/>
+                        :
+                        <div className="alert alert-info" role="alert">{t('Choose source first...')}</div>}
+
+                    {isPainless(source) &&
+                    <TextArea id="painlessScript" label={t('Painless script')}/>
                     }
 
-                    {!isPainless(this.getFormValue('type')) &&
+                    {!isPainless(source) &&
                     <>
                         <CheckBox id="indexed" text={t('Indexed')}/>
 
                         <CheckBox id="shownInList" label={t('Records list')} text={t('Visible in record list')}/>
                         {this.getFormValue('shownInList') &&
-                            <InputField id="weight_list" label={t('List weight')} help={t('This number determines if in which order the signal is listed when viewing records in the data set. Signals are ordered by weight in ascending order.')}/>
+                        <InputField id="weight_list" label={t('List weight')}
+                                    help={t('This number determines if in which order the signal is listed when viewing records in the data set. Signals are ordered by weight in ascending order.')}/>
                         }
 
-                        <CheckBox id="shownInEdit" label={t('Record edit')} text={t('Visible in record edit form')}/>
-                        {this.getFormValue('shownInEdit') &&
-                            <InputField id="weight_edit" label={t('Edit weight')} help={t('This number determines if in which order the signal is listed when editing records in the data set. Signals are ordered by weight in ascending order.')}/>
-                        }
+
                     </>
+                    }
+
+                    <CheckBox id="shownInEdit" label={t('Record edit')} text={t('Visible in record edit form')}/>
+                    {this.getFormValue('shownInEdit') &&
+                    <InputField id="weight_edit" label={t('Edit weight')}
+                                help={t('This number determines if in which order the signal is listed when editing records in the data set. Signals are ordered by weight in ascending order.')}/>
                     }
 
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/signal-sets/${this.props.signalSet.id}/signals/${this.props.entity.id}/delete`}/>}
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                                  to={`/settings/signal-sets/${this.props.signalSet.id}/signals/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

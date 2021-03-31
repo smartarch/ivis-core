@@ -1,13 +1,10 @@
 'use strict';
 
-import React, {Component} from 'react';
-import i18n
-    from 'i18next';
-import {withNamespaces} from "react-i18next";
-import LanguageDetector
-    from 'i18next-browser-languagedetector';
-import ivisConfig
-    from 'ivisConfig';
+import React from 'react';
+import {I18nextProvider, withNamespaces} from 'react-i18next';
+import i18n from 'i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import ivisConfig from 'ivisConfig';
 
 import {convertToFake, getLang} from '../../../shared/langs';
 import {createComponentMixin} from "./decorator-helpers";
@@ -61,11 +58,29 @@ i18n
 export default i18n;
 
 
-export const withTranslation = createComponentMixin([], [], (TargetClass, InnerClass) => {
-    return {
-        cls: withNamespaces()(TargetClass)
-    };
+export const TranslationContext = React.createContext(null);
+
+export const withTranslation = createComponentMixin({
+    contexts: [{context: TranslationContext, propName: 't'}]
 });
+
+const TranslationContextProvider = withNamespaces()(props => {
+    return (
+        <TranslationContext.Provider value={props.t}>
+            {props.children}
+        </TranslationContext.Provider>
+    );
+});
+
+export function TranslationRoot(props) {
+    return (
+        <I18nextProvider i18n={ i18n }>
+            <TranslationContextProvider>
+                {props.children}
+            </TranslationContextProvider>
+        </I18nextProvider>
+    );
+}
 
 export function tMark(key) {
     return key;

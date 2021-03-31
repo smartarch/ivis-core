@@ -37,6 +37,7 @@ const TableSelectMode = {
 class Table extends Component {
     constructor(props) {
         super(props);
+        this.mounted = false;
         this.selectionMap = this.getSelectionMap(props);
     }
 
@@ -52,7 +53,9 @@ class Table extends Component {
         onSelectionDataAsync: PropTypes.func,
         withHeader: PropTypes.bool,
         refreshInterval: PropTypes.number,
-        pageLength: PropTypes.number
+        pageLength: PropTypes.number,
+        search: PropTypes.string, // initial value of the search field
+        searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
     }
 
     static defaultProps = {
@@ -149,11 +152,17 @@ class Table extends Component {
                         values: keysToFetch
                     });
 
+                    const oldSelectionMap = this.selectionMap;
+                    this.selectionMap = new Map();
                     for (const row of response.data) {
                         const key = row[this.props.selectionKeyIndex];
-                        if (this.selectionMap.has(key)) {
+                        if (oldSelectionMap.has(key)) {
                             this.selectionMap.set(key, row);
                         }
+                    }
+
+                    if (this.selectionMap.size !== oldSelectionMap.size) {
+                        this.notifySelection(this.props.onSelectionChangedAsync, this.selectionMap);
                     }
                 }
             }
@@ -184,6 +193,8 @@ class Table extends Component {
     }
 
     componentDidMount() {
+        this.mounted = true;
+
         const columns = this.props.columns.slice();
 
         // XSS protection and actions rendering
@@ -268,12 +279,20 @@ class Table extends Component {
 
         const dtOptions = {
             columns,
+            autoWidth: false,
             pageLength: this.props.pageLength,
             dom: // This overrides Bootstrap 4 settings. It may need to be updated if there are updates in the DataTables Bootstrap 4 plugin.
                 "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                 "<'row'<'col-sm-12'<'" + styles.dataTableTable + "'tr>>>" +
                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
         };
+        if (this.props.search)
+            dtOptions.search = { search: this.props.search };
+        if (this.props.searchCols) {
+            dtOptions.searchCols = this.props.searchCols.map(value => value !== null ? ({
+                search: value,
+            }) : null)
+        }
 
         const self = this;
         dtOptions.createdRow = function(row, data) {
@@ -363,12 +382,13 @@ class Table extends Component {
     }
 
     componentWillUnmount() {
+        this.mounted = false;
         clearInterval(this.refreshIntervalId);
         clearTimeout(this.refreshTimeoutId);
     }
 
     async notifySelection(eventCallback, newSelectionMap) {
-        if (eventCallback) {
+        if (this.mounted && eventCallback) {
             const selPairs = Array.from(newSelectionMap).sort((l, r) => l[0] - r[0]);
 
             let data = selPairs.map(entry => entry[1]);

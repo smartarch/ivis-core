@@ -5,9 +5,7 @@ const fork = require('child_process').fork;
 
 const path = require('path');
 const log = require('./log');
-const esEmitter = require('./indexers/elasticsearch').emitter;
 const esClient = require('./elasticsearch');
-const filesEmitter = require('../models/files').emitter;
 const getFilesDir = require('../models/files').getEntityFilesDir;
 const fs = require('fs-extra-promise');
 const config = require("./config");
@@ -15,7 +13,11 @@ const config = require("./config");
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
 const {BuildState, getTransitionStates} = require('../../shared/tasks');
+const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
 
+const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
+const {emitter: taskEmitter} = require('./task-events');
+const {emitter: filesEmitter, EventTypes: FilesEventTypes} = require('./files-events');
 
 const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'services', 'task-handler.js'));
 
@@ -25,6 +27,7 @@ const TYPE_JOBS = '_doc';
 const STATE_FIELD = 'state';
 
 const tasksDir = path.join(__dirname, '..', 'files', 'task-content');
+
 
 /**
  * Returns path to the directory containing all task related files.
@@ -49,6 +52,7 @@ let handlerProcess;
 async function init() {
     log.info(LOG_ID, 'Spawning job handler process');
 
+
     await initIndices();
 
     try {
@@ -59,6 +63,12 @@ async function init() {
 
     try {
         await cleanBuilds();
+    } catch (err) {
+        log.error(LOG_ID, err);
+    }
+
+    try {
+        await initBuiltin();
     } catch (err) {
         log.error(LOG_ID, err);
     }
@@ -79,18 +89,18 @@ async function init() {
         log.info(LOG_ID, `Job-handler process exited with code ${code} signal ${signal}`);
     });
 
+    handlerProcess.on('message', (msg) => {
+        taskEmitter.emit(msg.type, msg.data)
+    });
+
     esEmitter
-        .on('insert', (cid) => reindexOccurred(cid))
-        .on('index', (cid) => reindexOccurred(cid))
-        .on('update', (cid) => {
-        })
-        .on('remove', (cid) => {
-        });
+        .on(EsEventTypes.INSERT, reindexOccurred)
+        .on(EsEventTypes.INDEX, reindexOccurred)
 
     filesEmitter
-        .on('files-change', onFilesUpload)
-        .on('files-remove-all', onRemoveAllFiles)
-        .on('files-remove', onRemoveFile);
+        .on(FilesEventTypes.CHANGE, onFilesUpload)
+        .on(FilesEventTypes.REMOVE_ALL, onRemoveAllFiles)
+        .on(FilesEventTypes.REMOVE, onRemoveFile);
 
     const logRetention = config.tasks.runLogRetentionTime;
     if (logRetention && logRetention !== 0) {
@@ -101,7 +111,7 @@ async function init() {
 function checkLogRetention(logRetention) {
     knex('job_runs')
         .whereIn('status', [RunStatus.FAILED, RunStatus.SUCCESS])
-        .where('finished_at', '<', knex.raw(`now() - INTERVAL ${logRetention} DAY`))
+        .where('finished_at', '<', knex.raw('now() - INTERVAL ? DAY', logRetention))
         .del()
         .catch(err => log.error(LOG_ID, err));
 
@@ -113,7 +123,6 @@ function onFilesUpload(type, subtype, entityId, files) {
         setImmediate(async () => {
             const dir = getFilesDir(type, subtype, entityId);
             const filesDir = path.join(getTaskDir(entityId), 'files');
-            await fs.emptyDirAsync(filesDir);
             for (const file of files) {
                 await fs.copyAsync(path.join(dir, file.name), path.join(filesDir, file.originalName), {});
             }
@@ -140,9 +149,9 @@ function onRemoveAllFiles(type, subtype, entityId) {
 }
 
 /**
- * Create job index if it doesn't exists and set correct mapping for job config
- * mapping disables parsing for config field as job can include any json and it would clash with es types implementation
- * should two stored configs differ
+ * Create job index if it doesn't exists and set correct mapping for job config.
+ * Mapping disables parsing for config field as job can include any json and it would clash with es types implementation
+ * should two stored states differ
  */
 async function initIndices() {
     let reachable = true;
@@ -154,7 +163,7 @@ async function initIndices() {
         reachable = false;
     }
     if (reachable) {
-        let exists = await esClient.indices.exists({index: INDEX_JOBS});
+        const exists = await esClient.indices.exists({index: INDEX_JOBS});
         if (!exists) {
             let settings = {
                 "mappings": {
@@ -175,21 +184,25 @@ async function initIndices() {
 
 }
 
+async function initBuiltin() {
+    await storeBuiltinTasks();
+}
+
 /**
  * Prevents run DB table from being in inconsistent state on a new start.
  * @returns {Promise<void>}
  */
 async function cleanRuns() {
-    let runs = await knex('job_runs').whereIn('status', [RunStatus.INITIALIZATION, RunStatus.SCHEDULED, RunStatus.RUNNING]);
+    const runs = await knex('job_runs').whereIn('status', [RunStatus.INITIALIZATION, RunStatus.SCHEDULED, RunStatus.RUNNING]);
     if (runs) {
-        for (let i = 0; i < runs.length; i++) {
+        for (const run of runs) {
             try {
-                await knex('job_runs').where('id', runs[i].id).update({
+                await knex('job_runs').where('id', run.id).update({
                     status: RunStatus.FAILED,
                     output: 'Cancelled upon start'
                 })
             } catch (err) {
-                log.error(LOG_ID, `Failed to clear run with id ${runs[i].id}: ${err.stack}`);
+                log.error(LOG_ID, `Failed to clear run with id ${run.id}: ${err.stack}`);
             }
         }
     }
@@ -200,10 +213,9 @@ async function cleanRuns() {
  * @returns {Promise<void>}
  */
 async function cleanBuilds() {
-    let tasks = await knex('tasks').whereIn('build_state', getTransitionStates());
+    const tasks = await knex('tasks').whereIn('build_state', getTransitionStates());
     if (tasks) {
-        for (let i = 0; i < tasks.length; i++) {
-            const task = tasks[i];
+        for (const task of tasks) {
             try {
                 await knex('tasks').where('id', task.id).update({
                     build_state: (task.build_state === BuildState.INITIALIZING) ? BuildState.UNINITIALIZED : BuildState.FAILED,

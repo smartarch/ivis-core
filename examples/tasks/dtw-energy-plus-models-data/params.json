@@ -1,0 +1,49 @@
+[
+  {
+    "id": "sensors",
+    "label": "Sensor data",
+    "type": "signalSet"
+  },
+  {
+    "id": "co2",
+    "label": "co2",
+    "type": "signal",
+    "signalSetRef": "sensors"
+  },
+  {
+    "id": "ts",
+    "label": "ts",
+    "type": "signal",
+    "signalSetRef": "sensors"
+  },
+  {
+    "id": "limitValue",
+    "label": "limit co2 value ppm",
+    "type": "number"
+  },
+  {
+    "id": "models",
+    "label": "Models",
+    "type": "fieldset",
+    "cardinality": "1..n",
+    "children": [
+      {
+        "id": "sigSet",
+        "label": "Signal Set",
+        "type": "signalSet"
+      },
+      {
+        "id": "co2",
+        "label": "co2",
+        "type": "signal",
+        "signalSetRef": "sigSet"
+      },
+      {
+        "id": "ts",
+        "label": "ts",
+        "type": "signal",
+        "signalSetRef": "sigSet"
+      }
+    ]
+  }
+]

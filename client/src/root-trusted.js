@@ -8,9 +8,6 @@ import emCommonDefaults from '../../shared/em-common-defaults';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import {I18nextProvider} from 'react-i18next';
-import i18n from './lib/i18n';
-
 import { Section } from './lib/page';
 import Account from './account/Account';
 import Login from './login/Login';
@@ -36,6 +33,7 @@ import JobsList from './settings/jobs/List'
 import RunningJobsList from './settings/jobs/RunningJobsList'
 import JobsCUD from './settings/jobs/CUD';
 import RunLog from './settings/jobs/RunLog';
+import OwnedSetsList from './settings/jobs/OwnedSignalSets';
 import RunOutput from './settings/jobs/RunOutput';
 
 import TasksList from './settings/tasks/List'
@@ -51,6 +49,8 @@ import PanelsCUD from './settings/workspaces/panels/CUD';
 
 import SignalSetsList from './settings/signal-sets/List';
 import SignalSetsCUD from './settings/signal-sets/CUD';
+import SignalSetAggregations from './settings/signal-sets/Aggregations';
+import AggregationsCUD from './settings/signal-sets/AggregationsCUD';
 import RecordsList from './settings/signal-sets/RecordsList';
 import RecordsCUD from './settings/signal-sets/RecordsCUD';
 
@@ -75,7 +75,9 @@ import GlobalSettings from './settings/global/Update';
 
 import ivisConfig from "ivisConfig";
 
-import { getBuiltinTemplate } from './lib/builtin-templates';
+import {TranslationRoot} from "./lib/i18n";
+
+import {SignalSetKind} from "../../shared/signal-sets";
 
 emCommonDefaults.setDefaults(em);
 
@@ -115,8 +117,11 @@ const getStructure = t => {
                 navs: {
                     edit: {
                         title: t('Account'),
+                        resolve: {
+                            user: params => `rest/account`
+                        },
                         link: '/account/edit',
-                        panelComponent: Account
+                        panelRender: props => (<Account entity={props.resolved.user} />)
                     },
                     api: {
                         title: t('API'),
@@ -389,6 +394,12 @@ const getStructure = t => {
                                         visible: resolved => resolved.job.permissions.includes('edit'),
                                         panelRender: props => <JobsCUD action={props.match.params.action} entity={props.resolved.job} />
                                     },
+                                    'signal-sets': {
+                                        title: t('Owned signal sets'),
+                                        link: params => `/settings/jobs/${params.jobId}/signal-sets`,
+                                        visible: resolved => resolved.job.permissions.includes('view'),
+                                        panelRender: props => <OwnedSetsList  entity={props.resolved.job} />
+                                    },
                                     log: {
                                         title: t('Run logs'),
                                         link: params => `/settings/jobs/${params.jobId}/log`,
@@ -440,6 +451,36 @@ const getStructure = t => {
                                         link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
                                         visible: resolved => resolved.signalSet.permissions.includes('edit'),
                                         panelRender: props => <SignalSetsCUD action={props.match.params.action} entity={props.resolved.signalSet} />
+                                    },
+                                    'aggregations': {
+                                        title: t('Aggregations'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations`,
+                                        visible: resolved => resolved.signalSet.permissions.includes('view') && resolved.signalSet.kind === SignalSetKind.TIME_SERIES,
+                                        panelRender: props => <SignalSetAggregations  signalSet={props.resolved.signalSet} />,
+                                        children: {
+                                            ":jobId([0-9]+)": {
+                                                title: resolved => t('Aggregation "{{name}}"', {name: resolved.job.name}),
+                                                resolve: {
+                                                    job: params => `rest/jobs/${params.jobId}`
+                                                },
+                                                link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                children: {
+                                                    ':action(edit|delete)': {
+                                                        title: t('Edit'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                                        panelRender: props => <AggregationsCUD
+                                                            signalSet={props.resolved.signalSet}
+                                                            job={props.resolved.job}
+                                                            action={props.match.params.action}/>
+                                                    }
+                                                }
+                                            },
+                                            create: {
+                                                title: t('Create'),
+                                                panelRender: props => <AggregationsCUD signalSet={props.resolved.signalSet} action="create" />
+                                            }
+                                        }
                                     },
                                     ':action(signals|reindex)': {
                                         title: t('Signals'),
@@ -588,7 +629,7 @@ const getStructure = t => {
 };
 
 ReactDOM.render(
-    <I18nextProvider i18n={i18n}><Section root='/' structure={getStructure} /></I18nextProvider>,
+    <TranslationRoot><Section root='/' structure={getStructure} /></TranslationRoot>,
     document.getElementById('root')
 );
 

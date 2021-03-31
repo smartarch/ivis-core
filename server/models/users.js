@@ -21,8 +21,6 @@ const mailer = require('../lib/mailer');
 const mailerSendMail = bluebird.promisify(mailer.sendMail.bind(mailer));
 */
 
-const passport = require('../lib/passport');
-
 const namespaceHelpers = require('../lib/namespace-helpers');
 
 const allowedKeys = new Set(['username', 'name', 'email', 'password', 'phone_cell', 'address', 'namespace', 'role']);
@@ -46,7 +44,7 @@ async function _getByTx(tx, context, key, value, extraColumns = []) {
 
     // Note that getRestrictedAccessToken relies to this check to see whether a user may impersonate another. If "manageUsers" here were to be changed to something like "viewUsers", then
     // a corresponding check has to be added to getRestrictedAccessToken
-    await shares.enforceEntityPermission(context, 'namespace', user.namespace, 'manageUsers');
+    await shares.enforceEntityPermissionTx(tx, context, 'namespace', user.namespace, 'manageUsers');
 
     return user;
 }
@@ -135,9 +133,10 @@ async function _validateAndPreprocess(tx, entity, isCreate, isOwnAccount = false
         }
     }
 
-    await namespaceHelpers.validateEntity(tx, entity);
-
     if (!isOwnAccount) {
+        await namespaceHelpers.validateEntity(tx, entity);
+        enforce(entity.role in config.roles.global, 'Unknown role');
+
         const otherUserWithSameUsernameQuery = tx('users').where('username', entity.username);
         if (!isCreate) {
             otherUserWithSameUsernameQuery.andWhereNot('id', entity.id);
@@ -147,8 +146,6 @@ async function _validateAndPreprocess(tx, entity, isCreate, isOwnAccount = false
             throw new interoperableErrors.DuplicitNameError();
         }
     }
-
-    enforce(entity.role in config.roles.global, 'Unknown role');
 
     if (entity.password === null) {
         // Password may be NULL. This means there is no password and the user cannot login.
@@ -214,14 +211,16 @@ async function updateWithConsistencyCheck(context, user, isOwnAccount) {
 
         await tx('users').where('id', user.id).update(filterObject(user, isOwnAccount ? ownAccountAllowedKeys : allowedKeys));
 
-        // Removes the default shares based on the user role and rebuilds permissions.
-        // rebuildPermissions adds the default shares based on the user role, which will reflect the changes
-        // done to the user.
-        if (existing.namespace !== user.namespace || existing.role !== user.role) {
-            await shares.removeDefaultShares(tx, existing);
-        }
+        if (!isOwnAccount) {
+            // Removes the default shares based on the user role and rebuilds permissions.
+            // rebuildPermissions adds the default shares based on the user role, which will reflect the changes
+            // done to the user.
+            if (existing.namespace !== user.namespace || existing.role !== user.role) {
+                await shares.removeDefaultShares(tx, existing);
+            }
 
-        await shares.rebuildPermissionsTx(tx, { userId: user.id });
+            await shares.rebuildPermissionsTx(tx, { userId: user.id });
+        }
     });
 }
 

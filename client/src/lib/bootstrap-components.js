@@ -2,12 +2,8 @@
 
 import React, {Component} from 'react';
 import {withTranslation} from './i18n';
-import PropTypes
-    from 'prop-types';
-import {
-    withAsyncErrorHandler,
-    withErrorHandling
-} from './error-handling';
+import PropTypes from 'prop-types';
+import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import {withComponentMixins} from "./decorator-helpers";
 
 @withComponentMixins([
@@ -55,7 +51,7 @@ export class Icon extends Component {
         const props = this.props;
 
         if (props.family === 'fas' || props.family === 'far') {
-            return <i className={`${props.family} fa-${props.icon} ${props.className || ''}`} title={props.title}></i>;
+            return <i className={`${props.family} fa-${props.icon} ${props.className || ''}`} title={props.title}/>;
         } else {
             console.error(`Icon font family ${props.family} not supported. (icon: ${props.icon}, title: ${props.title})`)
             return null;
@@ -128,14 +124,13 @@ export class ButtonDropdown extends Component {
         const menuClassName = 'dropdown-menu' + (props.menuClassName ? ' ' + props.menuClassName : '');
 
         return (
-            <div className="dropdown" className={className}>
+            <div className={className}>
                 <button type="button" className={buttonClassName} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {props.label}
                 </button>
                 <ul className={menuClassName}>
                     {props.children}
                 </ul>
-
             </div>
         );
     }
@@ -195,6 +190,53 @@ export class DropdownActionLink extends Component {
 }
 
 
+/** The `DropdownActionLink` closes the dropdown when clicked (because `evt.stopPropagation()` does not work correctly
+ *  with React events). Use this component if you need the Dropdown to remain opened when action link is clicked. */
+@withComponentMixins([
+    withErrorHandling
+])
+export class DropdownActionLinkKeepOpen extends Component {
+    static propTypes = {
+        onClickAsync: PropTypes.func,
+        className: PropTypes.string,
+        disabled: PropTypes.bool
+    }
+
+    @withAsyncErrorHandler
+    onClick(evt) {
+        if (this.props.onClickAsync) {
+            evt.preventDefault();
+            evt.stopPropagation();
+
+            this.props.onClickAsync(evt);
+        }
+    }
+
+    componentDidMount() {
+        this.element.addEventListener('click', ::this.onClick);
+    }
+
+    componentWillUnmount() {
+        this.element.removeEventListener('click', ::this.onClick);
+    }
+
+    render() {
+        const props = this.props;
+
+        let clsName = "dropdown-item ";
+        if (props.disabled) {
+            clsName += "disabled ";
+        }
+
+        clsName += props.className;
+
+        return (
+            <a href={props.href || ''}  className={clsName} ref={node => this.element = node}>{props.children}</a>
+        );
+    }
+}
+
+
 export class DropdownDivider extends Component {
     static propTypes = {
         className: PropTypes.string
@@ -224,10 +266,6 @@ export class ModalDialog extends Component {
         super(props);
 
         const t = props.t;
-
-        this.state = {
-            buttons: this.props.buttons || [ { label: t('close'), className: 'btn-secondary', onClickAsync: null } ]
-        };
     }
 
     static propTypes = {
@@ -289,7 +327,7 @@ export class ModalDialog extends Component {
     }
 
     async onButtonClick(idx) {
-        const buttonSpec = this.state.buttons[idx];
+        const buttonSpec = this.props.buttons[idx];
         if (buttonSpec.onClickAsync) {
             await buttonSpec.onClickAsync(idx);
         }
@@ -299,11 +337,15 @@ export class ModalDialog extends Component {
         const props = this.props;
         const t = props.t;
 
-        const buttons = [];
-        for (let idx = 0; idx < this.state.buttons.length; idx++) {
-            const buttonSpec = this.state.buttons[idx];
-            const button = <Button key={idx} label={buttonSpec.label} className={buttonSpec.className} onClickAsync={async () => this.onButtonClick(idx)} />
-            buttons.push(button);
+        let buttons;
+
+        if (this.props.buttons) {
+            buttons = [];
+            for (let idx = 0; idx < this.props.buttons.length; idx++) {
+                const buttonSpec = this.props.buttons[idx];
+                const button = <Button key={idx} label={buttonSpec.label} className={buttonSpec.className} onClickAsync={async () => await this.onButtonClick(idx)} />
+                buttons.push(button);
+            }
         }
 
         return (
@@ -319,9 +361,11 @@ export class ModalDialog extends Component {
                             <button type="button" className="close" aria-label={t('close')} onClick={::this.onClose}><span aria-hidden="true">&times;</span></button>
                         </div>
                         <div className="modal-body">{this.props.children}</div>
-                        <div className="modal-footer">
-                            {buttons}
-                        </div>
+                        {buttons &&
+                            <div className="modal-footer">
+                                {buttons}
+                            </div>
+                        }
                     </div>
                 </div>
             </div>

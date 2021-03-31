@@ -4,8 +4,7 @@ import './lib/public-path';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {I18nextProvider} from 'react-i18next';
-import i18n from './lib/i18n';
+import {TranslationRoot} from './lib/i18n';
 
 import {Section} from './lib/page-sandbox';
 import WorkspacePanelSandbox from './workspaces/panels/WorkspacePanelSandbox';
@@ -68,9 +67,7 @@ const getStructure = t => {
 };
 
 ReactDOM.render(
-    <I18nextProvider i18n={ i18n }>
-        <Section root='/' structure={getStructure}/>
-    </I18nextProvider>,
+    <TranslationRoot><Section root='/' structure={getStructure} /></TranslationRoot>,
     document.getElementById('root')
 );
 

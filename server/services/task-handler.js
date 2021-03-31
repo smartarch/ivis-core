@@ -2,26 +2,24 @@
 
 const config = require('../lib/config');
 const knex = require('../lib/knex');
-const {JobState, RunStatus, HandlerMsgType, JobMsgType} = require('../../shared/jobs');
-const { TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
-const {SignalSetType} = require('../../shared/signal-sets');
+const em = require('../lib/extension-manager');
+
+const {JobState, RunStatus, HandlerMsgType} = require('../../shared/jobs');
+const {TaskType, BuildState, isTransitionState} = require('../../shared/tasks');
 const log = require('../lib/log');
-const {getFieldName, getIndexName} = require('../lib/indexers/elasticsearch-common');
 const moment = require('moment');
 const getTaskBuildOutputDir = require('../lib/task-handler').getTaskBuildOutputDir;
-const {getAdminContext} = require('../lib/context-helpers');
-const createSigSet = require('../models/signal-sets').create;
-const createSignal = require('../models/signals').create;
+const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helpers');
+const {getSignalEntitySpec} = require('../lib/signal-helpers')
+const {getSignalSetEntitySpec} = require('../lib/signal-set-helpers')
+const {createRunManager} = require('./jobs/run-manager');
 
 const es = require('../lib/elasticsearch');
-const STATE_FIELD = require('../lib/task-handler').esConstants.STATE_FIELD;
-const INDEX_JOBS = require('../lib/task-handler').esConstants.INDEX_JOBS;
-const TYPE_JOBS = require('../lib/task-handler').esConstants.TYPE_JOBS;
+const {TYPE_JOBS, INDEX_JOBS, STATE_FIELD} = require('../lib/task-handler').esConstants
+
+const {getFailEventType, getStopEventType} = require('../lib/task-events');
 
 const LOG_ID = 'Task-handler';
-
-// Job handlers
-const pythonHandler = require('./jobs/python-handler');
 
 // Stores all incoming messages, meant to be processed
 const workQueue = [];
@@ -35,26 +33,15 @@ const inProcessMsgs = new Map();
 // Check interval is in seconds, so here is conversion
 const checkInterval = config.tasks.checkInterval * 1000;
 
+// Job handlers
+const pythonHandler = require('./jobs/python-handler');
 const handlers = new Map();
 handlers.set(TaskType.PYTHON, pythonHandler);
 
-const numpyHandler = {};
-numpyHandler.run = pythonHandler.run;
-numpyHandler.remove = pythonHandler.remove;
-numpyHandler.stop = pythonHandler.stop;
-numpyHandler.build = pythonHandler.build;
-numpyHandler.init = (id, code, destDir, onSuccess, onFail) => pythonHandler.initType(TaskType.NUMPY, id, code, destDir, onSuccess, onFail);
-handlers.set(TaskType.NUMPY, numpyHandler);
+em.invoke('services.task-handler.installHandlers', handlers);
 
 const events = require('events');
 const emitter = new events.EventEmitter();
-
-module.exports = class RunFailedError extends Error {
-    constructor(msg, data) {
-        super(msg);
-        this.data = data;
-    }
-};
 
 
 class HandlerNotFoundError extends Error {
@@ -66,6 +53,13 @@ class HandlerNotFoundError extends Error {
 
 /* Message processing */
 process.on('message', handleMsg);
+
+function emitToCoreSystem(eventType, data) {
+    process.send({
+        type: eventType,
+        data: data
+    })
+}
 
 /**
  * The incoming messages logistic.
@@ -146,6 +140,8 @@ async function stop(msg) {
             }
         }
     }
+
+    emitToCoreSystem(getStopEventType(runId))
 }
 
 /**
@@ -174,81 +170,190 @@ async function afterDelay(msg, task, job) {
 }
 
 /**
- * Prepare parameter specification for a job, like transformations from cid to field names in es.
+ * Prepare entities specifications for a job, like index name in es.
+ * @param job
  * @param jobParams Stored job parameters
  * @param taskParams Set task parameters
  * @returns {Promise<void>}
  */
-async function getEntitiesFromParams(jobParams, taskParams) {
+async function getEntitiesFromParams(job, jobParams, taskParams) {
     const entities = {
         signalSets: {},
         signals: {}
     };
 
-    for (let param of taskParams) {
+    function getJobParamByRef(prefix = '/', ref) {
 
-        /* TODO check whether param can be undefined, if not throw error here for unspecified one
-        let paramValue = jobParams[param.id];
-        if (paramValue === undefined){
-                    throw new Error(`Job doesn't specify parameter ${param.id}.`);
+        const abs = ref ? resolveAbs(prefix, ref) : prefix;
+
+        let walker = jobParams;
+        const path = abs.split('/');
+        // Path always starts with slash
+        for (let i = 1; i < path.length; i++) {
+
+            if (path[i] === '') {
+                continue;
+            }
+
+            if (path[i].charAt(0) === '[') {
+                walker = walker[path[i].slice(1, -1)];
+            } else {
+                walker = walker[path[i]];
+            }
+
+            if (!walker) {
+                throw new Error(`Reference ${ref} not valid`);
+            }
         }
-        */
 
-        switch (param.type) {
-            // TODO add support for fieldsets
-            case 'signalSet': {
-                const cid = jobParams[param.id];
+        return walker;
+    }
 
-                if (!cid) {
-                    throw new Error(`Job doesn't specify parameter ${param.id}.`);
+    async function addAllSignalsOfSignalSet(signalSet) {
+        const specSignals = entities.signals[signalSet.cid] || {};
+
+        const signals = await knex('signals').where({set: signalSet.id});
+        for (const signal of signals) {
+            if (specSignals[signal.cid]) {
+                // info already stored
+                continue;
+            }
+            specSignals[signal.cid] = getSignalEntitySpec(signal);
+        }
+
+        entities.signals[signalSet.cid] = specSignals;
+    }
+
+
+    // Walks all subtrees of params and gets info for signals and signalSets found
+    async function loadFromParams(prefix, jobParamsSpec, taskParamsSpec) {
+
+        for (let param of taskParamsSpec) {
+
+            /* TODO check whether param can be undefined, if not throw error here for unspecified one
+            let paramValue = jobParams[param.id];
+            if (paramValue === undefined){
+                        throw new Error(`Job doesn't specify parameter ${param.id}.`);
+            }
+            */
+
+            switch (param.type) {
+                case 'signalSet': {
+
+                    const signalSetCid = jobParamsSpec[param.id];
+
+                    if (!signalSetCid) {
+                        throw new Error(`Job doesn't specify parameter ${param.id}.`);
+                    }
+
+                    if (entities.signalSets[signalSetCid]) {
+                        // info already stored
+                        continue;
+                    }
+
+                    const signalSet = await knex('signal_sets').where({cid: signalSetCid}).first();
+                    if (!signalSet) {
+                        throw new Error(`Set with cid ${signalSetCid} not found.`);
+                    }
+
+
+                    entities.signalSets[signalSetCid] = getSignalSetEntitySpec(signalSet);
+
+
+                    if (param.includeSignals === true) {
+                        await addAllSignalsOfSignalSet(signalSet);
+                    }
+
+                    break;
                 }
 
-                const sigSet = await knex('signal_sets').where({cid: cid}).first();
-                if (!sigSet) {
-                    throw new Error(`Set with cid ${cid} not found.`);
+                case 'signal': {
+
+                    const signalSetCid = param.signalSetRef ? getJobParamByRef(prefix, param.signalSetRef) : param.signalSet;
+                    if (!signalSetCid) {
+                        throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
+                    }
+
+                    let signalCids = jobParamsSpec[param.id];
+
+                    if (!signalCids) {
+                        throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
+                    }
+
+                    // Single select
+                    if (!Array.isArray(signalCids)) {
+                        signalCids = [signalCids];
+                    }
+
+                    for (const signalCid of signalCids) {
+                        if (entities.signals[signalSetCid]) {
+                            if (entities.signals[signalSetCid][signalCid]) {
+                                // info already stored
+                                continue;
+                            }
+                        } else {
+                            entities.signals[signalSetCid] = {};
+                        }
+
+                        const signalSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
+                        if (!signalSet) {
+                            throw new Error(`Signal set with cid ${param.cid} not found.`);
+                        }
+
+
+                        const signal = await knex('signals').where({cid: signalCid, set: signalSet.id}).first();
+                        if (!signal) {
+                            throw new Error(`Signal with cid ${signalCid} in set ${signalSet.id} not found.`);
+                        }
+
+                        entities.signals[signalSetCid][signalCid] = getSignalEntitySpec(signal);
+                    }
+                    break;
                 }
 
-                entities.signalSets[cid] = {
-                    index: getIndexName(sigSet),
-                    namespace: sigSet.namespace
-                };
-                break;
+                case 'fieldset': {
+                    if (param.children) {
+                        let idx = 0;
+
+                        let jobParamSpec = jobParamsSpec[param.id];
+
+                        if (!Array.isArray(jobParamSpec)) {
+                            jobParamSpec = [jobParamSpec];
+                        }
+
+                        for (const child of jobParamSpec) {
+                            await loadFromParams(getFieldsetPrefix(prefix, param, idx), child, param.children);
+                            idx++;
+                        }
+                    }
+                    break;
+                }
+
+                default:
+                    break;
             }
 
-            case 'signal': {
-                const signalSetCid = param.signalSetRef ? jobParams[param.signalSetRef] : param.signalSet; // TODO: This is wrong because it does not handle nested params
-                                                                                                           // It needs to use resolvAbs (as in models/signal-sets.js
-                if (!signalSetCid) {
-                    throw new Error(`Signal set's cid for parameter ${param.id} not specified.`);
-                }
 
-                const sigCid = jobParams[param.id];
-                if (!sigCid) {
-                    throw new Error(`Signal's cid for parameter ${param.id} not specified.`);
-                }
-
-                const sigSet = await knex('signal_sets').select('id').where({cid: signalSetCid}).first();
-                if (!sigSet) {
-                    throw new Error(`Signal set with cid ${param.cid} not found.`);
-                }
-                const sig = await knex('signals').select('id').where({cid: sigCid, set: sigSet.id}).first();
-                if (!sig) {
-                    throw new Error(`Signal with cid ${sigCid} in set ${sigSet.id} not found.`);
-                }
-
-                entities.signals[sigCid] = {
-                    field: getFieldName(sig.id),
-                    namespace: sig.namespace
-                };
-                break;
-            }
-
-            default:
-                break;
         }
     }
 
+    await loadFromParams('/', jobParams, taskParams);
+    // Load all owned signal sets
+    const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
+    for (const signalSet of ownedSignalSets) {
+        if (!entities.signalSets[signalSet.cid]) {
+            entities.signalSets[signalSet.cid] = getSignalSetEntitySpec(signalSet);
+        }
+        await addAllSignalsOfSignalSet(signalSet);
+    }
+
     return entities;
+}
+
+async function getSignalSetsOwnedByJob(jobId) {
+    return await knex('signal_sets_owners').select('signal_sets.*').innerJoin('signal_sets', function () {
+        this.on('signal_sets_owners.set', '=', 'signal_sets.id').andOn('signal_sets_owners.job', '=', jobId);
+    });
 }
 
 /**
@@ -261,11 +366,23 @@ async function getEntitiesFromParams(jobParams, taskParams) {
  */
 async function checkAndSetMsgRunStatus(runId, status, output) {
     if (runId) {
-        await updateRun(runId, {
+        await knex('job_runs').where('id', runId).update({
             status: status,
             output: output
         });
     }
+}
+
+async function getOwnedEntities(job) {
+    const owned = {
+        signalSets: {}
+    };
+    const ownedSignalSets = await getSignalSetsOwnedByJob(job.id);
+    for (const signalSet of ownedSignalSets) {
+        owned.signalSets[signalSet.cid] = {}
+    }
+
+    return owned;
 }
 
 /**
@@ -279,16 +396,17 @@ async function processRunMsg(msg, task, job) {
     const spec = msg.spec;
     try {
         spec.params = JSON.parse(job.params);
-        spec.entities = await getEntitiesFromParams(spec.params, JSON.parse(task.settings).params);
+        spec.entities = await getEntitiesFromParams(job, spec.params, JSON.parse(task.settings).params);
+        spec.owned = await getOwnedEntities(job);
     } catch (error) {
         return void await onRunFail(job.id, spec.runId, null, error.message);
     }
     spec.taskType = task.type;
 
     if (!spec.runId) {
-        msg.spec.runId = await createRun(job.id, RunStatus.SCHEDULED);
+        spec.runId = await createRun(job.id, RunStatus.SCHEDULED);
     } else {
-        await updateRun(spec.runId, {status: RunStatus.SCHEDULED});
+        await knex('job_runs').where('id', spec.runId).update({status: RunStatus.SCHEDULED});
     }
 
     const lastRun = await knex('job_runs').where({
@@ -315,7 +433,7 @@ async function processRunMsg(msg, task, job) {
 }
 
 /**
- * When task is being build, this function is run after the build is finished.
+ * When task is being build when run command arrives, this function is run after the build is finished.
  * @param buildState State of the finished build
  * @param jobId Id of the job waiting
  * @param msg Run msg that should be handled after successful build
@@ -450,20 +568,6 @@ async function createRun(jobId, status) {
 }
 
 /**
- *  Update run
- * @param runId
- * @param columns
- * @returns {Promise<void>}
- */
-async function updateRun(runId, columns) {
-    try {
-        await knex('job_runs').where('id', runId).update(columns);
-    } catch (err) {
-        log.error(`Run ${runId} couldn't be updated.`, err);
-    }
-}
-
-/**
  * Update state of a the job.
  * @param id
  * @param state
@@ -566,9 +670,11 @@ async function handleBuild(workEntry) {
             await setState(id, BuildState.PROCESSING);
 
             await handler.build(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onBuildFail(id, warnings, errors));
         } catch (err) {
@@ -608,10 +714,15 @@ async function handleInit(workEntry) {
     } else {
         try {
             await setState(id, BuildState.INITIALIZING);
+            const task = await knex.table('tasks').where('id', id).first();
+            const subtype = JSON.parse(task.settings).subtype;
             await handler.init(
-                id,
-                spec.code,
-                spec.destDir,
+                {
+                    id: id,
+                    subtype: subtype,
+                    code: spec.code,
+                    destDir: spec.destDir
+                },
                 (warnings) => onBuildSuccess(id, warnings),
                 (warnings, errors) => onInitFail(id, warnings, errors));
         } catch (err) {
@@ -623,31 +734,7 @@ async function handleInit(workEntry) {
 /*--------------------------*/
 
 /* ---------- RUN ---------- */
-/**
- * Callback for successful run.
- * @param jobId
- * @param runId
- * @param runData
- * @param output
- * @param config
- * @returns {Promise<void>}
- */
-async function onRunSuccess(jobId, runId, runData, output, config) {
 
-    inProcessMsgs.delete(runId);
-    jobRunning.delete(jobId);
-    runData.finished_at = new Date();
-    runData.status = RunStatus.SUCCESS;
-    runData.output = output ? output : '';
-    try {
-        await updateRun(runId, runData);
-        if (config) {
-            await storeRunState(config);
-        }
-    } catch (err) {
-        log.error(LOG_ID, err);
-    }
-}
 
 /**
  * Run fail handler. Used as the exit point for run msg handling process.
@@ -663,7 +750,7 @@ async function onRunFail(jobId, runId, runData, errMsg) {
     inProcessMsgs.delete(runId);
 
     await handleRunFail(jobId, runId, runData, errMsg);
-
+    emitToCoreSystem(getFailEventType(runId), errMsg);
 }
 
 async function handleRunFail(jobId, runId, runData, errMsg) {
@@ -676,7 +763,9 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
         runData.status = RunStatus.FAILED;
         runData.output = errMsg ? errMsg : '';
         try {
-            await updateRun(runId, runData);
+            const run = await knex('job_runs').select('output').where('id', runId).first();
+            runData.output = [errMsg, `Log:\n${run.output}`].join('\n\n');
+            await knex('job_runs').where('id', runId).update(runData);
         } catch (err) {
             log.error(LOG_ID, err);
         }
@@ -688,47 +777,6 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
 }
 
 
-function parseRequest(req) {
-    return JSON.parse(req);
-}
-
-/**
- * This function processes all requests coming from the type handlers.
- * @param jobId
- * @param request
- * @returns {Promise<Object>}
- */
-async function onRunRequest(jobId, request) {
-    let response = {};
-    if (request) {
-        let req = {};
-        try {
-            req = parseRequest(request);
-        } catch (err) {
-            response.error = `Request parsing failed: ${err.message}`;
-            return response;
-        }
-
-        if (req.type) {
-            switch (req.type) {
-                case JobMsgType.CREATE_SIGNALS:
-                    if (req.sigSet) {
-                        return await processSetReq(jobId, req.sigSet);
-                    }
-                    break;
-                case  JobMsgType.STORE_STATE:
-                    if (req.config) {
-                        await storeRunState(jobId, req.config);
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-    return response;
-}
-
 /**
  * @typedef {Object} IndexInfo
  * @property {string} index - Created index name.
@@ -737,46 +785,6 @@ async function onRunRequest(jobId, request) {
 
 // TODO - we would need something similar for signals
 
-/**
- * Process request for signal set and signals creation
- * Signals are specified in sigSet.signals
- * Uses same data format as web creation
- * @param jobId
- * @param sigSet
- * @returns {Promise<IndexInfo>} Created indices and mapping
- */
-async function processSetReq(jobId, sigSet) {
-    const indexInfo = {};
-
-    const signals = sigSet.signals;
-    delete sigSet.signals;
-
-    sigSet.type = SignalSetType.COMPUTED;
-
-    try {
-        await knex.transaction(async (tx) => {
-                sigSet.id = await createSigSet(getAdminContext(), sigSet);
-                indexInfo.index = getIndexName(sigSet);
-                indexInfo.type = '_doc';
-
-                indexInfo.fields = {};
-                for (const signal of signals) {
-                    signal.weight_list = 0;
-                    signal.weight_edit = null;
-                    const sigId = await createSignal(getAdminContext(), sigSet.id, signal, false);
-                    indexInfo.fields[signal.cid] = getFieldName(sigId);
-                }
-
-                await tx('signal_sets_owners').insert({job: jobId, set: sigSet.id});
-            }
-        );
-    } catch (error) {
-        log.warn(LOG_ID, error);
-        indexInfo.error = error.message;
-    }
-
-    return indexInfo;
-}
 
 /**
  * Load saved config from elasticsearch
@@ -784,10 +792,8 @@ async function processSetReq(jobId, sigSet) {
  * @returns {Promise<void>} config field retrieved from ES
  */
 async function loadJobState(id) {
-    let jobState = null;
     try {
         const jobState = await es.get({index: INDEX_JOBS, type: TYPE_JOBS, id: id, filter_path: ['_source']});
-        jobState['_source'][STATE_FIELD];
 
         return jobState['_source'][STATE_FIELD];
 
@@ -797,26 +803,11 @@ async function loadJobState(id) {
         } else {
             log.error(LOG_ID, err);
         }
-        
+
         return null;
     }
 }
 
-/**
- * Store config from job, overwrites old config
- * @param id ID of the job config belongs to
- * @param state Config to store, JSON format
- * @returns {Promise<void>}
- */
-async function storeRunState(id, state) {
-    const jobBody = {};
-    jobBody[STATE_FIELD] = state;
-    try {
-        await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
-    } catch (error) {
-        log.warn(LOG_ID, error);
-    }
-}
 
 /**
  * Handle run task.
@@ -833,27 +824,42 @@ async function handleRun(workEntry) {
             throw new HandlerNotFoundError('Handler for type not found', spec.id);
         }
 
-        const runData = {};
-        await updateRun(runId, {status: RunStatus.RUNNING});
-        runData.started_at = new Date();
+        await knex('job_runs').where('id', runId).update({status: RunStatus.RUNNING});
         inProcessMsgs.set(runId, handler);
-        handler.run(
-            jobId,
-            runId,
-            spec.params,
-            spec.entities,
-            await loadJobState(jobId),
-            spec.taskDir,
-            async (request) => {
-                return await onRunRequest(jobId, request);
+
+        const runConfig = {
+            jobId: jobId,
+            runId: runId,
+            taskDir: spec.taskDir,
+            inputData: {
+                params: spec.params,
+                entities: spec.entities,
+                owned: spec.owned,
+                state: await loadJobState(jobId)
+            }
+        };
+
+        // TODO move interaction, as running and stopping, to run manager
+        // there is a lot of overhead for running a job so it will serve as intermediate layer for handlers
+        const runManager = createRunManager(jobId, runId, {
+            onRunFail,
+            onRunSuccess: ()=> {
+                inProcessMsgs.delete(runId);
+                jobRunning.delete(jobId);
             },
-            (output, config) => onRunSuccess(jobId, runId, runData, output, config),
-            (error) => onRunFail(jobId, runId, runData, error)
+            emit: emitToCoreSystem
+        });
+
+        handler.run(
+            runConfig,
+            runManager.onRunEvent,
+            runManager.onRunSuccess,
+            runManager.onRunFail
         );
 
     } catch (err) {
         log.error(LOG_ID, err);
-        await updateRun(spec.runId, {status: RunStatus.FAILED});
+        await knex('job_runs').where('id', spec.runId).update({status: RunStatus.FAILED});
     }
 
 }
@@ -900,15 +906,13 @@ async function getHandler(id) {
 /**
  * Returns run message for job.
  * @param job the job to run
- * @returns {Promise<{type: number, spec: {jobId: *, taskDir: string}}>}
  */
-async function createRunMsg(job) {
-    const task = await knex('tasks').select('id').where('id', job.task).first();
+function createRunMsg(job) {
     return {
         type: HandlerMsgType.RUN,
         spec: {
             jobId: job.id,
-            taskDir: getTaskBuildOutputDir(task.id)
+            taskDir: getTaskBuildOutputDir(job.task)
         }
     };
 }
@@ -927,7 +931,7 @@ async function checkSignalTriggers(cid) {
     for (let trigger of triggers) {
         const job = await knex('jobs').where('id', trigger.job).first();
         if (job.state === JobState.ENABLED) {
-            const msg = await createRunMsg(job);
+            const msg = createRunMsg(job);
             handleRunMsg(msg).catch(logErr);
         }
     }
@@ -951,10 +955,10 @@ async function runTimeTrigger(job) {
         if (last_run && last_run.started_at) {
             let timeFromLast = moment(Date.now()).diff(moment(last_run.started_at), 'seconds');
             if (timeFromLast > job.trigger) {
-                await handleRunMsg(await createRunMsg(job));
+                await handleRunMsg(createRunMsg(job));
             }
         } else {
-            await handleRunMsg(await createRunMsg(job));
+            await handleRunMsg(createRunMsg(job));
         }
 
     }
@@ -966,13 +970,11 @@ async function runTimeTrigger(job) {
  */
 async function runTimeTriggers() {
     try {
-        const jobs = await knex.select().table('jobs');
+        const jobs = await knex('jobs').where('state', JobState.ENABLED);
 
         if (jobs) {
             for (let i = 0; i < jobs.length; i++) {
-                if (jobs[i].state === JobState.ENABLED) {
-                    await runTimeTrigger(jobs[i]).catch(logErr);
-                }
+                await runTimeTrigger(jobs[i]).catch(logErr);
             }
         }
         startIfNotRunning();
@@ -982,7 +984,7 @@ async function runTimeTriggers() {
 }
 
 function logErr(err) {
-    log.info(LOG_ID, err.stack);
+    log.error(LOG_ID, err.stack);
 }
 
 // This line starts the time trigger functionality

@@ -1,14 +1,19 @@
 'use strict';
 
-
 const TaskType = {
-    NUMPY: 'numpy',
-    PYTHON: 'python'
+    PYTHON: 'python',
 };
 
-if (Object.freeze) {
-    Object.freeze(TaskType)
-}
+const defaultSubtypeKey = '__default__';
+
+const PythonSubtypes = {
+    ENERGY_PLUS: 'energy_plus',
+    NUMPY: 'numpy'
+};
+
+const subtypesByType = {
+    [TaskType.PYTHON]: PythonSubtypes
+};
 
 const BuildState = {
     SCHEDULED: 0,
@@ -19,12 +24,13 @@ const BuildState = {
     INITIALIZING: 5
 };
 
-if (Object.freeze) {
-    Object.freeze(BuildState)
-}
+const TaskSource = {
+    USER: 'user',
+    BUILTIN: 'builtin'
+};
 
 function getFinalStates() {
-    return [BuildState.FINISHED, BuildState.FAILED, BuildState.UNINITIALIZED, BuildState.MAX];
+    return [BuildState.FINISHED, BuildState.FAILED, BuildState.UNINITIALIZED];
 }
 
 function getTransitionStates() {
@@ -37,7 +43,11 @@ function isTransitionState(state) {
 
 module.exports = {
     TaskType,
+    subtypesByType,
+    PythonSubtypes,
+    defaultSubtypeKey,
     BuildState,
+    TaskSource,
     getFinalStates,
     getTransitionStates,
     isTransitionState

@@ -7,6 +7,7 @@ import {
     Button,
     ButtonRow,
     Dropdown,
+    filterData,
     Form,
     FormSendMethod,
     InputField,
@@ -17,7 +18,7 @@ import {
 import "brace/mode/html";
 import "brace/mode/json";
 import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} from "../lib/error-handling";
-import ParamTypes from "../settings/workspaces/panels/ParamTypes"
+import ParamTypes from "../settings/ParamTypes"
 import {checkPermissions} from "../lib/permissions";
 import styles from "./PanelConfig.scss";
 import {panelMenuMixin} from "./PanelMenu";
@@ -30,11 +31,18 @@ import {withPageHelpers} from "../lib/page-common";
 import {createComponentMixin, withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
+import {VIRTUAL_PANEL_ID} from "../../../shared/panels"
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
-export const panelConfigAccessMixin = createComponentMixin([{context: PanelConfigOwnerContext, propName: 'panelConfigOwner'}], [], (TargetClass, InnerClass) => {
-    return {};
+export const panelConfigAccessMixin = createComponentMixin({
+    contexts: [{
+        context: PanelConfigOwnerContext,
+        propName: 'panelConfigOwner'
+    }],
+    decoratorFn: (TargetClass, InnerClass) => {
+        return {};
+    }
 });
 
 @withComponentMixins([
@@ -142,14 +150,14 @@ export class Configurator extends Component {
             if (this.props.autoApply) {
                 buttons = (
                     <ButtonRow>
-                        <Button className="btn-primary" icon="check" label={t('Close')} onClickAsync={::this.close} />
+                        <Button className="btn-primary" icon="check" label={t('Close')} onClickAsync={::this.close}/>
                     </ButtonRow>
                 );
             } else {
                 buttons = (
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Apply')}/>
-                        <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close} />
+                        <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close}/>
                     </ButtonRow>
                 );
             }
@@ -263,6 +271,25 @@ export class SaveDialog extends Component {
         }
     }
 
+    submitFormValuesMutator(data) {
+        const owner = this.props.panelConfigOwner;
+        data.template = owner.props.panel.template;
+        data.builtin_template = owner.props.panel.builtin_template;
+        data.params = owner.getPanelConfig();
+        data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
+        return filterData(data, [
+            'name',
+            'description',
+            'workspace',
+            'orderBefore',
+            'params',
+            'template',
+            'builtin_template',
+            'template',
+            'namespace'
+        ]);
+    }
+
     async submitHandler() {
         const t = this.props.t;
         const owner = this.props.panelConfigOwner;
@@ -273,10 +300,14 @@ export class SaveDialog extends Component {
                 this.disableForm();
                 this.setFormStatusMessage('info', t('Saving ...'));
 
-                await axios.put(getUrl(`rest/panels-config/${owner.props.panel.id}`), owner.getPanelConfig());
+                if (owner.props.panel.id !== VIRTUAL_PANEL_ID) {
+                    await axios.put(getUrl(`rest/panels-config/${owner.props.panel.id}`), owner.getPanelConfig());
+                    this.clearFormStatusMessage();
+                } else {
+                    this.setFormStatusMessage('warning', t("This panel is virtual and can't be saved."));
+                }
 
                 this.enableForm();
-                this.clearFormStatusMessage();
 
                 this.close();
 
@@ -286,16 +317,14 @@ export class SaveDialog extends Component {
 
                 const workspaceId = this.getFormValue('workspace');
 
-                const newPanelId = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, `rest/panels/${workspaceId}`, data => {
-                    data.template = owner.props.panel.template;
-                    data.builtin_template = owner.props.panel.builtin_template;
-                    data.params = owner.getPanelConfig();
-                    data.orderBefore = Number.parseInt(data.orderBefore) || data.orderBefore;
-                });
+                const newPanelId = await this.validateAndSendFormValuesToURL(FormSendMethod.POST, `rest/panels/${workspaceId}`);
 
                 if (newPanelId) {
                     this.setState({
-                        message: <Trans>Panel saved. Click <ActionLink href={getTrustedUrl(`workspaces/${workspaceId}/${newPanelId}`)} onClickAsync={async () => this.navigateTo(`/workspaces/${workspaceId}/${newPanelId}`)}>here</ActionLink> to open it.</Trans> // FIXME - make the action link tell parent to navigate to the url
+                        message: <Trans>Panel saved. Click <ActionLink
+                            href={getTrustedUrl(`workspaces/${workspaceId}/${newPanelId}`)}
+                            onClickAsync={async () => this.navigateTo(`/workspaces/${workspaceId}/${newPanelId}`)}>here</ActionLink> to
+                            open it.</Trans> // FIXME - make the action link tell parent to navigate to the url
                     });
 
                     this.enableForm();
@@ -343,7 +372,7 @@ export class SaveDialog extends Component {
                         <AlignedRow>{this.state.message}</AlignedRow>
 
                         <ButtonRow>
-                            <Button className="btn-primary" icon="check" label={t('OK')} onClickAsync={::this.close} />
+                            <Button className="btn-primary" icon="check" label={t('OK')} onClickAsync={::this.close}/>
                         </ButtonRow>
                     </Form>
                 </div>
@@ -359,7 +388,7 @@ export class SaveDialog extends Component {
 
                         <ButtonRow>
                             <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                            <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close} />
+                            <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close}/>
                         </ButtonRow>
                     </Form>
                 </div>
@@ -367,23 +396,23 @@ export class SaveDialog extends Component {
 
         } else if (dialog === SaveDialogType.SAVE_COPY) {
             const templateColumns = [
-                { data: 1, title: t('Name') },
-                { data: 2, title: t('Description') },
-                { data: 5, title: t('Created'), render: data => moment(data).fromNow() }
+                {data: 1, title: t('Name')},
+                {data: 2, title: t('Description')},
+                {data: 5, title: t('Created'), render: data => moment(data).fromNow()}
             ];
 
             const workspaceColumns = [
-                { data: 1, title: t('#') },
-                { data: 2, title: t('Name') },
-                { data: 3, title: t('Description') },
-                { data: 4, title: t('Created'), render: data => moment(data).fromNow() }
+                {data: 1, title: t('#')},
+                {data: 2, title: t('Name')},
+                {data: 3, title: t('Description')},
+                {data: 4, title: t('Created'), render: data => moment(data).fromNow()}
             ];
 
             const panel = owner.props.panel;
 
-            const orderOptions =[
+            const orderOptions = [
                 {key: 'none', label: t('Not visible')},
-                ...this.state.panelsVisible.map(x => ({ key: x.id.toString(), label: x.name})),
+                ...this.state.panelsVisible.map(x => ({key: x.id.toString(), label: x.name})),
                 {key: 'end', label: t('End of list')}
             ];
 
@@ -394,13 +423,16 @@ export class SaveDialog extends Component {
 
                         <InputField id="name" label={t('Name')}/>
                         <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                        <TableSelect id="workspace" label={t('Workspace')} withHeader dropdown dataUrl="rest/workspaces-table" columns={workspaceColumns} selectionLabelIndex={2}/>
+                        <TableSelect id="workspace" label={t('Workspace')} withHeader dropdown
+                                     dataUrl="rest/workspaces-table" columns={workspaceColumns}
+                                     selectionLabelIndex={2}/>
                         <NamespaceSelect/>
-                        <Dropdown id="orderBefore" label={t('Order (before)')} options={orderOptions} help={t('Select the panel before which this panel should appear in the menu. To exclude the panel from listings, select "Not visible".')}/>
+                        <Dropdown id="orderBefore" label={t('Order (before)')} options={orderOptions}
+                                  help={t('Select the panel before which this panel should appear in the menu. To exclude the panel from listings, select "Not visible".')}/>
 
                         <ButtonRow>
                             <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                            <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close} />
+                            <Button className="btn-danger" icon="ban" label={t('Cancel')} onClickAsync={::this.close}/>
                         </ButtonRow>
                     </Form>
                 </div>
@@ -442,10 +474,11 @@ export class PermanentLinkDialog extends Component {
 
                     <h3>{t('Permanent link')}</h3>
 
-                    <textarea rows={7} value={link} readOnly />
+                    <textarea rows={7} value={link} readOnly/>
 
                     <div className={styles.buttonRow}>
-                        <Button className="btn-primary" icon="check" label={t('OK')} onClickAsync={async () => openPermanentLinkDialog(owner, false)} />
+                        <Button className="btn-primary" icon="check" label={t('OK')}
+                                onClickAsync={async () => openPermanentLinkDialog(owner, false)}/>
                     </div>
                 </div>
             );
@@ -582,7 +615,8 @@ export class PdfExportDialog extends Component {
             if (!isExportRunning) {
                 exportButton = <Button type="submit" className="btn-primary" icon="check" label={t('Export PDF')}/>;
             } else {
-                exportButton = <Button type="submit" className="btn-primary" icon="hourglass" label={t('Exporting ...')} disabled/>;
+                exportButton = <Button type="submit" className="btn-primary" icon="hourglass" label={t('Exporting ...')}
+                                       disabled/>;
             }
 
             return (
@@ -604,192 +638,218 @@ export class PdfExportDialog extends Component {
 }
 
 
+export const panelConfigMixin = createComponentMixin({
+    deps: [withErrorHandling, panelMenuMixin, withTranslation, withPageHelpers],
+    decoratorFn: (TargetClass, InnerClass) => {
+        const inst = InnerClass.prototype;
 
-export const panelConfigMixin = createComponentMixin([], [withErrorHandling, panelMenuMixin, withTranslation], (TargetClass, InnerClass) => {
-    const inst = InnerClass.prototype;
+        function ctor(self, props) {
+            if (!self.state) {
+                self.state = {};
+            }
 
-    function ctor(self, props) {
-        if (!self.state) {
-            self.state = {};
-        }
-
-        self.state._panelConfig = Immutable.Map({
-            params: Immutable.fromJS(props.params),
-            state: Immutable.fromJS(props.state || {}),
-            savePermitted: false
-        });
-
-        self._panelConfig = {
-            configFreezeHandlers: new Set(),
-            stateFreezeHandlers: new Set()
-        }
-    }
-
-    const previousComponentDidUpdate = inst.componentDidUpdate;
-    inst.componentDidUpdate = function(prevProps, prevState, snapshot) {
-        if (this.props.params !== prevProps.params) {
-            this.setState(state => ({
-                _panelConfig: state._panelConfig
-                    .set('params', Immutable.fromJS(this.props.params))
-            }));
-        }
-
-        if (previousComponentDidUpdate) {
-            previousComponentDidUpdate.apply(this, prevProps, prevState, snapshot);
-        }
-    };
-
-    const previousComponentDidMount = inst.componentDidMount;
-    inst.componentDidMount = function() {
-        const t = this.props.t;
-
-        const fetchPermissions = wrapWithAsyncErrorHandler(this, async () => {
-            const result = await checkPermissions({
-                editPanel: {
-                    entityTypeId: 'panel',
-                    entityId: this.props.panel.id,
-                    requiredOperations: ['edit']
-                },
-                createPanel: {
-                    entityTypeId: 'namespace',
-                    requiredOperations: ['createPanel']
-                }
+            self.state._panelConfig = Immutable.Map({
+                params: Immutable.fromJS(props.params),
+                templateParams: Immutable.fromJS(props.panel.templateParams),
+                state: Immutable.fromJS(props.state || {}),
+                savePermitted: false
             });
 
-            const savePermitted = result.data.editPanel;
-            const saveAsPermitted = result.data.createPanel;
+            self._panelConfig = {
+                configFreezeHandlers: new Set(),
+                stateFreezeHandlers: new Set()
+            }
+        }
+
+        const previousComponentDidUpdate = inst.componentDidUpdate;
+        inst.componentDidUpdate = function (prevProps, prevState, snapshot) {
+            if (this.props.params !== prevProps.params) {
+                this.setState(state => ({
+                    _panelConfig: state._panelConfig
+                        .set('params', Immutable.fromJS(this.props.params))
+                }));
+            }
+
+            if (previousComponentDidUpdate) {
+                previousComponentDidUpdate.apply(this, prevProps, prevState, snapshot);
+            }
+        };
+
+        const previousComponentDidMount = inst.componentDidMount;
+        inst.componentDidMount = function () {
+            const t = this.props.t;
+
+            const fetchPermissions = wrapWithAsyncErrorHandler(this, async () => {
+                const result = await checkPermissions({
+                    editPanel: {
+                        entityTypeId: 'panel',
+                        entityId: this.props.panel.id,
+                        requiredOperations: ['edit']
+                    },
+                    createPanel: {
+                        entityTypeId: 'namespace',
+                        requiredOperations: ['createPanel']
+                    }
+                });
+
+                const savePermitted = result.data.editPanel;
+                const saveAsPermitted = result.data.createPanel;
+                this.setState(state => ({
+                    _panelConfig: state._panelConfig
+                        .set('savePermitted', savePermitted)
+                        .set('saveAsPermitted', saveAsPermitted)
+                }));
+
+                const menuUpdates = {};
+                if (savePermitted) {
+                    menuUpdates['save'] = {
+                        label: t('Save'),
+                        action: () => openSaveDialog(this, SaveDialogType.SAVE),
+                        weight: 10
+                    };
+                }
+
+                if (saveAsPermitted) {
+                    menuUpdates['saveCopy'] = {
+                        label: t('Save Copy'),
+                        action: () => openSaveDialog(this, SaveDialogType.SAVE_COPY),
+                        weight: 11
+                    };
+                }
+
+                menuUpdates['pdfExport'] = {
+                    label: t('Export PDF'),
+                    action: () => openPdfExportDialog(this, true),
+                    weight: 12
+                };
+
+                menuUpdates['permanentLink'] = {
+                    label: t('Permanent Link'),
+                    action: () => openPermanentLinkDialog(this, true),
+                    weight: 13
+                };
+
+                if (savePermitted) {
+                    const panelId = this.props.panel.id;
+                    const workspaceId = this.props.panel.workspace;
+                    menuUpdates['settings'] = {
+                        label: t('Edit settings'),
+                        action: () => this.navigateTo(`/settings/workspaces/${workspaceId}/panels/${panelId}/edit`),
+                        weight: 14
+                    };
+                }
+
+                this.updatePanelMenu(menuUpdates);
+            });
+
+            fetchPermissions();
+
+            if (previousComponentDidMount) {
+                previousComponentDidMount.apply(this);
+            }
+        };
+
+        const previousRender = inst.render;
+        inst.render = function () {
+            return (
+                <PanelConfigOwnerContext.Provider value={this}>
+                    {<PdfExportDialog/>}
+                    {<PermanentLinkDialog/>}
+                    {(this.isPanelConfigSavePermitted() || this.isPanelConfigSaveAsPermitted()) && <SaveDialog/>}
+                    {previousRender.apply(this)}
+                </PanelConfigOwnerContext.Provider>
+            );
+        };
+
+        inst.isPanelConfigSavePermitted = function () {
+            return this.state._panelConfig.get('savePermitted');
+        };
+
+        inst.isPanelConfigSaveAsPermitted = function () {
+            return this.state._panelConfig.get('saveAsPermitted');
+        };
+
+        inst.registerPanelConfigFreezeHandler = function (handler) {
+            this._panelConfig.configFreezeHandlers.add(handler);
+        };
+
+        inst.unregisterPanelConfigFreezeHandler = function (handler) {
+            this._panelConfig.configFreezeHandlers.delete(handler);
+        };
+
+        inst.registerPanelStateFreezeHandler = function (handler) {
+            this._panelConfig.stateFreezeHandlers.add(handler);
+        };
+
+        inst.unregisterPanelStateFreezeHandler = function (handler) {
+            this._panelConfig.stateFreezeHandlers.delete(handler);
+        };
+
+        inst.getPanelConfig = function (path = []) {
+            const value = this.state._panelConfig.getIn(['params', ...path]);
+            if (Immutable.isImmutable(value)) {
+                return value.toJS();
+            } else {
+                return value;
+            }
+        };
+
+        /**
+         * Gets the specification of template parameters.
+         * It can be used for example in 'configSpec' parameter of 'Legend'. Example of usage can be found in '/examples/templates/scatterplot_legend' template.
+         */
+        inst.getPanelConfigSpec = function (path = []) {
+            const value = this.state._panelConfig.getIn(['templateParams', ...path]);
+            if (Immutable.isImmutable(value)) {
+                return value.toJS();
+            } else {
+                return value;
+            }
+        };
+
+        inst.getFrozenPanelConfig = function () {
+            let value = this.state._panelConfig.get('params').toJS();
+            for (const handler of this._panelConfig.configFreezeHandlers.keys()) {
+                value = handler(value);
+            }
+
+            return value;
+        };
+
+        inst.updatePanelConfig = function (path, newValue) {
             this.setState(state => ({
-                _panelConfig: state._panelConfig
-                    .set('savePermitted', savePermitted)
-                    .set('saveAsPermitted', saveAsPermitted)
+                _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
             }));
+        };
 
-            const menuUpdates = {};
-            if (savePermitted) {
-                menuUpdates['save'] = {
-                    label: t('Save'),
-                    action: () => openSaveDialog(this, SaveDialogType.SAVE),
-                    weight: 10
-                };
+        inst.getPanelState = function (path = []) {
+            const value = this.state._panelConfig.getIn(['state', ...path]);
+            if (Immutable.isImmutable(value)) {
+                return value.toJS();
+            } else {
+                return value;
+            }
+        };
+
+        inst.getFrozenPanelState = function () {
+            let value = this.state._panelConfig.get('state').toJS();
+            for (const handler of this._panelConfig.stateFreezeHandlers.keys()) {
+                value = handler(value);
             }
 
-            if (saveAsPermitted) {
-                menuUpdates['saveCopy'] = {
-                    label: t('Save Copy'),
-                    action: () => openSaveDialog(this, SaveDialogType.SAVE_COPY),
-                    weight: 11
-                };
-            }
-
-            menuUpdates['pdfExport'] = {
-                label: t('Export PDF'),
-                action: () => openPdfExportDialog(this, true),
-                weight: 12
-            };
-
-            menuUpdates['permanentLink'] = {
-                label: t('Permanent Link'),
-                action: () => openPermanentLinkDialog(this, true),
-                weight: 13
-            };
-
-            this.updatePanelMenu(menuUpdates);
-        });
-
-        fetchPermissions();
-
-        if (previousComponentDidMount) {
-            previousComponentDidMount.apply(this);
-        }
-    };
-
-    const previousRender = inst.render;
-    inst.render = function() {
-        return (
-            <PanelConfigOwnerContext.Provider value={this}>
-                {<PdfExportDialog/>}
-                {<PermanentLinkDialog/>}
-                {(this.isPanelConfigSavePermitted() || this.isPanelConfigSaveAsPermitted()) && <SaveDialog/>}
-                { previousRender.apply(this) }
-            </PanelConfigOwnerContext.Provider>
-        );
-    };
-
-    inst.isPanelConfigSavePermitted = function() {
-        return this.state._panelConfig.get('savePermitted');
-    };
-
-    inst.isPanelConfigSaveAsPermitted = function() {
-        return this.state._panelConfig.get('saveAsPermitted');
-    };
-
-    inst.registerPanelConfigFreezeHandler = function(handler) {
-        this._panelConfig.configFreezeHandlers.add(handler);
-    };
-
-    inst.unregisterPanelConfigFreezeHandler = function(handler) {
-        this._panelConfig.configFreezeHandlers.delete(handler);
-    };
-
-    inst.registerPanelStateFreezeHandler = function(handler) {
-        this._panelConfig.stateFreezeHandlers.add(handler);
-    };
-
-    inst.unregisterPanelStateFreezeHandler = function(handler) {
-        this._panelConfig.stateFreezeHandlers.delete(handler);
-    };
-
-    inst.getPanelConfig = function(path = []) {
-        const value = this.state._panelConfig.getIn(['params', ...path]);
-        if (Immutable.isImmutable(value)) {
-            return value.toJS();
-        } else {
             return value;
-        }
-    };
+        };
 
-    inst.getFrozenPanelConfig = function() {
-        let value = this.state._panelConfig.get('params').toJS();
-        for (const handler of this._panelConfig.configFreezeHandlers.keys()) {
-            value = handler(value);
-        }
+        inst.updatePanelState = function (path, newValue) {
+            this.setState(state => ({
+                _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
+            }));
+        };
 
-        return value;
-    };
-
-    inst.updatePanelConfig = function(path, newValue) {
-        this.setState(state => ({
-            _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
-        }));
-    };
-
-    inst.getPanelState = function(path = []) {
-        const value = this.state._panelConfig.getIn(['state', ...path]);
-        if (Immutable.isImmutable(value)) {
-            return value.toJS();
-        } else {
-            return value;
-        }
-    };
-
-    inst.getFrozenPanelState = function() {
-        let value = this.state._panelConfig.get('state').toJS();
-        for (const handler of this._panelConfig.stateFreezeHandlers.keys()) {
-            value = handler(value);
-        }
-
-        return value;
-    };
-
-    inst.updatePanelState = function(path, newValue) {
-        this.setState(state => ({
-            _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
-        }));
-    };
-
-    return {
-        ctor
-    };
+        return {
+            ctor
+        };
+    }
 });
 
 

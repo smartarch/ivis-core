@@ -31,10 +31,10 @@ async function initAndStart() {
 
         if (isHttps) {
             const options = {
-                key: fs.readFileSync(certsConfig.serverKey),
-                cert: fs.readFileSync(certsConfig.serverCert),
-                ca: certsConfig.caCert && fs.readFileSync(certsConfig.caCert),
-                crl: certsConfig.crl && fs.readFileSync(certsConfig.crl),
+                key: fs.readFileSync(__dirname + '/' + certsConfig.serverKey),
+                cert: fs.readFileSync(__dirname + '/' + certsConfig.serverCert),
+                ca: certsConfig.caCert && fs.readFileSync(__dirname + '/' + certsConfig.caCert),
+                crl: certsConfig.crl && fs.readFileSync(__dirname + '/' + certsConfig.crl),
                 requestCert: !!certsConfig.caCert,
                 rejectUnauthorized: false
             };
@@ -50,7 +50,7 @@ async function initAndStart() {
             log.info('Express', `WWW server [${appName}] listening on HTTPS port ${addr.port}`);
         });
 
-        em.invoke('server.setup', server, app);
+        em.invoke('server.setup', server, app, appType);
 
         server.listen(port, host, callback);
     }

@@ -10,7 +10,6 @@ const contextHelpers = require('../lib/context-helpers');
 const shares = require('./shares');
 const {RunStatus} = require('../../shared/jobs');
 const jobHandler = require('../lib/task-handler');
-const {getTaskBuildOutputDir} = require('../lib/task-handler');
 const signalSets = require('./signal-sets');
 const allowedKeys = new Set(['name', 'description', 'task', 'params', 'state', 'trigger', 'min_gap', 'delay', 'namespace']);
 
@@ -88,8 +87,11 @@ async function listDTAjax(context, params) {
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
-        builder => builder.from('jobs').innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
-        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name']
+        builder => builder
+            .from('jobs')
+            .innerJoin('tasks', 'tasks.id', 'jobs.task')
+            .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
+        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name']
     );
 }
 
@@ -108,6 +110,25 @@ async function listRunsDTAjax(context, id, params) {
                 .where({'jobs.id': id})
                 .orderBy('job_runs.id', 'desc'),
             ['job_runs.id', 'job_runs.job', 'job_runs.started_at', 'job_runs.finished_at', 'job_runs.status']
+        );
+    });
+}
+
+async function listOwnedSignalSetsDTAjax(context, id, params) {
+    return await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
+
+        return await dtHelpers.ajaxListWithPermissionsTx(
+            tx,
+            context,
+            [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
+            params,
+            builder => builder
+                .from('signal_sets_owners')
+                .innerJoin('signal_sets', 'signal_sets_owners.set', 'signal_sets.id')
+                .where({'signal_sets_owners.job': id})
+                .orderBy('signal_sets.id', 'desc'),
+            ['signal_sets_owners.set', 'signal_sets.name', 'signal_sets.description']
         );
     });
 }
@@ -182,7 +203,7 @@ function parseTriggerStr(triggerStr) {
  * @returns {Promise<void>}
  */
 async function updateSetTriggersTx(tx, id, sets) {
-
+    sets = sets.filter(s => s != null);
     await tx('job_triggers').where('job', id).whereNotIn('signal_set', sets).del();
 
     for (let i = 0; i < sets.length; i++) {
@@ -250,7 +271,7 @@ async function remove(context, id) {
 
         const owners = await tx('signal_sets_owners').where('job', id);
         for (let pair of owners) {
-            await signalSets.remove(contextHelpers.getAdminContext(), pair.set)
+            await signalSets.removeById(contextHelpers.getAdminContext(), pair.set)
         }
 
         await tx('jobs').where('id', id).del();
@@ -273,6 +294,13 @@ async function removeRun(context, jobId, runId) {
     });
 }
 
+async function removeAllRuns(context, jobId) {
+    await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'delete');
+        await tx('job_runs').where({job: jobId}).del();
+    });
+}
+
 /**
  * Run job.
  * @param context
@@ -289,7 +317,7 @@ async function run(context, id) {
     });
 
     const runId = runIds[0];
-    await jobHandler.scheduleRun(id, getTaskBuildOutputDir(job.task), runId);
+    await jobHandler.scheduleRun(id, jobHandler.getTaskBuildOutputDir(job.task), runId);
     return runId;
 }
 
@@ -318,12 +346,14 @@ module.exports.getByIdWithTaskParams = getByIdWithTaskParams;
 module.exports.getRunById = getRunById;
 module.exports.listDTAjax = listDTAjax;
 module.exports.listRunsDTAjax = listRunsDTAjax;
+module.exports.listOwnedSignalSetsDTAjax = listOwnedSignalSetsDTAjax;
 module.exports.listRunningDTAjax = listRunningDTAjax;
 module.exports.listByTaskDTAjax = listByTaskDTAjax;
 module.exports.create = create;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.remove = remove;
 module.exports.removeRun = removeRun;
+module.exports.removeAllRuns = removeAllRuns;
 module.exports.run = run;
 module.exports.stop = stop;
 

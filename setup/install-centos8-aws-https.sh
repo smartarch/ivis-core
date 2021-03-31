@@ -2,9 +2,9 @@
 
 set -e
 
-hostType=centos7
+hostType=centos8-aws
 
 SCRIPT_PATH=$(dirname $(realpath -s $0))
 . $SCRIPT_PATH/functions
 
-performInstallLocal "$#" false
+performInstallHttps "$#" "$1" "$2" "$3" "$4" false

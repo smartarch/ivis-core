@@ -12,12 +12,13 @@ import {
     Button,
     ButtonRow,
     CheckBox,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -60,9 +61,7 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                data.elevated_access = !!data.elevated_access;
-            });
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 name: '',
@@ -75,9 +74,8 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
+    getFormValuesMutator(data) {
+        data.elevated_access = !!data.elevated_access;
     }
 
     localValidateFormValues(state) {
@@ -98,7 +96,27 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    async submitHandler() {
+    submitFormValuesMutator(data) {
+        if (!this.props.entity) {
+            if (data.type === 'jsx') {
+                data.settings = {
+                    params: [],
+                    jsx: '',
+                    scss: ''
+                };
+            }
+
+        } else {
+            data.settings = this.props.entity.settings;
+        }
+
+        return filterData(data, [
+            'name', 'description', 'type', 'settings', 'elevated_access', 'namespace'
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -113,32 +131,23 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (!this.props.entity) {
-                // FIXME - process wizard
-                if (data.type === 'jsx') {
-                    data.settings = {
-                        params: [],
-                        jsx: '',
-                        scss: ''
-                    };
-                }
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
-                delete data.wizard;
-            } else {
-                data.settings = this.props.entity.settings;
-            }
-        });
-
-        if (submitSuccessful) {
+        if (submitResult) {
             if (this.props.entity) {
-                await this.loadFormValues();
-                this.enableForm();
-                this.clearFormStatusMessage();
-                this.hideFormValidation();
-                this.setFlashMessage('success', t('Template saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/templates/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Template updated'));
+                }
             } else {
-                this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/templates', 'success', t('Template saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/templates/${submitResult}/edit`, 'success', t('Template saved'));
+                }
             }
         } else {
             this.enableForm();
@@ -149,14 +158,14 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
-        const canDelete =  isEdit && this.props.entity.permissions.includes('delete');
+        const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const typeOptions = [
-            { key: 'jsx', label: t('JSX template') }
+            {key: 'jsx', label: t('JSX template')}
         ];
 
         const wizardOptions = [
-            { key: 'blank', label: t('Blank') }
+            {key: 'blank', label: t('Blank')}
         ];
 
         return (
@@ -176,13 +185,18 @@ export default class CUD extends Component {
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
                     <Dropdown id="type" label={t('Type')} options={typeOptions}/>
-                    { !isEdit && <Dropdown id="wizard" label={t('Wizard')} options={wizardOptions}/> }
-                    { ivisConfig.globalPermissions.editTemplatesWithElevatedAccess && <CheckBox id="elevated_access" text={t('Elevated Access')}/> }
+                    {!isEdit && <Dropdown id="wizard" label={t('Wizard')} options={wizardOptions}/>}
+                    {ivisConfig.globalPermissions.editTemplatesWithElevatedAccess &&
+                    <CheckBox id="elevated_access" text={t('Elevated Access')}/>}
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        { canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')} to={`/settings/templates/${this.props.entity.id}/delete`}/> }
+                        {isEdit &&
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>}
+                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
+                                                  to={`/settings/templates/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>
                 </Form>
             </Panel>

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "mod",
+    "help": "mod",
+    "type": "string",
+    "label": "mod"
+  },
+  {
+    "id": "occ",
+    "help": "occ",
+    "type": "string",
+    "label": "occ"
+  }
+]

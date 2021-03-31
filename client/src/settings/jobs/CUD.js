@@ -2,19 +2,20 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {translate} from "react-i18next";
 import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
 import {
     Button,
     ButtonRow,
     Dropdown,
     Fieldset,
+    filterData,
     Form,
     FormSendMethod,
-    InputField,
+    InputField, ListCreator, StaticField,
     TableSelect,
     TextArea,
-    withForm
+    withForm,
+    withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -26,15 +27,17 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {getJobStates} from './states';
 import {JobState} from "../../../../shared/jobs";
-import cudStyles from "./CUD.scss";
 import moment from "moment";
-import ParamTypes from "../workspaces/panels/ParamTypes"
-import axios from "axios";
+import ParamTypes from "../ParamTypes"
+import axios from '../../lib/axios';
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {TaskSource} from "../../../../shared/tasks"
 
-const SETS_PREFIX = 'sets_';
+import {
+    fetchBuiltinTasks
+} from "../../lib/builtin-tasks";
 
 @withComponentMixins([
     withTranslation,
@@ -47,13 +50,15 @@ export default class CUD extends Component {
     constructor(props) {
         super(props);
 
-        this.state = {};
-        this.nextListEntryId = 0;
+        this.state = {
+            builtinTasks: null
+        };
 
         this.initForm({
             onChangeBeforeValidation: ::this.onChangeBeforeValidation,
             onChange: {
-                task: ::this.onTaskChange
+                task: ::this.onTaskChange,
+                taskSource: ::this.onTaskChange
             }
         });
 
@@ -72,49 +77,52 @@ export default class CUD extends Component {
         this.updateFormValue('taskParams', result.data);
     }
 
+    getDefaultBuiltinTask() {
+        return (this.state.builtinTasks && this.state.builtinTasks.length > 0) ? this.state.builtinTasks[0] : null;
+    }
+
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, data => {
-                this.paramTypes.setFields(data.taskParams, data.params, data);
-
-                if (data['state'] === JobState.INVALID_PARAMS) {
-                    data['state'] = JobState.DISABLED;
-                }
-
-                const sets = [];
-                for (const trigger of data.signal_sets_triggers) {
-                    const setUid = this.getNextSetEntryId();
-
-                    const prefix = SETS_PREFIX + setUid + '_';
-
-                    data[prefix + 'trigger'] = trigger;
-
-                    sets.push(setUid);
-                }
-                data["sets"] = sets;
-            });
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 name: '',
                 description: '',
                 namespace: ivisConfig.user.namespace,
                 task: null,
+                taskSource: TaskSource.USER,
                 state: JobState.ENABLED,
                 signal_sets_triggers: [],
-                sets: [],
                 trigger: '',
                 min_gap: '',
                 delay: ''
             });
         }
+
+        fetchBuiltinTasks().then(tasks => this.setState({builtinTasks: tasks}));
     }
 
     onTaskChange(state, key, oldVal, newVal) {
         if (oldVal !== newVal) {
-            state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
+            const taskSource = state.formState.getIn(['data', 'taskSource', 'value']);
 
-            if (newVal) {
-               this.fetchTaskParams(newVal);
+            const taskId = state.formState.getIn(['data', 'task', 'value']);
+            if (taskSource === TaskSource.USER) {
+                state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
+
+                if (taskId) {
+                    this.fetchTaskParams(taskId);
+                }
+            } else {
+                const builtinTask = this.state.builtinTasks && this.state.builtinTasks.find(task => task.id == taskId);
+
+                if (builtinTask) {
+                    state.formState = state.formState.setIn(['data', 'taskParams', 'value'], builtinTask.settings.params);
+                } else {
+                    const defaultTask = this.getDefaultBuiltinTask();
+                    state.formState = state.formState.setIn(['data', 'task', 'value'], defaultTask.id);
+                    state.formState = state.formState.setIn(['data', 'taskParams', 'value'], defaultTask.settings.params);
+                }
             }
         }
     }
@@ -132,11 +140,6 @@ export default class CUD extends Component {
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
-    }
-
     static isPositiveInteger(s) {
         return /^[1-9][\d]*$/.test(s);
     }
@@ -150,6 +153,7 @@ export default class CUD extends Component {
         } else {
             state.setIn(['name', 'error'], null);
         }
+
 
         if (!state.getIn(['task', 'value'])) {
             state.setIn(['task', 'error'], t('Task must be selected'));
@@ -205,8 +209,44 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
+    getFormValuesMutator(data) {
+        this.paramTypes.setFields(data.taskParams, data.params, data);
 
-    async submitHandler() {
+        if (data['state'] === JobState.INVALID_PARAMS) {
+            data['state'] = JobState.DISABLED;
+        }
+
+    }
+
+    submitFormValuesMutator(data) {
+        if (this.props.entity) {
+            data.settings = this.props.entity.settings;
+        }
+
+        ListCreator.submitFormValuesMutator('signalSetTriggers', data);
+        data.signal_sets_triggers = data.signalSetTriggers;
+
+        data.params = {};
+        if (data.taskParams) {
+            data.params = this.paramTypes.getParams(data.taskParams, data);
+        }
+
+        return filterData(data, [
+            'name',
+            'description',
+            'task',
+            'params',
+            'state',
+            'trigger',
+            'min_gap',
+            'delay',
+            'namespace',
+            'signal_sets_triggers',
+        ]);
+    }
+
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         if (this.getFormValue('task') && !this.getFormValue('taskParams')) {
@@ -227,44 +267,24 @@ export default class CUD extends Component {
             this.disableForm();
             this.setFormStatusMessage('info', t('Saving ...'));
 
-            const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
+            const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
+
+
+            if (submitResult) {
                 if (this.props.entity) {
-                    data.settings = this.props.entity.settings;
-                }
-
-                const triggers = [];
-                for (const setUid of data.sets) {
-                    const prefix = SETS_PREFIX + setUid + '_';
-                    let trigger = data[prefix + 'trigger'];
-                    if (trigger) {
-                        triggers.push(trigger)
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job updated'));
+                    } else {
+                        await this.getFormValuesFromURL(`rest/jobs/${this.props.entity.id}`);
+                        this.enableForm();
+                        this.setFormStatusMessage('success', t('Job updated'));
                     }
-                }
-                data.signal_sets_triggers = triggers;
-
-                const params = this.paramTypes.getParams(data.taskParams, data);
-
-                const paramPrefix = this.paramTypes.getParamPrefix();
-                for (const paramId in data) {
-                    if (paramId.startsWith(paramPrefix)) {
-                        delete data[paramId];
-                    }
-                }
-
-                delete data.taskParams;
-                data.params = params;
-            });
-
-
-            if (submitSuccessful) {
-                if (this.props.entity) {
-                    await this.loadFormValues();
-                    this.enableForm();
-                    this.clearFormStatusMessage();
-                    this.hideFormValidation();
-                    this.setFlashMessage('success', t('Job saved'));
                 } else {
-                    this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job saved'));
+                    if (submitAndLeave) {
+                        this.navigateToWithFlashMessage('/settings/jobs', 'success', t('Job saved'));
+                    } else {
+                        this.navigateToWithFlashMessage(`/settings/jobs/${submitResult}/edit`, 'success', t('Job saved'));
+                    }
                 }
             } else {
                 this.enableForm();
@@ -289,38 +309,6 @@ export default class CUD extends Component {
         return stateOptions;
     }
 
-    getNextSetEntryId() {
-        const id = this.nextListEntryId;
-        this.nextListEntryId += 1;
-        return id;
-    }
-
-    onAddSetEntry() {
-        this.updateForm(mutState => {
-            const sets = mutState.getIn(['sets', 'value']);
-
-            const setUid = this.getNextSetEntryId();
-
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            mutState.setIn([prefix + 'trigger', 'value'], null);
-            sets.push(setUid);
-            mutState.setIn(['sets', 'value'], sets);
-        });
-    }
-
-    onRemoveSetEntry(setUid) {
-        this.updateForm(mutState => {
-            const sets = this.getFormValue('sets');
-
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            mutState.delete(prefix + 'trigger');
-
-            mutState.setIn(['sets', 'value'], sets.filter(val => val !== setUid));
-        });
-    }
-
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
@@ -335,42 +323,7 @@ export default class CUD extends Component {
         ];
 
 
-        const setsEditEntries = [];
-        const sets = this.getFormValue('sets') || [];
-        for (const setUid of sets) {
-            const prefix = SETS_PREFIX + setUid + '_';
-
-            setsEditEntries.push(
-                <div key={setUid} className={cudStyles.entry + ' ' + cudStyles.entryWithButtons}>
-                    <div className={cudStyles.entryButtons}>
-                        <Button
-                            className="btn-secondary"
-                            icon="trash-alt fa-2x"
-                            title={t('remove')}
-                            onClickAsync={() => this.onRemoveSetEntry(setUid)}
-                        />
-
-                    </div>
-                    <div className={cudStyles.entryContent}>
-                        <TableSelect id={prefix + 'trigger'} label={t('Trigger on')} withHeader dropdown
-                                     dataUrl='rest/signal-sets-table' columns={setsColumns} selectionLabelIndex={2}/>
-                    </div>
-                </div>
-            );
-        }
-
-        const setTriggersEdit =
-            <Fieldset label={t('Signal sets triggers')}>
-                {setsEditEntries}
-                <div key="newEntry" className={cudStyles.newEntry}>
-                    <Button
-                        className="btn-secondary"
-                        icon="plus"
-                        label={t('Add signal set')}
-                        onClickAsync={() => this.onAddSetEntry()}
-                    />
-                </div>
-            </Fieldset>;
+        const signal_sets_triggers = this.getFormValue('signal_sets_triggers') || [];
 
         const taskColumns = [
             {data: 1, title: t('Name')},
@@ -380,6 +333,18 @@ export default class CUD extends Component {
 
         const configSpec = this.getFormValue('taskParams');
         const params = configSpec ? this.paramTypes.render(configSpec, this) : null;
+
+        const taskSourceOptions = [
+            {key: TaskSource.USER, label: t('User-defined task')},
+            {key: TaskSource.BUILTIN, label: t('Built-in task')},
+        ];
+
+        const builtinTaskOptions = [];
+        if (this.state.builtinTasks) {
+            for (const task of this.state.builtinTasks) {
+                builtinTaskOptions.push({key: task.id, label: t(task.name)});
+            }
+        }
 
         return (
             <Panel title={isEdit ? t('Job Settings') : t('Create Job')}>
@@ -397,19 +362,49 @@ export default class CUD extends Component {
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
-                    <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
-                                 columns={taskColumns} selectionLabelIndex={1} disabled={isEdit}/>
+
+
+                    {this.state.builtinTasks ? (
+                        this.state.builtinTasks.length > 0 &&
+                        <Dropdown id="taskSource" label={t('Task source')} options={taskSourceOptions}
+                                  disabled={isEdit}/>
+                    ) : (
+                        <StaticField id={'taskSource'}>Loading...</StaticField>
+                    )
+                    }
+
+                    {this.getFormValue('taskSource') === TaskSource.USER ?
+                        <TableSelect id="task" label={t('Task')} withHeader dropdown dataUrl="rest/tasks-table"
+                                     columns={taskColumns} selectionLabelIndex={1} disabled={isEdit}/>
+                        :
+                        <Dropdown id="task" label={t('Task')} options={builtinTaskOptions} disabled={isEdit}/>
+                    }
 
                     <Dropdown id="state" label={t('State')} options={stateOptions}/>
                     <NamespaceSelect/>
                     <Fieldset id="triggers" label={t('Triggers')}>
-                        <InputField id="trigger" label={t('Trigger')} placeholder="Automatic trigger time in seconds"/>
+                        <InputField id="trigger" label={t('Periodic trigger')}
+                                    placeholder="Automatic trigger time in seconds"/>
                         <InputField id="min_gap" label={t('Minimal interval')}
                                     placeholder="Minimal time between runs in seconds"/>
                         <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>
                     </Fieldset>
 
-                    {setTriggersEdit}
+                    <ListCreator
+                        id={'signalSetTriggers'}
+                        label={t('Signal sets triggers')}
+                        entryElement={
+                            <TableSelect
+                                label={t('Trigger on')}
+                                withHeader
+                                dropdown
+                                dataUrl='rest/signal-sets-table'
+                                columns={setsColumns}
+                                selectionLabelIndex={2}
+                            />
+                        }
+                        initValues={signal_sets_triggers}
+                    />
 
                     {configSpec ?
                         params &&
@@ -422,9 +417,16 @@ export default class CUD extends Component {
                     }
 
                     <ButtonRow>
-                        <Button type="submit" className="btn-primary" icon="ok" label={t('Save')}/>
-                        {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
-                                                  to={`/settings/jobs/${this.props.entity.id}/delete`}/>}
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
+                        {canDelete &&
+                        <LinkButton
+                            className="btn-danger"
+                            icon="trash-alt"
+                            label={t('Delete')}
+                            to={`/settings/jobs/${this.props.entity.id}/delete`}
+                        />}
                     </ButtonRow>
                 </Form>
             </Panel>

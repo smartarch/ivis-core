@@ -2,44 +2,55 @@
 const path = require('path');
 const fs = require('fs-extra-promise');
 const spawn = require('child_process').spawn;
-const {TaskType} = require('../../../shared/tasks');
+const {PythonSubtypes, defaultSubtypeKey} = require('../../../shared/tasks');
 const readline = require('readline');
-const config = require('../../lib/config');
+const ivisConfig = require('../../lib/config');
+const em = require('../../lib/extension-manager');
 
 // File name of every build output
 const JOB_FILE_NAME = 'job.py';
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
-
-const packagesForType = new Map();
-packagesForType.set(TaskType.NUMPY, ['elasticsearch', 'numpy']);
+const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python', 'ivis', 'dist');
 
 const runningProc = new Map();
+
+const defaultPythonLibs = ['elasticsearch'];
+const taskSubtypeSpecs = {
+    [defaultSubtypeKey]: {
+        libs: defaultPythonLibs
+    },
+    [PythonSubtypes.ENERGY_PLUS]: {
+        libs: [...defaultPythonLibs, 'eppy', 'requests']
+    },
+    [PythonSubtypes.NUMPY]: {
+        libs: [...defaultPythonLibs, 'numpy', 'dtw']
+    }
+};
+
+em.invoke('services.task-handler.python-handler.installSubtypeSpecs', taskSubtypeSpecs);
 
 /**
  * Run job
  * @param id Job id
- * @param params Parameters for the task
  * @param runId Run ID, will be used by stop command
- * @param state
  * @param taskDir Directory with the task
- * @param onRequest Callback for handling request msgs from job.
+ * @param onEvent
  * @param onSuccess Callback on successful run
  * @param onFail callback on failed run
  * @returns {Promise<void>}
  */
-async function run(id, runId, params, entities, state, taskDir, onRequest, onSuccess, onFail) {
+async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFail) {
     try {
-        let output = '';
         let errOutput = '';
 
-        const dataInput = {};
-        dataInput.params = params || {};
-        dataInput.entities = entities;
-        dataInput.state = state;
-        dataInput.es = {
-            host: `${config.elasticsearch.host}`,
-            port: `${config.elasticsearch.port}`
+        const dataInput = {
+            params: {},
+            es: {
+                host: `${ivisConfig.elasticsearch.host}`,
+                port: `${ivisConfig.elasticsearch.port}`
+            },
+            ...inputData
         };
 
         const pythonExec = path.join(taskDir, ENV_NAME, 'bin', 'python');
@@ -54,7 +65,7 @@ async function run(id, runId, params, entities, state, taskDir, onRequest, onSuc
         });
 
         jobOutStream.on('line', (input) => {
-            onRequest(input)
+            onEvent('request', input)
                 .then(msg => {
                     jobProc.stdin.write(JSON.stringify(msg) + '\n');
                 })
@@ -76,11 +87,13 @@ async function run(id, runId, params, entities, state, taskDir, onRequest, onSuc
 
         // Same as with error output
         jobProc.stdout.on('data', (data) => {
-            output += data;
+            const outputStr = data.toString();
+            onEvent('output', outputStr);
         });
 
         const pipeErrHandler = (err) => {
             errOutput += err;
+            onEvent('output', err);
         };
 
         jobProc.stdin.on('error', pipeErrHandler);
@@ -90,16 +103,16 @@ async function run(id, runId, params, entities, state, taskDir, onRequest, onSuc
 
         jobProc.on('error', (err) => {
             runningProc.delete(runId);
-            const failMsg = [err.toString(), 'Log:\n' + output, 'Error log:\n' + errOutput].join('\n\n');
+            const failMsg = [err.toString(), 'Error log:\n' + errOutput].join('\n\n');
             onFail(failMsg);
         });
 
         jobProc.on('exit', (code, signal) => {
             runningProc.delete(runId);
             if (code === 0) {
-                onSuccess(output, storeConfig);
+                onSuccess(storeConfig);
             } else {
-                const failMsg = [`Run failed with code ${code}`, 'Log:\n' + output, 'Error log:\n' + errOutput].join('\n\n');
+                const failMsg = [`Run failed with code ${code}`, 'Error log:\n' + errOutput].join('\n\n');
                 onFail(failMsg);
             }
         });
@@ -118,27 +131,23 @@ async function remove(id) {
     // Nothing
 }
 
-function getPackages(type) {
-    const packages = [];
-    const pckgs = packagesForType.get(type);
-    if (pckgs) {
-        packages.push(...pckgs);
-    } else {
-        packages.push('elasticsearch');
-    }
-    return packages;
+function getPackages(subtype) {
+    return subtype ? taskSubtypeSpecs[subtype].libs : taskSubtypeSpecs[defaultSubtypeKey].libs;
+}
+
+function getCommands(subtype) {
+    return subtype ? taskSubtypeSpecs[subtype].cmds : taskSubtypeSpecs[defaultSubtypeKey].cmds;
 }
 
 /**
  * Build task
- * @param id Task id
- * @param code Code to build
- * @param destDir Output dir
+ * @param config
  * @param onSuccess Callback on success
  * @param onFail Callback on failed build
  * @returns {Promise<void>}
  */
-async function build(id, code, destDir, onSuccess, onFail) {
+async function build(config, onSuccess, onFail) {
+    const {id, code, destDir} = config;
     let buildDir;
     try {
         buildDir = path.join(destDir, '..', 'build');
@@ -156,24 +165,18 @@ async function build(id, code, destDir, onSuccess, onFail) {
     }
 }
 
-async function init(id, code, destDir, onSuccess, onFail) {
-    await initType(null, id, code, destDir, onSuccess, onFail);
-}
-
 /**
  * Initialize and build task.
- * @param type type of task being init
- * @param id Task id
- * @param code Code to build after init
- * @param destDir Output dir
+ * @param config
  * @param onSuccess Callback on success
  * @param onFail Callback on failed attempt
  * @returns {Promise<void>}
  */
-async function initType(type, id, code, destDir, onSuccess, onFail) {
-
+async function init(config, onSuccess, onFail) {
+    const {id, subtype, code, destDir} = config;
     try {
-        const packages = getPackages(type);
+        const packages = getPackages(subtype);
+        const commands = getCommands(subtype);
         const buildDir = path.join(destDir, '..', 'build');
         await fs.emptyDirAsync(buildDir);
 
@@ -183,8 +186,18 @@ async function initType(type, id, code, destDir, onSuccess, onFail) {
         const envDir = path.join(buildDir, ENV_NAME);
 
         const virtDir = path.join(envDir, 'bin', 'activate');
+
+        const cmdsChain = []
+        cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envDir}`)
+        cmdsChain.push(`source ${virtDir}`)
+        cmdsChain.push(`pip install ${packages.join(' ')} `)
+        if (commands) {
+            cmdsChain.push(...commands)
+        }
+        cmdsChain.push(`pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis `)
+        cmdsChain.push(`deactivate`)
         const virtEnv = spawn(
-            `${config.tasks.python.venvCmd} ${envDir} && source ${virtDir} && pip install ${packages.join(' ')} && deactivate`,
+            cmdsChain.join(' && '),
             {
                 shell: '/bin/bash'
             }
@@ -243,7 +256,6 @@ module.exports = {
     remove,
     build,
     init,
-    initType,
     stop
 };
 

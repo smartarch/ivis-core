@@ -7,12 +7,12 @@ import {LinkButton, requiresAuthenticatedUser, withPageHelpers} from "../../lib/
 import {
     Button,
     ButtonRow,
-    Dropdown,
+    Dropdown, filterData,
     Form,
     FormSendMethod,
     InputField,
     TextArea,
-    withForm
+    withForm, withFormErrorHandlers
 } from "../../lib/form";
 import "brace/mode/json";
 import "brace/mode/jsx";
@@ -22,10 +22,11 @@ import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
-import {WizardType, wizards} from "./wizards";
-import {TaskType} from "../../../../shared/tasks";
+import {WizardType, getWizard, getWizardsForType} from "./wizards";
+import {TaskType, subtypesByType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
+import {getSubtypeLabel} from "./types";
 
 @withComponentMixins([
     withTranslation,
@@ -41,6 +42,7 @@ export default class CUD extends Component {
         this.state = {};
 
         this.initForm();
+        this.submitHandler = ::this.submitHandler;
     }
 
     static propTypes = {
@@ -50,21 +52,21 @@ export default class CUD extends Component {
 
     componentDidMount() {
         if (this.props.entity) {
-            this.getFormValuesFromEntity(this.props.entity, null);
+            this.getFormValuesFromEntity(this.props.entity);
         } else {
             this.populateFormValues({
                 name: '',
                 description: '',
                 namespace: ivisConfig.user.namespace,
                 type: TaskType.PYTHON,
+                subtype: '',
                 wizard: WizardType.BLANK
             });
         }
     }
 
-    @withAsyncErrorHandler
-    async loadFormValues() {
-        await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
+    getFormValuesMutator(data) {
+        data.subtype = data.settings.subtype ? data.settings.subtype : null;
     }
 
     localValidateFormValues(state) {
@@ -86,11 +88,37 @@ export default class CUD extends Component {
         validateNamespace(t, state);
     }
 
-    static getWizard(wizardType) {
-        return wizards.get(wizardType);
+    submitFormValuesMutator(data) {
+        if (!this.props.entity) {
+            const wizardData = getWizard(data.type, data.subtype, data.wizard);
+            if (wizardData) {
+                wizardData.wizard(data);
+            } else {
+                data.settings = {
+                    params: [],
+                    code: ''
+                };
+            }
+
+            if (data.subtype) {
+                data.settings.subtype = data.subtype;
+            }
+        } else {
+            data.settings = this.props.entity.settings;
+        }
+
+
+        return filterData(data, [
+            'name',
+            'description',
+            'type',
+            'settings',
+            'namespace'
+        ]);
     }
 
-    async submitHandler() {
+    @withFormErrorHandlers
+    async submitHandler(submitAndLeave) {
         const t = this.props.t;
 
         let sendMethod, url;
@@ -105,34 +133,24 @@ export default class CUD extends Component {
         this.disableForm();
         this.setFormStatusMessage('info', t('Saving ...'));
 
-        const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url, data => {
-            if (!this.props.entity) {
-                const wizard = CUD.getWizard(data.wizard);
-                if (wizard) {
-                    wizard(data);
-                } else {
-                    data.settings = {
-                        params: [],
-                        code: ''
-                    };
-                }
-
-                delete data.wizard;
-            } else {
-                data.settings = this.props.entity.settings;
-            }
-        });
+        const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
 
-        if (submitSuccessful) {
+        if (submitResult) {
             if (this.props.entity) {
-                await this.loadFormValues();
-                this.enableForm();
-                this.clearFormStatusMessage();
-                this.hideFormValidation();
-                this.setFlashMessage('success', t('Task saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task updated'));
+                } else {
+                    await this.getFormValuesFromURL(`rest/tasks/${this.props.entity.id}`);
+                    this.enableForm();
+                    this.setFormStatusMessage('success', t('Task updated'));
+                }
             } else {
-                this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task saved'));
+                if (submitAndLeave) {
+                    this.navigateToWithFlashMessage('/settings/tasks', 'success', t('Task saved'));
+                } else {
+                    this.navigateToWithFlashMessage(`/settings/tasks/${submitResult}/edit`, 'success', t('Task saved'));
+                }
             }
         } else {
             this.enableForm();
@@ -146,14 +164,46 @@ export default class CUD extends Component {
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const typeOptions = [
-            {key: TaskType.NUMPY, label: t('Numpy task')},
-            {key: TaskType.PYTHON, label: t('Python task')}
+            {key: TaskType.PYTHON, label: t('Python')},
         ];
 
-        const wizardOptions = [
-            {key: WizardType.BLANK, label: t('Blank')},
-            {key: WizardType.BASIC, label: t('Basic functionality')}
-        ];
+        const taskType = this.getFormValue('type');
+
+        const wizardOptions = [];
+        const subtypeOptions = [];
+
+        // Subtypes
+        const subtypes = taskType ? subtypesByType[taskType] : null;
+        if (subtypes) {
+
+            // Default option
+            subtypeOptions.push({
+                key: null,
+                label: ''
+            });
+
+            Object.values(subtypes).forEach((subtype) => {
+                subtypeOptions.push({
+                    key: subtype,
+                    label: getSubtypeLabel(t, taskType, subtype)
+                });
+            });
+        }
+
+        if (!isEdit && taskType) {
+            const subtype = this.getFormValue('subtype');
+            const wizardsForType = getWizardsForType(taskType, subtype);
+            if (wizardsForType) {
+                Object.entries(wizardsForType).forEach((entry) => {
+                    wizardOptions.push({
+                        key: entry[0],
+                        label: t(entry[1].label)
+                    });
+                });
+            }
+
+
+        }
 
         return (
             <Panel title={isEdit ? t('Task Settings') : t('Create Task')}>
@@ -168,16 +218,20 @@ export default class CUD extends Component {
                     deletedMsg={t('Task deleted')}/>
                 }
 
-                <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
+                <Form stateOwner={this} onSubmitAsync={this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
                     <Dropdown id="type" label={t('Type')} options={typeOptions} disabled={isEdit}/>
+                    {taskType &&
+                    <Dropdown id="subtype" label={t('Subtype')} options={subtypeOptions} disabled={isEdit}/>}
 
                     {!isEdit && <Dropdown id="wizard" label={t('Wizard')} options={wizardOptions}/>}
                     <NamespaceSelect/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="ok" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/tasks/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

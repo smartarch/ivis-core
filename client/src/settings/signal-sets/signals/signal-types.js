@@ -1,5 +1,5 @@
 'use strict';
-import {SignalType} from "../../../../../shared/signals";
+import {SignalType, SignalSource} from "../../../../../shared/signals";
 
 export function getSignalTypes(t) {
     return {
@@ -11,7 +11,15 @@ export function getSignalTypes(t) {
         [SignalType.KEYWORD]: t('Keyword'),
         [SignalType.TEXT]: t('Text'),
         [SignalType.DATE_TIME]: t('Date/Time'),
-        [SignalType.PAINLESS]: t('Painless Script'),
-        [SignalType.PAINLESS_DATE_TIME]: t('Painless Script returning Date/Time')
+        [SignalType.JSON]: t('JSON'),
+        [SignalType.BLOB]: t('BLOB'),
+    }
+}
+
+export function getSignalSources(t) {
+    return {
+        [SignalSource.RAW]: t('Raw'),
+        [SignalSource.JOB]: t('Job'),
+        [SignalSource.DERIVED]: t('Derived'),
     }
 }

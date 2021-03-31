@@ -1,7 +1,9 @@
 'use strict';
 
 const elasticsearch = require('../elasticsearch');
-const {SignalType, RawSignalTypes} = require('../../../shared/signals');
+const {SignalSource, getTypesBySource, SignalType} = require('../../../shared/signals');
+
+const  COPY_ID_PIPELINE = 'copy-id';
 
 // Gets the name of an index for a signal set
 function getIndexName(sigSet) {
@@ -18,7 +20,9 @@ const fieldTypes = {
     [SignalType.BOOLEAN]: 'boolean',
     [SignalType.KEYWORD]: 'keyword',
     [SignalType.TEXT]: 'text',
-    [SignalType.DATE_TIME]: 'date'
+    [SignalType.DATE_TIME]: 'date',
+    [SignalType.JSON]: 'object',
+    [SignalType.BLOB]: 'binary',
 };
 
 async function createIndex(sigSet, signalByCidMap) {
@@ -27,18 +31,25 @@ async function createIndex(sigSet, signalByCidMap) {
     const properties = {};
     for (const fieldCid in signalByCidMap) {
         const field = signalByCidMap[fieldCid];
-        if (RawSignalTypes.has(field.type)) {
-            properties[getFieldName(field.id)] = { type: fieldTypes[field.type] };
+        if (field.source === SignalSource.RAW || field.source === SignalSource.JOB) {
+            properties[getFieldName(field.id)] = {type: fieldTypes[field.type]};
         }
     }
+
+    properties['id'] = {
+        type: fieldTypes[SignalType.KEYWORD]
+    };
 
     await elasticsearch.indices.create({
         index: indexName,
         body: {
-            mappings : {
-                _doc : {
+            mappings: {
+                _doc: {
                     properties
                 }
+            },
+            settings: {
+                    default_pipeline: COPY_ID_PIPELINE
             }
         }
     });
@@ -50,8 +61,8 @@ async function extendMapping(sigSet, fields) {
     const properties = {};
     for (const fieldId in fields) {
         const fieldType = fields[fieldId];
-        if (RawSignalTypes.has(fieldType)) {
-            properties[getFieldName(fieldId)] = { type: fieldTypes[fieldType] };
+        if (fieldTypes[fieldType] != null) {
+            properties[getFieldName(fieldId)] = {type: fieldTypes[fieldType]};
         }
     }
 
@@ -68,5 +79,6 @@ module.exports = {
     getIndexName,
     getFieldName,
     createIndex,
-    extendMapping
+    extendMapping,
+    COPY_ID_PIPELINE
 };

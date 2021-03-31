@@ -52,8 +52,17 @@ router.deleteAsync('/jobs/:jobId/run/:runId', passport.loggedIn, passport.csrfPr
     return res.json();
 });
 
+router.deleteAsync('/jobs/:jobId/runs', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    await jobs.removeAllRuns(req.context, castToInteger(req.params.jobId));
+    return res.json();
+});
+
 router.postAsync('/job-runs-table/:jobId', passport.loggedIn, async (req, res) => {
     return res.json(await jobs.listRunsDTAjax(req.context, castToInteger(req.params.jobId), req.body));
+});
+
+router.postAsync('/owned-signal-sets-table/:jobId', passport.loggedIn, async (req, res) => {
+    return res.json(await jobs.listOwnedSignalSetsDTAjax(req.context, castToInteger(req.params.jobId), req.body));
 });
 
 router.postAsync('/job-running-table', passport.loggedIn, async (req, res) => {

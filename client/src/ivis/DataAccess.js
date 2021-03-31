@@ -17,6 +17,8 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import interoperableErrors
     from "../../../shared/interoperable-errors";
 
+import {SUBSTITUTE_TS_SIGNAL} from "../../../shared/signal-sets";
+
 // How many aggregationIntervals before and after an absolute interval is search for prev/next values. This is used only in aggregations to avoid unnecessary aggregations.
 const prevNextSize = 100;
 const docsLimitDefault = 1000;
@@ -31,6 +33,9 @@ export function forAggs(signals, fn) {
     return result;
 }
 
+function getTsSignalCid(signalSet) {
+    return signalSet.tsSigCid || SUBSTITUTE_TS_SIGNAL;
+}
 
 export const TimeSeriesPointType = {
     LTE: 'lte',
@@ -64,6 +69,14 @@ class DataAccess {
             histogram: {
                 getQueries: ::this.getHistogramQueries,
                 processResults: ::this.processHistogramResults
+            },
+            aggs: {
+                getQueries: ::this.getAggsQueries,
+                processResults: ::this.processAggsResults
+            },
+            summary: {
+                getQueries: ::this.getSummaryQueries,
+                processResults: ::this.processSummaryResults
             }
         };
     }
@@ -115,7 +128,8 @@ class DataAccess {
         [sigSetCid]: {
           tsSigCid: 'ts',
           signals: [sigCid],
-          mustExist: [sigCid]
+          mustExist: [sigCid],
+          horizon: moment.duration,
         }
       }
     */
@@ -124,19 +138,18 @@ class DataAccess {
 
         for (const sigSetCid in sigSets) {
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = getTsSignalCid(sigSet);
 
+            const tsRange = {
+                type: 'range',
+                sigCid: tsSig,
+                [timeSeriesPointType]: ts.toISOString()
+            };
             const qry = {
                 sigSetCid,
                 filter: {
                     type: 'and',
-                    children: [
-                        {
-                            type: 'range',
-                            sigCid: tsSig,
-                            [timeSeriesPointType]: ts.toISOString()
-                        }
-                    ]
+                    children: [ tsRange ]
                 }
             };
 
@@ -193,7 +206,8 @@ class DataAccess {
         for (const sigSetCid in sigSets) {
             const sigSetRes = responseData[idx];
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            // When using time series, and tsSigCId is not specified, we get ts cid by server
+            const tsSig = sigSet.tsSigCid || sigSetRes.tsSigCid;
 
             if (sigSetRes.docs.length > 0) {
                 const doc = sigSetRes.docs[0];
@@ -231,10 +245,15 @@ class DataAccess {
 
         for (const sigSetCid in sigSets) {
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = getTsSignalCid(sigSet);
+
+            const queryBase = {
+                sigSetCid,
+                substitutionOpts: sigSet.substitutionOpts
+            };
 
             const prevQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -243,7 +262,7 @@ class DataAccess {
             };
 
             const mainQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -253,7 +272,7 @@ class DataAccess {
             };
 
             const nextQry = {
-                sigSetCid,
+                ...queryBase,
                 filter: {
                     type: 'range',
                     sigCid: tsSig,
@@ -374,7 +393,7 @@ class DataAccess {
             const sigSetResNext = responseData[idx + 2];
 
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = sigSet.tsSigCid || sigSetResMain.tsSigCid;
 
             const processDoc = doc => {
                 const data = {};
@@ -515,7 +534,7 @@ class DataAccess {
 
         for (const sigSetCid in sigSets) {
             const sigSet = sigSets[sigSetCid];
-            const tsSig = sigSet.tsSigCid || 'ts';
+            const tsSig = getTsSignalCid(sigSet);
 
             const qry = {
                 sigSetCid,
@@ -550,43 +569,69 @@ class DataAccess {
     }
 
 
-
     /*
-      signals = [ sigCid1, sigCid2 ]
+      signals = [ sigCid1, sigCid2 ],
+      metrics: { [sigCid]: ['min', 'max', 'avg', 'sum'] }    // additional metrics for each bucket, same format as signals in summary query
     */
-    getHistogramQueries(sigSetCid, signals, maxBucketCount, minStep, filter) {
+    getHistogramQueries(sigSetCid, signals, maxBucketCounts, minSteps, filter, metrics) {
+        if (Number.isInteger(maxBucketCounts) || maxBucketCounts === undefined)
+            maxBucketCounts = signals.map(x => maxBucketCounts); // copy numeric value for each signal
+        else if (signals.length !== maxBucketCounts.length)
+            throw new Error("maxBucketCounts should be a single integer or an array with same length as signals");
+
+        if (Number.isFinite(minSteps) || minSteps === undefined)
+            minSteps = signals.map(x => minSteps); // copy numeric value for each signal
+        else if (signals.length !== minSteps.length)
+            throw new Error("minSteps should be a single number or an array with same length as signals");
+
+        let bucketGroups = {};
+        signals.map((sigCid, index) => {
+            bucketGroups[sigCid + ":" + index] = {
+                maxBucketCount: maxBucketCounts[index],
+                minStep: minSteps[index]
+            };
+        });
+
         const qry = {
             sigSetCid,
             filter,
-            bucketGroups: {
-                bucket: {
-                    maxBucketCount,
-                    minStep
-                }
-            },
+            bucketGroups: bucketGroups,
             aggs: []
         };
 
-        for (const sigCid of signals) {
-            qry.aggs.push(
+        let aggs = [qry];
+        for (const [index, sigCid] of signals.entries()) {
+            aggs = aggs[0].aggs;
+            aggs.push(
                 {
                     sigCid,
-                    bucketGroup: 'bucket',
-                    minDocCount: 0
+                    bucketGroup: sigCid + ":" + index,
+                    minDocCount: 0,
+                    aggs: []
                 }
             );
+        }
+
+        if (metrics) {
+            aggs[0].signals = metrics;
         }
 
         return [qry];
     }
 
     processHistogramResults(responseData, sigSetCid, signals) {
+        const processBucketsRecursive = function (bucket) {
+            let agg;
+            if (bucket.aggs && bucket.aggs.length > 0) {
+                agg = bucket.aggs[0];
+                agg.buckets = agg.buckets.map(processBucketsRecursive);
+            }
+            delete bucket.aggs;
+            return {...bucket, ...agg};
+        };
+
         if (signals.length > 0) {
-            return {
-                step: responseData[0].aggs[0].step,
-                offset: responseData[0].aggs[0].offset,
-                buckets: responseData[0].aggs.map(x => x.buckets)
-            };
+            return processBucketsRecursive(responseData[0]);
         } else {
             return {
                 buckets: []
@@ -614,6 +659,44 @@ class DataAccess {
 
     processDocsResults(responseData, sigSetCid, signals) {
         return responseData[0].docs;
+    }
+
+
+    /*
+        aggs = [ { sigCid, agg_type, <parameters of the aggregation> } ]
+    */
+    getAggsQueries(sigSetCid, filter, aggs) {
+        const qry = {
+            sigSetCid,
+            filter,
+            aggs
+        };
+
+        return [qry];
+    }
+
+    processAggsResults(responseData) {
+        return responseData[0].aggs;
+    }
+
+
+    /*
+        summary: {
+            signals: {sigCid: ['min', 'max', 'avg']}
+        }
+     */
+    getSummaryQueries(sigSetCid, filter, summary) {
+        const qry = {
+            sigSetCid,
+            filter,
+            summary
+        };
+
+        return [qry];
+    }
+
+    processSummaryResults(responseData) {
+        return responseData[0].summary;
     }
 
 
@@ -675,7 +758,7 @@ export class DataAccessSession {
     }
 
     async _getLatestOne(type, ...args) {
-        const results = await this._getLatestMultiple(type, [{ type, args }]);
+        const results = await this._getLatestMultiple(type, [{type, args}]);
         if (results) {
             return results[0];
         } else {
@@ -695,12 +778,20 @@ export class DataAccessSession {
         return await this._getLatestOne('timeSeriesSummary', sigSets, intervalAbsolute);
     }
 
-    async getLatestHistogram(sigSetCid, signals, maxBucketCount, minStep, filter) {
-        return await this._getLatestOne('histogram', sigSetCid, signals, maxBucketCount, minStep, filter);
+    async getLatestHistogram(sigSetCid, signals, maxBucketCount, minStep, filter, metrics) {
+        return await this._getLatestOne('histogram', sigSetCid, signals, maxBucketCount, minStep, filter, metrics);
     }
 
     async getLatestDocs(sigSetCid, signals, filter, sort, limit) {
         return await this._getLatestOne('docs', sigSetCid, signals, filter, sort, limit);
+    }
+
+    async getLatestSummary(sigSetCid, filter, summary) {
+        return await this._getLatestOne('summary', sigSetCid, filter, summary);
+    }
+
+    async getLatestAggs(sigSetCid, filter, aggs) {
+        return await this._getLatestOne('aggs', sigSetCid, filter, aggs);
     }
 
     async getLatestMixed(queries) {
@@ -843,4 +934,81 @@ export class TimeSeriesPointProvider extends Component {
             />
         );
     }
+}
+
+export class TimeSeriesLimitedPointsProvider extends Component {
+    static propTypes = {
+        signalSets: PropTypes.object.isRequired,
+        limit: PropTypes.number.isRequired,
+        renderFun: PropTypes.func.isRequired,
+        loadingRenderFun: PropTypes.func,
+        tsSpec: PropTypes.object,
+    }
+
+    static defaultProps = {
+        tsSpec: TimeSeriesPointPredefs.CURRENT
+    }
+
+    async fetchDataFun(dataAccessSession, intervalAbsolute) {
+        const queries = [];
+        const sigSets = Object.keys(this.props.signalSets);
+
+
+        for (const sigSetCid of sigSets) {
+            const sigSet = this.props.signalSets[sigSetCid];
+            const tsSig = getTsSignalCid(sigSet);
+
+            const filter = {
+                type: 'and',
+                children: [
+                    {
+                        type: 'range',
+                        sigCid: tsSig,
+                        [this.props.tsSpec.pointType]: this.props.tsSpec.getTs(intervalAbsolute).toISOString()
+                    }
+                ]
+            }
+
+            const signals = [tsSig, ...sigSet.signals];
+
+            const sort = [
+                {
+                    sigCid: tsSig,
+                    order: 'desc'
+                },
+            ];
+
+            queries.push({type: 'docs', args: [sigSetCid, signals, filter, sort, this.props.limit]});
+        }
+
+        const results = await dataAccessSession.getLatestMixed(queries);
+
+        const data = {};
+
+        if (results) {
+            results.forEach((result, i) => {
+                data[sigSets[i]] = result;
+            })
+        }
+
+        return data;
+    }
+
+    render() {
+
+        return (
+            <TimeSeriesDataProvider
+                fetchDataFun={::this.fetchDataFun}
+                renderFun={this.props.renderFun}
+                loadingRenderFun={this.props.loadingRenderFun}
+            />
+        );
+    }
+}
+
+export async function getSignalSetMetadata(sigSetCid) {
+    const response = await axios.get(getUrl(`rest/signal-sets-by-cid/${sigSetCid}`));
+    if (response && response.data && response.data.metadata)
+        return response.data.metadata;
+    return null;
 }
