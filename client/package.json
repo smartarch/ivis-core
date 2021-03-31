@@ -36,7 +36,7 @@
     "d3-regression": "^1.3.4",
     "d3-interpolate": "^1.4.0",
     "d3-scale-chromatic": "^1.5.0",
-    "datatables.net": "^1.10.20",
+    "datatables.net": "^1.10.22",
     "datatables.net-bs4": "^1.10.20",
     "fast-deep-equal": "^2.0.1",
     "i18next": "^13.0.1",
