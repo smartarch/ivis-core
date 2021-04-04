@@ -42,10 +42,12 @@ export default class Log extends Component {
 
         const columns = [
             { data: 1, title: t('Logged'), render: data => <RelativeTime timeStamp={data} thresholdDays={7} /> },
-            { data: 0, title: t('Type'), render: data => {if (data === 'test') return t('Test');
+            { data: 0, title: t('Type'), render: data => {if (data === 'test') return t('Tested');
                                                           if (data === 'trigger') return t('Triggered');
                                                           if (data === 'revoke') return t('Revoked');
-                                                            else return data;} }
+                                                          if (data === 'init') return t('Initialized');
+                                                          if (data === 'update') return t('Updated');
+                                                          return data;} }
         ];
         return (
             <Panel title={t('Alerts log')}>

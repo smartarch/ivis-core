@@ -7,6 +7,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
+const { handleCreateTx, handleUpdateTx, handleDelete } = require('../lib/alerts-event-handler');
 
 const allowedKeys = new Set(['name', 'description', 'sigset', 'duration', 'delay', 'interval', 'condition', 'emails', 'phones', 'repeat', 'finalnotification', 'enabled', 'namespace']);
 
@@ -52,6 +53,8 @@ async function create(context, entity) {
 
         await shares.rebuildPermissionsTx(tx, { entityTypeId: 'alert', entityId: id });
 
+        await handleCreateTx(tx, id);
+
         return id;
     });
 }
@@ -79,6 +82,8 @@ async function updateWithConsistencyCheck(context, entity) {
         await tx('alerts').where('id', entity.id).update(filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, { entityTypeId: 'alert', entityId: entity.id });
+
+        await handleUpdateTx(tx, entity.id);
     });
 }
 
@@ -87,6 +92,8 @@ async function remove(context, id) {
         await shares.enforceEntityPermissionTx(tx, context, 'alert', id, 'delete');
 
         await tx('alerts').where('id', id).del();
+
+        await handleDelete(id);
     });
 }
 
