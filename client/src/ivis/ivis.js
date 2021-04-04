@@ -34,6 +34,7 @@ export * from './ViolinPlot';
 export * from './MinMaxLoader';
 export * from './SwimlaneChart';
 export * from './RangeContext';
+export * from './CursorContext';
 export * from './NanosecondsRangeSelector';
 export * from './dot_shapes';
 export * from './common';
