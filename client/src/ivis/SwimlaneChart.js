@@ -61,6 +61,8 @@ export class SwimlaneChart extends Component {
         withBrush: PropTypes.bool,
         minimumIntervalMs: PropTypes.number,
         loadingOverlayColor: PropType_d3Color(),
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
@@ -109,11 +111,11 @@ export class SwimlaneChart extends Component {
         const yAxis = d3Axis.axisLeft(yScale);
         base.yAxisSelection.call(yAxis);
 
-        if (this.props.withCursor)
-            this.createChartCursor(base, innerWidth, innerHeight);
-
-        if (signalSetsData.length === 0 || signalSetsData.every(d => d.bars.length === 0))
+        if (signalSetsData.length === 0 || signalSetsData.every(d => d.bars.length === 0)) {
+            if (this.props.withCursor)
+                this.createChartCursor(base, innerWidth, innerHeight);
             return RenderStatus.NO_DATA;
+        }
 
         const xIsDate = this.props.xAxisType === XAxisType.DATETIME;
         signalSetsData.forEach(r => r.bars.forEach(b => {
@@ -173,6 +175,9 @@ export class SwimlaneChart extends Component {
             labels.exit().remove();
             labelRows.exit().remove();
         }
+
+        if (this.props.withCursor)
+            this.createChartCursor(base, innerWidth, innerHeight);
 
         if (this.props.createChart)
             return this.props.createChart(createBase(base, this), signalSetsData, baseState, interval, xScale, yScale);
@@ -268,6 +273,8 @@ export class SwimlaneChart extends Component {
                 xAxisTicksCount={props.xAxisTicksCount}
                 xAxisTicksFormat={props.xAxisTicksFormat}
                 drawBrushAreaBehindData={true}
+                withCursorContext={props.withCursorContext}
+                cursorContextName={props.cursorContextName}
             />
         )
     }
@@ -313,6 +320,8 @@ export class BooleanSwimlaneChart extends Component {
         withTooltip: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to `null` to disable updates
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
@@ -465,6 +474,8 @@ export class MaximumSwimlaneChart extends Component {
         withTooltip: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to `null` to disable updates
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
