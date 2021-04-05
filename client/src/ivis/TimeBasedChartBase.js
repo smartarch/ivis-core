@@ -25,6 +25,7 @@ import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {rangeAccessMixin} from "./RangeContext";
 import {cursorAccessMixin} from "./CursorContext";
 import moment from "moment";
+import _ from "lodash";
 
 export function createBase(base, self) {
     self.base = base;
@@ -345,7 +346,7 @@ export class TimeBasedChartBase extends Component {
             this.prevContainerNode = this.containerNode;
 
             if (this.props.withCursorContext) {
-                if (prevState.mousePosition !== this.state.mousePosition) {
+                if (!_.isEqual(prevState.mousePosition, this.state.mousePosition)) {
                     if (this.state.mousePosition !== null) {
                         let x = this.state.mousePosition.x - this.props.margin.left;
                         x = this.xScale.invert(x);

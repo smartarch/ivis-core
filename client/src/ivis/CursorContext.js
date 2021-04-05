@@ -72,7 +72,7 @@ export function cursorAccessMixin(cursorName = defaultCursorName) {
             inst.getCursor = function (props) {
                 props = props || this.props;
                 if (props.cursorContext !== undefined && props.cursorContext !== null)
-                    return props.cursorContext.self.getCursor(cursorName);
+                    return props.cursorContext.cursors[cursorName];
                 return null;
             };
 
@@ -85,7 +85,7 @@ export function cursorAccessMixin(cursorName = defaultCursorName) {
                 props = props || this.props;
                 name = name || cursorName;
                 if (props.cursorContext !== undefined && props.cursorContext !== null)
-                    return props.cursorContext.self.getCursor(name);
+                    return props.cursorContext.cursors[name];
                 return null;
             };
 
