@@ -403,7 +403,12 @@ export class LineChartBase extends Component {
                 base.cursorLineVisible = true;
             }
 
+            mousePosition = {x: containerPos[0], y: containerPos[1]};
             if (noData) {
+                base.setState({
+                    selection: null,
+                    mousePosition
+                });
                 return;
             }
 
@@ -513,10 +518,7 @@ export class LineChartBase extends Component {
                 }
             }
 
-
             selection = isSelection ? selection : null;
-
-            mousePosition = {x: containerPos[0], y: containerPos[1]};
 
             base.setState({
                 selection,

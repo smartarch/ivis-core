@@ -109,6 +109,9 @@ export class SwimlaneChart extends Component {
         const yAxis = d3Axis.axisLeft(yScale);
         base.yAxisSelection.call(yAxis);
 
+        if (this.props.withCursor)
+            this.createChartCursor(base, innerWidth, innerHeight);
+
         if (signalSetsData.length === 0 || signalSetsData.every(d => d.bars.length === 0))
             return RenderStatus.NO_DATA;
 
@@ -170,9 +173,6 @@ export class SwimlaneChart extends Component {
             labels.exit().remove();
             labelRows.exit().remove();
         }
-
-        if (this.props.withCursor)
-            this.createChartCursor(base, innerWidth, innerHeight);
 
         if (this.props.createChart)
             return this.props.createChart(createBase(base, this), signalSetsData, baseState, interval, xScale, yScale);

@@ -722,7 +722,7 @@ export class TimeBasedChartBase extends Component {
                     </text>
 
                     {/* tooltip */}
-                    {this.props.withTooltip && !this.state.brushInProgress &&
+                    {this.props.withTooltip && !this.state.brushInProgress && !(!areZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
                     <Tooltip
                         config={this.props.config.signalSets}
                         signalSetsData={this.state.signalSetsData}
