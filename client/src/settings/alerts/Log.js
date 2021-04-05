@@ -47,6 +47,7 @@ export default class Log extends Component {
                                                           if (data === 'revoke') return t('Revoked');
                                                           if (data === 'init') return t('Initialized');
                                                           if (data === 'update') return t('Updated');
+                                                          if (data === 'interval') return t('Interval exceeded');
                                                           return data;} }
         ];
         return (

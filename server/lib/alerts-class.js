@@ -15,6 +15,7 @@ class Alert{
     async init() {
         await this.addLogEntry('init');
         if (!this.fields.enabled) return;
+        if (this.fields.repeat !== 0 && (this.fields.state === 'bad' || this.fields.state === 'better')) await this.repeatNotification();
         const elapsed = moment().diff(this.fields.state_changed);
         if (this.fields.state === 'worse') {
             if (elapsed >= this.fields.duration * 60 * 1000) await this.trigger();
@@ -24,7 +25,12 @@ class Alert{
             if (elapsed >= this.fields.delay * 60 * 1000) await this.revoke();
             else this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), (this.fields.delay * 60 * 1000) - elapsed);
         }
-        if (this.fields.repeat !== 0 && (this.fields.state === 'bad' || this.fields.state === 'better')) await this.repeatNotification();
+
+        if (this.fields.interval !== 0) {
+            const elapsedInterval = moment().diff(this.fields.interval_time);
+            if (elapsedInterval >= this.fields.interval * 60 * 1000) await this.intervalNotification();
+            else this.intervalClock = setTimeout(this.intervalNotification.bind(this), (this.fields.interval * 60 * 1000) - elapsedInterval);
+        }
     }
 
     async update(newFields) {
@@ -42,20 +48,34 @@ class Alert{
         }
         else if (this.fields.repeat !== newFields.repeat) {
             clearTimeout(this.repeatClock);
-            if (this.fields.repeat !== 0 && (this.fields.state === 'bad' || this.fields.state === 'better')) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
+            if (newFields.repeat !== 0 && (this.fields.state === 'bad' || this.fields.state === 'better')) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
+        }
+
+        let sit = false;
+        if ((!this.fields.enabled && newFields.enabled) || (newFields.enabled && this.fields.interval !== newFields.interval)) {
+            sit = true;
+            clearTimeout(this.intervalClock);
+            if (newFields.interval !== 0) this.intervalClock = setTimeout(this.intervalNotification.bind(this), newFields.interval * 60 * 1000);
         }
 
         this.fields = newFields;
         if (ns !== '') await this.writeState(ns);
+        if (sit) await this.setIntervalTime();
     }
 
     terminate(){
         clearTimeout(this.conditionClock);
         clearTimeout(this.repeatClock);
+        clearTimeout(this.intervalClock);
     }
 
     async execute(){
         if (!this.fields.enabled) return;
+
+        clearTimeout(this.intervalClock);
+        await this.setIntervalTime();
+        this.intervalClock = setTimeout(this.intervalNotification.bind(this), this.fields.interval * 60 * 1000);
+
         const result = await evaluate(this.fields.condition, this.fields.sigset);
         if (typeof result === 'boolean') await this.changeState(result);
         else await this.addLogEntry(result);
@@ -110,11 +130,11 @@ class Alert{
     async trigger(){
         await this.writeState('bad');
         await this.addLogEntry('trigger');
+        if (this.fields.repeat !== 0) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
         const addresses = this.fields.emails.split(/\r?\n/);
         const subject = `Alert ${this.fields.name} was triggered!`;
         const text = `Alert ${this.fields.name} was triggered!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
         await sendEmail(senderName, addresses, subject, text);
-        if (this.fields.repeat !== 0) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
     }
 
     async revoke(){
@@ -139,9 +159,11 @@ class Alert{
 
     async writeState(newState) {
         const time = moment().format('YYYY-MM-DD HH:mm:ss');
-        this.fields.state = newState;
-        this.fields.state_changed = time;
-        await knex('alerts').where('id', this.fields.id).update({state: newState, state_changed: time});
+        await knex.transaction(async tx => {
+            await tx('alerts').where('id', this.fields.id).update({state: newState, state_changed: time});
+            this.fields.state_changed = (await tx('alerts').where('id', this.fields.id).first('state_changed')).state_changed;
+            this.fields.state = newState;
+        });
     }
 
     async addLogEntry(value){
@@ -149,6 +171,24 @@ class Alert{
             await knex('alerts_log').insert({alert: this.fields.id, type: value});
         }
         catch (e) {}
+    }
+
+    async intervalNotification() {
+        await this.setIntervalTime();
+        this.intervalClock = setTimeout(this.intervalNotification.bind(this), this.fields.interval * 60 * 1000);
+        await this.addLogEntry('interval');
+        const addresses = this.fields.emails.split(/\r?\n/);
+        const subject = `Alert ${this.fields.name}: Signal record did not arrive in time!`;
+        const text = `Alert ${this.fields.name}: Signal record did not arrive in time!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nInterval: ${this.fields.interval}`;
+        await sendEmail(senderName, addresses, subject, text);
+    }
+
+    async setIntervalTime() {
+        const time = moment().format('YYYY-MM-DD HH:mm:ss');
+        await knex.transaction(async tx => {
+            await tx('alerts').where('id', this.fields.id).update({interval_time: time});
+            this.fields.interval_time = (await tx('alerts').where('id', this.fields.id).first('interval_time')).interval_time;
+        });
     }
 }
 
