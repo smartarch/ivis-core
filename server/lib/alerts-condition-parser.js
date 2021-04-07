@@ -15,7 +15,8 @@ async function evaluate(condition, sigSetId){
     catch(error){
         return error.message;
     }
-    if(typeof result === 'boolean') return result;
+    if (typeof result === 'boolean') return result;
+    else if (result.entries) return result.entries[result.entries.length - 1];
     else return 'NotBoolError';
 }
 
@@ -63,43 +64,57 @@ function lookBack(array, key, distance){
 }
 
 function average(array, key, length){
-    if (typeof array[0][key] !== 'number') throw new Error('Argument in avg function is not a number!');
     if (length > array.length) length = array.length;
     let sum = 0;
-    for (let i = 0; i < length; i++) sum += array[i][key];
-    return sum / length;
+    let count = 0;
+    for (let i = 0; i < length; i++) {
+        if (array[i][key] !== null) {
+            if (typeof array[i][key] !== 'number') throw new Error('Argument in avg function is not a number!');
+            sum += array[i][key];
+            count++;
+        }
+    }
+    return sum / count;
 }
 
 function variance(array, key, length){
-    if (typeof array[0][key] !== 'number') throw new Error('Argument in var function is not a number!');
     if (length > array.length) length = array.length;
     const avg = average(array, key, length);
     let sum = 0;
-    for (let i = 0; i < length; i++) sum += Math.pow(array[i][key] - avg, 2);
-    return sum / length;
+    let count = 0;
+    for (let i = 0; i < length; i++) {
+        if (array[i][key] !== null) {
+            if (typeof array[i][key] !== 'number') throw new Error('Argument in var function is not a number!');
+            sum += Math.pow(array[i][key] - avg, 2);
+            count++;
+        }
+    }
+    return sum / count;
 }
 
 function minimum(array, key, length){
     if (length > array.length) length = array.length;
-    let min = array[0][key];
-    for (let i = 0; i < length; i++) if (array[i][key] < min) min = array[i][key];
+    let min = null;
+    for (let i = 0; i < length; i++) if (array[i][key] !== null && (min === null || array[i][key] < min)) min = array[i][key];
     return min;
 }
 
 function maximum(array, key, length){
     if (length > array.length) length = array.length;
-    let max = array[0][key];
-    for (let i = 0; i < length; i++) if (array[i][key] > max) max = array[i][key];
+    let max = null;
+    for (let i = 0; i < length; i++) if (array[i][key] !== null && (max === null || array[i][key] > max)) max = array[i][key];
     return max;
 }
 
 function quantile(array, key, length, q){
     if (length > array.length) length = array.length;
     let values = [];
-    for (let i = 0; i < length; i++) values.push(array[i][key]);
-    if (typeof values[0] === 'number') values.sort((a, b) => a - b);
+    for (let i = 0; i < length; i++) if (array[i][key] !== null) values.push(array[i][key]);
+    let numeric = false;
+    for (let i = 0; i < values.length; i++) if (typeof values[i] === 'number') numeric = true;
+    if (numeric) values.sort((a, b) => a - b);
     else values.sort();
-    const index = Math.ceil(length * q) - 1;
+    const index = Math.ceil(values.length * q) - 1;
     return values[index < 0 ? 0 : index];
 }
 

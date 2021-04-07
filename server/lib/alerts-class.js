@@ -74,7 +74,7 @@ class Alert{
 
         clearTimeout(this.intervalClock);
         await this.setIntervalTime();
-        this.intervalClock = setTimeout(this.intervalNotification.bind(this), this.fields.interval * 60 * 1000);
+        if (this.fields.interval !== 0) this.intervalClock = setTimeout(this.intervalNotification.bind(this), this.fields.interval * 60 * 1000);
 
         const result = await evaluate(this.fields.condition, this.fields.sigset);
         if (typeof result === 'boolean') await this.changeState(result);
