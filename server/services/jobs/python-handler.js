@@ -6,6 +6,7 @@ const {PythonSubtypes, defaultSubtypeKey, PYTHON_JOB_FILE_NAME: JOB_FILE_NAME} =
 const readline = require('readline');
 const ivisConfig = require('../../lib/config');
 const em = require('../../lib/extension-manager');
+const log = require('../../lib/log');
 
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
@@ -91,7 +92,8 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
 
         const pipeErrHandler = (err) => {
             errOutput += err;
-            onEvent('output', err);
+            onEvent('output', err.toString());
+            log.error(err);
         };
 
         jobProc.stdin.on('error', pipeErrHandler);
