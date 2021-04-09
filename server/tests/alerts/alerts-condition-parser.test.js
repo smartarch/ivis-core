@@ -1,5 +1,6 @@
 jest.mock('../../lib/knex');
 jest.mock('../../models/signal-sets');
+jest.mock('../../lib/context-helpers');
 jest.mock('../../lib/config');
 
 const { evaluate } = require('../../lib/alerts-condition-parser');
@@ -251,5 +252,11 @@ test('qnt function on sparse signal set #1', async () => {
 
 test('qnt function on sparse signal set #2', async () => {
     const result = await evaluate('equalText(qnt("sigb", 6, 0.5), "ahoj")', 2);
+    expect(result).toBe(true);
+});
+
+test('complicated formula', async () => {
+    const formula = 'a = $siga - 23;\nb = $sigb\nf(x, y) = 3 * x^2 + y + 5;\npast("sigc", 3) ? c = "neco" : c = "ahoj";\nf(a, 6) == 30011 and (not equalText(b, c))';
+    const result = await evaluate(formula, 1);
     expect(result).toBe(true);
 });
