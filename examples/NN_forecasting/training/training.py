@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import pandas as pd
-# import tensorflow as tf
+import tensorflow as tf
 
 #################################
 # Parsing Elasticsearch results #
@@ -111,18 +111,35 @@ def parse_els_data(training_parameters, data):
 
 
 def split_data(training_parameters, X, Y):
+    """Returns three tuples (X, Y) for train, val, test"""
     split = training_parameters["split"]
     N = X.shape[0]  # number of records
     train_size = int(np.floor(N * split["train"]))
     val_size = int(np.floor(N * split["val"]))
     # test_size = N - train_size - val_size
     return \
-        X.iloc[:train_size, :], X.iloc[train_size:train_size + val_size, :], X.iloc[train_size + val_size:, :], \
-        Y.iloc[:train_size, :], Y.iloc[train_size:train_size + val_size, :], Y.iloc[train_size + val_size:, :]
+        (X.iloc[:train_size, :], Y.iloc[:train_size, :]), \
+        (X.iloc[train_size:train_size + val_size, :], Y.iloc[train_size:train_size + val_size, :]), \
+        (X.iloc[train_size + val_size:, :], Y.iloc[train_size + val_size:, :])
 
 
-def dataframe_to_dataset(df):  # TODO
-    pass
+def dataframes_to_dataset(X_Y_tuple):
+    X, Y = X_Y_tuple
+    X = X.to_dict(orient="series")
+    Y = Y.to_dict(orient="series")
+    return tf.data.Dataset.from_tensor_slices((X, Y))
+
+
+def create_datasets(training_parameters, X, Y):
+    """
+    Splits the DataFrames X, Y into train, val and test Datasets
+
+    Returns
+    -------
+    (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset)
+        train, val, test
+    """
+    return (dataframes_to_dataset(frames) for frames in split_data(training_parameters, X, Y))
 
 
 def preprocess_signal_values(values, sig_type):  # TODO
@@ -172,12 +189,12 @@ def run_training(training_parameters, data, model_save_path):
 
     X, Y = parse_els_data(training_parameters, data)
 
-    X_train, X_val, X_test, Y_train, Y_val, Y_test = split_data(training_parameters, X, Y)
+    train, val, test = create_datasets(training_parameters, X, Y)
 
-    print(X_train)
-    print(X_val)
-    print(X_test)
-    print(Y_train)
+    print(train)
+    print(list(train.as_numpy_iterator()))
+    print(val)
+    print(list(val.as_numpy_iterator()))
 
     # # sample neural network model
     # inputs = tf.keras.layers.Input(shape=[3, 1])
