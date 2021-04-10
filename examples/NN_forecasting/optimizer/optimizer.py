@@ -3,10 +3,12 @@
 class TrainingParams:
     def __init__(self):
         self.architecture = None    # the architecture of neural network
-        self.query = None         # the Elasticsearch query to get the desired data
+        self.query = None           # the Elasticsearch query to get the desired data
+        self.query_type = None      # type of the ES query ("docs" | "histogram")
         self.index = None           # the Elasticsearch index
         self.inputSchema = dict()   # ES fields of input signals and their types
         self.targetSchema = dict()  # ES fields of predicted signals and their types
+        self.split = dict()         # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
         self.tsField = None         # ES field of ts signal
 
     def __str__(self):
@@ -15,11 +17,14 @@ class TrainingParams:
             "Architecture: " + str(self.architecture) + "\n" + \
             "Query: " + "\n" + \
             str(self.query) + "\n" + \
+            "Query type: " + str(self.query_type) + \
             "Index: " + str(self.index) + "\n" + \
             "Input schema:" + "\n" + \
             str(self.inputSchema) + "\n" + \
             "Target schema:" + "\n" + \
-            str(self.targetSchema)
+            str(self.targetSchema) + \
+            "Split:" + "\n" + \
+            str(self.split)
 
 
 #########################
@@ -133,11 +138,12 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     # prepare the parameters
     training_params = TrainingParams()
     training_params.architecture = "LSTM"
-    # training_params.query = get_els_docs_query(parameters)
-    training_params.query = get_els_histogram_query(parameters)
+    # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
+    training_params.query, training_params.query_type = get_els_histogram_query(parameters), "histogram"
     training_params.index = get_els_index(parameters)
     training_params.inputSchema = get_schema(parameters["inputSignals"], parameters)
     training_params.targetSchema = get_schema(parameters["targetSignals"], parameters)
+    training_params.targetSchema = {"train": 0.7, "val": 0, "test": 0.3}
 
     print(training_params)
 

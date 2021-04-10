@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import numpy as np
+import pandas as pd
 # import tensorflow as tf
 
-#########################
-# Elasticsearch results #
-#########################
+#################################
+# Parsing Elasticsearch results #
+#################################
 
 
 def parse_signal_values_from_docs(field, docs):
@@ -23,6 +24,107 @@ def parse_signal_values_from_buckets(field, buckets):
     return np.array(values)
 
 
+def get_hits(data):
+    return data["hits"]["hits"]
+
+
+def get_buckets(data):
+    return data["aggregations"]["aggregated_data"]["buckets"]
+
+
+def parse_els_docs(training_parameters, data):
+    """
+    Parse the docs data from Elasticsearch.
+
+    Parameters
+    ----------
+    training_parameters : dict
+    data : dict
+        JSON response from Elasticsearch parsed to dict
+
+    Returns
+    -------
+    (pd.DataFrame, pd.DataFrame)
+        Inputs and targets. Columns are fields, rows are docs.
+    """
+    docs = get_hits(data)
+    input_schema = training_parameters["inputSchema"]
+    target_schema = training_parameters["targetSchema"]
+
+    X = pd.DataFrame()
+    for sig in input_schema:
+        sig_values = parse_signal_values_from_docs(sig, docs)
+        X[sig] = sig_values
+
+    Y = pd.DataFrame()
+    for sig in target_schema:
+        sig_values = parse_signal_values_from_docs(sig, docs)
+        Y[sig] = sig_values
+
+    return X, Y
+
+
+def parse_els_histogram(training_parameters, data):
+    """
+    Parse the date histogram data from Elasticsearch.
+
+    Parameters
+    ----------
+    training_parameters : dict
+    data : dict
+        JSON response from Elasticsearch parsed to dict
+
+    Returns
+    -------
+    (pd.DataFrame, pd.DataFrame)
+        Inputs and targets. Columns are fields, rows are buckets.
+    """
+    buckets = get_buckets(data)
+    input_schema = training_parameters["inputSchema"]
+    target_schema = training_parameters["targetSchema"]
+
+    X = pd.DataFrame()
+    for sig in input_schema:
+        sig_values = parse_signal_values_from_buckets(sig, buckets)  # TODO: more than just avg aggregation
+        X[sig] = sig_values
+
+    Y = pd.DataFrame()
+    for sig in target_schema:
+        sig_values = parse_signal_values_from_buckets(sig, buckets)
+        Y[sig] = sig_values
+
+    return X, Y
+
+
+def parse_els_data(training_parameters, data):
+    if training_parameters["query_type"] == "docs":
+        return parse_els_histogram(training_parameters, data)
+    elif training_parameters["query_type"] == "histogram":
+        return parse_els_histogram(training_parameters, data)
+    else:
+        raise Exception("Unknown query type")
+
+
+#################
+# Preprocessing #
+#################
+
+
+def split_data(training_parameters, X, Y):
+    split = training_parameters["split"]
+    N = X.shape[0]  # number of records
+    train_size = int(np.floor(N * split["train"]))
+    val_size = int(np.floor(N * split["val"]))
+    # test_size = N - train_size - val_size
+    return \
+        X.iloc[:train_size, :], X.iloc[train_size:train_size + val_size, :], X.iloc[train_size + val_size:, :], \
+        Y.iloc[:train_size, :], Y.iloc[train_size:train_size + val_size, :], Y.iloc[train_size + val_size:, :]
+
+
+def dataframe_to_dataset(df):  # TODO
+    pass
+
+
 def preprocess_signal_values(values, sig_type):  # TODO
     """
     Preprocess the signal values (apply normalization, one-hot encoding for categorical signals, ...).
@@ -36,62 +138,10 @@ def preprocess_signal_values(values, sig_type):  # TODO
 
     Returns
     -------
-    ndarray
+    np.ndarray
         The preprocessed values as rows of a vector/matrix.
     """
     return values.reshape(-1, 1)
-
-
-def get_hits(data):
-    return data["hits"]["hits"]
-
-
-def get_buckets(data):
-    return data["aggregations"]["aggregated_data"]["buckets"]
-
-
-def parse_els_docs(training_parameters, data):
-    docs = get_hits(data)
-    input_schema = training_parameters["inputSchema"]
-    target_schema = training_parameters["targetSchema"]
-
-    inputValues = [] 
-    for sig, sig_type in input_schema.items():
-        sig_values = parse_signal_values_from_docs(sig, docs)
-        sig_values = preprocess_signal_values(sig_values, sig_type)
-        inputValues.append(sig_values)
-    X = np.hstack(inputValues)
-
-    targetValues = []
-    for sig, sig_type in target_schema.items():
-        sig_values = parse_signal_values_from_docs(sig, docs)
-        sig_values = preprocess_signal_values(sig_values, sig_type)
-        targetValues.append(sig_values)
-    Y = np.hstack(targetValues)
-
-    return X, Y
-
-
-def parse_els_histogram(training_parameters, data):
-    buckets = get_buckets(data)
-    input_schema = training_parameters["inputSchema"]
-    target_schema = training_parameters["targetSchema"]
-
-    inputValues = []
-    for sig, sig_type in input_schema.items():
-        sig_values = parse_signal_values_from_buckets(sig, buckets)  # TODO: more than just avg aggregation
-        sig_values = preprocess_signal_values(sig_values, sig_type)
-        inputValues.append(sig_values)
-    X = np.hstack(inputValues)
-
-    targetValues = []
-    for sig, sig_type in target_schema.items():
-        sig_values = parse_signal_values_from_buckets(sig, buckets)
-        sig_values = preprocess_signal_values(sig_values, sig_type)
-        targetValues.append(sig_values)
-    Y = np.hstack(targetValues)
-
-    return X, Y
 
 
 ########
@@ -120,9 +170,14 @@ def run_training(training_parameters, data, model_save_path):
 
     """
 
-    X, Y = parse_els_histogram(training_parameters, data)
-    print(X)
-    print(Y)
+    X, Y = parse_els_data(training_parameters, data)
+
+    X_train, X_val, X_test, Y_train, Y_val, Y_test = split_data(training_parameters, X, Y)
+
+    print(X_train)
+    print(X_val)
+    print(X_test)
+    print(Y_train)
 
     # # sample neural network model
     # inputs = tf.keras.layers.Input(shape=[3, 1])

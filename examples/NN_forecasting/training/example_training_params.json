@@ -16,6 +16,7 @@
       "match_all": {}
     }
   },
+  "query_type": "histogram",
   "index": "signal_set_13",
   "inputSchema": {
     "s37": "float",
@@ -23,6 +24,11 @@
   },
   "targetSchema": {
     "s39": "float"
+  },
+  "split": {
+    "train": 0.7,
+    "val": 0,
+    "test": 0.3
   },
   "tsField": null
 }
