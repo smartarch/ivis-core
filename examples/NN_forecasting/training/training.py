@@ -130,7 +130,7 @@ class WindowGenerator:
      | input_width | offset | target_width |
      |               width                 |
     """
-    def __init__(self, input_width, target_width, offset, dataframe, input_schema, target_schema=None):
+    def __init__(self, training_parameters, dataframe, input_width, target_width, offset):
         self.input_width = input_width
         self.target_width = target_width
         self.offset = offset
@@ -138,10 +138,13 @@ class WindowGenerator:
         self.dataframe = dataframe
         self.column_indices = {name: i for i, name in enumerate(dataframe.columns)}
 
+        input_schema = training_parameters["input_schema"]
+        target_schema = training_parameters["target_schema"]
         input_column_names = input_schema.keys()
-        target_column_names = input_column_names
         if target_schema is not None and target_schema:
             target_column_names = target_schema.keys()
+        else:  # target_schema is empty -> same as input_schema
+            target_column_names = input_column_names
 
         self.input_columns = [self.column_indices[name] for name in input_column_names]
         self.target_columns = [self.column_indices[name] for name in target_column_names]
@@ -248,12 +251,17 @@ def run_training(training_parameters, data, model_save_path):
     """
 
     dataframe = parse_els_data(training_parameters, data)
-    train_d, val_d, test_d = split_data(training_parameters, dataframe)
+    train_df, val_df, test_df = split_data(training_parameters, dataframe)
 
-    window = WindowGenerator(3, 1, 0, dataframe, training_parameters["input_schema"], training_parameters["target_schema"])
+    window_params = {
+        "input_width": 3,
+        "target_width": 1,
+        "offset": 0,
+    }
+    window = WindowGenerator(training_parameters, train_df, **window_params)
     train = window.make_dataset()
-    val = window.make_dataset(val_d)
-    test = window.make_dataset(test_d)
+    val = window.make_dataset(val_df)
+    test = window.make_dataset(test_df)
 
     # example_window = tf.convert_to_tensor([
     #     [[11, 12, 13], [14, 15, 16], [17, 18, 19], [20, 21, 22]],
