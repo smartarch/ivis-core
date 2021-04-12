@@ -130,7 +130,7 @@ class WindowGenerator:
      | input_width | offset | target_width |
      |               width                 |
     """
-    def __init__(self, training_parameters, dataframe, input_width, target_width, offset):
+    def __init__(self, training_parameters, dataframe, input_width, target_width, offset, batch_size=32, shuffle=False):
         self.input_width = input_width
         self.target_width = target_width
         self.offset = offset
@@ -138,6 +138,7 @@ class WindowGenerator:
         self.dataframe = dataframe
         self.column_indices = {name: i for i, name in enumerate(dataframe.columns)}
 
+        # features schema
         input_schema = training_parameters["input_schema"]
         target_schema = training_parameters["target_schema"]
         input_column_names = input_schema.keys()
@@ -154,6 +155,10 @@ class WindowGenerator:
         self.input_slice = slice(0, input_width)
         self.target_start = input_width + offset
         self.target_slice = slice(self.target_start, self.target_start + target_width)
+
+        # dataset parameters
+        self.batch_size = batch_size
+        self.shuffle = shuffle
 
     def __str__(self):
         return '\n'.join([
@@ -197,12 +202,24 @@ class WindowGenerator:
             targets=None,
             sequence_length=self.width,
             sequence_stride=1,
-            shuffle=False,
-            batch_size=32, )  # TODO: batch size, shuffle
+            shuffle=self.shuffle,
+            batch_size=self.batch_size, )
 
         ds = ds.map(self.split_window)
 
         return ds
+
+
+def make_datasets(training_parameters, train_df, val_df, test_df, window_params):
+    default_window_params = {
+        "offset": 0,
+    }
+    default_window_params.update(window_params)
+    window = WindowGenerator(training_parameters, train_df, **default_window_params)
+    train = window.make_dataset(train_df)
+    val = window.make_dataset(val_df)
+    test = window.make_dataset(test_df)
+    return train, val, test
 
 
 def preprocess_signal_values(values, sig_type):  # TODO
@@ -256,12 +273,8 @@ def run_training(training_parameters, data, model_save_path):
     window_params = {
         "input_width": 3,
         "target_width": 1,
-        "offset": 0,
     }
-    window = WindowGenerator(training_parameters, train_df, **window_params)
-    train = window.make_dataset()
-    val = window.make_dataset(val_df)
-    test = window.make_dataset(test_df)
+    train, val, test = make_datasets(training_parameters, train_df, val_df, test_df, window_params)
 
     # example_window = tf.convert_to_tensor([
     #     [[11, 12, 13], [14, 15, 16], [17, 18, 19], [20, 21, 22]],
