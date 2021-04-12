@@ -3,6 +3,19 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
+
+##################
+# Common helpers #
+##################
+
+def get_merged_schema(training_parameters):
+    input_schema = training_parameters["input_schema"]
+    target_schema = training_parameters["target_schema"]
+    schema = dict(input_schema)
+    schema.update(target_schema)
+    return schema
+
+
 #################################
 # Parsing Elasticsearch results #
 #################################
@@ -48,11 +61,7 @@ def parse_els_docs(training_parameters, data):
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES).
     """
     docs = get_hits(data)
-    input_schema = training_parameters["input_schema"]
-    target_schema = training_parameters["target_schema"]
-    # merge the schemas
-    schema = dict(input_schema)
-    schema.update(target_schema)
+    schema = get_merged_schema(training_parameters)
 
     dataframe = pd.DataFrame()
 
@@ -79,11 +88,7 @@ def parse_els_histogram(training_parameters, data):
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (buckets from ES).
     """
     buckets = get_buckets(data)
-    input_schema = training_parameters["input_schema"]
-    target_schema = training_parameters["target_schema"]
-    # merge the schemas
-    schema = dict(input_schema)
-    schema.update(target_schema)
+    schema = get_merged_schema(training_parameters)
 
     dataframe = pd.DataFrame()
 
@@ -121,6 +126,70 @@ def split_data(training_parameters, dataframe):
         dataframe.iloc[train_size + val_size:, :]
 
 
+def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
+    input_schema = training_parameters["input_schema"]
+    target_schema = training_parameters["target_schema"]
+    schema = get_merged_schema(training_parameters)
+    input_columns = []
+    target_columns = []
+    normalization_coefficients = {}
+    train_df = train_df.copy()
+    val_df = val_df.copy()
+    test_df = test_df.copy()
+
+    def copy_column_from_schema(original_column, new_columns=None):
+        """Call this after preprocessing a column to copy it to appropriate columns lists"""
+        if new_columns is None:
+            new_columns = [original_column]
+        for column in new_columns:
+            if column in input_schema:
+                input_columns.append(column)
+            if column in target_schema:
+                target_columns.append(column)
+
+    def mean_std_normalization(column):
+        """maps the column values to ensure mean = 0, std = 1"""
+        mean = train_df[column].mean()
+        std = train_df[column].std()
+
+        train_df[column] = (train_df[column] - mean) / std
+        val_df[column] = (val_df[column] - mean) / std
+        test_df[column] = (test_df[column] - mean) / std
+
+        normalization_coefficients[column] = {"mean": mean, "std": std}
+        copy_column_from_schema(column)
+
+    def min_max_normalization(column, properties):
+        """maps the column's values into [0, 1] range"""
+        min_val = properties["min"] if "min" in properties else train_df[column].min()
+        max_val = properties["max"] if "max" in properties else train_df[column].max()
+
+        train_df[column] = (train_df[column] - min_val) / (max_val - min_val)
+        val_df[column] = (val_df[column] - min_val) / (max_val - min_val)
+        test_df[column] = (test_df[column] - min_val) / (max_val - min_val)
+
+        normalization_coefficients[column] = {"min": min_val, "max": max_val}
+        copy_column_from_schema(column)
+
+    def one_hot_encoding(column):
+        raise NotImplementedError()  # TODO
+
+    def preprocess_feature(column, properties):
+        if "min" in properties or "max" in properties:
+            min_max_normalization(column, properties)
+        elif "categorical" in properties and properties["categorical"]:
+            one_hot_encoding(column)
+        elif properties["type"] in ["integer", "long", "float", "double"]:
+            mean_std_normalization(column)
+        elif properties["type"] in ["keyword"]:
+            one_hot_encoding(column)
+
+    for col in schema:
+        preprocess_feature(col, schema[col])
+
+    return train_df, val_df, test_df, normalization_coefficients, (input_columns, target_columns)
+
+
 class WindowGenerator:
     """
     Time series window dataset generator
@@ -130,7 +199,7 @@ class WindowGenerator:
      | input_width | offset | target_width |
      |               width                 |
     """
-    def __init__(self, training_parameters, dataframe, input_width, target_width, offset, batch_size=32, shuffle=False):
+    def __init__(self, columns, dataframe, input_width, target_width, offset, batch_size=32, shuffle=False):
         self.input_width = input_width
         self.target_width = target_width
         self.offset = offset
@@ -139,12 +208,8 @@ class WindowGenerator:
         self.column_indices = {name: i for i, name in enumerate(dataframe.columns)}
 
         # features schema
-        input_schema = training_parameters["input_schema"]
-        target_schema = training_parameters["target_schema"]
-        input_column_names = input_schema.keys()
-        if target_schema is not None and target_schema:
-            target_column_names = target_schema.keys()
-        else:  # target_schema is empty -> same as input_schema
+        input_column_names, target_column_names = columns
+        if not target_column_names:  # target_schema is empty -> same as input_schema
             target_column_names = input_column_names
 
         self.input_columns = [self.column_indices[name] for name in input_column_names]
@@ -210,35 +275,16 @@ class WindowGenerator:
         return ds
 
 
-def make_datasets(training_parameters, train_df, val_df, test_df, window_params):
+def make_datasets(columns, train_df, val_df, test_df, window_params):
     default_window_params = {
         "offset": 0,
     }
     default_window_params.update(window_params)
-    window = WindowGenerator(training_parameters, train_df, **default_window_params)
+    window = WindowGenerator(columns, train_df, **default_window_params)
     train = window.make_dataset(train_df)
     val = window.make_dataset(val_df)
     test = window.make_dataset(test_df)
     return train, val, test
-
-
-def preprocess_signal_values(values, sig_type):  # TODO
-    """
-    Preprocess the signal values (apply normalization, one-hot encoding for categorical signals, ...).
-
-    Parameters
-    ----------
-    values : ndarray
-        Vector of values.
-    sig_type : str
-        Type of the signal.
-
-    Returns
-    -------
-    np.ndarray
-        The preprocessed values as rows of a vector/matrix.
-    """
-    return values.reshape(-1, 1)
 
 
 ########
@@ -269,12 +315,13 @@ def run_training(training_parameters, data, model_save_path):
 
     dataframe = parse_els_data(training_parameters, data)
     train_df, val_df, test_df = split_data(training_parameters, dataframe)
+    train_df, val_df, test_df, norm_coeffs, columns = preprocess_dataframes(training_parameters, train_df, val_df, test_df)
 
     window_params = {
         "input_width": 3,
         "target_width": 1,
     }
-    train, val, test = make_datasets(training_parameters, train_df, val_df, test_df, window_params)
+    train, val, test = make_datasets(columns, train_df, val_df, test_df, window_params)
 
     # example_window = tf.convert_to_tensor([
     #     [[11, 12, 13], [14, 15, 16], [17, 18, 19], [20, 21, 22]],

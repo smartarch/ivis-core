@@ -19,11 +19,18 @@
   "query_type": "histogram",
   "index": "signal_set_13",
   "input_schema": {
-    "s37": "float",
-    "s38": "integer"
+    "s37": {
+      "type": "float"
+    },
+    "s38": {
+      "type": "integer"
+    }
   },
   "target_schema": {
-    "s39": "float"
+    "s39": {
+      "type": "float",
+      "min": 30
+    }
   },
   "split": {
     "train": 0.7,

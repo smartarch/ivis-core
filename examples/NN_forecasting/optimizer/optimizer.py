@@ -107,7 +107,9 @@ def get_schema(signals, parameters):
     schema = dict()
     for sig in signals:
         signal = entities_signals[sig["cid"]]
-        schema[signal["field"]] = signal["type"]
+        schema[signal["field"]] = {
+            "type": signal["type"]
+        }
     return schema
 
 
