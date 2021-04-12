@@ -6,10 +6,10 @@ class TrainingParams:
         self.query = None           # the Elasticsearch query to get the desired data
         self.query_type = None      # type of the ES query ("docs" | "histogram")
         self.index = None           # the Elasticsearch index
-        self.inputSchema = dict()   # ES fields of input signals and their types
-        self.targetSchema = dict()  # ES fields of predicted signals and their types
+        self.input_schema = dict()   # ES fields of input signals and their types
+        self.target_schema = dict()  # ES fields of predicted signals and their types, keep empty for autoregressive models
         self.split = dict()         # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
-        self.tsField = None         # ES field of ts signal
+        self.ts_field = None         # ES field of ts signal
 
     def __str__(self):
         return \
@@ -20,9 +20,9 @@ class TrainingParams:
             "Query type: " + str(self.query_type) + \
             "Index: " + str(self.index) + "\n" + \
             "Input schema:" + "\n" + \
-            str(self.inputSchema) + "\n" + \
+            str(self.input_schema) + "\n" + \
             "Target schema:" + "\n" + \
-            str(self.targetSchema) + \
+            str(self.target_schema) + \
             "Split:" + "\n" + \
             str(self.split)
 
@@ -141,9 +141,9 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
     training_params.query, training_params.query_type = get_els_histogram_query(parameters), "histogram"
     training_params.index = get_els_index(parameters)
-    training_params.inputSchema = get_schema(parameters["inputSignals"], parameters)
-    training_params.targetSchema = get_schema(parameters["targetSignals"], parameters)
-    training_params.targetSchema = {"train": 0.7, "val": 0, "test": 0.3}
+    training_params.input_schema = get_schema(parameters["inputSignals"], parameters)
+    training_params.target_schema = get_schema(parameters["targetSignals"], parameters)
+    training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
     print(training_params)
 

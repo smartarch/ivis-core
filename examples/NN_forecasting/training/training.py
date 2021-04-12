@@ -45,23 +45,22 @@ def parse_els_docs(training_parameters, data):
     Returns
     -------
     (pd.DataFrame, pd.DataFrame)
-        Inputs and targets. Columns are fields, rows are docs.
+        Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES).
     """
     docs = get_hits(data)
-    input_schema = training_parameters["inputSchema"]
-    target_schema = training_parameters["targetSchema"]
+    input_schema = training_parameters["input_schema"]
+    target_schema = training_parameters["target_schema"]
+    # merge the schemas
+    schema = dict(input_schema)
+    schema.update(target_schema)
 
-    X = pd.DataFrame()
-    for sig in input_schema:
+    dataframe = pd.DataFrame()
+
+    for sig in schema:
         sig_values = parse_signal_values_from_docs(sig, docs)
-        X[sig] = sig_values
+        dataframe[sig] = sig_values
 
-    Y = pd.DataFrame()
-    for sig in target_schema:
-        sig_values = parse_signal_values_from_docs(sig, docs)
-        Y[sig] = sig_values
-
-    return X, Y
+    return dataframe
 
 
 def parse_els_histogram(training_parameters, data):
@@ -76,29 +75,28 @@ def parse_els_histogram(training_parameters, data):
 
     Returns
     -------
-    (pd.DataFrame, pd.DataFrame)
-        Inputs and targets. Columns are fields, rows are buckets.
+    pd.DataFrame
+        Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (buckets from ES).
     """
     buckets = get_buckets(data)
-    input_schema = training_parameters["inputSchema"]
-    target_schema = training_parameters["targetSchema"]
+    input_schema = training_parameters["input_schema"]
+    target_schema = training_parameters["target_schema"]
+    # merge the schemas
+    schema = dict(input_schema)
+    schema.update(target_schema)
 
-    X = pd.DataFrame()
-    for sig in input_schema:
+    dataframe = pd.DataFrame()
+
+    for sig in schema:
         sig_values = parse_signal_values_from_buckets(sig, buckets)  # TODO: more than just avg aggregation
-        X[sig] = sig_values
+        dataframe[sig] = sig_values
 
-    Y = pd.DataFrame()
-    for sig in target_schema:
-        sig_values = parse_signal_values_from_buckets(sig, buckets)
-        Y[sig] = sig_values
-
-    return X, Y
+    return dataframe
 
 
 def parse_els_data(training_parameters, data):
     if training_parameters["query_type"] == "docs":
-        return parse_els_histogram(training_parameters, data)
+        return parse_els_docs(training_parameters, data)
     elif training_parameters["query_type"] == "histogram":
         return parse_els_histogram(training_parameters, data)
     else:
@@ -110,36 +108,98 @@ def parse_els_data(training_parameters, data):
 #################
 
 
-def split_data(training_parameters, X, Y):
-    """Returns three tuples (X, Y) for train, val, test"""
+def split_data(training_parameters, dataframe):
+    """Returns three datasets for train, val, test"""
     split = training_parameters["split"]
-    N = X.shape[0]  # number of records
-    train_size = int(np.floor(N * split["train"]))
-    val_size = int(np.floor(N * split["val"]))
+    n = dataframe.shape[0]  # number of records
+    train_size = int(np.floor(n * split["train"]))
+    val_size = int(np.floor(n * split["val"]))
     # test_size = N - train_size - val_size
     return \
-        (X.iloc[:train_size, :], Y.iloc[:train_size, :]), \
-        (X.iloc[train_size:train_size + val_size, :], Y.iloc[train_size:train_size + val_size, :]), \
-        (X.iloc[train_size + val_size:, :], Y.iloc[train_size + val_size:, :])
+        dataframe.iloc[:train_size, :], \
+        dataframe.iloc[train_size:train_size + val_size, :], \
+        dataframe.iloc[train_size + val_size:, :]
 
 
-def dataframes_to_dataset(X_Y_tuple):
-    X, Y = X_Y_tuple
-    X = X.to_dict(orient="series")
-    Y = Y.to_dict(orient="series")
-    return tf.data.Dataset.from_tensor_slices((X, Y))
-
-
-def create_datasets(training_parameters, X, Y):
+class WindowGenerator:
     """
-    Splits the DataFrames X, Y into train, val and test Datasets
+    Time series window dataset generator
+    (inspired by https://www.tensorflow.org/tutorials/structured_data/time_series#data_windowing)
 
-    Returns
-    -------
-    (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset)
-        train, val, test
+    [ #, #, #, #, #, #, #, #, #, #, #, #, # ]
+     | input_width | offset | target_width |
+     |               width                 |
     """
-    return (dataframes_to_dataset(frames) for frames in split_data(training_parameters, X, Y))
+    def __init__(self, input_width, target_width, offset, dataframe, input_schema, target_schema=None):
+        self.input_width = input_width
+        self.target_width = target_width
+        self.offset = offset
+
+        self.dataframe = dataframe
+        self.column_indices = {name: i for i, name in enumerate(dataframe.columns)}
+
+        input_column_names = input_schema.keys()
+        target_column_names = input_column_names
+        if target_schema is not None and target_schema:
+            target_column_names = target_schema.keys()
+
+        self.input_columns = [self.column_indices[name] for name in input_column_names]
+        self.target_columns = [self.column_indices[name] for name in target_column_names]
+
+        # window parameters
+        self.width = input_width + offset + target_width
+        self.input_slice = slice(0, input_width)
+        self.target_start = input_width + offset
+        self.target_slice = slice(self.target_start, self.target_start + target_width)
+
+    def __str__(self):
+        return '\n'.join([
+            f'Total window width: {self.width}',
+            f'Input indices: {np.arange(self.width)[self.input_slice]}',
+            f'Target indices: {np.arange(self.width)[self.target_slice]}'])
+
+    def split_window(self, batch):
+        inputs = batch[:, self.input_slice, :]  # slice along the time axis
+        inputs = tf.gather(inputs, self.input_columns, axis=2)  # select features
+        inputs.set_shape([None, self.input_width, None])
+
+        targets = batch[:, self.target_slice, :]  # slice along the time axis
+        targets = tf.gather(targets, self.target_columns, axis=2)  # select features
+        targets.set_shape([None, self.target_width, None])
+
+        return inputs, targets
+
+    def make_dataset(self, dataframe=None):
+        """
+        Creates a windowed dataset from a dataframe.
+
+        Parameters
+        ----------
+        dataframe : pd.DataFrame
+            The dataframe from which to make windows. If equal to `None`, the `self.dataframe` is used. The dataframe must have the same columns as `self.dataframe`.
+
+        Returns
+        -------
+        tf.data.Dataset
+        """
+        if dataframe is None:
+            dataframe = self.dataframe
+        assert list(dataframe.columns) == list(self.dataframe.columns)
+        if dataframe.empty:
+            return None
+
+        data = np.array(dataframe, dtype=np.float32)
+        ds = tf.keras.preprocessing.timeseries_dataset_from_array(
+            data=data,
+            targets=None,
+            sequence_length=self.width,
+            sequence_stride=1,
+            shuffle=False,
+            batch_size=32, )  # TODO: batch size, shuffle
+
+        ds = ds.map(self.split_window)
+
+        return ds
 
 
 def preprocess_signal_values(values, sig_type):  # TODO
@@ -187,14 +247,29 @@ def run_training(training_parameters, data, model_save_path):
 
     """
 
-    X, Y = parse_els_data(training_parameters, data)
+    dataframe = parse_els_data(training_parameters, data)
+    train_d, val_d, test_d = split_data(training_parameters, dataframe)
 
-    train, val, test = create_datasets(training_parameters, X, Y)
+    window = WindowGenerator(3, 1, 0, dataframe, training_parameters["input_schema"], training_parameters["target_schema"])
+    train = window.make_dataset()
+    val = window.make_dataset(val_d)
+    test = window.make_dataset(test_d)
 
-    print(train)
-    print(list(train.as_numpy_iterator()))
-    print(val)
-    print(list(val.as_numpy_iterator()))
+    # example_window = tf.convert_to_tensor([
+    #     [[11, 12, 13], [14, 15, 16], [17, 18, 19], [20, 21, 22]],
+    #     [[21, 22, 23], [24, 25, 26], [27, 28, 29], [30, 31, 32]]
+    # ])
+    # i, t = w.split_window(example_window)
+    # print(i)
+
+    print(list(train.take(1).as_numpy_iterator()))
+
+    # train, val, test = create_datasets(training_parameters, X, Y)
+
+    # print(train)
+    # print(list(train.as_numpy_iterator()))
+    # print(val)
+    # print(list(val.as_numpy_iterator()))
 
     # # sample neural network model
     # inputs = tf.keras.layers.Input(shape=[3, 1])

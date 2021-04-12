@@ -18,11 +18,11 @@
   },
   "query_type": "histogram",
   "index": "signal_set_13",
-  "inputSchema": {
+  "input_schema": {
     "s37": "float",
     "s38": "integer"
   },
-  "targetSchema": {
+  "target_schema": {
     "s39": "float"
   },
   "split": {
@@ -30,5 +30,5 @@
     "val": 0,
     "test": 0.3
   },
-  "tsField": null
+  "ts_field": null
 }
