@@ -203,6 +203,7 @@ export default class CUD extends Component {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
+        const canTrigger = isEdit && this.props.entity.permissions.includes('trigger');
 
         const sigSetColumns = [
             { data: 1, title: t('Id') },
@@ -227,15 +228,15 @@ export default class CUD extends Component {
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
-                    <TextArea id="description" label={t('Description')} help={t('This description is used in notifications.')}/>
+                    <TextArea id="description" label={t('Description')} help={t('This description is used in email notifications.')}/>
                     <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2} help={t('Select signal set to watch.')}/>
                     <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
                     <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes! Use 0 if not applicable!')}/>
                     <TextArea id="condition" label={t('Condition')} help={t('If this condition is satisfied, the data from sensors are unsuitable. Mind that the error check might be one step delayed.')}/>
                     <CheckBox id="concheck" text={t('Check condition syntax (recommended)')}/>
-                    <TextArea id="emails" label={t('Email addresses')} help={t('Email addresses for notifications, one per line!')}/>
-                    <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line!')}/>
+                    <TextArea id="emails" label={t('Email addresses')} help={t('Email addresses for notifications, one per line! Maximum number of email addresses may be limited.')}/>
+                    <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line! Use E.164 format! Maximum number of phone numbers may be limited.')}/>
                     <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes! Use 0 if not applicable!')}/>
                     <CheckBox id="finalnotification" text={t('Issue a notification when the triggered alert is revoked')}/>
                     <CheckBox id="enabled" text={t('Enabled')}/>
@@ -244,10 +245,11 @@ export default class CUD extends Component {
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
                                 onClickAsync={async () => await this.submitHandler(true)}/>
-                        {isEdit && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
+                        {canDelete && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
-                        {isEdit && <Button className="btn-warning" icon="bolt" label={t('Trigger')} title={t('Test this alert with manual trigger')}
-                                onClickAsync={async () => {if (await testTrigger(this.props.entity.id)) alert(t('The alert was manually triggered!'))}} /> }
+                        {canTrigger && <Button className="btn-warning" icon="bolt" label={t('Trigger')} title={t('Test this alert with manual trigger')}
+                                onClickAsync={async () => {if (await testTrigger(this.props.entity.id)) alert(t('The alert was manually triggered!'));
+                                else alert(t('Wait, you can test it only once per minute.'));}} /> }
                     </ButtonRow>
                 </Form>
             </Panel>

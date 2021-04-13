@@ -1,6 +1,8 @@
 jest.mock('../../lib/knex');
 jest.mock('../../lib/alerts-condition-parser');
 jest.mock('../../lib/mailer')
+jest.mock('../../lib/SMS-sender');
+jest.mock('../../lib/config');
 jest.mock('moment');
 
 const { Alert } = require('../../lib/alerts-class');

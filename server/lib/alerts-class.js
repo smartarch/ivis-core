@@ -4,8 +4,8 @@ const knex = require('./knex');
 const { evaluate } = require('./alerts-condition-parser');
 const moment = require('moment');
 const { sendEmail } = require('./mailer');
-
-const senderName = 'IVIS Alert';
+const { sendSMS } = require('./SMS-sender');
+const config = require('./config');
 
 class Alert{
     constructor(fields) {
@@ -131,10 +131,9 @@ class Alert{
         await this.writeState('bad');
         await this.addLogEntry('trigger');
         if (this.fields.repeat !== 0) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
-        const addresses = this.fields.emails.split(/\r?\n/);
         const subject = `Alert ${this.fields.name} was triggered!`;
         const text = `Alert ${this.fields.name} was triggered!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
-        await sendEmail(senderName, addresses, subject, text);
+        await this.sendNotification(subject, text, subject);
     }
 
     async revoke(){
@@ -142,19 +141,17 @@ class Alert{
         await this.writeState('good');
         await this.addLogEntry('revoke');
         if (this.fields.finalnotification) {
-            const addresses = this.fields.emails.split(/\r?\n/);
             const subject = `Alert ${this.fields.name} was revoked`;
             const text = `Alert ${this.fields.name} was revoked.\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
-            await sendEmail(senderName, addresses, subject, text);
+            await this.sendNotification(subject, text);
         }
     }
 
     async repeatNotification() {
         this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
-        const addresses = this.fields.emails.split(/\r?\n/);
         const subject = `Alert ${this.fields.name} is still triggered!`;
         const text = `Alert ${this.fields.name} has been triggered!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
-        await sendEmail(senderName, addresses, subject, text);
+        await this.sendNotification(subject, text);
     }
 
     async writeState(newState) {
@@ -177,10 +174,9 @@ class Alert{
         await this.setIntervalTime();
         this.intervalClock = setTimeout(this.intervalNotification.bind(this), this.fields.interval * 60 * 1000);
         await this.addLogEntry('interval');
-        const addresses = this.fields.emails.split(/\r?\n/);
         const subject = `Alert ${this.fields.name}: Signal record did not arrive in time!`;
         const text = `Alert ${this.fields.name}: Signal record did not arrive in time!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nInterval: ${this.fields.interval}`;
-        await sendEmail(senderName, addresses, subject, text);
+        await this.sendNotification(subject, text);
     }
 
     async setIntervalTime() {
@@ -189,6 +185,16 @@ class Alert{
             await tx('alerts').where('id', this.fields.id).update({interval_time: time});
             this.fields.interval_time = (await tx('alerts').where('id', this.fields.id).first('interval_time')).interval_time;
         });
+    }
+
+    async sendNotification(emailSubject, emailText, SMSText) {
+        const senderName = 'IVIS Alert';
+        const addresses = this.fields.emails.split(/\r?\n/).slice(0, config.alerts.maxEmailRecipients);
+        await sendEmail(senderName, addresses, emailSubject, emailText);
+        if (SMSText) {
+            const phones = this.fields.phones.split(/\r?\n/).slice(0, config.alerts.maxSMSRecipients);
+            for (let i = 0; i < phones.length; i++) await sendSMS(phones[i], senderName + '\n' + SMSText);
+        }
     }
 }
 

@@ -16,6 +16,7 @@
   },
   "optionalDependencies": {},
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.12.0",
     "@babel/cli": "^7.7.5",
     "@babel/core": "^7.7.5",
     "@babel/plugin-proposal-class-properties": "^7.7.4",

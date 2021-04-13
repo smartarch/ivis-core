@@ -11,6 +11,6 @@ export default async function testTrigger (alertId){
     if (!testReady) return false;
     testReady = false;
     axios.method(HTTPMethod.POST, getUrl(addUrl), {alert: alertId, type: 'test'});
-    setTimeout(() => testReady = true, 10 * 1000);
+    setTimeout(() => testReady = true, 60 * 1000);
     return true;
 }

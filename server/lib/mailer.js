@@ -14,7 +14,7 @@ async function sendEmail(senderName, receiverAddress, subject, text) {
                 pass: config.email.password
             }
         });
-        await transporter.sendMail({
+        return await transporter.sendMail({
             from: `"${senderName}" <${config.email.account}>`,
             to: receiverAddress,
             subject: subject,

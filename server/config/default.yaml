@@ -21,6 +21,8 @@ elasticsearch:
 
 alerts:
   maxResultsWindow: 1000
+  maxEmailRecipients: 3
+  maxSMSRecipients: 1
 
 # FILL IN BEFORE USE !!!
 # Tested configuration is - host: "smtp.seznam.cz", port: 465, account: "yourname@seznam.cz", password: "yourpassword"
@@ -29,6 +31,13 @@ email:
   port:
   account:
   password:
+
+# FILL IN BEFORE USE !!!
+# according to AWS SNS
+SMS:
+  keyID:
+  secretKey:
+  region:
 
 mysql:
   host: localhost
