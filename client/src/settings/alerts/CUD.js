@@ -45,7 +45,7 @@ export default class CUD extends Component {
     constructor(props) {
         super(props);
 
-        this.state = {};
+        this.state = {formChanged: false};
 
         this.initForm();
     }
@@ -181,6 +181,7 @@ export default class CUD extends Component {
                     } else {
                         await this.getFormValuesFromURL(`rest/alerts/${this.props.entity.id}`);
                         this.enableForm();
+                        this.setState({formChanged: false});
                         this.setFormStatusMessage('success', t('Alert updated'));
                     }
                 } else {
@@ -197,6 +198,10 @@ export default class CUD extends Component {
         } catch (error) {
             throw error;
         }
+    }
+
+    handleFormChange() {
+        this.setState({formChanged: true});
     }
 
     render() {
@@ -225,7 +230,7 @@ export default class CUD extends Component {
                     deletingMsg={t('Deleting alert ...')}
                     deletedMsg={t('Alert deleted')}/>
                 }
-
+                <div onChange={::this.handleFormChange}>
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('This description is used in email notifications.')}/>
@@ -247,11 +252,12 @@ export default class CUD extends Component {
                                 onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
-                        {canTrigger && <Button className="btn-warning" icon="bolt" label={t('Trigger')} title={t('Test this alert with manual trigger')}
+                        {canTrigger && <Button disabled={this.state.formChanged} className="btn-warning" icon="bolt" label={t('Trigger')} title={this.state.formChanged ? t('Save your changes first!') : t('Test this alert with manual trigger')}
                                 onClickAsync={async () => {if (await testTrigger(this.props.entity.id)) alert(t('The alert was manually triggered!'));
                                 else alert(t('Wait, you can test it only once per minute.'));}} /> }
                     </ButtonRow>
                 </Form>
+                </div>
             </Panel>
         );
     }
