@@ -19,6 +19,7 @@ export default function checkCondition(condition, sigSetId){
         return error.message;
     }
     if (typeof evaluated === 'boolean') return "ok";
+    else if (evaluated && evaluated.entries && evaluated.entries.length !== 0 && typeof evaluated.entries[evaluated.entries.length - 1] === 'boolean') return "ok";
     else return "The expression does not return a boolean value!"
 }
 

@@ -16,7 +16,7 @@ async function evaluate(condition, sigSetId){
         return error.message;
     }
     if (typeof result === 'boolean') return result;
-    else if (result.entries) return result.entries[result.entries.length - 1];
+    else if (result && result.entries && result.entries.length !== 0) return result.entries[result.entries.length - 1];
     else return 'NotBoolError';
 }
 
