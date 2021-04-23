@@ -18,6 +18,31 @@ def split_data(training_parameters, dataframe):
         dataframe.iloc[train_size + val_size:, :]
 
 
+def one_hot_encoding(dataframe, column, values):
+    """
+    Apply one-hot encoding to a column. Modifies the original dataframe!
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+    column : str
+        Column name
+    values : list of str
+        List of unique values, ordered by the desired one-hot indices.
+
+    Returns
+    -------
+    pd.DataFrame
+        Modified dataframe
+    """
+    for val in values:
+        dataframe[f"{column}_{val}"] = (dataframe[column] == val).astype(int)
+    dataframe[f"{column}_unknown"] = (~dataframe[column].isin(values)).astype(int)
+
+    dataframe.drop(columns=[column], inplace=True)
+    return dataframe
+
+
 def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
     """
     Apply preprocessing (normalization, ...) to the train, validation and test DataFrames.
@@ -73,18 +98,26 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
         normalization_coefficients[column] = {"min": min_val, "max": max_val}
         copy_column_from_schema(column)
 
-    def one_hot_encoding(column):
-        raise NotImplementedError()  # TODO
+    def apply_one_hot_encoding(column):
+        nonlocal train_df, val_df, test_df
+        values = train_df[column].unique()
+
+        train_df = one_hot_encoding(train_df, column, values)
+        val_df = one_hot_encoding(val_df, column, values)
+        test_df = one_hot_encoding(test_df, column, values)
+
+        normalization_coefficients[column] = {"values": list(values)}
+        copy_column_from_schema(column, [f"{column}_{val}" for val in values + ['unknown']])
 
     def preprocess_feature(column, properties):
         if "min" in properties or "max" in properties:
             min_max_normalization(column, properties)
         elif "categorical" in properties and properties["categorical"]:
-            one_hot_encoding(column)
+            apply_one_hot_encoding(column)
         elif properties["type"] in ["integer", "long", "float", "double"]:
             mean_std_normalization(column)
         elif properties["type"] in ["keyword"]:
-            one_hot_encoding(column)
+            apply_one_hot_encoding(column)
 
     for col in schema:
         preprocess_feature(col, schema[col])
@@ -104,8 +137,9 @@ def preprocess_using_coefficients(normalization_coefficients, dataframe):
         """maps the column's values into [0, 1] range"""
         dataframe[column] = (dataframe[column] - min_val) / (max_val - min_val)
 
-    def one_hot_encoding(column):
-        raise NotImplementedError()  # TODO
+    def apply_one_hot_encoding(column, values):
+        nonlocal dataframe
+        dataframe = one_hot_encoding(dataframe, column, values)
 
     def preprocess_feature(column):
         if column in normalization_coefficients:
@@ -115,7 +149,8 @@ def preprocess_using_coefficients(normalization_coefficients, dataframe):
                 min_max_normalization(column, coeffs["min"], coeffs["max"])
             elif "mean" in coeffs and "std" in coeffs:
                 mean_std_normalization(column, coeffs["mean"], coeffs["std"])
-            # TODO: one hot encoding
+            elif "values" in coeffs:
+                apply_one_hot_encoding(column, coeffs["values"])
 
     for col in dataframe:
         preprocess_feature(col)

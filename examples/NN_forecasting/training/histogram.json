@@ -48,7 +48,7 @@
             "sum_other_doc_count": 131,
             "buckets": [
               {
-                "key": "asia",
+                "key": "europe",
                 "doc_count": 55
               }
             ]
@@ -144,7 +144,7 @@
             "sum_other_doc_count": 131,
             "buckets": [
               {
-                "key": "asia",
+                "key": "europe",
                 "doc_count": 55
               }
             ]
@@ -240,7 +240,7 @@
             "sum_other_doc_count": 131,
             "buckets": [
               {
-                "key": "asia",
+                "key": "europe",
                 "doc_count": 55
               }
             ]
@@ -264,7 +264,7 @@
             "sum_other_doc_count": 131,
             "buckets": [
               {
-                "key": "asia",
+                "key": "americas",
                 "doc_count": 55
               }
             ]
