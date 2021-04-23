@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import ivis_nn
+import ivis_nn.elasticsearch as es
 from ivis_nn.common import get_entities_signals
 
 
@@ -79,7 +79,7 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     training_params = TrainingParams()
     training_params.architecture = "LSTM"
     # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
-    training_params.query, training_params.query_type = ivis_nn.es.get_histogram_query(parameters), "histogram"
+    training_params.query, training_params.query_type = es.get_histogram_query(parameters), "histogram"
     training_params.index = get_els_index(parameters)
     training_params.input_schema = get_schema(parameters["inputSignals"], parameters)
     training_params.target_schema = get_schema(parameters["targetSignals"], parameters)
@@ -87,7 +87,7 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
 
     print(training_params)
 
-    for i in range(3):
+    for i in range(0):
 
         # do some magic...
 

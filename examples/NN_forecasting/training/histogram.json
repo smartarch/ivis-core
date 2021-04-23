@@ -1,5 +1,5 @@
 {
-  "took": 15,
+  "took": 17,
   "timed_out": false,
   "_shards": {
     "total": 5,
@@ -19,6 +19,16 @@
           "key_as_string": "1890-01-04T00:00:00.000Z",
           "key": -2524262400000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.90220429307671
           },
@@ -33,6 +43,16 @@
           "key_as_string": "1900-01-04T00:00:00.000Z",
           "key": -2208729600000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.8090322543216
           },
@@ -47,6 +67,16 @@
           "key_as_string": "1910-01-04T00:00:00.000Z",
           "key": -1893196800000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.677258054415385
           },
@@ -61,6 +91,16 @@
           "key_as_string": "1920-01-04T00:00:00.000Z",
           "key": -1577664000000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.532956993708047
           },
@@ -75,6 +115,16 @@
           "key_as_string": "1930-01-03T00:00:00.000Z",
           "key": -1262131200000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.375537639664065
           },
@@ -89,6 +139,16 @@
           "key_as_string": "1940-01-03T00:00:00.000Z",
           "key": -946598400000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.4297311754636866
           },
@@ -103,6 +163,16 @@
           "key_as_string": "1950-01-02T00:00:00.000Z",
           "key": -631065600000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.534354812996362
           },
@@ -117,6 +187,16 @@
           "key_as_string": "1970-01-01T00:00:00.000Z",
           "key": 0,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 5.216397842412354
           },
@@ -131,6 +211,16 @@
           "key_as_string": "1980-01-01T00:00:00.000Z",
           "key": 315532800000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 4.638924742257723
           },
@@ -145,6 +235,16 @@
           "key_as_string": "1989-12-31T00:00:00.000Z",
           "key": 631065600000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 4.033817201532344
           },
@@ -159,6 +259,16 @@
           "key_as_string": "1999-12-31T00:00:00.000Z",
           "key": 946598400000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 3.330645160008502
           },
@@ -173,6 +283,16 @@
           "key_as_string": "2009-12-30T00:00:00.000Z",
           "key": 1262131200000,
           "doc_count": 186,
+          "s42": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 131,
+            "buckets": [
+              {
+                "key": "asia",
+                "doc_count": 55
+              }
+            ]
+          },
           "s37": {
             "value": 2.9734408637528777
           },

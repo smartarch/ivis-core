@@ -1,15 +1,22 @@
 {
   "signalSet": "top:gapminder",
   "tsSigCid": "year",
-  "inputSignals": [{
-    "cid": "fertility_rate"
-  }, {
-    "cid": "income_per_person"
-  }],
-  "targetSignals": [{
-    "cid": "life_expectancy"
-  }],
-
+  "inputSignals": [
+    {
+      "cid": "fertility_rate"
+    },
+    {
+      "cid": "income_per_person"
+    },
+    {
+      "cid": "region"
+    }
+  ],
+  "targetSignals": [
+    {
+      "cid": "life_expectancy"
+    }
+  ],
   "entities": {
     "signalSets": {
       "top:gapminder": {
@@ -77,6 +84,22 @@
           "weight_edit": 0,
           "source": "raw",
           "field": "s38"
+        },
+        "region": {
+          "id": 42,
+          "cid": "region",
+          "name": "region",
+          "description": null,
+          "type": "keyword",
+          "settings": "{}",
+          "created": "2020-03-13T17:39:51.000Z",
+          "set": 13,
+          "namespace": 2,
+          "indexed": 1,
+          "weight_list": null,
+          "weight_edit": 0,
+          "source": "raw",
+          "field": "s42"
         },
         "life_expectancy": {
           "id": 39,

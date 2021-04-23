@@ -24,6 +24,9 @@
     },
     "s38": {
       "type": "integer"
+    },
+    "s42": {
+      "type": "keyword"
     }
   },
   "target_schema": {

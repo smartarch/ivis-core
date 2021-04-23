@@ -3,6 +3,7 @@ import pandas as pd
 
 from .common import *
 
+
 ###########
 # Queries #
 ###########
@@ -29,15 +30,26 @@ def get_histogram_query(parameters):
     signals = parameters["inputSignals"] + parameters["targetSignals"]
     cid_to_field, sig_to_field = get_signal_helpers(parameters)
     ts_field = cid_to_field(parameters["tsSigCid"])
+    entities_signals = get_entities_signals(parameters)
 
     signal_aggs = dict()
     for sig in signals:
         field = sig_to_field(sig)
-        signal_aggs[field] = {
-            "avg": {  # TODO: min, max? possibly more at the same time (one key in signal_aggs is needed for each agg)
-                "field": field
+        signal_type = entities_signals[sig["cid"]]["type"]
+
+        if signal_type == 'keyword':
+            signal_aggs[field] = {
+                "terms": {
+                    "field": field,
+                    'size': 1
+                }
             }
-        }
+        else:
+            signal_aggs[field] = {
+                "avg": {  # TODO: min, max? possibly more at the same time (one key in signal_aggs is needed for each agg)
+                    "field": field
+                }
+            }
     # TODO: Is it necessary to add sort? -> possibly for size?
 
     return {
@@ -69,11 +81,16 @@ def _parse_signal_values_from_docs(field, docs):
     return np.array(values)
 
 
-def _parse_signal_values_from_buckets(field, buckets):
+def _parse_signal_values_from_buckets(field, sig_type, buckets):
     """Returns the values of one signal as np array (vector)"""
     values = []
     for b in buckets:
-        values.append(b[field]["value"])
+        if sig_type == 'keyword':
+            val = b[field]["buckets"][0]["key"]
+        else:
+            val = b[field]["value"]
+
+        values.append(val)
     return np.array(values)
 
 
@@ -133,7 +150,7 @@ def parse_histogram(training_parameters, data):
     dataframe = pd.DataFrame()
 
     for sig in schema:
-        sig_values = _parse_signal_values_from_buckets(sig, buckets)  # TODO: more than just avg aggregation
+        sig_values = _parse_signal_values_from_buckets(sig, schema[sig]["type"], buckets)  # TODO: more than just avg aggregation
         dataframe[sig] = sig_values
 
     return dataframe
