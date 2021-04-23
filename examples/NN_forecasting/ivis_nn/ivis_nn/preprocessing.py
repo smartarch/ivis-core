@@ -19,6 +19,16 @@ def split_data(training_parameters, dataframe):
 
 
 def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
+    """
+    Apply preprocessing (normalization, ...) to the train, validation and test DataFrames.
+
+    Returns
+    -------
+    (pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, (list, list))
+        train, validation, test datasets,
+        normalization coefficients for the features (should be saved)
+        columns = tuple of two lists of column names for the input and target schema
+    """
     input_schema = training_parameters["input_schema"]
     target_schema = training_parameters["target_schema"]
     schema = get_merged_schema(training_parameters)
@@ -80,6 +90,37 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
         preprocess_feature(col, schema[col])
 
     return train_df, val_df, test_df, normalization_coefficients, (input_columns, target_columns)
+
+
+def preprocess_using_coefficients(normalization_coefficients, dataframe):
+    """Apply preprocessing (normalization, ...) based on the `normalization_coefficients` to the dataframes. This is intended to be used during prediction."""
+    dataframe = dataframe.copy()
+
+    def mean_std_normalization(column, mean, std):
+        """maps the column values to ensure mean = 0, std = 1"""
+        dataframe[column] = (dataframe[column] - mean) / std
+
+    def min_max_normalization(column, min_val, max_val):
+        """maps the column's values into [0, 1] range"""
+        dataframe[column] = (dataframe[column] - min_val) / (max_val - min_val)
+
+    def one_hot_encoding(column):
+        raise NotImplementedError()  # TODO
+
+    def preprocess_feature(column):
+        if column in normalization_coefficients:
+            coeffs = normalization_coefficients[column]
+
+            if "min" in coeffs and "max" in coeffs:
+                min_max_normalization(column, coeffs["min"], coeffs["max"])
+            elif "mean" in coeffs and "std" in coeffs:
+                mean_std_normalization(column, coeffs["mean"], coeffs["std"])
+            # TODO: one hot encoding
+
+    for col in dataframe:
+        preprocess_feature(col)
+
+    return dataframe
 
 
 class WindowGenerator:
@@ -168,6 +209,24 @@ class WindowGenerator:
 
 
 def make_datasets(columns, train_df, val_df, test_df, window_params):
+    """
+    Convert the pd.DataFrame to windowed tf.data.Dataset.
+
+    Parameters
+    ----------
+    columns : (list, list)
+        tuple of two lists of column names for the input and target schema (retreived from `preprocess_dataframes`)
+    train_df : pd.DataFrame
+    val_df : pd.DataFrame
+    test_df : pd.DataFrame
+    window_params : dict
+        parameters for the constructor of `WindowGenerator`
+
+    Returns
+    -------
+    (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset)
+        train, validaion, test datasets
+    """
     default_window_params = {
         "offset": 0,
     }
