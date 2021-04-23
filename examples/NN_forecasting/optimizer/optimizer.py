@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import ivis_nn
+from ivis_nn.common import get_entities_signals
+
 
 class TrainingParams:
     def __init__(self):
@@ -32,74 +35,9 @@ class TrainingParams:
 #########################
 
 
-def get_entities_signals(parameters):
-    sigSetCid = parameters["signalSet"]
-    return parameters["entities"]["signals"][sigSetCid]
-
-
-def get_signal_helpers(parameters):
-    entities_signals = get_entities_signals(parameters)
-
-    def cid_to_field(cid):
-        return entities_signals[cid]["field"]
-
-    def sig_to_field(sig):
-        return cid_to_field(sig["cid"])
-
-    return cid_to_field, sig_to_field
-
-
-def get_els_docs_query(parameters):
-    """Creates a query for ES to return the docs (in their original form)."""
-    signals = parameters["inputSignals"] + parameters["targetSignals"]
-    cid_to_field, sig_to_field = get_signal_helpers(parameters)
-    ts_field = cid_to_field(parameters["tsSigCid"])
-
-    return {
-       'size': 5,  # TODO
-       '_source': list(map(sig_to_field, signals)),
-       'sort': [{ts_field: 'desc'}],  # TODO: time sort direction
-       'query': {  # TODO: add filtering? (time interval)
-          "match_all": {}
-       }
-    }
-
-
-def get_els_histogram_query(parameters):
-    """Creates a query for ES to return a date histogram aggregation."""
-    signals = parameters["inputSignals"] + parameters["targetSignals"]
-    cid_to_field, sig_to_field = get_signal_helpers(parameters)
-    ts_field = cid_to_field(parameters["tsSigCid"])
-
-    signal_aggs = dict()
-    for sig in signals:
-        field = sig_to_field(sig)
-        signal_aggs[field] = {
-            "avg": {  # TODO: min, max? possibly more at the same time (one key in signal_aggs is needed for each agg)
-                "field": field
-            }
-        }
-    # TODO: Is it necessary to add sort? → possibly for size?
-
-    return {
-       "size": 0,
-       "aggs": {
-           "aggregated_data": {
-               "date_histogram": {
-                   "field": ts_field,
-                   "interval": "3652d",  # 10 years # TODO
-                   "offset": "0d",
-                   "min_doc_count": 1  # TODO: what to do with missing data?
-               },
-               "aggs": signal_aggs
-           }
-       }
-    }
-
-
 def get_els_index(parameters):
-    sigSetCid = parameters["signalSet"]
-    return parameters["entities"]["signalSets"][sigSetCid]["index"]
+    sig_set_cid = parameters["signalSet"]
+    return parameters["entities"]["signalSets"][sig_set_cid]["index"]
 
 
 def get_schema(signals, parameters):
@@ -141,7 +79,7 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     training_params = TrainingParams()
     training_params.architecture = "LSTM"
     # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
-    training_params.query, training_params.query_type = get_els_histogram_query(parameters), "histogram"
+    training_params.query, training_params.query_type = ivis_nn.es.get_histogram_query(parameters), "histogram"
     training_params.index = get_els_index(parameters)
     training_params.input_schema = get_schema(parameters["inputSignals"], parameters)
     training_params.target_schema = get_schema(parameters["targetSignals"], parameters)

@@ -3,6 +3,63 @@ import pandas as pd
 
 from .common import *
 
+###########
+# Queries #
+###########
+
+
+def get_docs_query(parameters):
+    """Creates a query for ES to return the docs (in their original form)."""
+    signals = parameters["inputSignals"] + parameters["targetSignals"]
+    cid_to_field, sig_to_field = get_signal_helpers(parameters)
+    ts_field = cid_to_field(parameters["tsSigCid"])
+
+    return {
+       'size': 5,  # TODO
+       '_source': list(map(sig_to_field, signals)),
+       'sort': [{ts_field: 'desc'}],  # TODO: time sort direction
+       'query': {  # TODO: add filtering? (time interval)
+          "match_all": {}
+       }
+    }
+
+
+def get_histogram_query(parameters):
+    """Creates a query for ES to return a date histogram aggregation."""
+    signals = parameters["inputSignals"] + parameters["targetSignals"]
+    cid_to_field, sig_to_field = get_signal_helpers(parameters)
+    ts_field = cid_to_field(parameters["tsSigCid"])
+
+    signal_aggs = dict()
+    for sig in signals:
+        field = sig_to_field(sig)
+        signal_aggs[field] = {
+            "avg": {  # TODO: min, max? possibly more at the same time (one key in signal_aggs is needed for each agg)
+                "field": field
+            }
+        }
+    # TODO: Is it necessary to add sort? -> possibly for size?
+
+    return {
+       "size": 0,
+       "aggs": {
+           "aggregated_data": {
+               "date_histogram": {
+                   "field": ts_field,
+                   "interval": "3652d",  # 10 years # TODO
+                   "offset": "0d",
+                   "min_doc_count": 1  # TODO: what to do with missing data?
+               },
+               "aggs": signal_aggs
+           }
+       }
+    }
+
+
+###########
+# Results #
+###########
+
 
 def _parse_signal_values_from_docs(field, docs):
     """Returns the values of one signal as np array (vector)"""
