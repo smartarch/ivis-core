@@ -69,9 +69,9 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
         if new_columns is None:
             new_columns = [original_column]
         for column in new_columns:
-            if column in input_schema:
+            if original_column in input_schema:
                 input_columns.append(column)
-            if column in target_schema:
+            if original_column in target_schema:
                 target_columns.append(column)
 
     def mean_std_normalization(column):
@@ -100,24 +100,22 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
 
     def apply_one_hot_encoding(column):
         nonlocal train_df, val_df, test_df
-        values = train_df[column].unique()
+        values = list(train_df[column].unique())
 
         train_df = one_hot_encoding(train_df, column, values)
         val_df = one_hot_encoding(val_df, column, values)
         test_df = one_hot_encoding(test_df, column, values)
 
-        normalization_coefficients[column] = {"values": list(values)}
+        normalization_coefficients[column] = {"values": values}
         copy_column_from_schema(column, [f"{column}_{val}" for val in values + ['unknown']])
 
     def preprocess_feature(column, properties):
-        if "min" in properties or "max" in properties:
+        if properties["data_type"] == "categorical":
+            apply_one_hot_encoding(column)
+        elif "min" in properties or "max" in properties:
             min_max_normalization(column, properties)
-        elif "categorical" in properties and properties["categorical"]:
-            apply_one_hot_encoding(column)
-        elif properties["type"] in ["integer", "long", "float", "double"]:
+        else:
             mean_std_normalization(column)
-        elif properties["type"] in ["keyword"]:
-            apply_one_hot_encoding(column)
 
     for col in schema:
         preprocess_feature(col, schema[col])

@@ -12,7 +12,7 @@ class TrainingParams:
         self.input_schema = dict()   # ES fields of input signals and their types
         self.target_schema = dict()  # ES fields of predicted signals and their types, keep empty for autoregressive models
         self.split = dict()         # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
-        self.ts_field = None         # ES field of ts signal
+        # self.ts_field = None         # ES field of ts signal TODO: is this useful?
 
     def __str__(self):
         return \
@@ -30,6 +30,23 @@ class TrainingParams:
             str(self.split)
 
 
+def prepare_signal_parameters(parameters):
+    """Prepare the automatic values of numerical/categorical data types for all signals in input and target."""
+    entities_signals = get_entities_signals(parameters)
+
+    for sig_params in parameters["inputSignals"] + parameters["targetSignals"]:
+        signal = entities_signals[sig_params["cid"]]
+
+        if sig_params["data_type"] == "auto":
+            if signal["type"] in ["keyword", "boolean"]:
+                sig_params["data_type"] = "categorical"
+            elif signal["type"] in ["integer", "long", "float", "double"]:
+                sig_params["data_type"] = "numerical"
+            else:
+                raise TypeError("Unsupported signal type: " + signal["type"])
+    return parameters
+
+
 #########################
 # Elasticsearch queries #
 #########################
@@ -43,11 +60,23 @@ def get_els_index(parameters):
 def get_schema(signals, parameters):
     entities_signals = get_entities_signals(parameters)
     schema = dict()
-    for sig in signals:
-        signal = entities_signals[sig["cid"]]
-        schema[signal["field"]] = {
-            "type": signal["type"]
+    for sig_params in signals:
+        signal = entities_signals[sig_params["cid"]]
+
+        properties = {
+            "type": signal["type"],
+            "data_type": sig_params["data_type"]
         }
+
+        if "min" in sig_params and sig_params["min"] != "":
+            properties["min"] = float(sig_params["min"])
+        if "max" in sig_params and sig_params["max"] != "":
+            properties["max"] = float(sig_params["max"])
+
+        if sig_params["data_type"] == "numerical":
+            schema[f'{signal["field"]}_{sig_params["aggregation"]}'] = properties
+        else:
+            schema[signal["field"]] = properties
     return schema
 
 
@@ -76,6 +105,7 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     """
 
     # prepare the parameters
+    parameters = prepare_signal_parameters(parameters)
     training_params = TrainingParams()
     training_params.architecture = "LSTM"
     # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
@@ -85,9 +115,9 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     training_params.target_schema = get_schema(parameters["targetSignals"], parameters)
     training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
-    print(training_params)
+    # print(training_params)
 
-    for i in range(0):
+    for i in range(1):
 
         # do some magic...
 

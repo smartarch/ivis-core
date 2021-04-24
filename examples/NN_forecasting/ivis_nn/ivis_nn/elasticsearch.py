@@ -30,23 +30,21 @@ def get_histogram_query(parameters):
     signals = parameters["inputSignals"] + parameters["targetSignals"]
     cid_to_field, sig_to_field = get_signal_helpers(parameters)
     ts_field = cid_to_field(parameters["tsSigCid"])
-    entities_signals = get_entities_signals(parameters)
 
     signal_aggs = dict()
     for sig in signals:
         field = sig_to_field(sig)
-        signal_type = entities_signals[sig["cid"]]["type"]
 
-        if signal_type == 'keyword':
+        if sig["data_type"] == 'categorical':
             signal_aggs[field] = {
                 "terms": {
                     "field": field,
                     'size': 1
                 }
             }
-        else:
-            signal_aggs[field] = {
-                "avg": {  # TODO: min, max? possibly more at the same time (one key in signal_aggs is needed for each agg)
+        else:  # 'numerical'
+            signal_aggs[f"{field}_{sig['aggregation']}"] = {
+                sig['aggregation']: {
                     "field": field
                 }
             }
@@ -81,11 +79,11 @@ def _parse_signal_values_from_docs(field, docs):
     return np.array(values)
 
 
-def _parse_signal_values_from_buckets(field, sig_type, buckets):
+def _parse_signal_values_from_buckets(field, sig_props, buckets):
     """Returns the values of one signal as np array (vector)"""
     values = []
     for b in buckets:
-        if sig_type == 'keyword':
+        if sig_props["data_type"] == 'categorical':
             val = b[field]["buckets"][0]["key"]
         else:
             val = b[field]["value"]
@@ -150,7 +148,7 @@ def parse_histogram(training_parameters, data):
     dataframe = pd.DataFrame()
 
     for sig in schema:
-        sig_values = _parse_signal_values_from_buckets(sig, schema[sig]["type"], buckets)  # TODO: more than just avg aggregation
+        sig_values = _parse_signal_values_from_buckets(sig, schema[sig], buckets)
         dataframe[sig] = sig_values
 
     return dataframe

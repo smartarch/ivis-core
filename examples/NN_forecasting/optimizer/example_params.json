@@ -3,18 +3,34 @@
   "tsSigCid": "year",
   "inputSignals": [
     {
-      "cid": "fertility_rate"
+      "cid": "fertility_rate",
+      "data_type": "auto",
+      "min": "",
+      "max": "6",
+      "aggregation": "avg"
     },
     {
-      "cid": "income_per_person"
+      "cid": "income_per_person",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "max"
     },
     {
-      "cid": "region"
+      "cid": "region",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "avg"
     }
   ],
   "targetSignals": [
     {
-      "cid": "life_expectancy"
+      "cid": "life_expectancy",
+      "data_type": "auto",
+      "min": "0",
+      "max": "",
+      "aggregation": "avg"
     }
   ],
   "entities": {

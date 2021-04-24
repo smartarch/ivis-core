@@ -7,7 +7,7 @@
   },
   {
     "id": "tsSigCid",
-    "label": "TS Signal",
+    "label": "Timestamp Signal",
     "type": "signal",
     "signalSetRef": "signalSet"
   },
@@ -22,6 +22,45 @@
       "label": "Signal",
       "type": "signal",
       "signalSetRef": "../../signalSet"
+    },{
+      "id": "data_type",
+      "label": "Data Type",
+      "type": "option",
+      "options": [{
+        "key": "auto",
+        "label": "Automatic"
+      },{
+        "key": "numerical",
+        "label": "Numerical"
+      },{
+        "key": "categorical",
+        "label": "Categorical"
+      }]
+    },{
+      "id": "min",
+      "label": "Minimum value",
+      "help": "Leave empty for automatic normalization of the data. Only valid for numerical signals.",
+      "type": "float"
+    },{
+      "id": "max",
+      "label": "Maximum value",
+      "help": "Leave empty for automatic normalization of the data. Only valid for numerical signals.",
+      "type": "float"
+    },{
+      "id": "aggregation",
+      "label": "Aggregation",
+      "help": "Applied only when aggregation interval is specified.",
+      "type": "option",
+      "options": [{
+        "key": "avg",
+        "label": "Average (default)"
+      },{
+        "key": "min",
+        "label": "Minimum"
+      },{
+        "key": "max",
+        "label": "Maximum"
+      }]
     }]
   },
   {
@@ -35,6 +74,45 @@
       "label": "Signal",
       "type": "signal",
       "signalSetRef": "../../signalSet"
+    },{
+      "id": "data_type",
+      "label": "Data Type",
+      "type": "option",
+      "options": [{
+        "key": "auto",
+        "label": "Automatic"
+      },{
+        "key": "numerical",
+        "label": "Numerical"
+      },{
+        "key": "categorical",
+        "label": "Categorical"
+      }]
+    },{
+      "id": "min",
+      "label": "Minimum value",
+      "help": "Leave empty for automatic normalization of the data. Only valid for numerical signals.",
+      "type": "float"
+    },{
+      "id": "max",
+      "label": "Maximum value",
+      "help": "Leave empty for automatic normalization of the data. Only valid for numerical signals.",
+      "type": "float"
+    },{
+      "id": "aggregation",
+      "label": "Aggregation",
+      "help": "Applied only when aggregation interval is specified.",
+      "type": "option",
+      "options": [{
+        "key": "avg",
+        "label": "Average (default)"
+      },{
+        "key": "min",
+        "label": "Minimum"
+      },{
+        "key": "max",
+        "label": "Maximum"
+      }]
     }]
   }
 ]

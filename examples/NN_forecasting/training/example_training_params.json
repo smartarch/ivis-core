@@ -1,44 +1,68 @@
 {
   "architecture": "LSTM",
   "query": {
-    "size": 5,
-    "_source": [
-      "s37",
-      "s38",
-      "s39"
-    ],
-    "sort": [
-      {
-        "s36": "desc"
+    "size": 0,
+    "aggs": {
+      "aggregated_data": {
+        "date_histogram": {
+          "field": "s36",
+          "interval": "3652d",
+          "offset": "0d",
+          "min_doc_count": 1
+        },
+        "aggs": {
+          "s37_avg": {
+            "avg": {
+              "field": "s37"
+            }
+          },
+          "s38_max": {
+            "max": {
+              "field": "s38"
+            }
+          },
+          "s42": {
+            "terms": {
+              "field": "s42",
+              "size": 1
+            }
+          },
+          "s39_avg": {
+            "avg": {
+              "field": "s39"
+            }
+          }
+        }
       }
-    ],
-    "query": {
-      "match_all": {}
     }
   },
   "query_type": "histogram",
   "index": "signal_set_13",
   "input_schema": {
-    "s37": {
-      "type": "float"
+    "s37_avg": {
+      "type": "float",
+      "data_type": "numerical",
+      "max": 6.0
     },
-    "s38": {
-      "type": "integer"
+    "s38_max": {
+      "type": "integer",
+      "data_type": "numerical"
     },
     "s42": {
-      "type": "keyword"
+      "type": "keyword",
+      "data_type": "categorical"
     }
   },
   "target_schema": {
-    "s39": {
+    "s39_avg": {
       "type": "float",
-      "min": 30
+      "data_type": "numerical",
+      "min": 0.0
     }
   },
   "split": {
     "train": 0.7,
     "val": 0,
     "test": 0.3
-  },
-  "ts_field": null
+  }
 }
