@@ -336,3 +336,15 @@ test('instant revoke #3', async () => {
     await alert.update(fields2);
     expect(alert.fields.state).toBe('good');
 });
+
+test('instant revoke #4', async () => {
+    fields.condition = 'true';
+    fields.instant_revoke = 1;
+    fields.duration = 3;
+    const alert = new Alert(fields);
+    await alert.init();
+    await alert.execute();
+    await advanceTime(181);
+    expect(alert.fields.state).toBe('good');
+    expect(alert.fields.state_changed).toBe("2021-04-01 10:03:01");
+});

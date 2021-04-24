@@ -247,7 +247,7 @@ export default class CUD extends Component {
                     <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line! Use E.164 format! Maximum number of phone numbers may be limited.')}/>
                     <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes! Use 0 if not applicable!')}/>
                     <CheckBox id="finalnotification" text={t('Issue a notification when the triggered alert is revoked')}/>
-                    <CheckBox id="instant_revoke" text={t('Revoke the alert immediately after trigger')}/>
+                    <CheckBox id="instant_revoke" text={t('Silently revoke the alert immediately after trigger')}/>
                     <CheckBox id="enabled" text={t('Enabled')}/>
                     <NamespaceSelect/>
                     <ButtonRow>

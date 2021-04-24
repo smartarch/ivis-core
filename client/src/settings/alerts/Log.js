@@ -41,13 +41,14 @@ export default class Log extends Component {
         const t = this.props.t;
 
         const columns = [
-            { data: 1, title: t('Logged'), render: data => <RelativeTime timeStamp={data} thresholdDays={7} /> },
+            { data: 1, title: t('Time'), render: data => <RelativeTime timeStamp={data} thresholdDays={7} /> },
             { data: 0, title: t('Type'), render: data => {if (data === 'test') return t('Tested');
                                                           if (data === 'trigger') return t('Triggered');
                                                           if (data === 'revoke') return t('Revoked');
                                                           if (data === 'init') return t('Initialized');
                                                           if (data === 'update') return t('Updated');
                                                           if (data === 'interval') return t('Interval exceeded');
+                                                          if (data === 'triggerAndRevoke') return t('Triggered and revoked');
                                                           return data;} }
         ];
         return (

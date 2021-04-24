@@ -128,13 +128,21 @@ class Alert{
     }
 
     async trigger(){
-        await this.writeState('bad');
-        await this.addLogEntry('trigger');
-        if (this.fields.repeat !== 0) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
-        const subject = `Alert ${this.fields.name} was triggered!`;
-        const text = `Alert ${this.fields.name} was triggered!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
-        await this.sendNotification(subject, text, subject);
-        if (this.fields.instant_revoke) await this.revoke();
+        if (this.fields.instant_revoke) {
+            await this.writeState('good');
+            await this.addLogEntry('triggerAndRevoke');
+            const subject = `Alert ${this.fields.name} was triggered and revoked!`;
+            const text = `Alert ${this.fields.name} was triggered and revoked!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
+            await this.sendNotification(subject, text, subject);
+        }
+        else {
+            await this.writeState('bad');
+            await this.addLogEntry('trigger');
+            if (this.fields.repeat !== 0) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
+            const subject = `Alert ${this.fields.name} was triggered!`;
+            const text = `Alert ${this.fields.name} was triggered!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
+            await this.sendNotification(subject, text, subject);
+        }
     }
 
     async revoke(){
