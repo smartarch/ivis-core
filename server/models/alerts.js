@@ -9,7 +9,7 @@ const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
 const { handleCreateTx, handleUpdateTx, handleDelete } = require('../lib/alerts-event-handler');
 
-const allowedKeys = new Set(['name', 'description', 'sigset', 'duration', 'delay', 'interval', 'condition', 'emails', 'phones', 'repeat', 'finalnotification', 'enabled', 'namespace']);
+const allowedKeys = new Set(['name', 'description', 'sigset', 'duration', 'delay', 'interval', 'condition', 'emails', 'phones', 'repeat', 'finalnotification', 'enabled', 'namespace', 'instant_revoke']);
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, allowedKeys));

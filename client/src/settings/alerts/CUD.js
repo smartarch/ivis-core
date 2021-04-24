@@ -72,6 +72,7 @@ export default class CUD extends Component {
                 phones: '',
                 repeat: '',
                 finalnotification: false,
+                instant_revoke: false,
                 enabled: true,
                 namespace: ivisConfig.user.namespace
             });
@@ -150,8 +151,9 @@ export default class CUD extends Component {
             'phones',
             'repeat',
             'finalnotification',
+            'instant_revoke',
             'enabled',
-            'namespace',
+            'namespace'
         ]);
     }
 
@@ -230,6 +232,7 @@ export default class CUD extends Component {
                     deletingMsg={t('Deleting alert ...')}
                     deletedMsg={t('Alert deleted')}/>
                 }
+
                 <div onChange={::this.handleFormChange}>
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
@@ -244,6 +247,7 @@ export default class CUD extends Component {
                     <TextArea id="phones" label={t('Phone numbers')} help={t('Phone numbers for notifications, one per line! Use E.164 format! Maximum number of phone numbers may be limited.')}/>
                     <InputField id="repeat" label={t('Repeat notification')} help={t('How often the notification shall be repeated during an exceptional situation (time between trigger and revoke events). Use minutes! Use 0 if not applicable!')}/>
                     <CheckBox id="finalnotification" text={t('Issue a notification when the triggered alert is revoked')}/>
+                    <CheckBox id="instant_revoke" text={t('Revoke the alert immediately after trigger')}/>
                     <CheckBox id="enabled" text={t('Enabled')}/>
                     <NamespaceSelect/>
                     <ButtonRow>

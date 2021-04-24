@@ -40,7 +40,7 @@ class Alert{
             this.terminate();
             ns = 'good';
         }
-        else if (this.fields.sigset !== newFields.sigset || this.fields.duration !== newFields.duration ||
+        else if (this.fields.sigset !== newFields.sigset || this.fields.duration !== newFields.duration || this.fields.instant_revoke !== newFields.instant_revoke ||
             this.fields.delay !== newFields.delay || this.fields.condition !== newFields.condition) {
             clearTimeout(this.conditionClock);
             clearTimeout(this.repeatClock);
@@ -134,6 +134,7 @@ class Alert{
         const subject = `Alert ${this.fields.name} was triggered!`;
         const text = `Alert ${this.fields.name} was triggered!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
         await this.sendNotification(subject, text, subject);
+        if (this.fields.instant_revoke) await this.revoke();
     }
 
     async revoke(){

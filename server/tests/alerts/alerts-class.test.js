@@ -26,6 +26,7 @@ beforeEach(() => {
         phones: "123456789\n987654321\n147258369",
         repeat: 15,
         finalnotification: 1,
+        instant_revoke: 0,
         enabled: 1,
         namespace: 1,
         created: "2021-04-01 10:00:00",
@@ -150,7 +151,6 @@ test('delayed change aborted #2', async () => {
 test('update #1', async () => {
     fields.state = 'bad';
     let fields2 = {...fields};
-    fields2.state = 'bad';
     const alert = new Alert(fields);
     await alert.init();
     fields2.enabled = 0;
@@ -304,4 +304,35 @@ test('termination', async () => {
     alert.terminate();
     await advanceTime(50);
     expect(alert.fields.state).toBe('worse');
+});
+
+test('instant revoke #1', async () => {
+    fields.condition = 'true';
+    fields.instant_revoke = 1;
+    const alert = new Alert(fields);
+    await alert.init();
+    await alert.execute();
+    expect(alert.fields.state).toBe('good');
+});
+
+test('instant revoke #2', async () => {
+    fields.state = 'bad';
+    let fields2 = {...fields};
+    const alert = new Alert(fields);
+    await alert.init();
+    fields2.instant_revoke = 1;
+    await alert.update(fields2);
+    expect(alert.fields.state).toBe('good');
+});
+
+test('instant revoke #3', async () => {
+    fields.state = 'worse';
+    fields.duration = 1;
+    fields.instant_revoke = 1;
+    let fields2 = {...fields};
+    const alert = new Alert(fields);
+    await alert.init();
+    fields2.instant_revoke = 0;
+    await alert.update(fields2);
+    expect(alert.fields.state).toBe('good');
 });
