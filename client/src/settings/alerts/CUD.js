@@ -256,8 +256,8 @@ export default class CUD extends Component {
                                 onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="trash-alt" label={t('Delete')}
                                                to={`/settings/alerts/${this.props.entity.id}/delete`}/>}
-                        {canTrigger && <Button disabled={this.state.formChanged} className="btn-warning" icon="bolt" label={t('Trigger')} title={this.state.formChanged ? t('Save your changes first!') : t('Test this alert with manual trigger')}
-                                onClickAsync={async () => {if (await testTrigger(this.props.entity.id)) alert(t('The alert was manually triggered!'));
+                        {canTrigger && <Button disabled={this.state.formChanged} className="btn-warning" icon="bolt" label={t('Test')} title={this.state.formChanged ? t('Save your changes first!') : t('Test this alert with fake trigger')}
+                                onClickAsync={async () => {if (await testTrigger(this.props.entity.id)) alert(t('The alert was tested!'));
                                 else alert(t('Wait, you can test it only once per minute.'));}} /> }
                     </ButtonRow>
                 </Form>
