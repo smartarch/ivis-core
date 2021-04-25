@@ -22,7 +22,7 @@ import {Button, RelativeTime} from "../../lib/bootstrap-components";
 import {CSVLink} from "react-csv";
 import axios from "../../lib/axios";
 import {getUrl} from "../../lib/urls";
-import moment from "moment"
+import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
