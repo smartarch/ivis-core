@@ -20,6 +20,15 @@ async function listLogForAlert(context, params, alertId) {
     });
 }
 
+async function listLogForAlertSimple(context, alertId) {
+    return await knex.transaction(async tx => {
+
+        await shares.enforceEntityPermissionTx(tx, context, 'alert', alertId, 'view');
+
+        return await tx('alerts_log').where('alert', alertId).select('time', 'type');
+    });
+}
+
 async function addEntry(context, entity) {
     return await knex.transaction(async tx => {
 
@@ -49,4 +58,5 @@ async function addEntry(context, entity) {
 }
 
 module.exports.listLogForAlert = listLogForAlert;
+module.exports.listLogForAlertSimple = listLogForAlertSimple;
 module.exports.addEntry = addEntry;

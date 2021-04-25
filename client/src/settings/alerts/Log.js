@@ -6,6 +6,7 @@ import {Table} from "../../lib/table";
 import {Panel} from "../../lib/panel";
 import {
     requiresAuthenticatedUser,
+    Toolbar,
     withPageHelpers
 } from "../../lib/page";
 import {
@@ -17,7 +18,11 @@ import {
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
-import {RelativeTime} from "../../lib/bootstrap-components";
+import {Button, RelativeTime} from "../../lib/bootstrap-components";
+import {CSVLink} from "react-csv";
+import axios from "../../lib/axios";
+import {getUrl} from "../../lib/urls";
+import moment from "moment"
 
 @withComponentMixins([
     withTranslation,
@@ -29,12 +34,21 @@ export default class Log extends Component {
     constructor(props) {
         super(props);
 
-        this.state = {};
+        this.state = {CSVData: ""};
+        this.CSVRef = React.createRef();
         tableRestActionDialogInit(this);
     }
 
     static propTypes = {
         alertId: PropTypes.number.isRequired
+    }
+
+    async fetchCSV() {
+        const response = await axios.get(getUrl(`rest/alerts-log-simple-table/${this.props.alertId}`));
+        let tmp = [];
+        response.data.forEach(item => tmp.push({time: moment(item.time).format('YYYY-MM-DD HH:mm:ss'), type: item.type}));
+        this.setState({CSVData: tmp});
+        this.CSVRef.current.link.click();
     }
 
     render() {
@@ -54,6 +68,10 @@ export default class Log extends Component {
         return (
             <Panel title={t('Alerts log')}>
                 {tableRestActionDialogRender(this)}
+                <Toolbar>
+                    <CSVLink data={this.state.CSVData} filename={`alert-${this.props.alertId}-log.csv`} ref={this.CSVRef} />
+                    <Button className="btn-primary" icon="file-download" label={t('Download as CSV')} onClickAsync={this.fetchCSV.bind(this)} />
+                </Toolbar>
                 <Table ref={node => this.table = node} withHeader dataUrl={`rest/alerts-log-table/${this.props.alertId}`} columns={columns} />
             </Panel>
         );
