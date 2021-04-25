@@ -27,6 +27,9 @@ const taskSubtypeSpecs = {
     [PythonSubtypes.PANDAS]: {
         libs: [...defaultPythonLibs, 'pandas']
     },
+    [PythonSubtypes.ARIMA]: {
+        libs: [...defaultPythonLibs, 'numpy', 'statsmodels', 'pmdarima', 'pendulum']
+    },
     //...ivisConfig.tasks.python.subtypes
 };
 
