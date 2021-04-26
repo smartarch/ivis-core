@@ -1,88 +1,7 @@
 #!/usr/bin/env python3
+import ivis_nn
 import ivis_nn.elasticsearch as es
-from ivis_nn.common import get_entities_signals
-
-
-class TrainingParams:
-    def __init__(self):
-        self.architecture = None    # the architecture of neural network
-        self.query = None           # the Elasticsearch query to get the desired data
-        self.query_type = None      # type of the ES query ("docs" | "histogram")
-        self.index = None           # the Elasticsearch index
-        self.input_schema = dict()   # ES fields of input signals and their types
-        self.target_schema = dict()  # ES fields of predicted signals and their types, keep empty for autoregressive models
-        self.split = dict()         # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
-        # self.ts_field = None         # ES field of ts signal TODO: is this useful?
-
-    def __str__(self):
-        return \
-            "Training parameters" + "\n" + \
-            "Architecture: " + str(self.architecture) + "\n" + \
-            "Query: " + "\n" + \
-            str(self.query) + "\n" + \
-            "Query type: " + str(self.query_type) + \
-            "Index: " + str(self.index) + "\n" + \
-            "Input schema:" + "\n" + \
-            str(self.input_schema) + "\n" + \
-            "Target schema:" + "\n" + \
-            str(self.target_schema) + \
-            "Split:" + "\n" + \
-            str(self.split)
-
-
-def prepare_signal_parameters(parameters):
-    """Prepare the automatic values of numerical/categorical data types for all signals in input and target."""
-    entities_signals = get_entities_signals(parameters)
-
-    for sig_params in parameters["inputSignals"] + parameters["targetSignals"]:
-        signal = entities_signals[sig_params["cid"]]
-
-        if sig_params["data_type"] == "auto":
-            if signal["type"] in ["keyword", "boolean"]:
-                sig_params["data_type"] = "categorical"
-            elif signal["type"] in ["integer", "long", "float", "double"]:
-                sig_params["data_type"] = "numerical"
-            else:
-                raise TypeError("Unsupported signal type: " + signal["type"])
-    return parameters
-
-
-#########################
-# Elasticsearch queries #
-#########################
-
-
-def get_els_index(parameters):
-    sig_set_cid = parameters["signalSet"]
-    return parameters["entities"]["signalSets"][sig_set_cid]["index"]
-
-
-def get_schema(signals, parameters):
-    entities_signals = get_entities_signals(parameters)
-    schema = dict()
-    for sig_params in signals:
-        signal = entities_signals[sig_params["cid"]]
-
-        properties = {
-            "type": signal["type"],
-            "data_type": sig_params["data_type"]
-        }
-
-        if "min" in sig_params and sig_params["min"] != "":
-            properties["min"] = float(sig_params["min"])
-        if "max" in sig_params and sig_params["max"] != "":
-            properties["max"] = float(sig_params["max"])
-
-        if sig_params["data_type"] == "numerical":
-            schema[f'{signal["field"]}_{sig_params["aggregation"]}'] = properties
-        else:
-            schema[signal["field"]] = properties
-    return schema
-
-
-########
-# Main #
-########
+import ivis_nn.optimizer as opt
 
 
 def run_optimizer(parameters, run_training_callback, finish_training_callback, log_callback):
@@ -105,14 +24,12 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     """
 
     # prepare the parameters
-    parameters = prepare_signal_parameters(parameters)
-    training_params = TrainingParams()
+    parameters = opt.prepare_signal_parameters(parameters)
+    training_params = opt.default_training_params(parameters)
+
     training_params.architecture = "LSTM"
     # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
     training_params.query, training_params.query_type = es.get_histogram_query(parameters), "histogram"
-    training_params.index = get_els_index(parameters)
-    training_params.input_schema = get_schema(parameters["inputSignals"], parameters)
-    training_params.target_schema = get_schema(parameters["targetSignals"], parameters)
     training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
     # print(training_params)

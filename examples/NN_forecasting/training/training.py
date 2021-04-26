@@ -11,7 +11,7 @@ def run_training(training_parameters, data, model_save_path):
 
     Parameters
     ----------
-    training_parameters : dict
+    training_parameters : dict (TrainingParams)
         The parameters passed from Optimizer (converted to ``dict`` because they were serialized to JSON along the way).
         Before serialization, the parameters were a class derived from Optimizer.TrainingParams.
     data : dict

@@ -1,4 +1,6 @@
 from . import elasticsearch
+from .TrainingParams import TrainingParams
+
 es = elasticsearch
 
 # The preprocessing module requires tensorflow,
