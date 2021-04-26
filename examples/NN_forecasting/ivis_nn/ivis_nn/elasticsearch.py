@@ -111,6 +111,14 @@ def _parse_signal_values_from_docs(field, docs):
     return np.array(values)
 
 
+def _parse_signal_values_from_sort(docs):
+    """Returns the values of the timestamp signal as np array (vector)"""
+    values = []
+    for d in docs:
+        values.append(d["sort"][0])
+    return np.array(values)
+
+
 def _parse_signal_values_from_buckets(field, sig_props, buckets):
     """Returns the values of one signal as np array (vector)"""
     values = []
@@ -121,6 +129,14 @@ def _parse_signal_values_from_buckets(field, sig_props, buckets):
             val = b[field]["value"]
 
         values.append(val)
+    return np.array(values)
+
+
+def _parse_signal_values_from_buckets_key(buckets):
+    """Returns the values of the timestamp signal as np array (vector)"""
+    values = []
+    for b in buckets:
+        values.append(b["key"])
     return np.array(values)
 
 
@@ -155,7 +171,9 @@ def parse_docs(training_parameters, data):
     for sig in schema:
         sig_values = _parse_signal_values_from_docs(sig, docs)
         dataframe[sig] = sig_values
+    dataframe["ts"] = _parse_signal_values_from_sort(docs)
 
+    dataframe.set_index("ts", inplace=True)
     return dataframe
 
 
@@ -182,7 +200,9 @@ def parse_histogram(training_parameters, data):
     for sig in schema:
         sig_values = _parse_signal_values_from_buckets(sig, schema[sig], buckets)
         dataframe[sig] = sig_values
+    dataframe["ts"] = _parse_signal_values_from_buckets_key(buckets)
 
+    dataframe.set_index("ts", inplace=True)
     return dataframe
 
 

@@ -33,6 +33,7 @@ def run_training(training_parameters, data, model_save_path):
     window_params = {
         "input_width": 3,
         "target_width": 1,
+        "interval": training_parameters["interval"]  # TODO?
     }
     train, val, test = ivis_nn.pre.make_datasets(columns, train_df, val_df, test_df, window_params)
 
@@ -43,7 +44,10 @@ def run_training(training_parameters, data, model_save_path):
     # i, t = w.split_window(example_window)
     # print(i)
 
-    print(list(train.take(1).as_numpy_iterator()))
+    example = list(train.as_numpy_iterator())
+    for ex in example:
+        print(ex[0])
+        print(ex[1])
 
     # train, val, test = create_datasets(training_parameters, X, Y)
 

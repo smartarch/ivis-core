@@ -25,7 +25,7 @@ def get_els_index(parameters):
     return parameters["entities"]["signalSets"][sig_set_cid]["index"]
 
 
-def get_schema(signals, parameters):
+def get_schema(signals, parameters, aggregated):
     """Convert the signals from parameters to schema for preprocessing in training."""
     entities_signals = get_entities_signals(parameters)
     schema = dict()
@@ -42,16 +42,16 @@ def get_schema(signals, parameters):
         if "max" in sig_params and sig_params["max"] != "":
             properties["max"] = float(sig_params["max"])
 
-        if sig_params["data_type"] == "numerical":
+        if aggregated and sig_params["data_type"] == "numerical":
             schema[f'{signal["field"]}_{sig_params["aggregation"]}'] = properties
         else:
             schema[signal["field"]] = properties
     return schema
 
 
-def default_training_params(parameters):
+def default_training_params(parameters, aggregated):
     training_params = ivis_nn.TrainingParams()
     training_params.index = get_els_index(parameters)
-    training_params.input_schema = get_schema(parameters["inputSignals"], parameters)
-    training_params.target_schema = get_schema(parameters["targetSignals"], parameters)
+    training_params.input_schema = get_schema(parameters["inputSignals"], parameters, aggregated)
+    training_params.target_schema = get_schema(parameters["targetSignals"], parameters, aggregated)
     return training_params

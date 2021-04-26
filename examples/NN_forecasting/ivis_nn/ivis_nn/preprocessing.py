@@ -165,13 +165,16 @@ class WindowGenerator:
      | input_width | offset | target_width |
      |               width                 |
     """
-    def __init__(self, columns, dataframe, input_width, target_width, offset, batch_size=32, shuffle=False):
+
+    def __init__(self, columns, dataframe, input_width, target_width, offset, interval=None, batch_size=32,
+                 shuffle=False):
         self.input_width = input_width
         self.target_width = target_width
         self.offset = offset
 
         self.dataframe = dataframe
         self.column_indices = {name: i for i, name in enumerate(dataframe.columns)}
+        self.interval = interval  # aggregation interval, used for splitting by missing values
 
         # features schema
         input_column_names, target_column_names = columns
@@ -208,6 +211,25 @@ class WindowGenerator:
 
         return inputs, targets
 
+    def split_by_interval_discontinuities(self, df):
+        """
+        Split the dataframe into several dataframes by missing data.
+        If there is a missing data point in the data (the two consecutive data
+        points have bigger time difference than the desired aggregation interval),
+        the dataframe is split. Returns a list of dataframes.
+        """
+        if self.interval is None:
+            return [df]
+
+        index = df.index.to_numpy()
+        is_discontinuous = np.concatenate((
+            np.array([False]),
+            index[1:] - index[:-1] > self.interval
+        ))  # difference between timestamps is bigger than it should be
+        groups = is_discontinuous.cumsum()
+        grouped = df.groupby(groups)
+        return [d for _, d in grouped]
+
     def make_dataset(self, dataframe=None):
         """
         Creates a windowed dataset from a dataframe.
@@ -227,18 +249,27 @@ class WindowGenerator:
         if dataframe.empty:
             return None
 
-        data = np.array(dataframe, dtype=np.float32)
-        ds = tf.keras.preprocessing.timeseries_dataset_from_array(
-            data=data,
-            targets=None,
-            sequence_length=self.width,
-            sequence_stride=1,
-            shuffle=self.shuffle,
-            batch_size=self.batch_size, )
+        dataframes = self.split_by_interval_discontinuities(dataframe)
+        dataset = None
+        for df in dataframes:
+            data = np.array(df, dtype=np.float32)
+            ds = tf.keras.preprocessing.timeseries_dataset_from_array(
+                data=data,
+                targets=None,
+                sequence_length=self.width,
+                sequence_stride=1,
+                shuffle=self.shuffle,
+                batch_size=self.batch_size, )
+            ds = ds.unbatch()
+            if dataset is None:
+                dataset = ds
+            else:
+                dataset = dataset.concatenate(ds)
 
-        ds = ds.map(self.split_window)
+        dataset = dataset.batch(self.batch_size)
+        dataset = dataset.map(self.split_window)
 
-        return ds
+        return dataset
 
 
 def make_datasets(columns, train_df, val_df, test_df, window_params):

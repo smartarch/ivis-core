@@ -3,6 +3,7 @@ from training import *
 import json
 
 if __name__ == "__main__":
+    # with open('example_training_params_docs.json') as params_file:
     with open('example_training_params.json') as params_file:
         params = json.load(params_file)
     # with open('docs.json') as results_file:

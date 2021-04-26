@@ -25,11 +25,13 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
 
     # prepare the parameters
     parameters = opt.prepare_signal_parameters(parameters)
-    training_params = opt.default_training_params(parameters)
+    aggregated = False  # TODO: move to parameters
+
+    training_params = opt.default_training_params(parameters, aggregated)
 
     training_params.architecture = "LSTM"
-    # training_params.query, training_params.query_type = get_els_docs_query(parameters), "docs"
-    training_params.query, training_params.query_type = es.get_histogram_query(parameters), "histogram"
+    training_params.query, training_params.query_type = es.get_docs_query(parameters), "docs"
+    # training_params.query, training_params.query_type = es.get_histogram_query(parameters), "histogram"
     training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
     # print(training_params)
