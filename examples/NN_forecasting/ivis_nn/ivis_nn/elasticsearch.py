@@ -10,7 +10,22 @@ from .common import *
 
 
 def get_docs_query(parameters):
-    """Creates a query for ES to return the docs (in their original form)."""
+    """
+    Creates a query for ES to return the docs (in their original form).
+
+    Parameters
+    ----------
+    parameters : dict
+        Parameters for query creation. Expected keys:
+         - "entities": `ivis.entities`
+         - "inputSignals", "targetSignals": `list`s of `dict`s with
+            - "cid": signal cid
+
+    Returns
+    -------
+    dict
+        The generated ES query.
+    """
     signals = parameters["inputSignals"] + parameters["targetSignals"]
     cid_to_field, sig_to_field = get_signal_helpers(parameters)
     ts_field = cid_to_field(parameters["tsSigCid"])
@@ -26,7 +41,24 @@ def get_docs_query(parameters):
 
 
 def get_histogram_query(parameters):
-    """Creates a query for ES to return a date histogram aggregation."""
+    """
+    Creates a query for ES to return a date histogram aggregation.
+
+    Parameters
+    ----------
+    parameters : dict
+        Parameters for query creation. Expected keys:
+         - "entities": `ivis.entities`
+         - "inputSignals", "targetSignals": `list`s of `dict`s with
+            - "cid": signal cid
+            - "data_type": "numerical" or "categorical"
+            - "aggregation": aggregation for Elasticsearch ("min", "max", "avg", ...)
+
+    Returns
+    -------
+    dict
+        The generated ES query.
+    """
     signals = parameters["inputSignals"] + parameters["targetSignals"]
     cid_to_field, sig_to_field = get_signal_helpers(parameters)
     ts_field = cid_to_field(parameters["tsSigCid"])
