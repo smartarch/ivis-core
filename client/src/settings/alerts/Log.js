@@ -69,7 +69,7 @@ export default class Log extends Component {
             <Panel title={t('Alerts log')}>
                 {tableRestActionDialogRender(this)}
                 <Toolbar>
-                    <CSVLink data={this.state.CSVData} filename={`alert-${this.props.alertId}-log.csv`} ref={this.CSVRef} />
+                    <CSVLink data={this.state.CSVData} filename={`alert-${this.props.alertId}-log.csv`} ref={this.CSVRef} hidden />
                     <Button className="btn-primary" icon="file-download" label={t('Download as CSV')} onClickAsync={this.fetchCSV.bind(this)} />
                 </Toolbar>
                 <Table ref={node => this.table = node} withHeader dataUrl={`rest/alerts-log-table/${this.props.alertId}`} columns={columns} />
