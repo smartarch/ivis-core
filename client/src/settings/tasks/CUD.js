@@ -22,11 +22,11 @@ import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
-import {WizardType, getWizard, getWizardsForType} from "./wizards";
 import {TaskType, subtypesByType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {getSubtypeLabel} from "./types";
+import {getWizardsForType, WizardType} from "./wizards";
 
 @withComponentMixins([
     withTranslation,
@@ -90,14 +90,9 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
         if (!this.props.entity) {
-            const wizardData = getWizard(data.type, data.subtype, data.wizard);
-            if (wizardData) {
-                wizardData.wizard(data);
-            } else {
-                data.settings = {
-                    params: [],
-                    code: ''
-                };
+            data.settings = {
+                params: [],
+                code: ''
             }
 
             if (data.subtype) {
@@ -113,7 +108,8 @@ export default class CUD extends Component {
             'description',
             'type',
             'settings',
-            'namespace'
+            'namespace',
+            'wizard'
         ]);
     }
 
