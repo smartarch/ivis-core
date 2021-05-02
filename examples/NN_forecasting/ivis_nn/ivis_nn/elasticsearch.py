@@ -8,6 +8,23 @@ from .common import *
 # Queries #
 ###########
 
+def get_time_interval_filter(parameters):
+    time_interval = parameters['timeInterval']
+    time_range = dict()
+    if time_interval["start"] != "":
+        time_range["gte"] = time_interval["start"]
+    if time_interval["end"] != "":
+        time_range["lte"] = time_interval["end"]
+
+    cid_to_field, _ = get_signal_helpers(parameters)
+    ts_field = cid_to_field(parameters["tsSigCid"])
+
+    return {
+        "range": {
+            ts_field: time_range
+        }
+    }
+
 
 def get_docs_query(parameters):
     """
@@ -31,12 +48,10 @@ def get_docs_query(parameters):
     ts_field = cid_to_field(parameters["tsSigCid"])
 
     return {
-       'size': 5,  # TODO
-       '_source': list(map(sig_to_field, signals)),
-       'sort': [{ts_field: 'desc'}],  # TODO: time sort direction
-       'query': {  # TODO: add filtering? (time interval)
-          "match_all": {}
-       }
+        'size': 10000,
+        '_source': list(map(sig_to_field, signals)),
+        'sort': [{ts_field: 'asc'}],
+        'query': get_time_interval_filter(parameters)
     }
 
 
@@ -82,19 +97,21 @@ def get_histogram_query(parameters):
             }
     # TODO: Is it necessary to add sort? -> possibly for size?
 
+    aggregation_interval = parameters["timeInterval"]["aggregation"]
+
     return {
-       "size": 0,
-       "aggs": {
-           "aggregated_data": {
-               "date_histogram": {
-                   "field": ts_field,
-                   "interval": "3652d",  # 10 years # TODO
-                   "offset": "0d",
-                   "min_doc_count": 1  # TODO: what to do with missing data?
-               },
-               "aggs": signal_aggs
-           }
-       }
+        "size": 0,
+        "aggs": {
+            "aggregated_data": {
+                "date_histogram": {
+                    "field": ts_field,
+                    "interval": aggregation_interval,
+                    "min_doc_count": 1
+                },
+                "aggs": signal_aggs
+            }
+        },
+        "query": get_time_interval_filter(parameters)
     }
 
 
@@ -103,12 +120,13 @@ def get_histogram_query(parameters):
 ###########
 
 
-def _parse_signal_values_from_docs(field, docs):
+def _parse_signal_values_from_docs(field, docs, data_type):
     """Returns the values of one signal as np array (vector)"""
     values = []
     for d in docs:
         values.append(d["_source"][field])
-    return np.array(values)
+    return np.array(values,
+                    dtype=np.float32 if data_type == "numerical" else np.str)
 
 
 def _parse_signal_values_from_sort(docs):
@@ -129,7 +147,8 @@ def _parse_signal_values_from_buckets(field, sig_props, buckets):
             val = b[field]["value"]
 
         values.append(val)
-    return np.array(values)
+    return np.array(values,
+                    dtype=np.float32 if sig_props["data_type"] == "numerical" else np.str)
 
 
 def _parse_signal_values_from_buckets_key(buckets):
@@ -169,7 +188,7 @@ def parse_docs(training_parameters, data):
     dataframe = pd.DataFrame()
 
     for sig in schema:
-        sig_values = _parse_signal_values_from_docs(sig, docs)
+        sig_values = _parse_signal_values_from_docs(sig, docs, schema[sig]["data_type"])
         dataframe[sig] = sig_values
     dataframe["ts"] = _parse_signal_values_from_sort(docs)
 

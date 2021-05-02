@@ -33,7 +33,7 @@ def run_training(training_parameters, data, model_save_path):
     window_params = {
         "input_width": 3,
         "target_width": 1,
-        "interval": training_parameters["interval"]  # TODO?
+        "interval": training_parameters["interval"]
     }
     train, val, test = ivis_nn.pre.make_datasets(columns, train_df, val_df, test_df, window_params)
 

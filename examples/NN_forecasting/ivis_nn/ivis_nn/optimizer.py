@@ -1,6 +1,7 @@
 """Code for optimizer"""
 import ivis_nn
-from ivis_nn.common import get_entities_signals
+from ivis_nn.common import get_entities_signals, interval_string_to_milliseconds
+from ivis_nn import es
 
 
 def prepare_signal_parameters(parameters):
@@ -49,9 +50,21 @@ def get_schema(signals, parameters, aggregated):
     return schema
 
 
-def default_training_params(parameters, aggregated):
+def default_training_params(parameters):
     training_params = ivis_nn.TrainingParams()
+    aggregated = parameters["timeInterval"]["aggregation"] != ""
+
     training_params.index = get_els_index(parameters)
     training_params.input_schema = get_schema(parameters["inputSignals"], parameters, aggregated)
     training_params.target_schema = get_schema(parameters["targetSignals"], parameters, aggregated)
+
+    if aggregated:
+        training_params.query_type = "histogram"
+        training_params.query = es.get_histogram_query(parameters)
+    else:
+        training_params.query_type = "docs"
+        training_params.query = es.get_docs_query(parameters)
+
+    training_params.interval = interval_string_to_milliseconds(parameters["timeInterval"]["aggregation"]) if aggregated else None
+
     return training_params

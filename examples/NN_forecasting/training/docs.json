@@ -1,5 +1,5 @@
 {
-  "took": 2,
+  "took": 58,
   "timed_out": false,
   "_shards": {
     "total": 5,
@@ -8,77 +8,4879 @@
     "failed": 0
   },
   "hits": {
-    "total": 2232,
+    "total": 348,
     "max_score": null,
     "hits": [
       {
-        "_index": "signal_set_13",
+        "_index": "signal_set_2",
         "_type": "_doc",
-        "_id": "0023",
+        "_id": "1613607925",
         "_score": null,
         "_source": {
-          "s37": 1.65,
-          "s39": 77.64,
-          "s38": 9928
+          "s11": "81",
+          "s9": "3.28",
+          "s14": "Clear"
         },
         "sort": [
-          1262304000000
+          1613607925151
         ]
       },
       {
-        "_index": "signal_set_13",
+        "_index": "signal_set_2",
         "_type": "_doc",
-        "_id": "0107",
+        "_id": "1613615125",
         "_score": null,
         "_source": {
-          "s37": 1.44,
-          "s39": 80.58,
-          "s38": 43336
+          "s11": "81",
+          "s9": "3.73",
+          "s14": "Clear"
         },
         "sort": [
-          1262304000000
+          1613615125179
         ]
       },
       {
-        "_index": "signal_set_13",
+        "_index": "signal_set_2",
         "_type": "_doc",
-        "_id": "0119",
+        "_id": "1613622325",
         "_score": null,
         "_source": {
-          "s37": 1.96,
-          "s39": 69.3,
-          "s38": 16216
+          "s11": "87",
+          "s9": "3.72",
+          "s14": "Clear"
         },
         "sort": [
-          1262304000000
+          1613622325426
         ]
       },
       {
-        "_index": "signal_set_13",
+        "_index": "signal_set_2",
         "_type": "_doc",
-        "_id": "0143",
+        "_id": "1613629525",
         "_score": null,
         "_source": {
-          "s37": 2.14,
-          "s39": 78.23,
-          "s38": 40571
+          "s11": "87",
+          "s9": "2.72",
+          "s14": "Clouds"
         },
         "sort": [
-          1262304000000
+          1613629525088
         ]
       },
       {
-        "_index": "signal_set_13",
+        "_index": "signal_set_2",
         "_type": "_doc",
-        "_id": "0167",
+        "_id": "1613636725",
         "_score": null,
         "_source": {
-          "s37": 1.78,
-          "s39": 76.74,
-          "s38": 16276
+          "s11": "87",
+          "s9": "4.15",
+          "s14": "Clouds"
         },
         "sort": [
-          1262304000000
+          1613636725096
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613643926",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "6.97",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613643926167
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613651125",
+        "_score": null,
+        "_source": {
+          "s11": "76",
+          "s9": "8.97",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613651125055
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613658325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "9.49",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613658325012
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613665524",
+        "_score": null,
+        "_source": {
+          "s11": "66",
+          "s9": "8",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613665524947
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613672725",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.63",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613672725234
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613679925",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.47",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613679925207
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613687125",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.98",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613687125243
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613694325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.29",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613694325847
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613701524",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.6",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613701524967
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613708725",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "3.95",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613708725040
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613715925",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "4.07",
+          "s14": "Rain"
+        },
+        "sort": [
+          1613715925126
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613723129",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "5.36",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613723129751
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613730324",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "7.1",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613730324934
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613737525",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "9.3",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613737525062
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613744725",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "9.65",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613744725228
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613751925",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "8.27",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613751925000
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613759125",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "3.86",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613759125130
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613766325",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.75",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613766325061
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613773525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "1.71",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613773525268
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613780725",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "1.12",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613780725444
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613787924",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.01",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613787924911
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613795124",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.56",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613795124982
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613802324",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.52",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613802324856
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613809525",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "2",
+          "s14": "Fog"
+        },
+        "sort": [
+          1613809525131
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613816724",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "5.61",
+          "s14": "Mist"
+        },
+        "sort": [
+          1613816724876
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613823925",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "7.43",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613823925006
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613831125",
+        "_score": null,
+        "_source": {
+          "s11": "71",
+          "s9": "9.09",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613831125054
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613838324",
+        "_score": null,
+        "_source": {
+          "s11": "71",
+          "s9": "8.27",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613838324926
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613845525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "6.22",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613845525199
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613852725",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.7",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613852725148
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613859925",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.28",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613859925027
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613867124",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.6",
+          "s14": "Clear"
+        },
+        "sort": [
+          1613867124902
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613874325",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.2",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613874325433
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613881525",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.03",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613881525809
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613888725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.45",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613888725176
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613895925",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.64",
+          "s14": "Mist"
+        },
+        "sort": [
+          1613895925693
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613903125",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.17",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613903125272
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613910324",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.51",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613910324977
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613917525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.51",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613917525013
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613924725",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.62",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613924725412
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613931925",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.94",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613931925042
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613939124",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.02",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613939124991
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613946325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.84",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613946325712
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613953525",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.95",
+          "s14": "Mist"
+        },
+        "sort": [
+          1613953525256
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613960725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.88",
+          "s14": "Mist"
+        },
+        "sort": [
+          1613960725008
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613967924",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.13",
+          "s14": "Mist"
+        },
+        "sort": [
+          1613967924985
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613975125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.17",
+          "s14": "Mist"
+        },
+        "sort": [
+          1613975125773
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613982325",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "4.05",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613982325174
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613989525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "5.16",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613989525016
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1613996725",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "6.49",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1613996725583
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614003930",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "7.31",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614003930147
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614011125",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "7.59",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614011125370
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614018325",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "4.72",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614018325117
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614025525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.2",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614025525183
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614032725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614032725199
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614039925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.57",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614039925270
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614047125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.73",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614047125558
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614054324",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.72",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614054324922
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614061525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-1.08",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614061525746
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614068724",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-1",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614068724867
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614075925",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "2.03",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614075925457
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614083126",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "2.99",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614083126136
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614090325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "4.66",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614090325395
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614097525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.97",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614097525268
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614104725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.51",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614104725033
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614111925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.03",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614111925452
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614119125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.02",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614119125504
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614126325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.03",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614126325006
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614133526",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "0.03",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614133526943
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614140725",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-1.5",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614140725331
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614147925",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.97",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614147925140
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614155125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.96",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614155125033
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614162324",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "3.65",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614162324980
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614169525",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "6.64",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614169525538
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614176725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "9.59",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614176725027
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614183927",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "7.63",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614183927371
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614191125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.51",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614191125081
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614198325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614198325642
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614205525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.97",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614205525041
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614212725",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.5",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614212725341
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614219928",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.5",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614219928308
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614227125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614227125114
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614234324",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614234324969
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614241524",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.31",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614241524943
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614248725",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "6.85",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614248725117
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614255925",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "10.58",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614255925934
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614263129",
+        "_score": null,
+        "_source": {
+          "s11": "76",
+          "s9": "13.63",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614263129461
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614270328",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "11.5",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614270328081
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614277525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "7.71",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614277525464
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614284725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.49",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614284725062
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614291925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.43",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614291925075
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614299124",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.94",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614299124937
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614306325",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "1.91",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614306325280
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614313525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.97",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614313525352
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614320725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.55",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614320725188
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614327925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "4.77",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614327925171
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614335125",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "10.63",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614335125159
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614342325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "10.24",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614342325051
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614349525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "10.04",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614349525095
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614356725",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "7.25",
+          "s14": "Rain"
+        },
+        "sort": [
+          1614356725092
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614363925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "4.24",
+          "s14": "Rain"
+        },
+        "sort": [
+          1614363925008
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614371125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.12",
+          "s14": "Rain"
+        },
+        "sort": [
+          1614371125102
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614378325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.89",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614378325362
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614385524",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.16",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614385524997
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614392725",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.01",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614392725239
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614399924",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.85",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614399924834
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614407124",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.03",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614407124882
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614414325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.9",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614414325074
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614421524",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.78",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614421524921
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614428724",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.32",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614428724929
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614435926",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.77",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614435926581
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614443125",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.59",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614443125110
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614450324",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.23",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614450324860
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614457524",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "3.78",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614457524965
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614464725",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "3.79",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614464725281
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614471925",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.43",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614471925139
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614479125",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "3.11",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614479125096
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614486325",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "2.56",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614486325003
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614493525",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "2.71",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614493525034
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614500725",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "3.74",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614500725166
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614507925",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "4.82",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614507925416
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614515125",
+        "_score": null,
+        "_source": {
+          "s11": "53",
+          "s9": "7.04",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614515125078
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614522325",
+        "_score": null,
+        "_source": {
+          "s11": "53",
+          "s9": "7.87",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614522325217
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614529525",
+        "_score": null,
+        "_source": {
+          "s11": "57",
+          "s9": "7.34",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614529525039
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614536725",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "5.25",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614536725145
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614543925",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "3.25",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614543925461
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614551125",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.34",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614551125329
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614558325",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "1.57",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614558325178
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614565525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.03",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614565525299
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614572725",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "1.3",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614572725156
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614579925",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "1.52",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614579925584
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614587125",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.63",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614587125169
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614594325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.56",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614594325880
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614601525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "4.12",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614601525126
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614608725",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.36",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614608725397
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614615925",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "4.66",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614615925744
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614623124",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.12",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614623124987
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614630325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.76",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614630325279
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614637524",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.16",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614637524927
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614644725",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.08",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614644725124
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614651925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.42",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614651925090
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614659124",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.12",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614659124868
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614666325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.31",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614666325191
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614673525",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.02",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614673525116
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614680862",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "0.31",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614680862191
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614687925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614687925940
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614695137",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614695137241
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614702327",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "1",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614702327765
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614709528",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614709528196
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614716725",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "0.49",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614716725559
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614723926",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "0",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614723926767
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614731126",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614731126934
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614738325",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.26",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614738325165
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614745525",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "-0.51",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614745525036
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614752725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.31",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614752725432
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614759925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-0.33",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614759925264
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614767151",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.31",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614767151175
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614774326",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "1.65",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614774326173
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614781530",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "4.02",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614781530724
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614788728",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "3.49",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614788728363
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614795926",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614795926413
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614803126",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.51",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614803126008
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614810325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.03",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614810325354
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614817525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.16",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614817525796
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614824724",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "0.5",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614824724918
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614831925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.86",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614831925846
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614839125",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "2.59",
+          "s14": "Fog"
+        },
+        "sort": [
+          1614839125136
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614846325",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "4.12",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614846325171
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614853525",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "5.65",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614853525211
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614860725",
+        "_score": null,
+        "_source": {
+          "s11": "71",
+          "s9": "11.85",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614860725248
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614867928",
+        "_score": null,
+        "_source": {
+          "s11": "54",
+          "s9": "12.65",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614867928697
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614875129",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "9.1",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614875129087
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614882324",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "6.89",
+          "s14": "Rain"
+        },
+        "sort": [
+          1614882324871
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614889525",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "6.12",
+          "s14": "Mist"
+        },
+        "sort": [
+          1614889525231
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614896724",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "3.53",
+          "s14": "Rain"
+        },
+        "sort": [
+          1614896724998
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614903924",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "1.98",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614903924972
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614911125",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "1.19",
+          "s14": "Snow"
+        },
+        "sort": [
+          1614911125898
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614918324",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "0.7",
+          "s14": "Snow"
+        },
+        "sort": [
+          1614918324990
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614925524",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.11",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614925524941
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614932725",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "1.22",
+          "s14": "Snow"
+        },
+        "sort": [
+          1614932725216
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614939925",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "1.7",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614939925039
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614947125",
+        "_score": null,
+        "_source": {
+          "s11": "64",
+          "s9": "1.86",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614947125317
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614954327",
+        "_score": null,
+        "_source": {
+          "s11": "41",
+          "s9": "2.44",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1614954327148
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614961525",
+        "_score": null,
+        "_source": {
+          "s11": "48",
+          "s9": "2.07",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614961525607
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614968729",
+        "_score": null,
+        "_source": {
+          "s11": "59",
+          "s9": "0.12",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614968729518
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614975925",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "-1.01",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614975925124
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614983126",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "-1.55",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614983126121
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614990324",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-2.14",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614990324975
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1614997525",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-2.38",
+          "s14": "Clear"
+        },
+        "sort": [
+          1614997525351
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615004725",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "-3.91",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615004725146
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615011924",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "-3.41",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615011924887
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615019125",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-0.12",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615019125008
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615026325",
+        "_score": null,
+        "_source": {
+          "s11": "48",
+          "s9": "3.05",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615026325155
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615033525",
+        "_score": null,
+        "_source": {
+          "s11": "38",
+          "s9": "4.5",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615033525274
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615040725",
+        "_score": null,
+        "_source": {
+          "s11": "36",
+          "s9": "5.24",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615040725855
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615047925",
+        "_score": null,
+        "_source": {
+          "s11": "38",
+          "s9": "4.35",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615047925347
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615055124",
+        "_score": null,
+        "_source": {
+          "s11": "48",
+          "s9": "1.55",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615055124900
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615062325",
+        "_score": null,
+        "_source": {
+          "s11": "48",
+          "s9": "0.72",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615062325980
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615069525",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "-1.59",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615069525082
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615076724",
+        "_score": null,
+        "_source": {
+          "s11": "74",
+          "s9": "-2.1",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615076724942
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615083925",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-3.41",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615083925028
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615091124",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-3.8",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615091124988
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615098325",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-3.96",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615098325136
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615105524",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "0.62",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615105524840
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615112724",
+        "_score": null,
+        "_source": {
+          "s11": "56",
+          "s9": "3.8",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615112724964
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615119925",
+        "_score": null,
+        "_source": {
+          "s11": "48",
+          "s9": "5.76",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615119925137
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615127125",
+        "_score": null,
+        "_source": {
+          "s11": "42",
+          "s9": "6.25",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615127125238
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615134325",
+        "_score": null,
+        "_source": {
+          "s11": "52",
+          "s9": "5.16",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615134325196
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615141527",
+        "_score": null,
+        "_source": {
+          "s11": "64",
+          "s9": "2.9",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615141527318
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615148725",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "1.29",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615148725748
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615155925",
+        "_score": null,
+        "_source": {
+          "s11": "74",
+          "s9": "-0.46",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615155925289
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615163124",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-1.68",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615163124949
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615170324",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "-1.81",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615170324927
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615177524",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-1.49",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615177524970
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615184724",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "-1.18",
+          "s14": "Mist"
+        },
+        "sort": [
+          1615184724930
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615191925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.22",
+          "s14": "Snow"
+        },
+        "sort": [
+          1615191925044
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615199124",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "2.58",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615199124961
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615206324",
+        "_score": null,
+        "_source": {
+          "s11": "52",
+          "s9": "3.56",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615206324878
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615213526",
+        "_score": null,
+        "_source": {
+          "s11": "41",
+          "s9": "4.59",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615213526789
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615220726",
+        "_score": null,
+        "_source": {
+          "s11": "41",
+          "s9": "3.62",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615220726203
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615227925",
+        "_score": null,
+        "_source": {
+          "s11": "51",
+          "s9": "0.71",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615227925416
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615235128",
+        "_score": null,
+        "_source": {
+          "s11": "59",
+          "s9": "-0.47",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615235128375
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615242324",
+        "_score": null,
+        "_source": {
+          "s11": "64",
+          "s9": "-1.7",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615242324866
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615249525",
+        "_score": null,
+        "_source": {
+          "s11": "74",
+          "s9": "-3.02",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615249525348
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615256724",
+        "_score": null,
+        "_source": {
+          "s11": "74",
+          "s9": "-2.94",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615256724924
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615263925",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "-4.32",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615263925106
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615271126",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "-3.84",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615271126097
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615278326",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-1.44",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615278326380
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615285526",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "1.08",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615285526822
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615292725",
+        "_score": null,
+        "_source": {
+          "s11": "64",
+          "s9": "3.1",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615292725155
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615299929",
+        "_score": null,
+        "_source": {
+          "s11": "52",
+          "s9": "3.74",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615299929167
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615307130",
+        "_score": null,
+        "_source": {
+          "s11": "56",
+          "s9": "2.85",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615307130719
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615314329",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "0.49",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615314329082
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615321525",
+        "_score": null,
+        "_source": {
+          "s11": "64",
+          "s9": "-0.57",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615321525124
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615328725",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "-1.79",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615328725082
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615335924",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "-1.36",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615335924943
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615343125",
+        "_score": null,
+        "_source": {
+          "s11": "74",
+          "s9": "-1.61",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615343125328
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615350325",
+        "_score": null,
+        "_source": {
+          "s11": "74",
+          "s9": "-1.66",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615350325641
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615357525",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "-1",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615357525409
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615364725",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "0.58",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615364725116
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615371929",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "3.06",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615371929669
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615379125",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "4.77",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615379125096
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615386327",
+        "_score": null,
+        "_source": {
+          "s11": "56",
+          "s9": "5.19",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615386327504
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615393525",
+        "_score": null,
+        "_source": {
+          "s11": "52",
+          "s9": "4.81",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615393525107
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615400725",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "2.06",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615400725143
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615407925",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "0.52",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615407925073
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615415125",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "0.02",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615415125075
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615422325",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "-0.11",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615422325448
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615429525",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "0.39",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615429525104
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615436725",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "1.22",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615436725520
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615443926",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "1.59",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615443926266
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615451124",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "3.48",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615451124923
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615458325",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "5.45",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615458325616
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615465529",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "7.51",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615465529119
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615472725",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "8.78",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615472725117
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615479928",
+        "_score": null,
+        "_source": {
+          "s11": "62",
+          "s9": "10.54",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615479928801
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615487124",
+        "_score": null,
+        "_source": {
+          "s11": "62",
+          "s9": "11.06",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615487124903
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615494325",
+        "_score": null,
+        "_source": {
+          "s11": "66",
+          "s9": "10.18",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615494325631
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615501525",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "7.71",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615501525807
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615508726",
+        "_score": null,
+        "_source": {
+          "s11": "66",
+          "s9": "7.88",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615508726304
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615515925",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "6.78",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615515925306
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615523124",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.33",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615523124863
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615530325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "3.8",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615530325448
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615537525",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "5.95",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615537525143
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615544724",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "7.03",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615544724946
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615551925",
+        "_score": null,
+        "_source": {
+          "s11": "46",
+          "s9": "7.92",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615551925075
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615559128",
+        "_score": null,
+        "_source": {
+          "s11": "46",
+          "s9": "8.57",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615559128871
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615566325",
+        "_score": null,
+        "_source": {
+          "s11": "40",
+          "s9": "8.53",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615566325244
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615573525",
+        "_score": null,
+        "_source": {
+          "s11": "52",
+          "s9": "6.2",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615573525065
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615580724",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "4.45",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615580724897
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615587926",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "4.4",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615587926435
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615595124",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "4.59",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615595124893
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615602324",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "6.13",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615602324950
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615609525",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "5.71",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615609525773
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615616725",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "5.18",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615616725153
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615623925",
+        "_score": null,
+        "_source": {
+          "s11": "65",
+          "s9": "7.7",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615623925639
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615631125",
+        "_score": null,
+        "_source": {
+          "s11": "53",
+          "s9": "9.36",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615631125165
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615638325",
+        "_score": null,
+        "_source": {
+          "s11": "50",
+          "s9": "10.31",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615638325281
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615645525",
+        "_score": null,
+        "_source": {
+          "s11": "43",
+          "s9": "11.14",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615645525105
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615652725",
+        "_score": null,
+        "_source": {
+          "s11": "57",
+          "s9": "10.36",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615652725000
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615659925",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "5.74",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615659925144
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615667125",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "5.54",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615667125352
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615674324",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "5.08",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615674324993
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615681525",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.72",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615681525112
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615688725",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.91",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615688725018
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615695925",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.5",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615695925095
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615703124",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.15",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615703124975
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615710325",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "6.06",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615710325274
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615717524",
+        "_score": null,
+        "_source": {
+          "s11": "49",
+          "s9": "7.31",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615717524992
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615724725",
+        "_score": null,
+        "_source": {
+          "s11": "45",
+          "s9": "7.09",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615724725119
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615731925",
+        "_score": null,
+        "_source": {
+          "s11": "49",
+          "s9": "6.89",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615731925491
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615739125",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "5.43",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615739125117
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615746325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "2.54",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615746325149
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615753525",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.42",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615753525453
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615760725",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "2.21",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615760725149
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615767926",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "1.21",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615767926000
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615775124",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "0.97",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615775124980
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615782326",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "1.55",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615782326484
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615789525",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "2.06",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615789525167
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615796725",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.72",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615796725030
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615803924",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "6.54",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615803924933
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615811125",
+        "_score": null,
+        "_source": {
+          "s11": "53",
+          "s9": "7.62",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615811125101
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615818325",
+        "_score": null,
+        "_source": {
+          "s11": "61",
+          "s9": "6.98",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615818325493
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615825525",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "3.95",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615825525772
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615832725",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.41",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615832725153
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615839925",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.13",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615839925119
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615847124",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.5",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615847124965
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615854325",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.94",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615854325711
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615861524",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.86",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615861524969
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615868724",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.93",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615868724929
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615875925",
+        "_score": null,
+        "_source": {
+          "s11": "81",
+          "s9": "2.82",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615875925091
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615883125",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "3.26",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615883125079
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615890325",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "3.68",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615890325214
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615897525",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "4.56",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615897525602
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615904724",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "5.49",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615904724890
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615911926",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "4.83",
+          "s14": "Clear"
+        },
+        "sort": [
+          1615911926354
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615919124",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "3.47",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615919124917
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615926325",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "2.32",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615926325017
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615933525",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "0.89",
+          "s14": "Snow"
+        },
+        "sort": [
+          1615933525861
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615940724",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "1.6",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615940724958
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615947925",
+        "_score": null,
+        "_source": {
+          "s11": "100",
+          "s9": "1.25",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615947925033
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615955125",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "1.09",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615955125913
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615962325",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "1.22",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615962325049
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615969525",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "1.76",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615969525525
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615976725",
+        "_score": null,
+        "_source": {
+          "s11": "75",
+          "s9": "3.18",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615976725408
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615983925",
+        "_score": null,
+        "_source": {
+          "s11": "70",
+          "s9": "4.12",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615983925711
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615991127",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "2.62",
+          "s14": "Rain"
+        },
+        "sort": [
+          1615991127791
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1615998325",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "2.3",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1615998325337
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616005527",
+        "_score": null,
+        "_source": {
+          "s11": "87",
+          "s9": "1.62",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616005527012
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616012725",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "0.98",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616012725053
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616019925",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.51",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616019925054
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616027125",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "0.34",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616027125344
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616034325",
+        "_score": null,
+        "_source": {
+          "s11": "93",
+          "s9": "0.38",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616034325239
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616041525",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "0.72",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616041525037
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616048725",
+        "_score": null,
+        "_source": {
+          "s11": "86",
+          "s9": "0.78",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616048725072
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616055926",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "2",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616055926858
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616063125",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "3.53",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616063125041
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616070324",
+        "_score": null,
+        "_source": {
+          "s11": "56",
+          "s9": "4.72",
+          "s14": "Clouds"
+        },
+        "sort": [
+          1616070324953
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616077524",
+        "_score": null,
+        "_source": {
+          "s11": "45",
+          "s9": "4.98",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616077524977
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616084730",
+        "_score": null,
+        "_source": {
+          "s11": "45",
+          "s9": "4.23",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616084730152
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616091925",
+        "_score": null,
+        "_source": {
+          "s11": "60",
+          "s9": "2.72",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616091925194
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616099124",
+        "_score": null,
+        "_source": {
+          "s11": "69",
+          "s9": "2.07",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616099124931
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1616106324",
+        "_score": null,
+        "_source": {
+          "s11": "80",
+          "s9": "1.04",
+          "s14": "Clear"
+        },
+        "sort": [
+          1616106324998
         ]
       }
     ]

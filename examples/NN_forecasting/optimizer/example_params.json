@@ -1,23 +1,42 @@
 {
-  "signalSet": "top:gapminder",
-  "tsSigCid": "year",
+  "signalSet": "top:weather_prague",
+  "tsSigCid": "ts",
+  "timeInterval": {
+    "start": "2021-02-18",
+    "end": "2021-04-18",
+    "aggregation": "1d"
+  },
   "inputSignals": [
     {
-      "cid": "fertility_rate",
+      "cid": "temperature",
       "data_type": "auto",
       "min": "",
-      "max": "6",
+      "max": "",
+      "aggregation": "min"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
       "aggregation": "avg"
     },
     {
-      "cid": "income_per_person",
+      "cid": "temperature",
       "data_type": "auto",
       "min": "",
       "max": "",
       "aggregation": "max"
     },
     {
-      "cid": "region",
+      "cid": "humidity",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "avg"
+    },
+    {
+      "cid": "status",
       "data_type": "auto",
       "min": "",
       "max": "",
@@ -26,112 +45,66 @@
   ],
   "targetSignals": [
     {
-      "cid": "life_expectancy",
+      "cid": "temperature",
       "data_type": "auto",
-      "min": "0",
+      "min": "",
+      "max": "",
+      "aggregation": "min"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
       "max": "",
       "aggregation": "avg"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "max"
     }
   ],
   "entities": {
     "signalSets": {
-      "top:gapminder": {
-        "id": 13,
-        "cid": "top:gapminder",
-        "name": "gapminder",
-        "description": "",
-        "state": "{\"indexing\":{\"status\":0}}",
-        "created": "2020-03-13T17:39:51.000Z",
-        "namespace": 2,
-        "record_id_template": null,
-        "type": "normal",
-        "settings": "{}",
-        "kind": "generic",
-        "metadata": null,
-        "index": "signal_set_13"
+      "top:weather_prague": {
+        "id": 2,
+        "cid": "top:weather_prague",
+        "index": "signal_set_2"
       }
     },
     "signals": {
-      "top:gapminder": {
-        "year": {
-          "id": 36,
-          "cid": "year",
-          "name": "year",
-          "description": null,
+      "top:weather_prague": {
+        "ts": {
+          "id": 8,
+          "cid": "ts",
           "type": "date",
-          "settings": "{}",
-          "created": "2020-03-13T17:39:51.000Z",
-          "set": 13,
-          "namespace": 2,
-          "indexed": 1,
-          "weight_list": null,
-          "weight_edit": 0,
-          "source": "raw",
-          "field": "s36"
+          "field": "s8"
         },
-        "fertility_rate": {
-          "id": 37,
-          "cid": "fertility_rate",
-          "name": "fertility_rate",
-          "description": null,
+        "temperature": {
+          "id": 9,
+          "cid": "temperature",
           "type": "float",
-          "settings": "{}",
-          "created": "2020-03-13T17:39:51.000Z",
-          "set": 13,
-          "namespace": 2,
-          "indexed": 1,
-          "weight_list": null,
-          "weight_edit": 0,
-          "source": "raw",
-          "field": "s37"
+          "field": "s9"
         },
-        "income_per_person": {
-          "id": 38,
-          "cid": "income_per_person",
-          "name": "income_per_person",
-          "description": null,
+        "pressure": {
+          "id": 10,
+          "cid": "pressure",
           "type": "integer",
-          "settings": "{}",
-          "created": "2020-03-13T17:39:51.000Z",
-          "set": 13,
-          "namespace": 2,
-          "indexed": 1,
-          "weight_list": null,
-          "weight_edit": 0,
-          "source": "raw",
-          "field": "s38"
+          "field": "s10"
         },
-        "region": {
-          "id": 42,
-          "cid": "region",
-          "name": "region",
-          "description": null,
+        "humidity": {
+          "id": 11,
+          "cid": "humidity",
+          "type": "integer",
+          "field": "s11"
+        },
+        "status": {
+          "id": 14,
+          "cid": "status",
           "type": "keyword",
-          "settings": "{}",
-          "created": "2020-03-13T17:39:51.000Z",
-          "set": 13,
-          "namespace": 2,
-          "indexed": 1,
-          "weight_list": null,
-          "weight_edit": 0,
-          "source": "raw",
-          "field": "s42"
-        },
-        "life_expectancy": {
-          "id": 39,
-          "cid": "life_expectancy",
-          "name": "life_expectancy",
-          "description": null,
-          "type": "float",
-          "settings": "{}",
-          "created": "2020-03-13T17:39:51.000Z",
-          "set": 13,
-          "namespace": 2,
-          "indexed": 1,
-          "weight_list": null,
-          "weight_edit": 0,
-          "source": "raw",
-          "field": "s39"
+          "field": "s14"
         }
       }
     }

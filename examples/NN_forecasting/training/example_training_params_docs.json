@@ -1,0 +1,57 @@
+{
+  "architecture": "LSTM",
+  "query": {
+    "size": 10000,
+    "_source": [
+      "s9",
+      "s9",
+      "s9",
+      "s11",
+      "s14",
+      "s9",
+      "s9",
+      "s9"
+    ],
+    "sort": [
+      {
+        "s8": "asc"
+      }
+    ],
+    "query": {
+      "range": {
+        "s8": {
+          "gte": "2021-02-18",
+          "lte": "2021-03-18"
+        }
+      }
+    }
+  },
+  "query_type": "docs",
+  "index": "signal_set_2",
+  "input_schema": {
+    "s9": {
+      "type": "float",
+      "data_type": "numerical"
+    },
+    "s11": {
+      "type": "integer",
+      "data_type": "numerical"
+    },
+    "s14": {
+      "type": "keyword",
+      "data_type": "categorical"
+    }
+  },
+  "target_schema": {
+    "s9": {
+      "type": "float",
+      "data_type": "numerical"
+    }
+  },
+  "split": {
+    "train": 0.7,
+    "val": 0,
+    "test": 0.3
+  },
+  "interval": null
+}

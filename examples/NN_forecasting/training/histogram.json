@@ -1,5 +1,5 @@
 {
-  "took": 80,
+  "took": 102,
   "timed_out": false,
   "_shards": {
     "total": 5,
@@ -8,7 +8,7 @@
     "failed": 0
   },
   "hits": {
-    "total": 2232,
+    "total": 720,
     "max_score": 0.0,
     "hits": []
   },
@@ -16,291 +16,1623 @@
     "aggregated_data": {
       "buckets": [
         {
-          "key_as_string": "1890-01-04T00:00:00.000Z",
-          "key": -2524262400000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-18T00:00:00.000Z",
+          "key": 1613606400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 5.342499991257985
+          },
+          "s9_min": {
+            "value": 2.7200000286102295
+          },
+          "s9_max": {
+            "value": 9.489999771118164
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 3,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Clear",
+                "doc_count": 9
               }
             ]
           },
-          "s38_max": {
-            "value": 13763.0
-          },
-          "s37_avg": {
-            "value": 5.90220429307671
-          },
-          "s39_avg": {
-            "value": 33.586881688846056
+          "s11_avg": {
+            "value": 79.33333333333333
           }
         },
         {
-          "key_as_string": "1900-01-04T00:00:00.000Z",
-          "key": -2208729600000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-19T00:00:00.000Z",
+          "key": 1613692800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 5.242500027020772
+          },
+          "s9_min": {
+            "value": 1.7100000381469727
+          },
+          "s9_max": {
+            "value": 9.649999618530273
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 3,
             "buckets": [
               {
-                "key": "europe",
-                "doc_count": 55
+                "key": "Clear",
+                "doc_count": 9
               }
             ]
           },
-          "s38_max": {
-            "value": 16063.0
-          },
-          "s37_avg": {
-            "value": 5.8090322543216
-          },
-          "s39_avg": {
-            "value": 34.821613014385264
+          "s11_avg": {
+            "value": 76.0
           }
         },
         {
-          "key_as_string": "1910-01-04T00:00:00.000Z",
-          "key": -1893196800000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-20T00:00:00.000Z",
+          "key": 1613779200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.7191667002625763
+          },
+          "s9_min": {
+            "value": -0.5600000023841858
+          },
+          "s9_max": {
+            "value": 9.09000015258789
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 4,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Clear",
+                "doc_count": 8
               }
             ]
           },
-          "s38_max": {
-            "value": 15324.0
-          },
-          "s37_avg": {
-            "value": 5.677258054415385
-          },
-          "s39_avg": {
-            "value": 34.917634399988316
+          "s11_avg": {
+            "value": 85.33333333333333
           }
         },
         {
-          "key_as_string": "1920-01-04T00:00:00.000Z",
-          "key": -1577664000000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-21T00:00:00.000Z",
+          "key": 1613865600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 2.7941666742165885
+          },
+          "s9_min": {
+            "value": 1.600000023841858
+          },
+          "s9_max": {
+            "value": 3.940000057220459
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 2,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Clouds",
+                "doc_count": 10
               }
             ]
           },
-          "s38_max": {
-            "value": 19812.0
-          },
-          "s37_avg": {
-            "value": 5.532956993708047
-          },
-          "s39_avg": {
-            "value": 38.412903303741125
+          "s11_avg": {
+            "value": 86.0
           }
         },
         {
-          "key_as_string": "1930-01-03T00:00:00.000Z",
-          "key": -1262131200000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-22T00:00:00.000Z",
+          "key": 1613952000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.054166674613953
+          },
+          "s9_min": {
+            "value": 0.0
+          },
+          "s9_max": {
+            "value": 7.590000152587891
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 8,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Clouds",
+                "doc_count": 4
               }
             ]
           },
-          "s38_max": {
-            "value": 18989.0
-          },
-          "s37_avg": {
-            "value": 5.375537639664065
-          },
-          "s39_avg": {
-            "value": 41.890698843104865
+          "s11_avg": {
+            "value": 86.25
           }
         },
         {
-          "key_as_string": "1940-01-03T00:00:00.000Z",
-          "key": -946598400000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-23T00:00:00.000Z",
+          "key": 1614038400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.259166643023491
+          },
+          "s9_min": {
+            "value": -1.0800000429153442
+          },
+          "s9_max": {
+            "value": 4.659999847412109
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 0,
             "buckets": [
               {
-                "key": "europe",
-                "doc_count": 55
+                "key": "Fog",
+                "doc_count": 12
               }
             ]
           },
-          "s38_max": {
-            "value": 59805.0
-          },
-          "s37_avg": {
-            "value": 5.4297311754636866
-          },
-          "s39_avg": {
-            "value": 50.16510730661372
+          "s11_avg": {
+            "value": 94.16666666666667
           }
         },
         {
-          "key_as_string": "1950-01-02T00:00:00.000Z",
-          "key": -631065600000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-24T00:00:00.000Z",
+          "key": 1614124800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 2.6283333473838866
+          },
+          "s9_min": {
+            "value": -1.5
+          },
+          "s9_max": {
+            "value": 9.59000015258789
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 3,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Fog",
+                "doc_count": 9
               }
             ]
           },
-          "s38_max": {
-            "value": 74698.0
-          },
-          "s37_avg": {
-            "value": 5.534354812996362
-          },
-          "s39_avg": {
-            "value": 55.524085906244096
+          "s11_avg": {
+            "value": 95.91666666666667
           }
         },
         {
-          "key_as_string": "1970-01-01T00:00:00.000Z",
-          "key": 0,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-25T00:00:00.000Z",
+          "key": 1614211200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.708333333333333
+          },
+          "s9_min": {
+            "value": -0.5
+          },
+          "s9_max": {
+            "value": 13.630000114440918
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 4,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Fog",
+                "doc_count": 8
               }
             ]
           },
-          "s38_max": {
-            "value": 173848.0
-          },
-          "s37_avg": {
-            "value": 5.216397842412354
-          },
-          "s39_avg": {
-            "value": 60.14741930397608
+          "s11_avg": {
+            "value": 92.91666666666667
           }
         },
         {
-          "key_as_string": "1980-01-01T00:00:00.000Z",
-          "key": 315532800000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-26T00:00:00.000Z",
+          "key": 1614297600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.962499966224034
+          },
+          "s9_min": {
+            "value": 0.9700000286102295
+          },
+          "s9_max": {
+            "value": 10.630000114440918
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 8,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Mist",
+                "doc_count": 4
               }
             ]
           },
-          "s38_max": {
-            "value": 178635.0
-          },
-          "s37_avg": {
-            "value": 4.638924742257723
-          },
-          "s39_avg": {
-            "value": 63.71134433951429
+          "s11_avg": {
+            "value": 90.08333333333333
           }
         },
         {
-          "key_as_string": "1989-12-31T00:00:00.000Z",
-          "key": 631065600000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-27T00:00:00.000Z",
+          "key": 1614384000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.6008333563804626
+          },
+          "s9_min": {
+            "value": 2.0299999713897705
+          },
+          "s9_max": {
+            "value": 4.769999980926514
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 1,
             "buckets": [
               {
-                "key": "europe",
-                "doc_count": 55
+                "key": "Clouds",
+                "doc_count": 11
               }
             ]
           },
-          "s38_max": {
-            "value": 112350.0
-          },
-          "s37_avg": {
-            "value": 4.033817201532344
-          },
-          "s39_avg": {
-            "value": 66.20919358858498
+          "s11_avg": {
+            "value": 78.66666666666667
           }
         },
         {
-          "key_as_string": "1999-12-31T00:00:00.000Z",
-          "key": 946598400000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-02-28T00:00:00.000Z",
+          "key": 1614470400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.455000003178914
+          },
+          "s9_min": {
+            "value": 2.3399999141693115
+          },
+          "s9_max": {
+            "value": 7.869999885559082
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 5,
             "buckets": [
               {
-                "key": "americas",
-                "doc_count": 55
+                "key": "Clear",
+                "doc_count": 7
               }
             ]
           },
-          "s38_max": {
-            "value": 108287.0
-          },
-          "s37_avg": {
-            "value": 3.330645160008502
-          },
-          "s39_avg": {
-            "value": 67.53086022407778
+          "s11_avg": {
+            "value": 65.83333333333333
           }
         },
         {
-          "key_as_string": "2009-12-30T00:00:00.000Z",
-          "key": 1262131200000,
-          "doc_count": 186,
-          "s42": {
+          "key_as_string": "2021-03-01T00:00:00.000Z",
+          "key": 1614556800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 2.3158333150980375
+          },
+          "s9_min": {
+            "value": 0.029999999329447746
+          },
+          "s9_max": {
+            "value": 4.659999847412109
+          },
+          "s14": {
             "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 131,
+            "sum_other_doc_count": 6,
             "buckets": [
               {
-                "key": "asia",
-                "doc_count": 55
+                "key": "Mist",
+                "doc_count": 6
               }
             ]
           },
-          "s38_max": {
-            "value": 119974.0
+          "s11_avg": {
+            "value": 87.41666666666667
+          }
+        },
+        {
+          "key_as_string": "2021-03-02T00:00:00.000Z",
+          "key": 1614643200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 0.5774999996647239
           },
-          "s37_avg": {
-            "value": 2.9734408637528777
+          "s9_min": {
+            "value": -0.3100000023841858
           },
-          "s39_avg": {
-            "value": 70.54661297541793
+          "s9_max": {
+            "value": 2.0
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Fog",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 96.5
+          }
+        },
+        {
+          "key_as_string": "2021-03-03T00:00:00.000Z",
+          "key": 1614729600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.0499999945362408
+          },
+          "s9_min": {
+            "value": -0.5099999904632568
+          },
+          "s9_max": {
+            "value": 4.019999980926514
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Fog",
+                "doc_count": 9
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 95.33333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-04T00:00:00.000Z",
+          "key": 1614816000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 5.418333331743876
+          },
+          "s9_min": {
+            "value": 0.5
+          },
+          "s9_max": {
+            "value": 12.649999618530273
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 8,
+            "buckets": [
+              {
+                "key": "Mist",
+                "doc_count": 4
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 89.75
+          }
+        },
+        {
+          "key_as_string": "2021-03-05T00:00:00.000Z",
+          "key": 1614902400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 0.9858333511898915
+          },
+          "s9_min": {
+            "value": -1.5499999523162842
+          },
+          "s9_max": {
+            "value": 2.440000057220459
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 7,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 5
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 75.25
+          }
+        },
+        {
+          "key_as_string": "2021-03-06T00:00:00.000Z",
+          "key": 1614988800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 0.4883332656075557
+          },
+          "s9_min": {
+            "value": -3.9100000858306885
+          },
+          "s9_max": {
+            "value": 5.239999771118164
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 1,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 11
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 61.416666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-03-07T00:00:00.000Z",
+          "key": 1615075200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.004166675110658
+          },
+          "s9_min": {
+            "value": -3.9600000381469727
+          },
+          "s9_max": {
+            "value": 6.25
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 65.66666666666667
+          }
+        },
+        {
+          "key_as_string": "2021-03-08T00:00:00.000Z",
+          "key": 1615161600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 0.5791666656732559
+          },
+          "s9_min": {
+            "value": -1.809999942779541
+          },
+          "s9_max": {
+            "value": 4.590000152587891
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 68.33333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-09T00:00:00.000Z",
+          "key": 1615248000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": -0.5550000220537186
+          },
+          "s9_min": {
+            "value": -4.320000171661377
+          },
+          "s9_max": {
+            "value": 3.740000009536743
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 2,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 10
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 69.5
+          }
+        },
+        {
+          "key_as_string": "2021-03-10T00:00:00.000Z",
+          "key": 1615334400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.2816666529203455
+          },
+          "s9_min": {
+            "value": -1.659999966621399
+          },
+          "s9_max": {
+            "value": 5.190000057220459
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 70.08333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-11T00:00:00.000Z",
+          "key": 1615420800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 5.650000046938658
+          },
+          "s9_min": {
+            "value": -0.10999999940395355
+          },
+          "s9_max": {
+            "value": 11.0600004196167
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 69.83333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-12T00:00:00.000Z",
+          "key": 1615507200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 6.3199999531110125
+          },
+          "s9_min": {
+            "value": 3.799999952316284
+          },
+          "s9_max": {
+            "value": 8.569999694824219
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 61.333333333333336
+          }
+        },
+        {
+          "key_as_string": "2021-03-13T00:00:00.000Z",
+          "key": 1615593600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 7.236666639645894
+          },
+          "s9_min": {
+            "value": 4.590000152587891
+          },
+          "s9_max": {
+            "value": 11.140000343322754
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 61.916666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-03-14T00:00:00.000Z",
+          "key": 1615680000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.852499961853027
+          },
+          "s9_min": {
+            "value": 2.2100000381469727
+          },
+          "s9_max": {
+            "value": 7.309999942779541
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 67.5
+          }
+        },
+        {
+          "key_as_string": "2021-03-15T00:00:00.000Z",
+          "key": 1615766400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.553333322207133
+          },
+          "s9_min": {
+            "value": 0.9700000286102295
+          },
+          "s9_max": {
+            "value": 7.619999885559082
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 4,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 8
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 77.08333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-16T00:00:00.000Z",
+          "key": 1615852800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.3374999662240348
+          },
+          "s9_min": {
+            "value": 0.8899999856948853
+          },
+          "s9_max": {
+            "value": 5.489999771118164
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 2,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 10
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 74.58333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-17T00:00:00.000Z",
+          "key": 1615939200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.8541666567325592
+          },
+          "s9_min": {
+            "value": 0.5099999904632568
+          },
+          "s9_max": {
+            "value": 4.119999885559082
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 9
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 84.75
+          }
+        },
+        {
+          "key_as_string": "2021-03-18T00:00:00.000Z",
+          "key": 1616025600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 2.2924999768535295
+          },
+          "s9_min": {
+            "value": 0.3400000035762787
+          },
+          "s9_max": {
+            "value": 4.980000019073486
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 70.75
+          }
+        },
+        {
+          "key_as_string": "2021-03-19T00:00:00.000Z",
+          "key": 1616112000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 0.8083333126269281
+          },
+          "s9_min": {
+            "value": -1.8300000429153442
+          },
+          "s9_max": {
+            "value": 3.5999999046325684
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Snow",
+                "doc_count": 9
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 80.75
+          }
+        },
+        {
+          "key_as_string": "2021-03-20T00:00:00.000Z",
+          "key": 1616198400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": -2.0266666683989265
+          },
+          "s9_min": {
+            "value": -3.7699999809265137
+          },
+          "s9_max": {
+            "value": 0.009999999776482582
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 7,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 5
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 66.33333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-03-21T00:00:00.000Z",
+          "key": 1616284800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.9516666568815708
+          },
+          "s9_min": {
+            "value": -1.9500000476837158
+          },
+          "s9_max": {
+            "value": 4.699999809265137
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 9
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 67.75
+          }
+        },
+        {
+          "key_as_string": "2021-03-22T00:00:00.000Z",
+          "key": 1616371200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.7108333508173623
+          },
+          "s9_min": {
+            "value": 0.6399999856948853
+          },
+          "s9_max": {
+            "value": 6.590000152587891
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 4,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 8
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 63.666666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-03-23T00:00:00.000Z",
+          "key": 1616457600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.884166643023491
+          },
+          "s9_min": {
+            "value": 0.949999988079071
+          },
+          "s9_max": {
+            "value": 5.75
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 9
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 71.66666666666667
+          }
+        },
+        {
+          "key_as_string": "2021-03-24T00:00:00.000Z",
+          "key": 1616544000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 6.663333296775818
+          },
+          "s9_min": {
+            "value": 3.630000114440918
+          },
+          "s9_max": {
+            "value": 11.630000114440918
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 5,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 7
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 62.5
+          }
+        },
+        {
+          "key_as_string": "2021-03-25T00:00:00.000Z",
+          "key": 1616630400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 8.0
+          },
+          "s9_min": {
+            "value": 0.8700000047683716
+          },
+          "s9_max": {
+            "value": 15.430000305175781
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 2,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 10
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 61.333333333333336
+          }
+        },
+        {
+          "key_as_string": "2021-03-26T00:00:00.000Z",
+          "key": 1616716800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 10.664999882380167
+          },
+          "s9_min": {
+            "value": 5.480000019073486
+          },
+          "s9_max": {
+            "value": 16.709999084472656
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 54.5
+          }
+        },
+        {
+          "key_as_string": "2021-03-27T00:00:00.000Z",
+          "key": 1616803200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 7.6400000055631
+          },
+          "s9_min": {
+            "value": 2.119999885559082
+          },
+          "s9_max": {
+            "value": 11.789999961853027
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 5,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 7
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 63.083333333333336
+          }
+        },
+        {
+          "key_as_string": "2021-03-28T00:00:00.000Z",
+          "key": 1616889600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 6.055833384394646
+          },
+          "s9_min": {
+            "value": 0.6800000071525574
+          },
+          "s9_max": {
+            "value": 10.579999923706055
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 2,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 10
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 66.25
+          }
+        },
+        {
+          "key_as_string": "2021-03-29T00:00:00.000Z",
+          "key": 1616976000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 11.836666584014893
+          },
+          "s9_min": {
+            "value": 6.590000152587891
+          },
+          "s9_max": {
+            "value": 17.860000610351562
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 1,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 11
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 51.333333333333336
+          }
+        },
+        {
+          "key_as_string": "2021-03-30T00:00:00.000Z",
+          "key": 1617062400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 13.789166688919067
+          },
+          "s9_min": {
+            "value": 6.630000114440918
+          },
+          "s9_max": {
+            "value": 21.290000915527344
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 44.833333333333336
+          }
+        },
+        {
+          "key_as_string": "2021-03-31T00:00:00.000Z",
+          "key": 1617148800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 14.520000060399374
+          },
+          "s9_min": {
+            "value": 6.03000020980835
+          },
+          "s9_max": {
+            "value": 22.709999084472656
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 46.25
+          }
+        },
+        {
+          "key_as_string": "2021-04-01T00:00:00.000Z",
+          "key": 1617235200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 14.511666695276896
+          },
+          "s9_min": {
+            "value": 7.489999771118164
+          },
+          "s9_max": {
+            "value": 21.360000610351562
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 52.416666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-04-02T00:00:00.000Z",
+          "key": 1617321600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 6.9041666984558105
+          },
+          "s9_min": {
+            "value": 5.340000152587891
+          },
+          "s9_max": {
+            "value": 8.390000343322754
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 2,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 10
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 69.08333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-04-03T00:00:00.000Z",
+          "key": 1617408000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.853333334128062
+          },
+          "s9_min": {
+            "value": 2.930000066757202
+          },
+          "s9_max": {
+            "value": 7.159999847412109
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 4,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 8
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 63.416666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-04-04T00:00:00.000Z",
+          "key": 1617494400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.8174999703963595
+          },
+          "s9_min": {
+            "value": -0.6700000166893005
+          },
+          "s9_max": {
+            "value": 10.300000190734863
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 9
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 53.75
+          }
+        },
+        {
+          "key_as_string": "2021-04-05T00:00:00.000Z",
+          "key": 1617580800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.589166624471545
+          },
+          "s9_min": {
+            "value": -0.8999999761581421
+          },
+          "s9_max": {
+            "value": 11.5
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 4,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 8
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 67.33333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-04-06T00:00:00.000Z",
+          "key": 1617667200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 0.041666666666666664
+          },
+          "s9_min": {
+            "value": -2.700000047683716
+          },
+          "s9_max": {
+            "value": 4.210000038146973
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 5,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 7
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 69.33333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-04-07T00:00:00.000Z",
+          "key": 1617753600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 1.7766666561365128
+          },
+          "s9_min": {
+            "value": -0.8799999952316284
+          },
+          "s9_max": {
+            "value": 5.329999923706055
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 62.0
+          }
+        },
+        {
+          "key_as_string": "2021-04-08T00:00:00.000Z",
+          "key": 1617840000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.058333362142245
+          },
+          "s9_min": {
+            "value": 0.6800000071525574
+          },
+          "s9_max": {
+            "value": 6.070000171661377
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 56.166666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-04-09T00:00:00.000Z",
+          "key": 1617926400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 6.861666671931744
+          },
+          "s9_min": {
+            "value": -1.5700000524520874
+          },
+          "s9_max": {
+            "value": 14.470000267028809
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 48.75
+          }
+        },
+        {
+          "key_as_string": "2021-04-10T00:00:00.000Z",
+          "key": 1618012800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 9.522499918937683
+          },
+          "s9_min": {
+            "value": 4.53000020980835
+          },
+          "s9_max": {
+            "value": 13.979999542236328
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 1,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 11
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 54.416666666666664
+          }
+        },
+        {
+          "key_as_string": "2021-04-11T00:00:00.000Z",
+          "key": 1618099200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 11.455000003178915
+          },
+          "s9_min": {
+            "value": 4.929999828338623
+          },
+          "s9_max": {
+            "value": 17.5
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 12
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 55.0
+          }
+        },
+        {
+          "key_as_string": "2021-04-12T00:00:00.000Z",
+          "key": 1618185600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.9499999980131784
+          },
+          "s9_min": {
+            "value": 1.8799999952316284
+          },
+          "s9_max": {
+            "value": 10.0
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 5,
+            "buckets": [
+              {
+                "key": "Rain",
+                "doc_count": 7
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 83.41666666666667
+          }
+        },
+        {
+          "key_as_string": "2021-04-13T00:00:00.000Z",
+          "key": 1618272000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 4.120000004768372
+          },
+          "s9_min": {
+            "value": 1.7599999904632568
+          },
+          "s9_max": {
+            "value": 6.769999980926514
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 6,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 6
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 65.66666666666667
+          }
+        },
+        {
+          "key_as_string": "2021-04-14T00:00:00.000Z",
+          "key": 1618358400000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.912500043710073
+          },
+          "s9_min": {
+            "value": 1.5700000524520874
+          },
+          "s9_max": {
+            "value": 7.050000190734863
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 4,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 8
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 57.333333333333336
+          }
+        },
+        {
+          "key_as_string": "2021-04-15T00:00:00.000Z",
+          "key": 1618444800000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 2.157499998807907
+          },
+          "s9_min": {
+            "value": 0.3100000023841858
+          },
+          "s9_max": {
+            "value": 4.710000038146973
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 8,
+            "buckets": [
+              {
+                "key": "Clear",
+                "doc_count": 4
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 75.08333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-04-16T00:00:00.000Z",
+          "key": 1618531200000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 2.6849999924500785
+          },
+          "s9_min": {
+            "value": 0.6700000166893005
+          },
+          "s9_max": {
+            "value": 3.9600000381469727
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 4,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 8
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 83.25
+          }
+        },
+        {
+          "key_as_string": "2021-04-17T00:00:00.000Z",
+          "key": 1618617600000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 3.6375000278155007
+          },
+          "s9_min": {
+            "value": 2.240000009536743
+          },
+          "s9_max": {
+            "value": 4.510000228881836
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 2,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 10
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 82.08333333333333
+          }
+        },
+        {
+          "key_as_string": "2021-04-18T00:00:00.000Z",
+          "key": 1618704000000,
+          "doc_count": 12,
+          "s9_avg": {
+            "value": 7.09333336353302
+          },
+          "s9_min": {
+            "value": 3.390000104904175
+          },
+          "s9_max": {
+            "value": 10.739999771118164
+          },
+          "s14": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 1,
+            "buckets": [
+              {
+                "key": "Clouds",
+                "doc_count": 11
+              }
+            ]
+          },
+          "s11_avg": {
+            "value": 76.16666666666667
           }
         }
       ]
