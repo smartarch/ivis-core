@@ -13,7 +13,7 @@ const fs = require('fs-extra-promise');
 const taskHandler = require('../lib/task-handler');
 const files = require('./files');
 const dependencyHelpers = require('../lib/dependency-helpers');
-import {WizardType, getWizard, getWizardsForType} from "../lib/wizards";
+const {getWizard } = require("../lib/wizards");
 
 const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);
@@ -71,10 +71,11 @@ async function create(context, task) {
             enforce(Object.values(subtypesByType[task.type]).includes(task.settings.subtype), `Unknown ${task.type} type's subtype`);
         }
 
-        const wizardData = getWizard(task.type, task.settings.subtype, task.wizard);
-        if (wizardData) {
-            wizardData.wizard(task);
+        const wizard = getWizard(task.type, task.settings.subtype, task.wizard);
+        if (wizard != null) {
+            wizard(task);
         } else {
+            // We might throw error here instead, might be confusing from UX perspective
             task.settings = {
                 ...(task.settings || {}),
                 params: [],

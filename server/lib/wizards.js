@@ -1,29 +1,13 @@
 'use strict';
-import {TaskType, subtypesByType} from "../../shared/tasks";
-
-const WizardType = {
-    BLANK: 'blank',
-    BASIC: 'basic',
-    ENERGY_PLUS: 'energy_plus',
-    MOVING_AVERAGE: 'moving_average',
-    AGGREGATION: 'aggregation',
-    MODEL_COMPARISON: 'model_comparison'
-};
-
-if (Object.freeze) {
-    Object.freeze(WizardType)
-}
+const {TaskType, PythonSubtypes, subtypesByType, WizardType} = require("../../shared/tasks");
 
 // BLANK
-const blank = {
-    label: 'Blank',
-    wizard: (data) => {
-        data.settings = {
-            ...data.settings,
-            params: [],
-            code: ''
-        };
-    }
+function blankFn(data) {
+    data.settings = {
+        ...data.settings,
+        params: [],
+        code: ''
+    };
 };
 
 // BASIC
@@ -151,13 +135,8 @@ ivis.store_state(state)
     };
 }
 
-const apiShowcase = {
-    label: 'Api Showcase',
-    wizard: apiShowcaseFn
-};
 
 // ENERGY_PLUS
-
 function energyPlusFn(data) {
     data.settings = {
         ...data.settings,
@@ -397,14 +376,7 @@ os.close(3)
     };
 }
 
-const energyPlus = {
-    label: 'Energy plus example',
-    wizard: energyPlusFn
-};
-
-
 // MOVING_AVERAGE
-
 function movingAvarageFn(data) {
     data.settings = {
         ...data.settings,
@@ -529,11 +501,6 @@ ivis.store_state(state)
         `
     };
 }
-
-const movingAvarage = {
-    label: 'Moving average example',
-    wizard: movingAvarageFn
-};
 
 // AGGREGATION
 function aggregationFn(data) {
@@ -698,11 +665,6 @@ ivis.store_state(state)
 `
     };
 }
-
-const aggregation = {
-    label: 'Aggregation example',
-    wizard: aggregationFn
-};
 
 // MODEL COMPARISON
 function modelComparisonFn(data) {
@@ -879,46 +841,33 @@ res = es.index(index=state['models_comparison']['index'], doc_type='_doc', id=ts
     };
 }
 
-const modelComparison = {
-    label: 'Model comparison example',
-    wizard: modelComparisonFn
-};
-
-const wizardSpecs = {};
 
 const defaultPythonWizards = {
-    [WizardType.BLANK]: blank,
-    [WizardType.BASIC]: apiShowcase,
-    [WizardType.MOVING_AVERAGE]: movingAvarage,
-    [WizardType.AGGREGATION]: aggregation
+    [WizardType.BLANK]: blankFn,
+    [WizardType.BASIC]: apiShowcaseFn,
+    [WizardType.MOVING_AVERAGE]: movingAvarageFn,
+    [WizardType.AGGREGATION]: aggregationFn
 };
 
-const numpyWizardSpecs = {
-    wizards: {
-        ...defaultPythonWizards,
-        [WizardType.MODEL_COMPARISON]: modelComparison
+const wizardSpecs = {
+    [TaskType.PYTHON]: {
+        wizards: defaultPythonWizards,
+        subtypes: {
+            [PythonSubtypes.ENERGY_PLUS]: {
+                wizards: {
+                    ...defaultPythonWizards,
+                    [WizardType.MODEL_COMPARISON]: modelComparisonFn
+                }
+            },
+            [PythonSubtypes.NUMPY]: {
+                wizards: {
+                    ...defaultPythonWizards,
+                    [WizardType.ENERGY_PLUS]: energyPlusFn
+                }
+            },
+        }
     }
 };
-
-const energyPlusWizardSpecs = {
-    wizards: {
-        ...defaultPythonWizards,
-        [WizardType.ENERGY_PLUS]: energyPlus
-    }
-};
-
-wizardSpecs[TaskType.PYTHON] = {
-    wizards: defaultPythonWizards,
-    subtypes: {
-        [subtypesByType[TaskType.PYTHON].ENERGY_PLUS]: numpyWizardSpecs,
-        [subtypesByType[TaskType.PYTHON].NUMPY]: energyPlusWizardSpecs,
-
-    }
-};
-
-if (Object.freeze) {
-    Object.freeze(wizardSpecs);
-}
 
 function getWizardsForType(taskType, subtype = null) {
     const specsForType = wizardSpecs[taskType];
@@ -927,24 +876,23 @@ function getWizardsForType(taskType, subtype = null) {
         return null;
     }
 
-    if (subtype) {
-        if (!specsForType.subtypes) {
-            return null;
-        }
-
-        return specsForType.subtypes[subtype] ? specsForType.subtypes[subtype].wizards : null;
-    } else {
+    if (!subtype) {
         return specsForType.wizards;
     }
+
+    if (!specsForType.subtypes) {
+        return null;
+    }
+
+    return specsForType.subtypes[subtype] ? specsForType.subtypes[subtype].wizards : null;
 }
 
 function getWizard(taskType, subtype, wizardType) {
     const wizardsForType = getWizardsForType(taskType, subtype);
+
     return wizardsForType ? wizardsForType[wizardType] : null;
 }
 
-export {
-    WizardType,
+module.exports = {
     getWizard,
-    getWizardsForType
 };

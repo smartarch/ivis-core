@@ -193,7 +193,7 @@ export default class CUD extends Component {
                 Object.entries(wizardsForType).forEach((entry) => {
                     wizardOptions.push({
                         key: entry[0],
-                        label: t(entry[1].label)
+                        label: t(entry[1])
                     });
                 });
             }

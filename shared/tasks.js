@@ -44,6 +44,15 @@ function isTransitionState(state) {
     return getTransitionStates().includes(state);
 }
 
+const WizardType = {
+    BLANK: 'blank',
+    BASIC: 'basic',
+    ENERGY_PLUS: 'energy_plus',
+    MOVING_AVERAGE: 'moving_average',
+    AGGREGATION: 'aggregation',
+    MODEL_COMPARISON: 'model_comparison'
+};
+
 module.exports = {
     TaskType,
     subtypesByType,
@@ -54,5 +63,6 @@ module.exports = {
     getFinalStates,
     getTransitionStates,
     isTransitionState,
-    PYTHON_JOB_FILE_NAME
+    PYTHON_JOB_FILE_NAME,
+    WizardType
 };
