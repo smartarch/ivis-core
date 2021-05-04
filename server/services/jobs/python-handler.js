@@ -14,17 +14,19 @@ const IVIS_PCKG_DIR = path.join(__dirname, '..', '..', 'lib', 'tasks', 'python',
 
 const runningProc = new Map();
 
-const defaultPythonLibs = ['elasticsearch'];
+// const defaultPythonLibs = ivisConfig.tasks.python.defaultPythonLibs;
+const defaultPythonLibs = ['elasticsearch', 'requests'];
 const taskSubtypeSpecs = {
-    [defaultSubtypeKey]: {
-        libs: defaultPythonLibs
-    },
     [PythonSubtypes.ENERGY_PLUS]: {
         libs: [...defaultPythonLibs, 'eppy', 'requests']
     },
     [PythonSubtypes.NUMPY]: {
         libs: [...defaultPythonLibs, 'numpy', 'dtw']
-    }
+    },
+    [PythonSubtypes.PANDAS]: {
+        libs: [...defaultPythonLibs, 'pandas']
+    },
+    //...ivisConfig.tasks.python.subtypes
 };
 
 em.invoke('services.task-handler.python-handler.installSubtypeSpecs', taskSubtypeSpecs);
@@ -132,11 +134,11 @@ async function remove(id) {
 }
 
 function getPackages(subtype) {
-    return subtype ? taskSubtypeSpecs[subtype].libs : taskSubtypeSpecs[defaultSubtypeKey].libs;
+    return subtype ? taskSubtypeSpecs[subtype].libs : defaultPythonLibs;
 }
 
 function getCommands(subtype) {
-    return subtype ? taskSubtypeSpecs[subtype].cmds : taskSubtypeSpecs[defaultSubtypeKey].cmds;
+    return subtype ? taskSubtypeSpecs[subtype].cmds : null;
 }
 
 /**
@@ -175,12 +177,15 @@ async function build(config, onSuccess, onFail) {
 async function init(config, onSuccess, onFail) {
     const {id, subtype, code, destDir} = config;
     try {
+
         const packages = getPackages(subtype);
         const commands = getCommands(subtype);
 
         const envDir = path.join(destDir, '..', ENV_NAME);
+        const srcDir = path.join(destDir, '..', 'src');
         const buildDir = path.join(destDir, '..', 'build');
         const envBuildDir = path.join(destDir, '..', 'envbuild');
+
         await fs.emptyDirAsync(buildDir);
         await fs.emptyDirAsync(envBuildDir);
 
@@ -193,7 +198,9 @@ async function init(config, onSuccess, onFail) {
         const cmdsChain = []
         cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envBuildDir}`)
         cmdsChain.push(`source ${virtDir}`)
-        cmdsChain.push(`pip install ${packages.join(' ')} `)
+        if (packages) {
+            cmdsChain.push(`pip install ${packages.join(' ')} `)
+        }
         if (commands) {
             cmdsChain.push(...commands)
         }
@@ -225,27 +232,33 @@ async function init(config, onSuccess, onFail) {
         });
 
         virtEnv.on('exit', async (code, signal) => {
-            if (code === 0) {
-                // TODO this should involve better system for handling stored files / copying them on built to dist dir
-                // for now we'll see what the required functionality will be, so we just keep the old files present
-                const destExists = await fs.existsAsync(destDir);
-                if (destExists) {
-                    const files = await fs.readdirAsync(destDir);
-                    for (const file of files) {
-                        if (file != JOB_FILE_NAME) {
-                            await fs.copyAsync(path.join(destDir, file), path.join(buildDir, file), {overwrite: false});
+            try {
+                if (code === 0) {
+                    // TODO this should involve better system for handling stored files / copying them on built to dist dir
+                    // for now we'll see what the required functionality will be, so we just keep the old files present
+                    const destExists = await fs.existsAsync(destDir);
+                    if (destExists) {
+                        const files = await fs.readdirAsync(destDir);
+                        for (const file of files) {
+                            if (file != JOB_FILE_NAME) {
+                                await fs.copyAsync(path.join(destDir, file), path.join(buildDir, file), {overwrite: false});
+                            }
                         }
                     }
-                }
 
-                await fs.moveAsync(buildDir, destDir, {overwrite: true});
-                await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
-                await onSuccess(null);
-            } else {
-                await onFail(null, [`Init ended with code ${code} and the following error:\n${output}`]);
+                    await fs.ensureDirAsync(destDir)
+                    await fs.ensureDirAsync(envDir)
+                    await fs.moveAsync(buildDir, destDir, {overwrite: true});
+                    await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
+                    await onSuccess(null);
+                } else {
+                    await onFail(null, [`Init ended with code ${code} and the following error:\n${output}`]);
+                }
+                await fs.removeAsync(buildDir);
+                await fs.removeAsync(envBuildDir);
+            } catch (error) {
+                console.error(error);
             }
-            await fs.removeAsync(buildDir);
-            await fs.removeAsync(envBuildDir);
         });
     } catch (error) {
         console.error(error);
