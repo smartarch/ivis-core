@@ -17,6 +17,9 @@ const runningProc = new Map();
 // const defaultPythonLibs = ivisConfig.tasks.python.defaultPythonLibs;
 const defaultPythonLibs = ['elasticsearch', 'requests'];
 const taskSubtypeSpecs = {
+    [defaultSubtypeKey]:{
+        libs: [...defaultPythonLibs]
+    },
     [PythonSubtypes.ENERGY_PLUS]: {
         libs: [...defaultPythonLibs, 'eppy', 'requests']
     },
