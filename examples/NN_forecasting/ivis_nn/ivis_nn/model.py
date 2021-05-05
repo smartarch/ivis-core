@@ -1,41 +1,10 @@
 import tensorflow as tf
+from .models.feedforward import feedforward_model
 
 
 #################################################
 # Create tf.keras.Model based on TrainingParams #
 #################################################
-
-
-def feedforward_model(training_parameters, input_shape, target_shape):
-    """
-    Feedforward neural network.
-
-    Parameters
-    ----------
-    training_parameters : dict, JSON from TrainingParams
-        TODO: expected parameters ("hidden_sizes")
-    input_shape : tuple
-    target_shape : tuple
-
-    Returns
-    -------
-    tf.keras.Model
-    """
-    hidden_sizes = []
-    if "hidden_sizes" in training_parameters:
-        hidden_sizes = training_parameters["hidden_sizes"]
-
-    inputs = tf.keras.layers.Input(shape=input_shape)
-    layer = tf.keras.layers.Flatten()(inputs)
-
-    for size in hidden_sizes:
-        layer = tf.keras.layers.Dense(size)(layer)
-        layer = tf.keras.layers.ReLU()(layer)
-
-    outputs = tf.keras.layers.Dense(tf.math.reduce_prod(target_shape))(layer)
-    outputs = tf.keras.layers.Reshape(target_shape)(outputs)
-
-    return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
 def get_model(training_parameters, input_shape, target_shape):
@@ -64,4 +33,8 @@ def get_model(training_parameters, input_shape, target_shape):
 
 
 def get_optimizer(training_parameters):
-    return tf.keras.optimizers.Adam()  # TODO: learning_rate
+    adam_params = {}
+    if "learning_rate" in training_parameters and isinstance(training_parameters["learning_rate"], float):
+        adam_params["learning_rate"] = training_parameters["learning_rate"]
+
+    return tf.keras.optimizers.Adam(**adam_params)

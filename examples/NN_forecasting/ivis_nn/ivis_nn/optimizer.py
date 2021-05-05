@@ -50,8 +50,8 @@ def get_schema(signals, parameters, aggregated):
     return schema
 
 
-def default_training_params(parameters):
-    training_params = ivis_nn.TrainingParams()
+def default_training_params(parameters, training_params_class=ivis_nn.TrainingParams):
+    training_params = training_params_class()
     aggregated = parameters["timeInterval"]["aggregation"] != ""
 
     training_params.index = get_els_index(parameters)

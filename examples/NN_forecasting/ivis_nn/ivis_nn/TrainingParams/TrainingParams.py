@@ -3,6 +3,7 @@ class TrainingParams:
 
     def __init__(self):
         self.architecture = None     # the architecture of neural network
+        self.learning_rate = 0.001   # learning rate for the training
         self.query = None            # the Elasticsearch query to get the desired data
         self.query_type = None       # type of the ES query ("docs" | "histogram")
         self.index = None            # the Elasticsearch index
@@ -15,14 +16,14 @@ class TrainingParams:
     def __str__(self):
         return \
             "Training parameters" + "\n" + \
-            "Architecture: " + str(self.architecture) + "\n" + \
-            "Query: " + "\n" + \
-            str(self.query) + "\n" + \
-            "Query type: " + str(self.query_type) + \
-            "Index: " + str(self.index) + "\n" + \
-            "Input schema:" + "\n" + \
-            str(self.input_schema) + "\n" + \
-            "Target schema:" + "\n" + \
+            "\nQuery:\n" + \
+            str(self.query) + \
+            "\nQuery type: " + str(self.query_type) + \
+            "\nIndex: " + str(self.index) + \
+            "\nInput schema:\n" + \
+            str(self.input_schema) + \
+            "\nTarget schema:\n" + \
             str(self.target_schema) + \
-            "Split:" + "\n" + \
-            str(self.split)
+            "\nSplit:\n" + \
+            str(self.split) + \
+            "\n\nArchitecture: " + str(self.architecture)
