@@ -37,34 +37,27 @@ def run_training(training_parameters, data, model_save_path):
     }
     train, val, test = ivis_nn.pre.make_datasets(columns, train_df, val_df, test_df, window_params)
 
-    # example_window = tf.convert_to_tensor([
-    #     [[11, 12, 13], [14, 15, 16], [17, 18, 19], [20, 21, 22]],
-    #     [[21, 22, 23], [24, 25, 26], [27, 28, 29], [30, 31, 32]]
-    # ])
-    # i, t = w.split_window(example_window)
-    # print(i)
+    # example = list(train.as_numpy_iterator())
+    # for ex in example:
+    #     print(ex[0])
+    #     print(ex[1])
 
-    example = list(train.as_numpy_iterator())
-    for ex in example:
-        print(ex[0])
-        print(ex[1])
+    input_shape = (window_params["input_width"], len(columns[0]))
+    target_shape = (window_params["target_width"], len(columns[1]))
 
-    # train, val, test = create_datasets(training_parameters, X, Y)
+    # sample neural network model
+    model = ivis_nn.model.get_model(training_parameters, input_shape, target_shape)
+    model.compile(
+        optimizer=ivis_nn.model.get_optimizer(training_parameters),
+        loss=tf.losses.mse
+    )
+    model.summary()
 
-    # print(train)
-    # print(list(train.as_numpy_iterator()))
-    # print(val)
-    # print(list(val.as_numpy_iterator()))
-
-    # # sample neural network model
-    # inputs = tf.keras.layers.Input(shape=[3, 1])
-    # layer = tf.keras.layers.LSTM(1, return_sequences=True)(inputs)
-    # model = tf.keras.Model(inputs=inputs, outputs=layer)
-
-    # model.compile(optimizer=tf.optimizers.Adam(), loss=tf.losses.mse)
-    # model.summary()
-    # metrics_history = model.fit([[[1], [2], [3]]], [[[2], [3], [4]]])
-    # print(metrics_history.history)
+    fit_params = {
+        "epochs": 1  # TODO
+    }
+    metrics_history = model.fit(train, **fit_params)
+    print(metrics_history.history)
 
     # # save the model
     # model.save(model_save_path)

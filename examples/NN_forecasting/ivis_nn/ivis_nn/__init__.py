@@ -1,13 +1,14 @@
-from . import elasticsearch
+# The elasticsearch submodule can be used without TensorFlow.
 from .TrainingParams import TrainingParams
-
+from . import elasticsearch
 es = elasticsearch
 
-# The preprocessing module requires tensorflow,
-# but the other parts of the library should be
-# usable without it.
+# The rest of the modules require TensorFlow.
+# We don't want the import to result in an
+# exception if TensorFlow is not installed.
 try:
     from . import preprocessing
     pre = preprocessing
+    from . import model
 finally:
     pass

@@ -1,5 +1,5 @@
 {
-  "architecture": "LSTM",
+  "architecture": "feedforward",
   "query": {
     "size": 0,
     "aggs": {
