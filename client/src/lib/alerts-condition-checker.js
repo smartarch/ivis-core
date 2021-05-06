@@ -4,6 +4,7 @@ import { evaluate } from "mathjs";
 import axios from "./axios";
 import { getUrl } from "./urls";
 import { SignalType } from "../../../shared/signals";
+import stats from "../../../shared/alerts-stats";
 
 export default function checkCondition(condition, sigSetId){
     if (!sigSetId) return "You should fill in a signal set first!";
@@ -29,37 +30,33 @@ let scope;
 async function setupScope(sigSetId){
     sigSet = sigSetId;
     const result = await axios.get(getUrl(`rest/signals-simple-table/${sigSetId}`));
+
     scope = {};
-    result.data.forEach(item => scope['$' + item.cid] = getValueOfType(item.type));
-    scope['$id'] = 'text';
-    scope.past = (cid, distance) => { checkNotNegInt(distance); return getValueByCid(result.data, cid); };
-    scope.avg = (cid, length) => { checkPositiveInt(length); checkNumericSignal(result.data, cid); return getValueByCid(result.data, cid); };
-    scope.var = (cid, length) => scope.avg(cid, length);
-    scope.min = (cid, length) => { checkPositiveInt(length); return getValueByCid(result.data, cid); }
-    scope.max = (cid, length) => scope.min(cid, length);
-    scope.qnt = (cid, length, q) => { checkPositiveInt(length); if (typeof q !== 'number' || q > 1 || q < 0)
-    throw new Error('Quantile q should be a number from 0 to 1!'); return getValueByCid(result.data, cid); };
-}
+    let recordMock = {};
+    result.data.forEach(item => {
+        let tmp = getValueOfType(item.type);
+        scope['$' + item.cid] = tmp;
+        recordMock[item.cid] = tmp;
+    });
+    scope['$id'] = '9';
+    recordMock['id'] = '9';
 
-function checkNotNegInt(x){
-    if (!Number.isInteger(x) || x < 0) throw new Error('The argument should be a not negative integer!');
-}
+    let arr = [recordMock];
+    scope.past = (cid, distance) => stats.past(arr, cid, distance);
+    scope.avg = (cid, length) => stats.avg(arr, cid, length);
+    scope.vari = (cid, length) => stats.vari(arr, cid, length);
+    scope.min = (cid, length) => stats.min(arr, cid, length);
+    scope.max = (cid, length) => stats.max(arr, cid, length);
+    scope.qnt = (cid, length, q) => stats.qnt(arr, cid, length, q);
 
-function checkPositiveInt(x){
-    if (!Number.isInteger(x) || x <= 0) throw new Error('The argument should be a positive integer!');
-}
-
-function checkNumericSignal(list, cid){
-    if (typeof getValueByCid(list, cid) !== 'number') throw new Error('The signal is not numeric!');
-}
-
-function getValueByCid(list, cid){
-    for (let i = 0; i < list.length; i++) if (list[i].cid === cid) return getValueOfType(list[i].type);
-    throw new Error('The signal id passed to the function is invalid!');
+    console.log(result);
+    console.log(scope);
+    console.log(arr);
 }
 
 function getValueOfType(type){
-    if (type === SignalType.KEYWORD || type === SignalType.TEXT || type === SignalType.DATE_TIME) return 'text';
-    else if (type === SignalType.BOOLEAN) return true;
-    else return 1;
+    if (type === SignalType.KEYWORD || type === SignalType.TEXT) return 'text';
+    if (type === SignalType.DATE_TIME) return '2021-05-06T14:28:56.000Z';
+    if (type === SignalType.BOOLEAN) return true;
+    return 1;
 }

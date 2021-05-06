@@ -110,8 +110,8 @@ test('avg function on regular signal set #3', async () => {
     expect(result).toBe('Argument in avg function is not a number!');
 });
 
-test('var function on regular signal set', async () => {
-    const result = await evaluate('var("siga", 4) == 79361.1675', 1);
+test('vari function on regular signal set', async () => {
+    const result = await evaluate('vari("siga", 4) == 79361.1675', 1);
     expect(result).toBe(true);
 });
 
@@ -200,8 +200,8 @@ test('avg function on sparse signal set', async () => {
     expect(result).toBe(true);
 });
 
-test('var function on sparse signal set', async () => {
-    const result = await evaluate('var("siga", 5) == 101858.48', 2);
+test('vari function on sparse signal set', async () => {
+    const result = await evaluate('vari("siga", 5) == 101858.48', 2);
     expect(result).toBe(true);
 });
 
@@ -255,8 +255,14 @@ test('qnt function on sparse signal set #2', async () => {
     expect(result).toBe(true);
 });
 
-test('complicated formula', async () => {
+test('complicated formula #1', async () => {
     const formula = 'a = $siga - 23;\nb = $sigb\nf(x, y) = 3 * x^2 + y + 5;\npast("sigc", 3) ? c = "neco" : c = "ahoj";\nf(a, 6) == 30011 and (not equalText(b, c))';
     const result = await evaluate(formula, 1);
     expect(result).toBe(true);
+});
+
+test('complicated formula #2', async () => {
+    const formula = 'a = $siga - 23;\nb = $sigb\nf(x, y) = 3 * x^2 + y + 5;\npast("sigc", 3) ? c = "neco" : c = "ahoj";\nf(a, 6) == 30011 and (not equalText(b, c))\n1 + 2';
+    const result = await evaluate(formula, 1);
+    expect(result).toBe('NotBoolError');
 });
