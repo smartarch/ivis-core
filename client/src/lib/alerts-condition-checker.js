@@ -48,10 +48,6 @@ async function setupScope(sigSetId){
     scope.min = (cid, length) => stats.min(arr, cid, length);
     scope.max = (cid, length) => stats.max(arr, cid, length);
     scope.qnt = (cid, length, q) => stats.qnt(arr, cid, length, q);
-
-    console.log(result);
-    console.log(scope);
-    console.log(arr);
 }
 
 function getValueOfType(type){
