@@ -47,6 +47,11 @@ def run_training(training_parameters, data, model_save_path):
 
     # sample neural network model
     model = ivis_nn.model.get_model(training_parameters, input_shape, target_shape)
+
+    # add residual connection - predict the difference
+    targets_to_inputs_mapping = ivis_nn.model.get_targets_to_inputs_mapping(*columns)
+    model = ivis_nn.model.wrap_with_residual_connection(model, targets_to_inputs_mapping)
+
     model.compile(
         optimizer=ivis_nn.model.get_optimizer(training_parameters),
         loss=tf.losses.mse
@@ -54,7 +59,7 @@ def run_training(training_parameters, data, model_save_path):
     model.summary()
 
     fit_params = {
-        "epochs": 1  # TODO
+        "epochs": 3  # TODO
     }
     metrics_history = model.fit(train, **fit_params)
     print(metrics_history.history)

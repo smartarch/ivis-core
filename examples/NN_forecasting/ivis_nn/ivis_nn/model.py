@@ -1,5 +1,6 @@
 import tensorflow as tf
 from .models.feedforward import feedforward_model
+from .models.residual_wrapper import *
 
 
 #################################################
