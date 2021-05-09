@@ -4,12 +4,13 @@ const knex = require('../lib/knex');
 const dtHelpers = require('../lib/dt-helpers');
 const { enforce, filterObject } = require('../lib/helpers');
 const shares = require('./shares');
-const { allowedKeysCreate: allowedSignalSetKeysCreate } = require('../lib/signal-set-helpers');
+const { allowedKeysCreate: allowedSignalSetKeysCreate, getSignalSetEntitySpec } = require('../lib/signal-set-helpers');
 const { allowedKeysCreate: allowedSignalKeysCreate } = require('../lib/signal-helpers');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const { SignalSetType, SignalSetKind } = require('../../shared/signal-sets');
 const { SignalSource } = require('../../shared/signals');
 const createSigSet = require('./signal-sets').createTx;
+const signalSets = require('./signal-sets');
 const createSignal = require('./signals').createTx;
 const { PredictionTypes } = require('../../shared/predictions');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -341,6 +342,28 @@ async function registerPredictionModelJobTx(tx, context, modelId, jobId) {
     await rebuildOuputOwnership(tx, context, modelId);
 }
 
+async function getPredictedSignals(context, modelId) {
+    return await knex.transaction(async tx => {
+        return await _getOutputSignals(tx, context, modelId);
+    });
+}
+
+async function getPredictedSignalsMain(context, modelId) {
+
+}
+
+async function getPredictedSignalsExtra(context, modelId) {
+
+}
+
+async function getSourceSignals(context, modelId) {
+    const signals = [];
+    const prediction = await getById(context, modelId);
+    const set = await signalSets.getById(prediction.set);
+
+    return signals;
+}
+
 module.exports.getById = getById;
 module.exports.removeById = removeById;
 module.exports.registerPredictionModelTx = registerPredictionModelTx;
@@ -348,4 +371,6 @@ module.exports.registerPredictionModelJobTx = registerPredictionModelJobTx;
 module.exports.update = update;
 module.exports.getOutputConfigTx = getOutputConfigTx;
 module.exports.getOutputConfig = getOutputConfig;
+module.exports.getPredictedSignals = getPredictedSignals;
+module.exports.getSourceSignals = getSourceSignals;
 module.exports.listDTAjax = listDTAjax;

@@ -114,6 +114,11 @@ router.getAsync('/predictions/:modelId', passport.loggedIn, async (req, res) => 
     return res.json(predictionModel);
 });
 
+router.getAsync('/predictions-output-config/:predictionId', passport.loggedIn, async (req, res) => {
+    const outputConfig = await signalSetsPredictions.getOutputConfig(req.context, castToInteger(req.params.predictionId));
+    return res.json(outputConfig);
+});
+
 router.postAsync('/signal-sets', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     return res.json(await signalSets.create(req.context, req.body));
 });
