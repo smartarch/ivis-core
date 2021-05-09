@@ -69,13 +69,18 @@ async function createArimaModelTx(tx, context, sigSetId, params) {
         namespace: namespace
     };
 
+    console.log(`params.source: ${JSON.stringify(params.source, null, 4)}`);
+    const signal = await tx('signals').where('namespace', namespace).where('cid', params.source).first();
+    console.log(`signal: ${JSON.stringify(signal, null, 4)}`);
+
     const outSignals = [
         {
-            cid: "predicted_value",
-            name: "Predicted Value",
-            namespace: 1,
-            type: "double",
-            indexed: false,
+            cid: signal.cid,
+            name: signal.name,
+            description: signal.description,
+            namespace: namespace,
+            type: signal.type,
+            indexed: signal.indexed,
             weight_list: 0
         }
     ]

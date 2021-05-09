@@ -502,9 +502,16 @@ const getStructure = t => {
                                                     },
                                                     ':modelId([0-9]+)': {
                                                         title: t('ARIMA model overview'),
-                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima`,
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}`,
+                                                        resolve: {
+                                                            prediction: params => `rest/predictions/${params.modelId}`
+                                                        },
                                                         // visible: resolved => false && resolved, // isn't really shown anywhere
-                                                        panelRender: props => <ArimaOverview signalSet={props.resolved.signalSet} action="create" />,
+                                                        panelRender: props => <ArimaOverview
+                                                            signalSet={props.resolved.signalSet}
+                                                            predictionId={props.match.params.modelId}
+                                                            prediction={props.resolved.prediction}
+                                                            action="create" />,
                                                     }
                                                 }
                                             },

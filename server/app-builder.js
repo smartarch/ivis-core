@@ -26,6 +26,7 @@ const panelsRest = require('./routes/rest/panels');
 const filesRest = require('./routes/rest/files');
 const embedRest = require('./routes/rest/embed');
 const settingsRest = require('./routes/rest/settings');
+const predictionsRest = require('./routes/rest/predictions');
 
 const jobsSse = require('./routes/sse/jobs');
 
@@ -192,6 +193,7 @@ function createApp(type) {
         app.use('/rest', filesRest);
         app.use('/rest', panelsRest);
         app.use('/rest', settingsRest);
+        app.use('/rest', predictionsRest);
 
 
         app.use('/sse', jobsSse);
