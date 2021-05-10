@@ -29,6 +29,7 @@ def get_time_interval_filter(parameters):
 def get_docs_query(parameters):
     """
     Creates a query for ES to return the docs (in their original form).
+    Note: The results are sorted in reversed order (from latest to oldest).
 
     Parameters
     ----------
@@ -37,6 +38,7 @@ def get_docs_query(parameters):
          - "entities": `ivis.entities`
          - "inputSignals", "targetSignals": `list`s of `dict`s with
             - "cid": signal cid
+         - "size" (optional): `int`, if specified, the number of returned docs is `size` and they are the latest docs available
 
     Returns
     -------
@@ -46,11 +48,12 @@ def get_docs_query(parameters):
     signals = parameters["inputSignals"] + parameters["targetSignals"]
     cid_to_field, sig_to_field = get_signal_helpers(parameters)
     ts_field = cid_to_field(parameters["tsSigCid"])
+    size = parameters["size"] if "size" in parameters else 10000
 
     return {
-        'size': 10000,
+        'size': size,
         '_source': list(map(sig_to_field, signals)),
-        'sort': [{ts_field: 'asc'}],
+        'sort': [{ts_field: 'desc'}],
         'query': get_time_interval_filter(parameters)
     }
 
@@ -175,11 +178,11 @@ def parse_docs(training_parameters, data):
     ----------
     training_parameters : dict
     data : dict
-        JSON response from Elasticsearch parsed to dict
+        JSON response from Elasticsearch parsed to dict. It is expected that the Elasticsearch query was produced by `get_docs_query` and the data are thus ordered from the latest to the oldest.
 
     Returns
     -------
-    (pd.DataFrame, pd.DataFrame)
+    pd.DataFrame
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES).
     """
     docs = _get_hits(data)
@@ -192,6 +195,7 @@ def parse_docs(training_parameters, data):
         dataframe[sig] = sig_values
     dataframe["ts"] = _parse_signal_values_from_sort(docs)
 
+    dataframe = dataframe[::-1]  # reverse -> the rows are now ordered from the oldest to the latest
     dataframe.set_index("ts", inplace=True)
     return dataframe
 
