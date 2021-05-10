@@ -1,5 +1,6 @@
 {
   "architecture": "feedforward",
+  "learning_rate": 0.001,
   "query": {
     "size": 0,
     "aggs": {
@@ -7,9 +8,24 @@
         "date_histogram": {
           "field": "s8",
           "interval": "1d",
-          "min_doc_count": 1
+          "min_doc_count": 1,
+          "order": {
+            "_key": "desc"
+          }
         },
         "aggs": {
+          "size": {
+            "bucket_sort": {
+              "size": 50
+            }
+          },
+          "sort": {
+            "bucket_sort": {
+              "sort": {
+                "_key": "asc"
+              }
+            }
+          },
           "s9_min": {
             "min": {
               "field": "s9"
@@ -50,42 +66,65 @@
   },
   "query_type": "histogram",
   "index": "signal_set_2",
-  "input_schema": {
-    "s9_min": {
+  "input_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "aggregation": "min",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     },
-    "s9_avg": {
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "aggregation": "avg",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     },
-    "s9_max": {
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "aggregation": "max",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     },
-    "s11_avg": {
+    {
+      "cid": "humidity",
+      "data_type": "numerical",
+      "aggregation": "avg",
       "type": "integer",
-      "data_type": "numerical"
+      "field": "s11"
     },
-    "s14": {
+    {
+      "cid": "status",
+      "data_type": "categorical",
       "type": "keyword",
-      "data_type": "categorical"
+      "field": "s14"
     }
-  },
-  "target_schema": {
-    "s9_min": {
+  ],
+  "target_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "aggregation": "min",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     },
-    "s9_avg": {
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "aggregation": "avg",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     },
-    "s9_max": {
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "aggregation": "max",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     }
-  },
+  ],
   "split": {
     "train": 0.7,
     "val": 0,

@@ -1,70 +1,76 @@
 """Code for optimizer"""
+from ivis import ivis
 import ivis_nn
-from ivis_nn.common import get_entities_signals, interval_string_to_milliseconds
+from ivis_nn.common import interval_string_to_milliseconds, get_ts_field, get_entities_signals
 from ivis_nn import es
 
 
-def prepare_signal_parameters(parameters):
-    """Prepare the automatic values of numerical/categorical data types for all signals in input and target."""
-    entities_signals = get_entities_signals(parameters)
+def prepare_signal_parameters(signals, entities_signals, aggregated):
+    """
+    Go through the `inputSignals` and `targetSignals` and preprocess the signal properties for later use. Modifies the `signals` array.
+    - Determine the automatic values of numerical/categorical data types for all signals in input and target.
+    - Parse float values (min, max, ...).
+    - Add field and type from entity information.
+    """
 
-    for sig_params in parameters["inputSignals"] + parameters["targetSignals"]:
-        signal = entities_signals[sig_params["cid"]]
+    for signal in signals:
+        entity = entities_signals[signal["cid"]]
 
-        if sig_params["data_type"] == "auto":
-            if signal["type"] in ["keyword", "boolean"]:
-                sig_params["data_type"] = "categorical"
-            elif signal["type"] in ["integer", "long", "float", "double"]:
-                sig_params["data_type"] = "numerical"
+        if signal["data_type"] == "auto":
+            if entity["type"] in ["keyword", "boolean"]:
+                signal["data_type"] = "categorical"
+            elif entity["type"] in ["integer", "long", "float", "double"]:
+                signal["data_type"] = "numerical"
             else:
-                raise TypeError("Unsupported signal type: " + signal["type"])
-    return parameters
+                raise TypeError("Unsupported signal type: " + entity["type"])
+
+        signal["type"] = entity["type"]
+        signal["field"] = entity["field"]
+
+        if "min" in signal:
+            if signal["min"] != "":
+                signal["min"] = float(signal["min"])
+            else:
+                del signal["min"]
+        if "max" in signal:
+            if signal["max"] != "":
+                signal["max"] = float(signal["max"])
+            else:
+                del signal["max"]
+
+        if not aggregated or signal["data_type"] != "numerical":
+            del signal["aggregation"]
 
 
 def get_els_index(parameters):
     sig_set_cid = parameters["signalSet"]
-    return parameters["entities"]["signalSets"][sig_set_cid]["index"]
-
-
-def get_schema(signals, parameters, aggregated):
-    """Convert the signals from parameters to schema for preprocessing in training."""
-    entities_signals = get_entities_signals(parameters)
-    schema = dict()
-    for sig_params in signals:
-        signal = entities_signals[sig_params["cid"]]
-
-        properties = {
-            "type": signal["type"],
-            "data_type": sig_params["data_type"]
-        }
-
-        if "min" in sig_params and sig_params["min"] != "":
-            properties["min"] = float(sig_params["min"])
-        if "max" in sig_params and sig_params["max"] != "":
-            properties["max"] = float(sig_params["max"])
-
-        if aggregated and sig_params["data_type"] == "numerical":
-            schema[f'{signal["field"]}_{sig_params["aggregation"]}'] = properties
-        else:
-            schema[signal["field"]] = properties
-    return schema
+    return ivis.entities["signalSets"][sig_set_cid]["index"]
 
 
 def default_training_params(parameters, training_params_class=ivis_nn.TrainingParams):
     training_params = training_params_class()
     aggregated = parameters["timeInterval"]["aggregation"] != ""
 
+    entities_signals = get_entities_signals(parameters)
+    prepare_signal_parameters(parameters["inputSignals"], entities_signals, aggregated)
+    prepare_signal_parameters(parameters["targetSignals"], entities_signals, aggregated)
+
     training_params.index = get_els_index(parameters)
-    training_params.input_schema = get_schema(parameters["inputSignals"], parameters, aggregated)
-    training_params.target_schema = get_schema(parameters["targetSignals"], parameters, aggregated)
+    training_params.input_signals = parameters["inputSignals"]
+    training_params.target_signals = parameters["targetSignals"]
+
+    signals = parameters["inputSignals"] + parameters["targetSignals"]
+    ts_field = get_ts_field(parameters)
+    time_interval = parameters["timeInterval"]
+    size = parameters["size"]
 
     if aggregated:
+        aggregation_interval = parameters["timeInterval"]["aggregation"]
+        training_params.interval = interval_string_to_milliseconds(aggregation_interval)
         training_params.query_type = "histogram"
-        training_params.query = es.get_histogram_query(parameters)
+        training_params.query = es.get_histogram_query(signals, ts_field, aggregation_interval, time_interval, size)
     else:
         training_params.query_type = "docs"
-        training_params.query = es.get_docs_query(parameters)
-
-    training_params.interval = interval_string_to_milliseconds(parameters["timeInterval"]["aggregation"]) if aggregated else None
+        training_params.query = es.get_docs_query(signals, ts_field, time_interval, size)
 
     return training_params

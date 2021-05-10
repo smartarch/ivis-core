@@ -8,16 +8,13 @@ from .common import *
 # Queries #
 ###########
 
-def get_time_interval_filter(parameters):
-    time_interval = parameters['timeInterval']
+
+def get_time_interval_filter(ts_field, time_interval):
     time_range = dict()
     if time_interval["start"] != "":
         time_range["gte"] = time_interval["start"]
     if time_interval["end"] != "":
         time_range["lte"] = time_interval["end"]
-
-    cid_to_field, _ = get_signal_helpers(parameters)
-    ts_field = cid_to_field(parameters["tsSigCid"])
 
     return {
         "range": {
@@ -26,64 +23,74 @@ def get_time_interval_filter(parameters):
     }
 
 
-def get_docs_query(parameters):
+def get_docs_query(signals, ts_field, time_interval=None, size=10000):
     """
     Creates a query for ES to return the docs (in their original form).
     Note: The results are sorted in reversed order (from latest to oldest).
 
     Parameters
     ----------
-    parameters : dict
-        Parameters for query creation. Expected keys:
-         - "entities": `ivis.entities`
-         - "inputSignals", "targetSignals": `list`s of `dict`s with
-            - "cid": signal cid
-         - "size" (optional): `int`, if specified, the number of returned docs is `size` and they are the latest docs available
+    signals : list[dict]
+        Signal parameters for query creation. Expected keys:
+         - "field" - the ES field for the signal
+    ts_field : string
+        ES field for timestamp signal
+    time_interval : dict
+        Dict with "start" and "end" keys which are ISO date strings.
+    size : int
+        Max number of returned docs. The latest docs are returned.
 
     Returns
     -------
     dict
         The generated ES query.
     """
-    signals = parameters["inputSignals"] + parameters["targetSignals"]
-    cid_to_field, sig_to_field = get_signal_helpers(parameters)
-    ts_field = cid_to_field(parameters["tsSigCid"])
-    size = parameters["size"] if "size" in parameters else 10000
+    if time_interval is None:
+        time_interval = {"start": "", "end": ""}
+
+    def sig_to_field(sig):
+        return sig["field"]
 
     return {
         'size': size,
         '_source': list(map(sig_to_field, signals)),
         'sort': [{ts_field: 'desc'}],
-        'query': get_time_interval_filter(parameters)
+        'query': get_time_interval_filter(ts_field, time_interval)
     }
 
 
-def get_histogram_query(parameters):
+def get_histogram_query(signals, ts_field, aggregation_interval, time_interval=None, size=10000):
     """
     Creates a query for ES to return a date histogram aggregation.
 
     Parameters
     ----------
-    parameters : dict
-        Parameters for query creation. Expected keys:
-         - "entities": `ivis.entities`
-         - "inputSignals", "targetSignals": `list`s of `dict`s with
-            - "cid": signal cid
-            - "data_type": "numerical" or "categorical"
-            - "aggregation": aggregation for Elasticsearch ("min", "max", "avg", ...)
+    signals : list[dict]
+        Signal parameters for query creation. Expected keys:
+         - "field" - the ES field for the signal
+         - "data_type": "numerical" or "categorical"
+         - "aggregation": aggregation for Elasticsearch ("min", "max", "avg", ...)
+    ts_field : string
+        ES field for timestamp signal
+    aggregation_interval : string
+        The interval for the ES date histogram aggregation. Format is number + unit (e.g. "1d").
+    time_interval : dict
+        Dict with "start" and "end" keys which are ISO date strings.
+    size : int
+        Max number of returned docs. The latest docs are returned.
+
 
     Returns
     -------
     dict
         The generated ES query.
     """
-    signals = parameters["inputSignals"] + parameters["targetSignals"]
-    cid_to_field, sig_to_field = get_signal_helpers(parameters)
-    ts_field = cid_to_field(parameters["tsSigCid"])
+    if time_interval is None:
+        time_interval = {"start": "", "end": ""}
 
     signal_aggs = dict()
     for sig in signals:
-        field = sig_to_field(sig)
+        field = sig["field"]
 
         if sig["data_type"] == 'categorical':
             signal_aggs[field] = {
@@ -98,9 +105,6 @@ def get_histogram_query(parameters):
                     "field": field
                 }
             }
-
-    aggregation_interval = parameters["timeInterval"]["aggregation"]
-    size = parameters["size"] if "size" in parameters else 10000
 
     return {
         "size": 0,
@@ -127,7 +131,7 @@ def get_histogram_query(parameters):
                 }
             }
         },
-        "query": get_time_interval_filter(parameters)
+        "query": get_time_interval_filter(ts_field, time_interval)
     }
 
 
@@ -136,8 +140,10 @@ def get_histogram_query(parameters):
 ###########
 
 
-def _parse_signal_values_from_docs(field, docs, data_type):
+def _parse_signal_values_from_docs(signal, docs):
     """Returns the values of one signal as np array (vector)"""
+    field = signal["field"]
+    data_type = signal["data_type"]
     values = []
     for d in docs:
         values.append(d["_source"][field])
@@ -153,18 +159,28 @@ def _parse_signal_values_from_sort(docs):
     return np.array(values)
 
 
-def _parse_signal_values_from_buckets(field, sig_props, buckets):
+def _get_aggregated_field(signal):
+    if "aggregation" in signal:
+        return f'{signal["field"]}_{signal["aggregation"]}'
+    else:
+        return signal["field"]
+
+
+def _parse_signal_values_from_buckets(signal, buckets):
     """Returns the values of one signal as np array (vector)"""
+    field = _get_aggregated_field(signal)
+    data_type = signal["data_type"]
+
     values = []
     for b in buckets:
-        if sig_props["data_type"] == 'categorical':
+        if data_type == 'categorical':
             val = b[field]["buckets"][0]["key"]
         else:
             val = b[field]["value"]
 
         values.append(val)
     return np.array(values,
-                    dtype=np.float32 if sig_props["data_type"] == "numerical" else np.str)
+                    dtype=np.float32 if data_type == "numerical" else np.str)
 
 
 def _parse_signal_values_from_buckets_key(buckets):
@@ -183,13 +199,16 @@ def _get_buckets(data):
     return data["aggregations"]["aggregated_data"]["buckets"]
 
 
-def parse_docs(training_parameters, data):
+def parse_docs(signals, data):
     """
     Parse the docs data from Elasticsearch.
 
     Parameters
     ----------
-    training_parameters : dict
+    signals : list[dict]
+        Signal parameters (same as used for query creation). Expected keys:
+         - "field" - the ES field for the signal
+         - "data_type": "numerical" or "categorical"
     data : dict
         JSON response from Elasticsearch parsed to dict. It is expected that the Elasticsearch query was produced by `get_docs_query` and the data are thus ordered from the latest to the oldest.
 
@@ -199,13 +218,12 @@ def parse_docs(training_parameters, data):
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES).
     """
     docs = _get_hits(data)
-    schema = get_merged_schema(training_parameters)
 
     dataframe = pd.DataFrame()
 
-    for sig in schema:
-        sig_values = _parse_signal_values_from_docs(sig, docs, schema[sig]["data_type"])
-        dataframe[sig] = sig_values
+    for sig in signals:
+        sig_values = _parse_signal_values_from_docs(sig, docs)
+        dataframe[sig["field"]] = sig_values
     dataframe["ts"] = _parse_signal_values_from_sort(docs)
 
     dataframe = dataframe[::-1]  # reverse -> the rows are now ordered from the oldest to the latest
@@ -213,13 +231,17 @@ def parse_docs(training_parameters, data):
     return dataframe
 
 
-def parse_histogram(training_parameters, data):
+def parse_histogram(signals, data):
     """
     Parse the date histogram data from Elasticsearch.
 
     Parameters
     ----------
-    training_parameters : dict
+    signals : list[dict]
+        Signal parameters for query creation. Expected keys:
+         - "field" - the ES field for the signal
+         - "data_type": "numerical" or "categorical"
+         - "aggregation": aggregation for Elasticsearch ("min", "max", "avg", ...)
     data : dict
         JSON response from Elasticsearch parsed to dict
 
@@ -229,13 +251,12 @@ def parse_histogram(training_parameters, data):
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (buckets from ES).
     """
     buckets = _get_buckets(data)
-    schema = get_merged_schema(training_parameters)
 
     dataframe = pd.DataFrame()
 
-    for sig in schema:
-        sig_values = _parse_signal_values_from_buckets(sig, schema[sig], buckets)
-        dataframe[sig] = sig_values
+    for sig in signals:
+        sig_values = _parse_signal_values_from_buckets(sig, buckets)
+        dataframe[_get_aggregated_field(sig)] = sig_values
     dataframe["ts"] = _parse_signal_values_from_buckets_key(buckets)
 
     dataframe.set_index("ts", inplace=True)
@@ -243,9 +264,10 @@ def parse_histogram(training_parameters, data):
 
 
 def parse_data(training_parameters, data):
+    signals = training_parameters["input_signals"] + training_parameters["target_signals"]
     if training_parameters["query_type"] == "docs":
-        return parse_docs(training_parameters, data)
+        return parse_docs(signals, data)
     elif training_parameters["query_type"] == "histogram":
-        return parse_histogram(training_parameters, data)
+        return parse_histogram(signals, data)
     else:
         raise Exception("Unknown query type")

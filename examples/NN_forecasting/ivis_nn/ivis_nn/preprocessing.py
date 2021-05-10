@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from ivis_nn.elasticsearch import _get_aggregated_field
 
 from .common import *
 
@@ -54,9 +55,11 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
         normalization coefficients for the features (should be saved)
         columns = tuple of two lists of column names for the input and target schema
     """
-    input_schema = training_parameters["input_schema"]
-    target_schema = training_parameters["target_schema"]
-    schema = get_merged_schema(training_parameters)
+    input_schema = {_get_aggregated_field(sig): sig for sig in training_parameters["input_signals"]}
+    target_schema = {_get_aggregated_field(sig): sig for sig in training_parameters["target_signals"]}
+    schema = dict(input_schema)
+    schema.update(target_schema)
+
     input_columns = []
     target_columns = []
     normalization_coefficients = {}

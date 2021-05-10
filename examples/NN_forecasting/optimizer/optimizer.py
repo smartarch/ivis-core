@@ -24,10 +24,9 @@ def run_optimizer(parameters, run_training_callback, finish_training_callback, l
     """
 
     # prepare the parameters
-    parameters = opt.prepare_signal_parameters(parameters)
     training_params = opt.default_training_params(parameters)
 
-    training_params.architecture = "LSTM"
+    training_params.architecture = "feedforward"
     training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
     # print(training_params)

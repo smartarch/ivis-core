@@ -1,7 +1,8 @@
 {
-  "architecture": "LSTM",
+  "architecture": "feedforward",
+  "learning_rate": 0.001,
   "query": {
-    "size": 10000,
+    "size": 200,
     "_source": [
       "s9",
       "s9",
@@ -14,7 +15,7 @@
     ],
     "sort": [
       {
-        "s8": "asc"
+        "s8": "desc"
       }
     ],
     "query": {
@@ -28,26 +29,58 @@
   },
   "query_type": "docs",
   "index": "signal_set_2",
-  "input_schema": {
-    "s9": {
+  "input_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
     },
-    "s11": {
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "humidity",
+      "data_type": "numerical",
       "type": "integer",
-      "data_type": "numerical"
+      "field": "s11"
     },
-    "s14": {
+    {
+      "cid": "status",
+      "data_type": "categorical",
       "type": "keyword",
-      "data_type": "categorical"
+      "field": "s14"
     }
-  },
-  "target_schema": {
-    "s9": {
+  ],
+  "target_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
       "type": "float",
-      "data_type": "numerical"
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
     }
-  },
+  ],
   "split": {
     "train": 0.7,
     "val": 0,

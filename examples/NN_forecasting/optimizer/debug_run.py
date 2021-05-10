@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-from optimizer import *
 import json
+from ivis import ivis
+# mock IVIS
+with open('example_entities.json') as entities_file:
+    ivis.entities = json.load(entities_file)
+
+from optimizer import *
+import sys
 
 
 def run_training(training_params):
@@ -20,6 +26,10 @@ def print_log(message):
 
 
 if __name__ == "__main__":
-    with open('example_params.json') as params_file:
-        params = json.load(params_file)
+    if len(sys.argv) < 2 or sys.argv[1] != "docs":
+        with open('example_params.json') as params_file:
+            params = json.load(params_file)
+    else:
+        with open('example_params_docs.json') as params_file:
+            params = json.load(params_file)
     run_optimizer(params, run_training, finish_training, print_log)

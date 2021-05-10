@@ -1,0 +1,43 @@
+{
+  "signalSets": {
+    "top:weather_prague": {
+      "id": 2,
+      "cid": "top:weather_prague",
+      "index": "signal_set_2"
+    }
+  },
+  "signals": {
+    "top:weather_prague": {
+      "ts": {
+        "id": 8,
+        "cid": "ts",
+        "type": "date",
+        "field": "s8"
+      },
+      "temperature": {
+        "id": 9,
+        "cid": "temperature",
+        "type": "float",
+        "field": "s9"
+      },
+      "pressure": {
+        "id": 10,
+        "cid": "pressure",
+        "type": "integer",
+        "field": "s10"
+      },
+      "humidity": {
+        "id": 11,
+        "cid": "humidity",
+        "type": "integer",
+        "field": "s11"
+      },
+      "status": {
+        "id": 14,
+        "cid": "status",
+        "type": "keyword",
+        "field": "s14"
+      }
+    }
+  }
+}
