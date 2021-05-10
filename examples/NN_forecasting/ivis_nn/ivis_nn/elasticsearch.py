@@ -98,9 +98,9 @@ def get_histogram_query(parameters):
                     "field": field
                 }
             }
-    # TODO: Is it necessary to add sort? -> possibly for size?
 
     aggregation_interval = parameters["timeInterval"]["aggregation"]
+    size = parameters["size"] if "size" in parameters else 10000
 
     return {
         "size": 0,
@@ -109,9 +109,22 @@ def get_histogram_query(parameters):
                 "date_histogram": {
                     "field": ts_field,
                     "interval": aggregation_interval,
-                    "min_doc_count": 1
+                    "min_doc_count": 1,
+                    "order": {"_key": "desc"}  # temporarily sort from the latest to oldest - used for limiting the number of buckets
                 },
-                "aggs": signal_aggs
+                "aggs": {
+                    "size": {  # limit number of returned buckets
+                        "bucket_sort": {
+                            "size": size
+                        }
+                    },
+                    "sort": {  # sort the returned buckets by time (oldest to latest)
+                        "bucket_sort": {
+                            "sort": {"_key": "asc"}
+                        }
+                    },
+                    **signal_aggs,
+                }
             }
         },
         "query": get_time_interval_filter(parameters)
