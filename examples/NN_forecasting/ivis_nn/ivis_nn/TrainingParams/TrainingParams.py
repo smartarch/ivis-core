@@ -12,6 +12,8 @@ class TrainingParams:
         self.split = dict()          # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
         self.ts_field = None         # ES field of ts signal
         self.interval = None         # Aggregation interval in milliseconds.
+        self.input_width = 0         # Number of time steps used for prediction.
+        self.target_width = 0        # Number of predicted time steps.
 
     def __str__(self):
         return \

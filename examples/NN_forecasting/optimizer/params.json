@@ -136,5 +136,17 @@
         "label": "Maximum"
       }]
     }]
+  },
+  {
+    "id": "input_width",
+    "label": "Observations",
+    "type": "integer",
+    "help": "The number of time steps used for prediction. Leave empty for auto."
+  },
+  {
+    "id": "target_width",
+    "label": "Future predictions",
+    "type": "integer",
+    "help": "The number of time steps to predict."
   }
 ]

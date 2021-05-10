@@ -1,0 +1,58 @@
+{
+  "took": 2,
+  "timed_out": false,
+  "_shards": {
+    "total": 5,
+    "successful": 5,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": 4268,
+    "max_score": null,
+    "hits": [
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1620671125",
+        "_score": null,
+        "_source": {
+          "s11": "41",
+          "s9": "23.51",
+          "s14": "Clear"
+        },
+        "sort": [
+          1620671125564
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1620663927",
+        "_score": null,
+        "_source": {
+          "s11": "34",
+          "s9": "26.51",
+          "s14": "Clear"
+        },
+        "sort": [
+          1620663927305
+        ]
+      },
+      {
+        "_index": "signal_set_2",
+        "_type": "_doc",
+        "_id": "1620656725",
+        "_score": null,
+        "_source": {
+          "s11": "36",
+          "s9": "27.09",
+          "s14": "Clear"
+        },
+        "sort": [
+          1620656725906
+        ]
+      }
+    ]
+  }
+}

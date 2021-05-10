@@ -9,6 +9,8 @@ class PredictionParams:
         self.ts_field = None                # ES field of ts signal
         self.interval = None                # Aggregation interval in milliseconds.
         self.normalization_coeffs = dict()  # Normalization coefficients for the signals
+        self.input_width = 0                # Number of time steps used for prediction.
+        self.target_width = 0               # Number of predicted time steps.
 
         if training_params is not None:
             self.architecture = training_params['architecture']
@@ -17,5 +19,7 @@ class PredictionParams:
             self.target_signals = training_params['target_signals']
             self.ts_field = training_params['ts_field']
             self.interval = training_params['interval']
+            self.input_width = training_params['input_width']
+            self.target_width = training_params['target_width']
         if normalization_coefficients is not None:
             self.normalization_coeffs = normalization_coefficients

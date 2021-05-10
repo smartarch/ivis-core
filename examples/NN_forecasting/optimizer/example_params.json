@@ -66,5 +66,7 @@
       "max": "",
       "aggregation": "max"
     }
-  ]
+  ],
+  "input_width": 3,
+  "target_width": 1
 }

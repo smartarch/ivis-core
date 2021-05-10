@@ -3,13 +3,13 @@ import json
 from ivis import ivis
 # mock IVIS
 class ESMock:
-    # TODO: better example data
     def search(self, index, body):
+        # print(json.dumps(body, indent=2))
         if "_source" in body:  # docs
-            with open('../training/docs.json') as file:
+            with open('docs.json') as file:
                 return json.load(file)
         else:  # histogram
-            with open('../training/histogram.json') as file:
+            with open('histogram.json') as file:
                 return json.load(file)
 ivis.elasticsearch = ESMock()
 

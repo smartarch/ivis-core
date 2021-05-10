@@ -58,6 +58,8 @@ def default_training_params(parameters, training_params_class=ivis_nn.TrainingPa
     training_params.index = get_els_index(parameters)
     training_params.input_signals = parameters["inputSignals"]
     training_params.target_signals = parameters["targetSignals"]
+    training_params.input_width = parameters["input_width"]
+    training_params.target_width = parameters["target_width"]
     ts_field = get_ts_field(parameters)
     training_params.ts_field = ts_field
 
