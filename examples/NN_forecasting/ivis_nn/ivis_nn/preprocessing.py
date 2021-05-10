@@ -86,7 +86,7 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
         val_df[column] = (val_df[column] - mean) / std
         test_df[column] = (test_df[column] - mean) / std
 
-        normalization_coefficients[column] = {"mean": mean, "std": std}
+        normalization_coefficients[column] = {"mean": float(mean), "std": float(std)}
         copy_column_from_schema(column)
 
     def min_max_normalization(column, properties):
@@ -98,7 +98,7 @@ def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
         val_df[column] = (val_df[column] - min_val) / (max_val - min_val)
         test_df[column] = (test_df[column] - min_val) / (max_val - min_val)
 
-        normalization_coefficients[column] = {"min": min_val, "max": max_val}
+        normalization_coefficients[column] = {"min": float(min_val), "max": float(max_val)}
         copy_column_from_schema(column)
 
     def apply_one_hot_encoding(column):

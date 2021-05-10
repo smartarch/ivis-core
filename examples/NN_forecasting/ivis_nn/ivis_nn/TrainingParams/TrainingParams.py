@@ -10,7 +10,7 @@ class TrainingParams:
         self.input_signals = []      # The input signals and their types
         self.target_signals = []     # The target signals and their types, keep empty for autoregressive models
         self.split = dict()          # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
-        # self.ts_field = None         # ES field of ts signal TODO: is this useful?
+        self.ts_field = None         # ES field of ts signal
         self.interval = None         # Aggregation interval in milliseconds.
 
     def __str__(self):

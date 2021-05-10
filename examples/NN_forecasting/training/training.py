@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+import json
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 import ivis_nn
+from ivis_nn.PredictionParams import PredictionParams
 
 
-def run_training(training_parameters, data, model_save_path):
+def run_training(training_parameters, data, model_save_folder):
     """
     Run the training of neural network with specified parameters and data.
 
@@ -16,7 +19,7 @@ def run_training(training_parameters, data, model_save_path):
         Before serialization, the parameters were a class derived from Optimizer.TrainingParams.
     data : dict
         The data for training, received from Elasticsearch.
-    model_save_path : str
+    model_save_folder : str
         Path to save the trained model.
 
     Returns
@@ -65,7 +68,10 @@ def run_training(training_parameters, data, model_save_path):
     print(metrics_history.history)
 
     # # save the model
-    # model.save(model_save_path)
+    # model.save(model_save_folder + "model.h5")
+    # save the prediction parameters
+    prediction_parameters = PredictionParams(training_parameters, norm_coeffs)
+    print(json.dumps(prediction_parameters.__dict__, indent=2))  # TODO: save to file
 
     return {
         "train_loss": 1.22,

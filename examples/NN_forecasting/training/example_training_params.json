@@ -130,5 +130,6 @@
     "val": 0,
     "test": 0.3
   },
+  "ts_field": "s8",
   "interval": 86400000
 }

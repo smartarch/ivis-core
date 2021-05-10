@@ -18,4 +18,4 @@ if __name__ == "__main__":
         with open('docs.json') as results_file:
             results = json.load(results_file)
 
-    run_training(params, results, "./models/example_h5.h5")
+    run_training(params, results, "./models/")
