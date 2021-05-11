@@ -46,7 +46,8 @@ class PredicionsLineChart extends Component {
         const prediction = this.props.prediction;
         const outputConfig = (await axios.get(getUrl(`rest/predictions-output-config/${modelId}`))).data;
         const signalSet = (await axios.get(getUrl(`rest/signal-sets/${prediction.set}`))).data;
-        const signalCid = outputConfig.signals[1].cid;
+        console.log(`outputConfig.signals ${outputConfig.signals}`);
+        const signalCid = outputConfig.signals['main'][0].cid;
 
         return {
             signalSets: [
@@ -350,7 +351,6 @@ export default class ArimaOverview extends Component {
 
     render() {
         const t = this.props.t;
-        const predictionId = parseInt(this.props.prediction.id);
         const prediction = this.props.prediction;
         const from = this.state.first;
         const to = this.state.last;
@@ -368,15 +368,20 @@ export default class ArimaOverview extends Component {
                     initialIntervalSpec={new IntervalSpec(from, to, null, moment.duration(1, 'd'))}
                 >
                     <PredicionsLineChart
-                        predictionId={predictionId}
                         prediction={prediction}
-                        signalCid={"TBD"}
                         ahead={this.state.ahead}
                     />
                     {/*<SignalSelector />*/}
-                    <AheadSelector aheadCount={prediction.ahead_count} onAheadChange={this.onAheadChange.bind(this)} />
+                    <AheadSelector
+                        aheadCount={prediction.ahead_count}
+                        onAheadChange={this.onAheadChange.bind(this)}
+                    />
                     <TimeRangeSelector />
-                    <RMSETable ahead={this.state.ahead} sourceSetCid={this.state.sourceSetCid} predSetCid={this.state.predSetCid} />
+                    <RMSETable
+                        ahead={this.state.ahead}
+                        sourceSetCid={this.state.sourceSetCid}
+                        predSetCid={this.state.predSetCid}
+                    />
                 </TimeContext>
             </Panel>
         );
