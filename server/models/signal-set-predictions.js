@@ -18,7 +18,7 @@ const jobs = require('./jobs');
 const removeSigSetById = require('./signal-sets').removeById;
 
 
-const allowedKeys = new Set(['name', 'set', 'type', 'namespace', 'settings', 'ahead_count', 'future_count']);
+const allowedKeys = new Set(['name', 'set', 'type', 'namespace', 'settings', 'ahead_count', 'future_count', 'signals']);
 
 const deleteCallbacks = {
     [PredictionTypes.ARIMA]: async (tx, context, predictionId) => {
@@ -63,11 +63,6 @@ async function removeById(context, setId, predictionId) {
         jobsToDelete = await tx('predictions_jobs').where('prediction', existing.id);
         for (let job of jobsToDelete) {
             await tx('predictions_jobs').where('prediction', existing.id).where('job', job.job).del();
-        }
-
-        const predSignals = await tx('predictions_signals').where('prediction', existing.id);
-        for (let signal of predSignals) {
-            await tx('predictions_signals').where('prediction', signal.prediction).where('signal', signal.signal).del();
         }
 
         setsToDelete = await tx('predictions_signal_sets').where('prediction', existing.id);
@@ -121,12 +116,6 @@ async function createPredictionTx(tx, context, prediction) {
     return id;
 }
 
-async function createPrediction(context, prediction) {
-    return await knex.transtaction(async tx => {
-        return await createPredictionTx(tx, context, prediction);
-    });
-}
-
 async function getById(context, id) {
     return await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'prediction', id, 'view');
@@ -153,36 +142,10 @@ async function update(context, prediction) {
     });
 }
 
-/**
- * Return predicted signals
- * @param context the calling user's context
- * @param predictionId
- * @returns an array of signals
- */
-async function _getOutputSignals(tx, context, predictionId) {
-    await shares.enforceEntityPermissionTx(tx, context, 'prediction', predictionId, 'view');
-    // all output sets have same signal signatures, so we get one and look into
-    // its signals
-    const predSet = await tx('predictions_signal_sets').where('prediction', predictionId).first();
-    if (!predSet) {
-        throw new interoperableErrors.NotFoundError();
-    }
-
-    const signals = await tx('signals').where('set', predSet.set);
-
-    let outputSignals = [];
-    for (let signal of signals) {
-        const filtered = filterObject(signal, new Set(['cid', 'name', 'type', 'description', 'namespace']))
-        outputSignals.push(filtered);
-    }
-
-    return outputSignals;
-}
-
 async function getOutputConfigTx(tx, context, predictionId) {
     await shares.enforceEntityPermissionTx(tx, context, 'prediction', predictionId, 'view');
 
-    const outSignals = await _getOutputSignals(tx, context, predictionId);
+    const outSignals = JSON.parse((await tx('predictions').where('id', predictionId).first()).signals);
 
     const predSets = await tx('predictions_signal_sets').where('prediction', predictionId);
     let futureSet = {};
@@ -212,9 +175,16 @@ async function getOutputConfig(context, predictionId) {
     });
 }
 
-async function registerPredictionModelTx(tx, context, prediction, outSignals) {
+async function registerPredictionModelTx(tx, context, prediction, outSignals, extraSignals) {
     const signalSet = await tx('signal_sets').where('id', prediction.set).first();
     enforce(signalSet, `Signal set ${prediction.set} not found`);
+
+    const signals = {
+        'main': outSignals ? outSignals : [],
+        'extra': extraSignals ? extraSignals : [],
+    };
+
+    prediction.signals = JSON.stringify(signals);
 
     const predId = await createPredictionTx(tx, context, prediction);
     prediction.id = predId;
@@ -264,11 +234,16 @@ function generateSignalSet(cid, namespace) {
     };
 }
 
-async function _createOutputSignalSetWithSignals(tx, context, setCid, signals, predictionId, namespace) {
+async function _createOutputSignalSetWithSignals(tx, context, setCid, signals, predictionId, namespace, extraSignals=[]) {
     const signalSet = generateSignalSet(setCid, namespace);
     const setId = await createOutSignalSet(tx, context, signalSet, predictionId);
 
     for (let signal of signals) {
+        signal.set = setId;
+        await createOutSignal(tx, context, signal, predictionId);
+    }
+
+    for (let signal of extraSignals) {
         signal.set = setId;
         await createOutSignal(tx, context, signal, predictionId);
     }
@@ -294,16 +269,16 @@ async function getPrefix(tx, context, modelId) {
     return setPrefix;
 }
 
-async function createOutputSignalSets(tx, context, prediction, outSignals) {
+async function createOutputSignalSets(tx, context, prediction, outSignals, extraSignals=[]) {
     const setPrefix = await getPrefix(tx, context, prediction.id);
 
     for (let i = 1; i <= prediction.ahead_count; i++) {
-        const setCid = `${setPrefix}_${i}`;
-        await _createOutputSignalSetWithSignals(tx, context, setCid, outSignals, prediction.id, prediction.namespace);
+        const setCid = `${setPrefix}_${i}ahead`;
+        await _createOutputSignalSetWithSignals(tx, context, setCid, outSignals, prediction.id, prediction.namespace, extraSignals);
     }
 
     const futureSetCid = `${setPrefix}_future`;
-    await _createOutputSignalSetWithSignals(tx, context, futureSetCid, outSignals, prediction.id, prediction.namespace);
+    await _createOutputSignalSetWithSignals(tx, context, futureSetCid, outSignals, prediction.id, prediction.namespace, extraSignals);
 
     return {};
 }
@@ -342,28 +317,6 @@ async function registerPredictionModelJobTx(tx, context, modelId, jobId) {
     await rebuildOuputOwnership(tx, context, modelId);
 }
 
-async function getPredictedSignals(context, modelId) {
-    return await knex.transaction(async tx => {
-        return await _getOutputSignals(tx, context, modelId);
-    });
-}
-
-async function getPredictedSignalsMain(context, modelId) {
-
-}
-
-async function getPredictedSignalsExtra(context, modelId) {
-
-}
-
-async function getSourceSignals(context, modelId) {
-    const signals = [];
-    const prediction = await getById(context, modelId);
-    const set = await signalSets.getById(prediction.set);
-
-    return signals;
-}
-
 module.exports.getById = getById;
 module.exports.removeById = removeById;
 module.exports.registerPredictionModelTx = registerPredictionModelTx;
@@ -371,6 +324,4 @@ module.exports.registerPredictionModelJobTx = registerPredictionModelJobTx;
 module.exports.update = update;
 module.exports.getOutputConfigTx = getOutputConfigTx;
 module.exports.getOutputConfig = getOutputConfig;
-module.exports.getPredictedSignals = getPredictedSignals;
-module.exports.getSourceSignals = getSourceSignals;
 module.exports.listDTAjax = listDTAjax;

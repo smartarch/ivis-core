@@ -17,6 +17,7 @@ exports.up = (knex, Promise) => (async () => {
         table.text('settings', 'longtext');
         table.timestamp('created').defaultsTo(knex.fn.now());
         table.integer('namespace').notNullable().references('namespaces.id');
+        table.text('signals', 'longtext');
     });
 
     await knex.schema.createTable('predictions_jobs', table => {

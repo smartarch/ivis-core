@@ -25,8 +25,8 @@ router.postAsync('/predictions-rmse/', passport.loggedIn, passport.csrfProtectio
     const x = (await req).body;
     console.log(`req: ${JSON.stringify(x, null, 4)}`);
     const response = {
-        from: x.from,//'2021-01-01T00:00:00.000Z',
-        to: x.to,//'2021-01-01T00:00:00.000Z',
+        from: x.from,
+        to: x.to,
         min: `0 (${Date.now()})`,
         max: 'inf',
     }
