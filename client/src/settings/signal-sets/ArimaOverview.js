@@ -27,13 +27,13 @@ class PredicionsLineChart extends Component {
     }
 
     async getModel(modelId) {
-        let x = await axios.get(getUrl(`rest/predictions/${modelId}`));
-        return await x.data;
+        let prediction = await axios.get(getUrl(`rest/predictions/${modelId}`));
+        return await prediction.data;
     }
 
     async getOutputConfig(modelId) {
-        let x = await axios.get(getUrl(`rest/predictions-output-config/${modelId}`));
-        return await x.data;
+        let outputCofig = await axios.get(getUrl(`rest/predictions-output-config/${modelId}`));
+        return await outputCofig.data;
     }
 
     async getPredictionInfo(modelId) {
@@ -282,20 +282,15 @@ export default class ArimaOverview extends Component {
         super(props);
 
         this.state = {
-            ahead: '1'
+            ahead: '1',
+            // original time interval, will be replaced after component is mounted
+            first: 'now-1000y',
+            last: 'now-45y'
         };
     }
 
     onAheadChange(value) {
         this.setState({ ahead: value });
-    }
-
-    getFirstTs() {
-        return 'now-65y';
-    }
-
-    getLastTs() {
-        return 'now-45y';
     }
 
     async getSetById(setId) {
@@ -324,19 +319,45 @@ export default class ArimaOverview extends Component {
         });
     }
 
+    /** Fetch first and last timestamps of the source signal set so that we can
+     *  set the initial IntervalSpec in a proper way.
+     *
+     * @param signalSetId the source signal set
+     */
+    async fetchBoundaries(signalSetId) {
+        const x = (await axios.get(getUrl(`rest/predictions-set-boundaries/${signalSetId}`))).data;
+
+        console.log(`x: ${JSON.stringify(await x, null, 4)}`);
+
+        let offset = moment(x.last).diff(moment(x.first)) / 5;
+        let last = moment(x.last).add(offset);
+
+        let y = {
+            first: x.first,
+            last: last.toISOString()
+        };
+
+        this.setState(y);
+    }
+
     componentDidMount() {
         this.fetchData();
+        this.fetchBoundaries(this.props.prediction.set);
+    }
+
+    componentWillUnmount() {
     }
 
     render() {
         const t = this.props.t;
         const predictionId = parseInt(this.props.prediction.id);
         const prediction = this.props.prediction;
-        console.log(`prediction: ${this.props.prediction}`);
-        const from = this.getFirstTs();
-        const to = this.getLastTs();
+        const from = this.state.first;
+        const to = this.state.last;
         return (
-            <Panel title={t('ARIMA model overview')}>
+            <Panel title={t('ARIMA model overview')}
+                key={from} // Panel will be refreshed after data is fetched
+            >
                 {/*
                 <Toolbar>
                     <LinkButton to={`/settings/`} className="btn-primary"
