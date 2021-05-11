@@ -493,6 +493,7 @@ const getStructure = t => {
                                         panelRender: props => <SignalSetPredictions signalSet={props.resolved.signalSet} />, // TODO
                                         children: {
                                             'arima': {
+                                                title: t('ARIMA models'),
                                                 children: {
                                                     'create': {
                                                         title: t('Add ARIMA model'),
