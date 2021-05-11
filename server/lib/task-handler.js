@@ -12,8 +12,8 @@ const config = require("./config");
 
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
-const {BuildState, getTransitionStates} = require('../../shared/tasks');
-const storeBuiltinTasks = require('../models/builtin-tasks').storeBuiltinTasks;
+const {BuildState, getTransitionStates, PYTHON_JOB_FILE_NAME} = require('../../shared/tasks');
+const {storeBuiltinTasks, list} = require('../models/builtin-tasks');
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
 const {emitter: taskEmitter} = require('./task-events');
@@ -122,7 +122,7 @@ function onFilesUpload(type, subtype, entityId, files) {
     if (type === 'task') {
         setImmediate(async () => {
             const dir = getFilesDir(type, subtype, entityId);
-            const filesDir = path.join(getTaskDir(entityId), 'files');
+            const filesDir = getTaskBuildOutputDir(entityId);
             for (const file of files) {
                 await fs.copyAsync(path.join(dir, file.name), path.join(filesDir, file.originalName), {});
             }
@@ -133,7 +133,7 @@ function onFilesUpload(type, subtype, entityId, files) {
 function onRemoveFile(type, subtype, entityId, file) {
     if (type === 'task') {
         setImmediate(async () => {
-            const filePath = path.join(getTaskDir(entityId), 'files', file.originalName);
+            const filePath = path.join(getTaskBuildOutputDir(entityId), file.originalName);
             await fs.removeAsync(filePath);
         })
     }
@@ -142,8 +142,17 @@ function onRemoveFile(type, subtype, entityId, file) {
 function onRemoveAllFiles(type, subtype, entityId) {
     if (type === 'task') {
         setImmediate(async () => {
-            const filesDir = path.join(getTaskDir(entityId), 'files');
-            await fs.emptyDirAsync(filesDir);
+            try {
+                const filesDir = path.join(getTaskBuildOutputDir(entityId));
+                const files = await fs.readdirAsync(filesDir);
+                for (const file of files) {
+                    if (file != PYTHON_JOB_FILE_NAME) {
+                        await fs.removeAsync(path.join(filesDir, file));
+                    }
+                }
+            } catch (e) {
+                log.error(e);
+            }
         })
     }
 }
@@ -186,6 +195,22 @@ async function initIndices() {
 
 async function initBuiltin() {
     await storeBuiltinTasks();
+
+    // Copy the builtin-files to dist folder
+    const builtinTaskFilesDir = path.join(__dirname, '..', 'builtin-files');
+    const builtinTasks = await list();
+    for (const task of builtinTasks) {
+        const filesPath = path.join(builtinTaskFilesDir, task.name);
+        const hasFiles = await fs.existsAsync(filesPath);
+        if (hasFiles) {
+            const files = await fs.readdirAsync(filesPath);
+            for (const file of files) {
+                console.log(task.id);
+                console.log(path.join(getTaskBuildOutputDir(task.id), file));
+                await fs.copyAsync(path.join(filesPath, file), path.join(getTaskBuildOutputDir(task.id), file), {overwrite: true});
+            }
+        }
+    }
 }
 
 /**
