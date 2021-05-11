@@ -175,7 +175,7 @@ async function createFiles(context, type, subType, entityId, files, replacementB
         // Create entities for files
         for (const file of files) {
             const parsedOriginalName = path.parse(file.originalname);
-            let originalName = parsedOriginalName.base;
+            let originalName = path.format(parsedOriginalName);
 
             if (!file.filename) {
                 // This is taken from multer/storage/disk.js and adapted for async/await
@@ -185,7 +185,7 @@ async function createFiles(context, type, subType, entityId, files, replacementB
             if (replacementBehavior === ReplacementBehavior.RENAME) {
                 let suffix = 1;
                 while (existingNameSet.has(originalName) || processedNameSet.has(originalName)) {
-                    originalName = parsedOriginalName.name + '-' + suffix + parsedOriginalName.ext;
+                    originalName = path.join(parsedOriginalName.dir, parsedOriginalName.name) + '-' + suffix + parsedOriginalName.ext;
                     suffix++;
                 }
             }
