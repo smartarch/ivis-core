@@ -54,14 +54,17 @@ class Table extends Component {
         withHeader: PropTypes.bool,
         refreshInterval: PropTypes.number,
         pageLength: PropTypes.number,
+        lengthMenu: PropTypes.arrayOf(PropTypes.number),
         search: PropTypes.string, // initial value of the search field
         searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
+        order: PropTypes.arrayOf(PropTypes.array),
     }
 
     static defaultProps = {
         selectMode: TableSelectMode.NONE,
         selectionKeyIndex: 0,
-        pageLength: 50
+        pageLength: 50,
+        lengthMenu: [10, 25, 50, 100, 250]
     }
 
     refresh() {
@@ -282,6 +285,7 @@ class Table extends Component {
             columns,
             autoWidth: false,
             pageLength: this.props.pageLength,
+            lengthMenu: this.props.lengthMenu,
             dom: // This overrides Bootstrap 4 settings. It may need to be updated if there are updates in the DataTables Bootstrap 4 plugin.
                 "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                 "<'row'<'col-sm-12'<'" + styles.dataTableTable + "'tr>>>" +
@@ -294,6 +298,8 @@ class Table extends Component {
                 search: value,
             }) : null)
         }
+        if (this.props.order)
+            dtOptions.order = this.props.order;
 
         const self = this;
         dtOptions.createdRow = function(row, data) {
