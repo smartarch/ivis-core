@@ -17,7 +17,7 @@ function _generateJobName(signalSetName, modelName, modelType, postfix = '') {
         return [signalSetName, modelName, modelType].join('_');
 }
 
-async function createJob() {
+async function _createArimaJob() {
 
 }
 
@@ -69,9 +69,8 @@ async function createArimaModelTx(tx, context, sigSetId, params) {
         namespace: namespace
     };
 
-    console.log(`params.source: ${JSON.stringify(params.source, null, 4)}`);
+    // source signal
     const signal = await tx('signals').where('namespace', namespace).where('cid', params.source).first();
-    console.log(`signal: ${JSON.stringify(signal, null, 4)}`);
 
     const outSignals = [
         {
@@ -93,13 +92,6 @@ async function createArimaModelTx(tx, context, sigSetId, params) {
     const jobId = await jobs.createTx(tx, context, job);
     await predictions.registerPredictionModelJobTx(tx, context, modelId, jobId);
 
-    //await predictions.getOutputConfigTx(tx, context, modelId);
-
-    // run the job
-    //jobs.run(context, jobId).catch(error => log.error('signal-set-predictions', error));
-
-    // update state to active?
-
     return { prediction, jobId };
 }
 
@@ -110,21 +102,16 @@ async function createArimaModel(context, sigSetId, params) {
 }
 
 async function createAndStart(context, sigSetId, params) {
-    const { prediction, jobId } = await knex.transaction(async tx => {
-        return await createArimaModelTx(tx, context, sigSetId, params);
-    });
-
-    // const { modelId, jobId }
-    const modelId = prediction.id;
-    const setId = prediction.set;
-
-    const outputConfig = await predictions.getOutputConfig(context, modelId);
-    // console.log(`outputConfig = ${JSON.stringify(outputConfig)}`);
+    const { prediction, jobId } = await createArimaModel(context, sigSetId, params);
 
     // run the job
     jobs.run(context, jobId).catch(error => log.error('predictions-arima', error));
 }
 
+async function arimaCleanupTx(tx, context, predictionId) {
+}
+
 //module.exports.create = createArimaModel;
 module.exports.create = createAndStart;
 module.exports.createTx = createArimaModelTx;
+module.exports.arimaCleanupTx = arimaCleanupTx;

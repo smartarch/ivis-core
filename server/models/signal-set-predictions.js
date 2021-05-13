@@ -4,26 +4,153 @@ const knex = require('../lib/knex');
 const dtHelpers = require('../lib/dt-helpers');
 const { enforce, filterObject } = require('../lib/helpers');
 const shares = require('./shares');
-const { allowedKeysCreate: allowedSignalSetKeysCreate, getSignalSetEntitySpec } = require('../lib/signal-set-helpers');
+const { allowedKeysCreate: allowedSignalSetKeysCreate } = require('../lib/signal-set-helpers');
 const { allowedKeysCreate: allowedSignalKeysCreate } = require('../lib/signal-helpers');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const { SignalSetType, SignalSetKind } = require('../../shared/signal-sets');
 const { SignalSource } = require('../../shared/signals');
 const createSigSet = require('./signal-sets').createTx;
-const signalSets = require('./signal-sets');
 const createSignal = require('./signals').createTx;
 const { PredictionTypes } = require('../../shared/predictions');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const jobs = require('./jobs');
 const removeSigSetById = require('./signal-sets').removeById;
+const { arimaCleanupTx } = require('./predictions-arima');
 
 
 const allowedKeys = new Set(['name', 'set', 'type', 'namespace', 'settings', 'ahead_count', 'future_count', 'signals']);
 
 const deleteCallbacks = {
-    [PredictionTypes.ARIMA]: async (tx, context, predictionId) => {
-        // doing arima specific cleanup before the remaining is taken care of
+    /* signature: async x(tx, context, predictionId )*/
+    [PredictionTypes.ARIMA]: arimaCleanupTx
+}
+
+/* Prediction signature:
+ *
+ * prediction = {
+ *      id, // assigned by db
+ *      set, // id of the source signal set (the one being predicted)
+ *      type, // type of the prediction
+ *      namespace,
+ *      settings, // prediction specific JSON object
+ *      ahead_count,
+ *      future_count,
+ *      signals, // description of the output signals, created by registerPredictionModelTx
+ * };
+ *
+ * signals = {
+ *      main: [
+ *      ],
+ *      extra: [
+ *      ],
+ * };
+ *
+ */
+
+/** Create an entry for prediction model and create its output signal sets
+ *
+ */
+async function registerPredictionModelTx(tx, context, prediction, outSignals, extraSignals) {
+    const signalSet = await tx('signal_sets').where('id', prediction.set).first();
+    enforce(signalSet, `Signal set ${prediction.set} not found`);
+
+    const signals = {
+        'main': outSignals ? outSignals : [],
+        'extra': extraSignals ? extraSignals : [],
+    };
+
+    prediction.signals = JSON.stringify(signals);
+
+    const predId = await _createPredictionTx(tx, context, prediction);
+    prediction.id = predId;
+    await _createOutputSignalSets(tx, context, prediction, outSignals);
+
+    return predId;
+}
+
+/** Links a job to an existing models in order to:
+ *  1. ensure that the job cannot be deleted while the model exists
+ *  2. make the job own output signal sets so that it can work with its indices
+ *     when it is run
+ */
+async function registerPredictionModelJobTx(tx, context, modelId, jobId) {
+    shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'edit');
+    shares.enforceEntityPermissionTx(tx, context, 'prediction', modelId, 'edit');
+
+    const predJob = {
+        prediction: modelId,
+        job: jobId
+    };
+
+    await tx('predictions_jobs').insert(predJob);
+    await _rebuildOuputOwnership(tx, context, modelId);
+}
+
+async function update(context, prediction) {
+    await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'prediction', prediction.id, 'edit');
+
+        const existing = await tx('predictions').where('id', prediction.id).first();
+        if (!existing) {
+            throw new interoperableErrors.NotFoundError();
+        }
+
+        const filtered = filterObject(prediction, allowedKeys);
+        await tx('predictions').where('id', prediction.id).update(filtered);
+
+        await shares.rebuildPermissionsTx(tx);
+    });
+}
+
+/** Return description of output signal sets and signals
+ *
+ * This object is then used by Python predictions write API
+ *
+ * structure:
+ * outputConfig = {
+ *      ahead_sets: {
+ *          '1': '1aheadSetCid',
+ *          '2': '2aheadSetCid',
+ *          ...
+ *      },
+ *      future_set: 'futureSetCid',
+ *      signals: {
+ *          'main': [], // main signals (subset of source signal set signals)
+ *          'extra': [], // extra signals (those not part of the source sigset)
+ *      }
+ * };
+ */
+async function getOutputConfigTx(tx, context, predictionId) {
+    await shares.enforceEntityPermissionTx(tx, context, 'prediction', predictionId, 'view');
+
+    const outSignals = JSON.parse((await tx('predictions').where('id', predictionId).first()).signals);
+
+    const predSets = await tx('predictions_signal_sets').where('prediction', predictionId);
+    let futureSet = {};
+    let aheadSets = {};
+
+    let i = 1;
+    for (let ps of predSets) {
+        let signalSet = await tx('signal_sets').where('id', ps.set).first();
+        if (signalSet.cid.endsWith('future')) {
+            futureSet = signalSet.cid;
+        } else {
+            aheadSets[i] = signalSet.cid;
+            i++;
+        }
     }
+
+    return {
+        ahead_sets: aheadSets,
+        future_set: futureSet,
+        signals: outSignals
+    };
+}
+
+async function getOutputConfig(context, predictionId) {
+    return await knex.transaction(async tx => {
+        return await getOutputConfigTx(tx, context, predictionId);
+    });
 }
 
 async function listDTAjax(context, sigSetId, params) {
@@ -37,17 +164,11 @@ async function listDTAjax(context, sigSetId, params) {
     );
 }
 
-async function _deleteTypeSpecificTx(tx, context, predictionId, type) {
-    if (type in deleteCallbacks) {
-        return await deleteCallbacks[type](tx, context, predictionId);
-    }
-}
-
 async function removeById(context, setId, predictionId) {
     let jobsToDelete;
     let setsToDelete;
 
-    const val =  await knex.transaction(async tx => {
+    const val = await knex.transaction(async tx => {
         const existing = await tx('predictions').where('id', predictionId).first();
 
         if (!existing) {
@@ -87,6 +208,12 @@ async function removeById(context, setId, predictionId) {
     return val;
 }
 
+async function _deleteTypeSpecificTx(tx, context, predictionId, type) {
+    if (type in deleteCallbacks) {
+        return await deleteCallbacks[type](tx, context, predictionId);
+    }
+}
+
 function _isValidType(type) {
     for (let t in PredictionTypes) {
         if (PredictionTypes[t] === type) {
@@ -101,7 +228,7 @@ async function _validate(context, tx, prediction) {
     await enforce(_isValidType(prediction.type), "Invalid prediction type.");
 }
 
-async function createPredictionTx(tx, context, prediction) {
+async function _createPredictionTx(tx, context, prediction) {
     await shares.enforceEntityPermissionTx(tx, context, 'signalSet', prediction.set, 'createPrediction');
     await _validate(context, tx, prediction);
 
@@ -126,74 +253,7 @@ async function getById(context, id) {
     });
 }
 
-async function update(context, prediction) {
-    await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'prediction', prediction.id, 'edit');
-
-        const existing = await tx('predictions').where('id', prediction.id).first();
-        if (!existing) {
-            throw new interoperableErrors.NotFoundError();
-        }
-
-        const filtered = filterObject(prediction, allowedKeys);
-        await tx('predictions').where('id', prediction.id).update(filtered);
-
-        await shares.rebuildPermissionsTx(tx);
-    });
-}
-
-async function getOutputConfigTx(tx, context, predictionId) {
-    await shares.enforceEntityPermissionTx(tx, context, 'prediction', predictionId, 'view');
-
-    const outSignals = JSON.parse((await tx('predictions').where('id', predictionId).first()).signals);
-
-    const predSets = await tx('predictions_signal_sets').where('prediction', predictionId);
-    let futureSet = {};
-    let aheadSets = {};
-
-    let i = 1;
-    for (let ps of predSets) {
-        let signalSet = await tx('signal_sets').where('id', ps.set).first();
-        if (signalSet.cid.endsWith('future')) {
-            futureSet = signalSet.cid;
-        } else {
-            aheadSets[i] = signalSet.cid;
-            i++;
-        }
-    }
-
-    return {
-        ahead_sets: aheadSets,
-        future_set: futureSet,
-        signals: outSignals
-    };
-}
-
-async function getOutputConfig(context, predictionId) {
-    return await knex.transaction(async tx => {
-        return await getOutputConfigTx(tx, context, predictionId);
-    });
-}
-
-async function registerPredictionModelTx(tx, context, prediction, outSignals, extraSignals) {
-    const signalSet = await tx('signal_sets').where('id', prediction.set).first();
-    enforce(signalSet, `Signal set ${prediction.set} not found`);
-
-    const signals = {
-        'main': outSignals ? outSignals : [],
-        'extra': extraSignals ? extraSignals : [],
-    };
-
-    prediction.signals = JSON.stringify(signals);
-
-    const predId = await createPredictionTx(tx, context, prediction);
-    prediction.id = predId;
-    await createOutputSignalSets(tx, context, prediction, outSignals);
-
-    return predId;
-}
-
-async function createOutSignalSet(tx, context, signalSet, predictionId) {
+async function _createOutSignalSet(tx, context, signalSet, predictionId) {
     const filteredSet = filterObject(signalSet, allowedSignalSetKeysCreate);
     filteredSet.type = SignalSetType.COMPUTED;
     filteredSet.kind = SignalSetKind.TIME_SERIES;
@@ -214,7 +274,7 @@ async function createOutSignalSet(tx, context, signalSet, predictionId) {
     return setId;
 }
 
-async function createOutSignal(tx, context, signal, predictionId) {
+async function _createOutSignal(tx, context, signal, predictionId) {
     let filteredSignal = filterObject(signal, allowedSignalKeysCreate);
     filteredSignal.source = SignalSource.JOB;
     const sigId = await createSignal(tx, context, filteredSignal.set, filteredSignal);
@@ -225,7 +285,7 @@ async function createOutSignal(tx, context, signal, predictionId) {
     return sigId;
 }
 
-function generateSignalSet(cid, namespace) {
+function _generateSignalSet(cid, namespace) {
     return {
         cid: cid,
         name: cid,
@@ -234,18 +294,18 @@ function generateSignalSet(cid, namespace) {
     };
 }
 
-async function _createOutputSignalSetWithSignals(tx, context, setCid, signals, predictionId, namespace, extraSignals=[]) {
-    const signalSet = generateSignalSet(setCid, namespace);
-    const setId = await createOutSignalSet(tx, context, signalSet, predictionId);
+async function _createOutputSignalSetWithSignals(tx, context, setCid, signals, predictionId, namespace, extraSignals = []) {
+    const signalSet = _generateSignalSet(setCid, namespace);
+    const setId = await _createOutSignalSet(tx, context, signalSet, predictionId);
 
     for (let signal of signals) {
         signal.set = setId;
-        await createOutSignal(tx, context, signal, predictionId);
+        await _createOutSignal(tx, context, signal, predictionId);
     }
 
     for (let signal of extraSignals) {
         signal.set = setId;
-        await createOutSignal(tx, context, signal, predictionId);
+        await _createOutSignal(tx, context, signal, predictionId);
     }
 }
 
@@ -269,7 +329,7 @@ async function getPrefix(tx, context, modelId) {
     return setPrefix;
 }
 
-async function createOutputSignalSets(tx, context, prediction, outSignals, extraSignals=[]) {
+async function _createOutputSignalSets(tx, context, prediction, outSignals, extraSignals = []) {
     const setPrefix = await getPrefix(tx, context, prediction.id);
 
     for (let i = 1; i <= prediction.ahead_count; i++) {
@@ -283,7 +343,7 @@ async function createOutputSignalSets(tx, context, prediction, outSignals, extra
     return {};
 }
 
-async function rebuildOuputOwnership(tx, context, modelId) {
+async function _rebuildOuputOwnership(tx, context, modelId) {
     shares.enforceEntityPermissionTx(tx, context, 'prediction', modelId, 'edit');
 
     const jobs = await tx('predictions_jobs').where('prediction', modelId);
@@ -304,18 +364,6 @@ async function rebuildOuputOwnership(tx, context, modelId) {
     }
 }
 
-async function registerPredictionModelJobTx(tx, context, modelId, jobId) {
-    shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'edit');
-    shares.enforceEntityPermissionTx(tx, context, 'prediction', modelId, 'edit');
-
-    const predJob = {
-        prediction: modelId,
-        job: jobId
-    };
-
-    await tx('predictions_jobs').insert(predJob);
-    await rebuildOuputOwnership(tx, context, modelId);
-}
 
 module.exports.getById = getById;
 module.exports.removeById = removeById;

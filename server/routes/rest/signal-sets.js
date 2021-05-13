@@ -149,6 +149,7 @@ router.postAsync('/signal-set-reindex/:signalSetId', passport.loggedIn, async (r
 });
 
 router.postAsync('/signals-query', passport.loggedIn, async (req, res) => {
+    //console.log(JSON.stringify(await signalSets.query(req.context, req.body), null, 4));
     res.json(await signalSets.query(req.context, req.body));
 });
 

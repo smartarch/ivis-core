@@ -11,15 +11,9 @@ const templates = require('../../models/templates');
 const users = require('../../models/users');
 const contextHelpers = require('../../lib/context-helpers');
 const base64url = require('base64-url');
-
 const router = require('../../lib/router-async').create();
 const { castToInteger } = require('../../lib/helpers');
-
-const es = require('../../lib/elasticsearch');
-const knex = require('../../lib/knex');
-
-async function calcultateRMSE(from, to, sourceSetCid, predSetCid) {
-}
+const { getSigSetBoundaries, calculateRMSE } = require('../../lib/predictions-helpers');
 
 router.postAsync('/predictions-rmse/', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     const x = (await req).body;
@@ -29,58 +23,16 @@ router.postAsync('/predictions-rmse/', passport.loggedIn, passport.csrfProtectio
         to: x.to,
         min: `0 (${Date.now()})`,
         max: 'inf',
+    };
+    if (!x.sourceSetCid) { // ignore invalid request (signal set not specified)
+        return res.json();
     }
-    return res.json(response);
+    const response2 = await calculateRMSE(req.context, x.from, x.to, x.sourceSetCid, x.predSetCid);
+    console.log(`RMSE resp: ${JSON.stringify(response2, null, 4)}`);
+    return res.json(response2);
 });
 
-async function getSigSetBoundaries(signalSetId, tsField='ts') {
-    const signals = await knex.transaction(async tx => {
-        return await signalSets.getSignalByCidMapTx(tx, { id: signalSetId });
-    });
-    const tsSigCid = `s${signals[tsField].id}`;
-
-    const first = await es.search({
-        index: `signal_set_${signalSetId}`,
-        body: {
-            query: {
-                match_all: {},
-            },
-            size: 1,
-            sort: {
-                [tsSigCid]: 'asc'
-            }
-        }
-    });
-
-    const last = await es.search({
-        index: `signal_set_${signalSetId}`,
-        body: {
-            query: {
-                match_all: {},
-            },
-            size: 1,
-            sort: {
-                [tsSigCid]: 'desc'
-            }
-        }
-    });
-
-    console.log(tsSigCid);
-    console.log(JSON.stringify(first.hits.hits, null, 4));
-    console.log(JSON.stringify(first.hits.hits[0]['_source'], null, 4));
-
-    return {
-        first: first.hits.hits[0]['_source'][tsSigCid],
-        last: last.hits.hits[0]['_source'][tsSigCid]
-    };
-}
-
 router.getAsync('/predictions-set-boundaries/:signalSetId', passport.loggedIn, async (req, res) => {
-    let response = {
-        first: '',
-        last: '',
-    };
-
     const signalSetId = castToInteger(req.params.signalSetId);
 
     return res.json(await getSigSetBoundaries(signalSetId));
