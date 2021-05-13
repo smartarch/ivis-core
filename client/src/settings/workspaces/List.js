@@ -68,7 +68,7 @@ export default class List extends Component {
                 actions: data => [
                     {
                         label: data[2],
-                        link: `/workspaces/${data[0]}`
+                        link: `/settings/workspaces/${data[0]}/panels`
                     }
                 ]
             },
