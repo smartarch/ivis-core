@@ -183,6 +183,7 @@ class AheadSelector extends Component {
 
 @withComponentMixins([
     withTranslation,
+    withErrorHandling,
     intervalAccessMixin()
 ])
 class RMSETable extends Component {
@@ -220,9 +221,12 @@ class RMSETable extends Component {
 
         const rmseResult = '';
         this.setState({
-            min: results.min,
-            max: results.max,
-            realFrom: from, // TODO
+            min: results.minMAE,
+            max: results.maxMAE,
+            minMSE: results.minMSE,
+            maxMSE: results.maxMSE,
+            interval: results.interval,
+            realFrom: from,
             realTo: results.to,
         });
     }
@@ -250,20 +254,32 @@ class RMSETable extends Component {
                 <table className={'table table-striped table-bordered'}>
                     <tbody>
                         <tr>
-                            <th scope="row">Target:</th>
+                            <th scope="row">{t('Target')}:</th>
                             <td>{ahead} ahead</td>
                         </tr>
                         <tr>
-                            <th scope="row">Range:</th>
+                            <th scope="row">{t('Range')}:</th>
                             <td>{this.state.realFrom} - {this.state.realTo}</td>
                         </tr>
                         <tr>
-                            <th scope="row">RMSE min:</th>
+                            <th scope="row">{t('MAE min')}:</th>
                             <td>{this.state.min}</td>
                         </tr>
                         <tr>
-                            <th scope="row">RMSE max:</th>
+                            <th scope="row">{t('MAE max')}:</th>
                             <td>{this.state.max}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">{t('RMSE min')}:</th>
+                            <td>{Math.sqrt(this.state.minMSE)}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">{t('RMSE max')}:</th>
+                            <td>{Math.sqrt(this.state.maxMSE)}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">{t('Aggregation interval')}:</th>
+                            <td>{this.state.interval}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -290,8 +306,9 @@ export default class ArimaOverview extends Component {
         };
     }
 
-    onAheadChange(value) {
-        this.setState({ ahead: value });
+    async onAheadChange(value) {
+        const predSigSetCid = await this.getPredSetCid(value);
+        this.setState({ ahead: value, predSetCid: predSigSetCid });
     }
 
     async getSetById(setId) {
@@ -305,14 +322,14 @@ export default class ArimaOverview extends Component {
         return await x.data;
     }
 
-    async getPredSetCid() {
+    async getPredSetCid(ahead) {
         const config = await this.getPredSetOuputConfig(this.props.prediction.id);
-        return config.ahead_sets[this.state.ahead];
+        return config.ahead_sets[ahead];
     }
 
     async fetchData() {
         const sourceSetCid = await this.getSetById(this.props.prediction.set);
-        const predSetCid = await this.getPredSetCid();
+        const predSetCid = await this.getPredSetCid(this.state.ahead);
 
         this.setState({
             sourceSetCid,
