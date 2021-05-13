@@ -174,7 +174,7 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
 async function dataModified(sigSetId, timestamp=moment()) {
     timestamp = moment(timestamp);
     await knex.transaction(async tx => {
-        await tx('signal_sets').where('id', sigSetId).update({ data_modified: timestamp.format('YYYY-MM-DD hh:mm:ss') });
+        await tx('signal_sets').where('id', sigSetId).update({ data_modified: timestamp.format('YYYY-MM-DD HH:mm:ss') });
     });
 }
 
