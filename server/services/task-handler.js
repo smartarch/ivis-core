@@ -183,7 +183,6 @@ async function getEntitiesFromParams(job, jobParams, taskParams) {
     };
 
     function getJobParamByRef(prefix = '/', ref) {
-
         const abs = ref ? resolveAbs(prefix, ref) : prefix;
 
         let walker = jobParams;

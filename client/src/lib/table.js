@@ -256,6 +256,7 @@ class Table extends Component {
 
                 column.type = 'html';
                 column.createdCell = createdCellFn;
+                column.render = () => '';
 
                 if (!('data' in column)) {
                     column.data = null;
