@@ -8,8 +8,13 @@ const defaultSubtypeKey = '__default__';
 
 const PythonSubtypes = {
     ENERGY_PLUS: 'energy_plus',
-    NUMPY: 'numpy'
+    NUMPY: 'numpy',
+    PANDAS: 'pandas',
+    NEURAL_NETWORK: 'neural_network'
 };
+
+// File name of every build output
+const PYTHON_JOB_FILE_NAME = 'job.py';
 
 const subtypesByType = {
     [TaskType.PYTHON]: PythonSubtypes
@@ -41,6 +46,15 @@ function isTransitionState(state) {
     return getTransitionStates().includes(state);
 }
 
+const WizardType = {
+    BLANK: 'blank',
+    BASIC: 'basic',
+    ENERGY_PLUS: 'energy_plus',
+    MOVING_AVERAGE: 'moving_average',
+    AGGREGATION: 'aggregation',
+    MODEL_COMPARISON: 'model_comparison'
+};
+
 module.exports = {
     TaskType,
     subtypesByType,
@@ -50,5 +64,7 @@ module.exports = {
     TaskSource,
     getFinalStates,
     getTransitionStates,
-    isTransitionState
+    isTransitionState,
+    PYTHON_JOB_FILE_NAME,
+    WizardType
 };

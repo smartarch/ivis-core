@@ -2,10 +2,13 @@
 import em from '../../../src/lib/extension-manager';
 
 import {TaskType, PythonSubtypes} from "../../../../shared/tasks";
+
 const taskSubtypeLabels = {
     [TaskType.PYTHON]: {
         [PythonSubtypes.ENERGY_PLUS]: 'EnergyPlus task',
-        [PythonSubtypes.NUMPY]: 'Numpy task'
+        [PythonSubtypes.NUMPY]: 'Numpy task',
+        [PythonSubtypes.PANDAS]: 'Pandas task',
+        [PythonSubtypes.NEURAL_NETWORK]: 'Neural network task'
     }
 };
 
