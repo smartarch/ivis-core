@@ -7,7 +7,8 @@ const taskSubtypeLabels = {
     [TaskType.PYTHON]: {
         [PythonSubtypes.ENERGY_PLUS]: 'EnergyPlus task',
         [PythonSubtypes.NUMPY]: 'Numpy task',
-        [PythonSubtypes.PANDAS]: 'Pandas task'
+        [PythonSubtypes.PANDAS]: 'Pandas task',
+        [PythonSubtypes.NEURAL_NETWORK]: 'Neural network task'
     }
 };
 

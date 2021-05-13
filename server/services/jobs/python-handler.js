@@ -26,6 +26,9 @@ const taskSubtypeSpecs = {
     [PythonSubtypes.PANDAS]: {
         libs: [...defaultPythonLibs, 'pandas']
     },
+    [PythonSubtypes.NEURAL_NETWORK]: {
+        libs: [...defaultPythonLibs, 'numpy', 'pandas', 'tensorflow']
+    },
     //...ivisConfig.tasks.python.subtypes
 };
 
