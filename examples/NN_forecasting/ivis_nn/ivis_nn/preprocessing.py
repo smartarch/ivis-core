@@ -36,98 +36,72 @@ def one_hot_encoding(dataframe, column, values):
     pd.DataFrame
         Modified dataframe
     """
+
+    index = dataframe.columns.get_loc(column)
+
     for val in values:
-        dataframe[f"{column}_{val}"] = (dataframe[column] == val).astype(int)
-    dataframe[f"{column}_unknown"] = (~dataframe[column].isin(values)).astype(int)
+        dataframe.insert(index, f"{column}_{val}", (dataframe[column] == val).astype(int))
+        index += 1
+    dataframe.insert(index, f"{column}_unknown", (~dataframe[column].isin(values)).astype(int))
 
     dataframe.drop(columns=[column], inplace=True)
     return dataframe
 
 
-def preprocess_dataframes(training_parameters, train_df, val_df, test_df):
+def compute_normalization_coefficients(training_parameters, train_df):
     """
-    Apply preprocessing (normalization, ...) to the train, validation and test DataFrames.
+    Computes the normalization coefficients which can later be applied by `preprocess_using_coefficients`.
 
     Returns
     -------
-    (pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, (list, list))
-        train, validation, test datasets,
-        normalization coefficients for the features (should be saved)
-        columns = tuple of two lists of column names for the input and target schema
+    dict
     """
-    input_schema = {_get_aggregated_field(sig): sig for sig in training_parameters["input_signals"]}
-    target_schema = {_get_aggregated_field(sig): sig for sig in training_parameters["target_signals"]}
-    schema = dict(input_schema)
-    schema.update(target_schema)
 
-    input_columns = []
-    target_columns = []
     normalization_coefficients = {}
-    train_df = train_df.copy()
-    val_df = val_df.copy()
-    test_df = test_df.copy()
 
-    def copy_column_from_schema(original_column, new_columns=None):
-        """Call this after preprocessing a column to copy it to appropriate columns lists"""
-        if new_columns is None:
-            new_columns = [original_column]
-        for column in new_columns:
-            if original_column in input_schema:
-                input_columns.append(column)
-            if original_column in target_schema:
-                target_columns.append(column)
-
-    def mean_std_normalization(column):
-        """maps the column values to ensure mean = 0, std = 1"""
+    def mean_std(column):
         mean = train_df[column].mean()
         std = train_df[column].std()
 
-        train_df[column] = (train_df[column] - mean) / std
-        val_df[column] = (val_df[column] - mean) / std
-        test_df[column] = (test_df[column] - mean) / std
+        normalization_coefficients[column] = {
+            "mean": float(mean),
+            "std": float(std)
+        }
 
-        normalization_coefficients[column] = {"mean": float(mean), "std": float(std)}
-        copy_column_from_schema(column)
-
-    def min_max_normalization(column, properties):
-        """maps the column's values into [0, 1] range"""
+    def min_max(column, properties):
         min_val = properties["min"] if "min" in properties else train_df[column].min()
         max_val = properties["max"] if "max" in properties else train_df[column].max()
 
-        train_df[column] = (train_df[column] - min_val) / (max_val - min_val)
-        val_df[column] = (val_df[column] - min_val) / (max_val - min_val)
-        test_df[column] = (test_df[column] - min_val) / (max_val - min_val)
+        normalization_coefficients[column] = {
+            "min": float(min_val),
+            "max": float(max_val)
+        }
 
-        normalization_coefficients[column] = {"min": float(min_val), "max": float(max_val)}
-        copy_column_from_schema(column)
-
-    def apply_one_hot_encoding(column):
-        nonlocal train_df, val_df, test_df
+    def one_hot(column):
         values = list(train_df[column].unique())
 
-        train_df = one_hot_encoding(train_df, column, values)
-        val_df = one_hot_encoding(val_df, column, values)
-        test_df = one_hot_encoding(test_df, column, values)
+        normalization_coefficients[column] = {
+            "values": values
+        }
 
-        normalization_coefficients[column] = {"values": values}
-        copy_column_from_schema(column, [f"{column}_{val}" for val in values + ['unknown']])
-
-    def preprocess_feature(column, properties):
+    def compute_coefficients(column, properties):
         if properties["data_type"] == "categorical":
-            apply_one_hot_encoding(column)
+            one_hot(column)
         elif "min" in properties or "max" in properties:
-            min_max_normalization(column, properties)
+            min_max(column, properties)
         else:
-            mean_std_normalization(column)
+            mean_std(column)
 
-    for col in schema:
-        preprocess_feature(col, schema[col])
+    for signal in training_parameters["input_signals"] + training_parameters["target_signals"]:
+        column_name = _get_aggregated_field(signal)
+        if column_name not in normalization_coefficients:
+            compute_coefficients(column_name, signal)
 
-    return train_df, val_df, test_df, normalization_coefficients, (input_columns, target_columns)
+    return normalization_coefficients
 
 
 def preprocess_using_coefficients(normalization_coefficients, dataframe):
-    """Apply preprocessing (normalization, ...) based on the `normalization_coefficients` to the dataframes. This is intended to be used during prediction."""
+    """Apply preprocessing (normalization, ...) based on the `normalization_coefficients` to the dataframes."""
     dataframe = dataframe.copy()
 
     def mean_std_normalization(column, mean, std):
@@ -159,6 +133,36 @@ def preprocess_using_coefficients(normalization_coefficients, dataframe):
     return dataframe
 
 
+def preprocess_dataframes(normalization_coefficients, *dataframes):
+    return (preprocess_using_coefficients(normalization_coefficients, d) for d in dataframes)
+
+
+def get_column_names_for_signal(normalization_coefficients, signal):
+    column_names = []
+    column = _get_aggregated_field(signal)
+
+    if "values" in normalization_coefficients[column]:
+        for value in normalization_coefficients[column]["values"] + ["unknown"]:
+            column_names.append(f"{column}_{value}")
+    else:
+        column_names.append(column)
+
+    return column_names
+
+
+def get_column_names(normalization_coefficients, signals):
+    """
+    Takes the list of signal definitions (`TrainingParams.input_signals` or `TrainingParams.target_signals`) and returns
+    the names of columns generated by preprocessing.
+    """
+    column_names = []
+
+    for signal in signals:
+        column_names.extend(get_column_names_for_signal(normalization_coefficients, signal))
+
+    return column_names
+
+
 class WindowGenerator:
     """
     Time series window dataset generator
@@ -169,8 +173,8 @@ class WindowGenerator:
      |               width                 |
     """
 
-    def __init__(self, columns, dataframe, input_width, target_width, offset, interval=None, batch_size=32,
-                 shuffle=False):
+    def __init__(self, dataframe, input_column_names, target_column_names, input_width, target_width, offset,
+                 interval=None, batch_size=32, shuffle=False):
         self.input_width = input_width
         self.target_width = target_width
         self.offset = offset
@@ -180,7 +184,6 @@ class WindowGenerator:
         self.interval = interval  # aggregation interval, used for splitting by missing values
 
         # features schema
-        input_column_names, target_column_names = columns
         if not target_column_names:  # target_schema is empty -> same as input_schema
             target_column_names = input_column_names
 
@@ -275,30 +278,28 @@ class WindowGenerator:
         return dataset
 
 
-def make_datasets(columns, train_df, val_df, test_df, window_params):
+def make_datasets(train_df, val_df, test_df, window_generator_params):
     """
     Convert the pd.DataFrame to windowed tf.data.Dataset.
 
     Parameters
     ----------
-    columns : (list, list)
-        tuple of two lists of column names for the input and target schema (retreived from `preprocess_dataframes`)
     train_df : pd.DataFrame
     val_df : pd.DataFrame
     test_df : pd.DataFrame
-    window_params : dict
+    window_generator_params : dict
         parameters for the constructor of `WindowGenerator`
 
     Returns
     -------
     (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset)
-        train, validaion, test datasets
+        train, validation, test datasets
     """
     default_window_params = {
         "offset": 0,
     }
-    default_window_params.update(window_params)
-    window = WindowGenerator(columns, train_df, **default_window_params)
+    default_window_params.update(window_generator_params)
+    window = WindowGenerator(train_df, **default_window_params)
     train = window.make_dataset(train_df)
     val = window.make_dataset(val_df)
     test = window.make_dataset(test_df)

@@ -39,4 +39,6 @@ def run_prediction(prediction_parameters, model_path, log_callback):
 
     predicted = model.predict(dataset)
 
-    return True, predicted
+    predicted_dataframes = pred.postprocess(prediction_parameters, predicted)
+
+    return True, predicted_dataframes
