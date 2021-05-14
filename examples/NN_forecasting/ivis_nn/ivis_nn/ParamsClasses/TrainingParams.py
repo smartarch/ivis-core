@@ -1,4 +1,7 @@
-class TrainingParams:
+from ivis_nn.ParamsClasses.Params import Params
+
+
+class TrainingParams(Params):
     """Class representing the parameters for `run_training` function."""
 
     def __init__(self):

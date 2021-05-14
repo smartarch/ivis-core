@@ -264,10 +264,10 @@ def parse_histogram(signals, data):
 
 
 def parse_data(training_parameters, data):
-    signals = training_parameters["input_signals"] + training_parameters["target_signals"]
-    if training_parameters["query_type"] == "docs":
+    signals = training_parameters.input_signals + training_parameters.target_signals
+    if training_parameters.query_type == "docs":
         return parse_docs(signals, data)
-    elif training_parameters["query_type"] == "histogram":
+    elif training_parameters.query_type == "histogram":
         return parse_histogram(signals, data)
     else:
         raise Exception("Unknown query type")

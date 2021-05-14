@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-import json
-
-import numpy as np
-import pandas as pd
 import tensorflow as tf
 import ivis_nn
-from ivis_nn.PredictionParams import PredictionParams
+from ivis_nn.ParamsClasses.PredictionParams import PredictionParams
 
 
 def run_training(training_parameters, data, model_save_folder):
@@ -14,7 +10,7 @@ def run_training(training_parameters, data, model_save_folder):
 
     Parameters
     ----------
-    training_parameters : dict (TrainingParams)
+    training_parameters : ivis_nn.TrainingParams
         The parameters passed from Optimizer (converted to ``dict`` because they were serialized to JSON along the way).
         Before serialization, the parameters were a class derived from Optimizer.TrainingParams.
     data : dict
@@ -35,15 +31,15 @@ def run_training(training_parameters, data, model_save_folder):
     norm_coeffs = ivis_nn.pre.compute_normalization_coefficients(training_parameters, train_df)
     train_df, val_df, test_df = ivis_nn.pre.preprocess_dataframes(norm_coeffs, train_df, val_df, test_df)
 
-    input_width = training_parameters['input_width']
-    target_width = training_parameters['target_width']
-    input_column_names = ivis_nn.pre.get_column_names(norm_coeffs, training_parameters["input_signals"])
-    target_column_names = ivis_nn.pre.get_column_names(norm_coeffs, training_parameters["target_signals"])
+    input_width = training_parameters.input_width
+    target_width = training_parameters.target_width
+    input_column_names = ivis_nn.pre.get_column_names(norm_coeffs, training_parameters.input_signals)
+    target_column_names = ivis_nn.pre.get_column_names(norm_coeffs, training_parameters.target_signals)
 
     window_generator_params = {
         "input_width": input_width,
         "target_width": target_width,
-        "interval": training_parameters['interval'],
+        "interval": training_parameters.interval,
         "input_column_names": input_column_names,
         "target_column_names": target_column_names,
     }
@@ -81,7 +77,7 @@ def run_training(training_parameters, data, model_save_folder):
     # save the prediction parameters
     prediction_parameters = PredictionParams(training_parameters, norm_coeffs)
     with open(model_save_folder + "prediction_parameters.json", 'w') as file:
-        print(json.dumps(prediction_parameters.__dict__, indent=2), file=file)
+        print(prediction_parameters.to_json(), file=file)
 
     return {
         "train_loss": 1.22,

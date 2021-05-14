@@ -9,18 +9,6 @@
       "field": "s9"
     },
     {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
-    {
       "cid": "humidity",
       "data_type": "numerical",
       "type": "integer",
@@ -39,23 +27,11 @@
       "data_type": "numerical",
       "type": "float",
       "field": "s9"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
     }
   ],
   "ts_field": "s8",
   "interval": null,
-  "normalization_coeffs": {
+  "normalization_coefficients": {
     "s9": {
       "mean": 2.573500156402588,
       "std": 3.803406238555908

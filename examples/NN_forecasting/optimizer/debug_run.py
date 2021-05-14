@@ -10,7 +10,7 @@ import sys
 
 
 def run_training(training_params):
-    print(json.dumps(training_params.__dict__, indent=2))
+    print(training_params.to_json())
     return {
         "train_loss": 1.22,
         "test_loss": 3.4,

@@ -1,5 +1,5 @@
 # The elasticsearch submodule can be used without TensorFlow.
-from ivis_nn.TrainingParams.TrainingParams import TrainingParams
+from ivis_nn.ParamsClasses import *
 from . import elasticsearch
 es = elasticsearch
 

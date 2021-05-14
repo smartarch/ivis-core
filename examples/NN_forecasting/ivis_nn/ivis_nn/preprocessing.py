@@ -8,7 +8,7 @@ from .common import *
 
 def split_data(training_parameters, dataframe):
     """Returns three datasets for train, val, test as DataFrames"""
-    split = training_parameters["split"]
+    split = training_parameters.split
     n = dataframe.shape[0]  # number of records
     train_size = int(np.floor(n * split["train"]))
     val_size = int(np.floor(n * split["val"]))
@@ -92,7 +92,7 @@ def compute_normalization_coefficients(training_parameters, train_df):
         else:
             mean_std(column)
 
-    for signal in training_parameters["input_signals"] + training_parameters["target_signals"]:
+    for signal in training_parameters.input_signals + training_parameters.target_signals:
         column_name = _get_aggregated_field(signal)
         if column_name not in normalization_coefficients:
             compute_coefficients(column_name, signal)

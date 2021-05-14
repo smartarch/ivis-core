@@ -5,12 +5,8 @@
     "size": 200,
     "_source": [
       "s9",
-      "s9",
-      "s9",
       "s11",
       "s14",
-      "s9",
-      "s9",
       "s9"
     ],
     "sort": [
@@ -37,18 +33,6 @@
       "field": "s9"
     },
     {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
-    {
       "cid": "humidity",
       "data_type": "numerical",
       "type": "integer",
@@ -62,18 +46,6 @@
     }
   ],
   "target_signals": [
-    {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "numerical",
-      "type": "float",
-      "field": "s9"
-    },
     {
       "cid": "temperature",
       "data_type": "numerical",

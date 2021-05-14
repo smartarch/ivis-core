@@ -62,7 +62,7 @@
   ],
   "ts_field": "s8",
   "interval": 86400000,
-  "normalization_coeffs": {
+  "normalization_coefficients": {
     "s9_min": {
       "mean": 1.1391429901123047,
       "std": 3.2074742317199707

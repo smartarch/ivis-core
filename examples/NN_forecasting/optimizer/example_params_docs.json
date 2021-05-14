@@ -13,21 +13,7 @@
       "data_type": "auto",
       "min": "",
       "max": "",
-      "aggregation": "min"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "auto",
-      "min": "",
-      "max": "",
       "aggregation": "avg"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "auto",
-      "min": "",
-      "max": "",
-      "aggregation": "max"
     },
     {
       "cid": "humidity",
@@ -50,21 +36,7 @@
       "data_type": "auto",
       "min": "",
       "max": "",
-      "aggregation": "min"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "auto",
-      "min": "",
-      "max": "",
       "aggregation": "avg"
-    },
-    {
-      "cid": "temperature",
-      "data_type": "auto",
-      "min": "",
-      "max": "",
-      "aggregation": "max"
     }
   ],
   "input_width": 3,

@@ -10,7 +10,7 @@ def run_prediction(prediction_parameters, model_path, log_callback):
 
     Parameters
     ----------
-    prediction_parameters : dict
+    prediction_parameters : ivis_nn.PredictionParams
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types.
     model_path : str
@@ -27,7 +27,7 @@ def run_prediction(prediction_parameters, model_path, log_callback):
     """
 
     dataframe = pred.load_data(prediction_parameters)
-    dataframe = preprocessing.preprocess_using_coefficients(prediction_parameters['normalization_coeffs'], dataframe)
+    dataframe = preprocessing.preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
     print(dataframe)
 
     dataset = pred.get_windowed_dataset(prediction_parameters, dataframe)

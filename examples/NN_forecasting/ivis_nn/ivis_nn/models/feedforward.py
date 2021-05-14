@@ -7,8 +7,7 @@ def feedforward_model(training_parameters, input_shape, target_shape):
 
     Parameters
     ----------
-    training_parameters : dict, JSON from TrainingParams
-        TODO: expected parameters ("hidden_layers")
+    training_parameters : ivis_nn.FeedforwardTrainingParams
     input_shape : tuple
     target_shape : tuple
 
@@ -17,8 +16,8 @@ def feedforward_model(training_parameters, input_shape, target_shape):
     tf.keras.Model
     """
     hidden_layers = []
-    if "hidden_layers" in training_parameters:
-        hidden_layers = training_parameters["hidden_layers"]
+    if hasattr(training_parameters, "hidden_layers"):
+        hidden_layers = training_parameters.hidden_layers
 
     inputs = tf.keras.layers.Input(shape=input_shape)
     layer = tf.keras.layers.Flatten()(inputs)
