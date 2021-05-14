@@ -34,9 +34,9 @@ def run_training(training_parameters, data, model_save_folder):
     train_df, val_df, test_df, norm_coeffs, columns = ivis_nn.pre.preprocess_dataframes(training_parameters, train_df, val_df, test_df)
 
     window_params = {
-        "input_width": 3,
-        "target_width": 1,
-        "interval": training_parameters["interval"]
+        "input_width": training_parameters['input_width'],
+        "target_width": training_parameters['target_width'],
+        "interval": training_parameters['interval']
     }
     train, val, test = ivis_nn.pre.make_datasets(columns, train_df, val_df, test_df, window_params)
 

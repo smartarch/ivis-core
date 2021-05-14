@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import numpy as np
+import tensorflow as tf
 from ivis import ivis
 from ivis_nn import es
 
@@ -28,3 +30,11 @@ def load_data(prediction_parameters):
         results = ivis.elasticsearch.search(index, query)
         return es.parse_docs(prediction_parameters["input_signals"], results)
 
+
+def get_windowed_dataset(prediction_parameters, dataframe):
+    return tf.keras.preprocessing.timeseries_dataset_from_array(
+        data=np.array(dataframe, dtype=np.float32),
+        targets=None,
+        sequence_length=prediction_parameters['input_width'],
+        sequence_stride=1,
+        shuffle=False)

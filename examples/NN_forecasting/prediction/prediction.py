@@ -30,7 +30,13 @@ def run_prediction(prediction_parameters, model_path, log_callback):
     dataframe = preprocessing.preprocess_using_coefficients(prediction_parameters['normalization_coeffs'], dataframe)
     print(dataframe)
 
+    dataset = pred.get_windowed_dataset(prediction_parameters, dataframe)
+    for d in dataset.as_numpy_iterator():
+        print(d)
+
     model = tf.keras.models.load_model(model_path)
     model.summary()
 
-    return True, []
+    predicted = model.predict(dataset)
+
+    return True, predicted
