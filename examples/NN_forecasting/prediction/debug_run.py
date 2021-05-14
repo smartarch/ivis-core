@@ -23,10 +23,12 @@ def print_log(message):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "docs":
-        with open('example_prediction_params.json') as params_file:
+        with open('example_histogram/prediction_parameters.json') as params_file:
             params = json.load(params_file)
+        model_path = 'example_histogram/model.h5'
     else:
-        with open('example_prediction_params_docs.json') as params_file:
+        with open('example_docs/prediction_parameters.json') as params_file:
             params = json.load(params_file)
-    _, predictions = run_prediction(params, [], "../training/models/example_h5.h5", print_log)
+        model_path = 'example_docs/model.h5'
+    _, predictions = run_prediction(params, model_path, print_log)
     print(predictions)

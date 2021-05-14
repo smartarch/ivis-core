@@ -1,0 +1,80 @@
+{
+  "architecture": "feedforward",
+  "index": "signal_set_2",
+  "input_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "humidity",
+      "data_type": "numerical",
+      "type": "integer",
+      "field": "s11"
+    },
+    {
+      "cid": "status",
+      "data_type": "categorical",
+      "type": "keyword",
+      "field": "s14"
+    }
+  ],
+  "target_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "type": "float",
+      "field": "s9"
+    }
+  ],
+  "ts_field": "s8",
+  "interval": null,
+  "normalization_coeffs": {
+    "s9": {
+      "mean": 2.573500156402588,
+      "std": 3.803406238555908
+    },
+    "s11": {
+      "mean": 73.14286041259766,
+      "std": 17.689802169799805
+    },
+    "s14": {
+      "values": [
+        "Fog",
+        "Mist",
+        "Clouds",
+        "Rain",
+        "Snow",
+        "Clear"
+      ]
+    }
+  },
+  "input_width": 3,
+  "target_width": 1
+}

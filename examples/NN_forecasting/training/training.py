@@ -68,10 +68,11 @@ def run_training(training_parameters, data, model_save_folder):
     print(metrics_history.history)
 
     # # save the model
-    # model.save(model_save_folder + "model.h5")
+    model.save(model_save_folder + "model.h5")
     # save the prediction parameters
     prediction_parameters = PredictionParams(training_parameters, norm_coeffs)
-    print(json.dumps(prediction_parameters.__dict__, indent=2))  # TODO: save to file
+    with open(model_save_folder + "prediction_parameters.json", 'w') as file:
+        print(json.dumps(prediction_parameters.__dict__, indent=2), file=file)
 
     return {
         "train_loss": 1.22,

@@ -1,37 +1,10 @@
 #!/usr/bin/env python3
-import numpy as np
 import tensorflow as tf
-from ivis import ivis
-from ivis_nn import es
+import ivis_nn.prediction as pred
+from ivis_nn import preprocessing
 
 
-def load_data(prediction_parameters):
-    """
-    Generates the queries, runs them in Elasticsearch and parses the data.
-
-    Parameters
-    ----------
-    prediction_parameters : dict (PredictionParams)
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    index = prediction_parameters["index"]
-    # TODO: handle data for multiple predictions at the same time
-    input_width = prediction_parameters["input_width"]
-    if prediction_parameters["interval"] is not None:
-        aggregation_interval = f"{prediction_parameters['interval']}ms"
-        query = es.get_histogram_query(prediction_parameters["input_signals"], prediction_parameters["ts_field"], aggregation_interval, size=input_width)  # TODO: time interval
-        results = ivis.elasticsearch.search(index, query)
-        return es.parse_histogram(prediction_parameters["input_signals"], results)
-    else:
-        query = es.get_docs_query(prediction_parameters["input_signals"], prediction_parameters["ts_field"], size=input_width)  # TODO: time interval
-        results = ivis.elasticsearch.search(index, query)
-        return es.parse_docs(prediction_parameters["input_signals"], results)
-
-
-def run_prediction(prediction_parameters, data, model_path, log_callback):
+def run_prediction(prediction_parameters, model_path, log_callback):
     """
     Predicts future values using the given model and new data.
 
@@ -40,8 +13,6 @@ def run_prediction(prediction_parameters, data, model_path, log_callback):
     prediction_parameters : dict
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types.
-    data : any
-        The new data for making predictions, received from Elasticsearch.
     model_path : str
         Path to load the model from and save the model if it was updated.
     log_callback : callable
@@ -50,12 +21,13 @@ def run_prediction(prediction_parameters, data, model_path, log_callback):
     Returns
     -------
     bool
-        Whether the model was updated and should be uploaded to IVIS server.
+        Whether the model was updated and should be uploaded to IVIS server. TODO: this is probably unnecessary as we can simply save the model back to the file from which it was loaded
     any
         New predictions to be inserted into the signal set in Elasticsearch.
     """
 
-    dataframe = load_data(prediction_parameters)
+    dataframe = pred.load_data(prediction_parameters)
+    dataframe = preprocessing.preprocess_using_coefficients(prediction_parameters['normalization_coeffs'], dataframe)
     print(dataframe)
 
     model = tf.keras.models.load_model(model_path)
