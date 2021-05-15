@@ -25,7 +25,7 @@ const internalLibs = {
 const libs = [];
 
 for (const lib of externalsLibs) {
-    const id = 'ivisExports_' + slugify(lib, '_');
+    const id = 'ivisExports_' + slugify(lib, '_').replace(/-/g, '_');
     libs.push({
         id,
         lib,
@@ -35,7 +35,7 @@ for (const lib of externalsLibs) {
 }
 
 for (const lib in internalLibs) {
-    const id = 'ivisExports_' + slugify(lib, '_');
+    const id = 'ivisExports_' + slugify(lib, '_').replace(/-/g, '_');
     libs.push({
         id,
         lib,
