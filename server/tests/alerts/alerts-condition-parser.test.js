@@ -266,3 +266,28 @@ test('complicated formula #2', async () => {
     const result = await evaluate(formula, 1);
     expect(result).toBe('NotBoolError');
 });
+
+test('empty condition', async () => {
+    const result = await evaluate('', 1);
+    expect(result).toBe('NotBoolError');
+});
+
+test('white space condition', async () => {
+    const result = await evaluate('        ', 1);
+    expect(result).toBe('NotBoolError');
+});
+
+test('multiline white space condition', async () => {
+    const result = await evaluate('    \n     ;\n\n;\n    ', 1);
+    expect(result).toBe('NotBoolError');
+});
+
+test('undefined condition', async () => {
+    const result = await evaluate(undefined, 1);
+    expect(result).toMatch(/Unexpected type of argument .*/);
+});
+
+test('null condition', async () => {
+    const result = await evaluate(null, 1);
+    expect(result).toMatch(/Unexpected type of argument .*/);
+});
