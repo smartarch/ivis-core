@@ -4,6 +4,8 @@ const passport = require('../../lib/passport');
 const moment = require('moment');
 const signalSets = require('../../models/signal-sets');
 const signalSetsAggregations = require('../../models/signal-set-aggregations');
+const signalSetsPredictions = require('../../models/signal-set-predictions');
+const arima = require('../../models/predictions-arima');
 const panels = require('../../models/panels');
 const templates = require('../../models/templates');
 const users = require('../../models/users');
@@ -107,6 +109,16 @@ router.getAsync('/signal-sets-by-cid/:signalSetCid', passport.loggedIn, async (r
     return res.json(signalSet);
 });
 
+router.getAsync('/predictions/:modelId', passport.loggedIn, async (req, res) => {
+    const predictionModel = await signalSetsPredictions.getById(req.context, req.params.modelId);
+    return res.json(predictionModel);
+});
+
+router.getAsync('/predictions-output-config/:predictionId', passport.loggedIn, async (req, res) => {
+    const outputConfig = await signalSetsPredictions.getOutputConfig(req.context, castToInteger(req.params.predictionId));
+    return res.json(outputConfig);
+});
+
 router.postAsync('/signal-sets', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     return res.json(await signalSets.create(req.context, req.body));
 });
@@ -137,6 +149,7 @@ router.postAsync('/signal-set-reindex/:signalSetId', passport.loggedIn, async (r
 });
 
 router.postAsync('/signals-query', passport.loggedIn, async (req, res) => {
+    //console.log(JSON.stringify(await signalSets.query(req.context, req.body), null, 4));
     res.json(await signalSets.query(req.context, req.body));
 });
 
@@ -186,6 +199,19 @@ router.postAsync('/signal-sets/:signalSetId/aggregations', passport.loggedIn, pa
 
 router.postAsync('/signal-set-aggregations-table/:signalSetId', passport.loggedIn, async (req, res) => {
     return res.json(await signalSetsAggregations.listDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
+});
+
+router.deleteAsync('/signal-sets/:signalSetId/predictions/:predictionId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    await signalSetsPredictions.removeById(req.context, castToInteger(req.params.signalSetId), castToInteger(req.params.predictionId));
+    return res.json();
+});
+
+router.postAsync('/signal-sets/:signalSetId/predictions/arima', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    return res.json(await arima.create(req.context, castToInteger(req.params.signalSetId), req.body));
+})
+
+router.postAsync('/signal-set-predictions-table/:signalSetId', passport.loggedIn, async (req, res) => {
+    return res.json(await signalSetsPredictions.listDTAjax(req.context, castToInteger(req.params.signalSetId), req.body));
 });
 
 /* This is for testing. Kept here as long as we are still making bigger changes to ELS query processor

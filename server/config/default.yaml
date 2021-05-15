@@ -132,7 +132,8 @@ roles:
         workspace: ["view", "edit", "delete", "share", "createPanel"]
         panel: ["view", "edit", "delete", "share"]
         signal: ["view", "edit", "delete", "query", "share"]
-        signalSet: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts"]
+        signalSet: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts", "createPrediction"]
+        prediction: ["view", "edit", "delete", "share"]
 
   template:
     master:
@@ -175,4 +176,10 @@ roles:
       name: "Master"
       description: "All permissions"
       # Note that the ability to "manageScripts" means that one circumvent the "query" permission on a signal because a script has always access to all signals in the signal set.
-      permissions: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts"]
+      permissions: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts", "createPrediction"]
+
+  prediction:
+    master:
+      name: "Master"
+      description: "All permissions"
+      permissions: ["view", "edit", "delete", "share"]

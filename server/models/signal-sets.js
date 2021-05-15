@@ -203,6 +203,10 @@ async function createTx(tx, context, entity) {
     await shares.rebuildPermissionsTx(tx, {entityTypeId: 'signalSet', entityId: id});
 
     if (filteredEntity.kind === SignalSetKind.TIME_SERIES) {
+        let source = SignalSource.RAW;
+        if (filteredEntity.type === SignalSetType.COMPUTED) {
+            source = SignalSource.JOB;
+        }
         await signals.createTx(tx, context, id, {
             cid: 'ts',
             name: 'Timestamp',
@@ -210,7 +214,7 @@ async function createTx(tx, context, entity) {
             namespace: entity.namespace,
             type: SignalType.DATE_TIME,
             set: id,
-            source: SignalSource.RAW
+            source: source
         });
     }
 
@@ -273,6 +277,14 @@ async function _remove(context, key, id) {
         // probably should be handled better, as there may be other extensions
         const exists = await tx('aggregation_jobs').where('set', existing.id).first();
         enforce(!exists, `Signal set has aggregation ${exists ? exists.id : ''} delete it first.`);
+
+        // ensure there are no prediction models under this signal set
+        await dependencyHelpers.ensureNoDependencies(tx, context, id, [
+            {
+                entityTypeId: 'prediction',
+                column: 'set'
+            }
+        ]);
 
         await tx('signals').where('set', existing.id).del();
         await tx('signal_sets').where('id', existing.id).del();
