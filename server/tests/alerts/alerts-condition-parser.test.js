@@ -291,3 +291,68 @@ test('null condition', async () => {
     const result = await evaluate(null, 1);
     expect(result).toMatch(/Unexpected type of argument .*/);
 });
+
+test('past function zero distance', async () => {
+    const result = await evaluate('past("siga", 0) == 123', 1);
+    expect(result).toBe(true);
+});
+
+test('past function -1 distance', async () => {
+    const result = await evaluate('past("siga", -1) == 123', 1);
+    expect(result).toMatch(/Cannot read property .*/);
+});
+
+test('avg function zero length', async () => {
+    const result = await evaluate('avg("siga", 0) == 123', 1);
+    expect(result).toBe(false);
+});
+
+test('avg function -1 length', async () => {
+    const result = await evaluate('avg("siga", -1) == 123', 1);
+    expect(result).toBe(false);
+});
+
+test('vari function not numeric', async () => {
+    const result = await evaluate('vari("id", 5) == 123', 1);
+    expect(result).toBe('Argument in vari function is not a number!');
+});
+
+test('vari function -1 length', async () => {
+    const result = await evaluate('vari("id", -1) == 123', 1);
+    expect(result).toBe(false);
+});
+
+test('max function -1 length', async () => {
+    const result = await evaluate('max("id", -1) == null', 1);
+    expect(result).toBe(true);
+});
+
+test('min function -1 length', async () => {
+    const result = await evaluate('min("id", -1) == null', 1);
+    expect(result).toBe(true);
+});
+
+test('qnt function -1 length', async () => {
+    const result = await evaluate('qnt("siga", -1, 0.5) == undefined', 1);
+    expect(result).toBe(true);
+});
+
+test('qnt function 0 length', async () => {
+    const result = await evaluate('qnt("siga", 0, 0.5) == undefined', 1);
+    expect(result).toBe(true);
+});
+
+test('qnt function over length', async () => {
+    const result = await evaluate('qnt("siga", 10000, 0.3) != qnt("siga", 10, 0.3)', 1);
+    expect(result).toBe(false);
+});
+
+test('vari function over length', async () => {
+    const result = await evaluate('vari("siga", 10000) == vari("siga", 10)', 1);
+    expect(result).toBe(true);
+});
+
+test('past function over length', async () => {
+    const result = await evaluate('past("id", 10000) == past("id", 9)', 1);
+    expect(result).toBe(true);
+});
