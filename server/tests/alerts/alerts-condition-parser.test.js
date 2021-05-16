@@ -337,8 +337,8 @@ test('qnt function -1 length', async () => {
     expect(result).toBe(true);
 });
 
-test('qnt function 0 length', async () => {
-    const result = await evaluate('qnt("siga", 0, 0.5) == undefined', 1);
+test('qnt function q = 3 and q = -1', async () => {
+    const result = await evaluate('qnt("siga", 10, 3) == undefined and qnt("siga", 10, -1) == -69', 1);
     expect(result).toBe(true);
 });
 
