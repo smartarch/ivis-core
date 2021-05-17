@@ -90,6 +90,7 @@ async function listDTAjax(context, params) {
         {
             mapFun: data => {
                 data[5] = JSON.parse(data[5]);
+                data[9] = moment.utc(data[9]).toISOString();
             }
         }
     );
@@ -171,7 +172,7 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
 
 
 // call this whenever the data are modified (new records added, deleted, ...)
-async function dataModified(sigSetId, timestamp=moment()) {
+async function dataModified(sigSetId, timestamp=moment.utc()) {
     timestamp = moment(timestamp);
     await knex.transaction(async tx => {
         await tx('signal_sets').where('id', sigSetId).update({ data_modified: timestamp.format('YYYY-MM-DD HH:mm:ss') });
