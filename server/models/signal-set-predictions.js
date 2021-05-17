@@ -319,7 +319,7 @@ function _stripNonPrintable(string) {
 }
 
 async function getPrefix(tx, context, modelId) {
-    // enforce
+    shares.enforceEntityPermissionTx(tx, context, 'prediction', modelId, 'view');
     const prediction = await tx('predictions').where('id', modelId).first();
     const sourceSet = await tx('signal_sets').where('id', prediction.set).first();
 
