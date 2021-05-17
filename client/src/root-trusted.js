@@ -53,6 +53,7 @@ import SignalSetAggregations from './settings/signal-sets/Aggregations';
 import AggregationsCUD from './settings/signal-sets/AggregationsCUD';
 import SignalSetPredictions from './settings/signal-sets/Predictions';
 import PredictionsArimaCUD from './settings/signal-sets/PredictionsArimaCUD';
+import PredictionsNNCUD from './settings/signal-sets/PredictionsNNCUD';
 import PredictionsCompare from './settings/signal-sets/PredictionsCompare';
 import ArimaOverview from './settings/signal-sets/ArimaOverview';
 import RecordsList from './settings/signal-sets/RecordsList';
@@ -514,6 +515,31 @@ const getStructure = t => {
                                                             prediction={props.resolved.prediction}
                                                             action="create" />,
                                                     }
+                                                }
+                                            },
+                                            'neural_network': {
+                                                title: t('Neural Network models'),
+                                                children: {
+                                                    'create': {
+                                                        title: t('Add Neural Network model'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/create`,
+                                                        panelRender: props => <PredictionsNNCUD signalSet={props.resolved.signalSet} action="create" />,
+                                                    },
+                                                    /* TODO (MT)
+                                                    ':modelId([0-9]+)': {
+                                                        title: t('Neural Network model overview'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/${params.modelId}`,
+                                                        resolve: {
+                                                            prediction: params => `rest/predictions/${params.modelId}`
+                                                        },
+                                                        // visible: resolved => false && resolved, // isn't really shown anywhere
+                                                        panelRender: props => <ArimaOverview
+                                                            signalSet={props.resolved.signalSet}
+                                                            predictionId={props.match.params.modelId}
+                                                            prediction={props.resolved.prediction}
+                                                            action="create" />,
+                                                    }
+                                                    */
                                                 }
                                             },
                                             'compare': {

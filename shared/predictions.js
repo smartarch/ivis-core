@@ -3,6 +3,7 @@
 const PredictionTypes = {
     ARIMA: 'arima',
     // NAIVE: 'naive',
+    NN: 'neural_network',
 };
 
 const OutputSignalTypes = {

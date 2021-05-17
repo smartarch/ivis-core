@@ -99,6 +99,10 @@ export default class PredictionsList extends Component {
                     <LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/arima/create`} className="btn-primary"
                         icon="plus"
                         label={t('Add ARIMA model')} />
+                    <LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/neural_network/create`}
+                                className="btn-primary"
+                                icon="plus"
+                                label={t('Add Neural Network model')} />
                 </Toolbar>
 
                 <Table ref={node => this.table = node} withHeader

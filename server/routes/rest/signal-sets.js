@@ -6,6 +6,7 @@ const signalSets = require('../../models/signal-sets');
 const signalSetsAggregations = require('../../models/signal-set-aggregations');
 const signalSetsPredictions = require('../../models/signal-set-predictions');
 const arima = require('../../models/predictions-arima');
+const predictions_nn = require('../../models/predictions-nn');
 const panels = require('../../models/panels');
 const templates = require('../../models/templates');
 const users = require('../../models/users');
@@ -208,6 +209,10 @@ router.deleteAsync('/signal-sets/:signalSetId/predictions/:predictionId', passpo
 
 router.postAsync('/signal-sets/:signalSetId/predictions/arima', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     return res.json(await arima.create(req.context, castToInteger(req.params.signalSetId), req.body));
+})
+
+router.postAsync('/signal-sets/:signalSetId/predictions/neural_network', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    return res.json(await predictions_nn.create(req.context, castToInteger(req.params.signalSetId), req.body));
 })
 
 router.postAsync('/signal-set-predictions-table/:signalSetId', passport.loggedIn, async (req, res) => {
