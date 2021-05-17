@@ -133,7 +133,7 @@ export default class Files extends Component {
 
                     let downloadUrl;
                     if (this.props.usePublicDownloadUrls) {
-                        downloadUrl = getUrl(`files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${this.props.entity.id}/${data[2]}`);
+                        downloadUrl = getUrl(`files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${this.props.entity.id}/${data[1]}`);
                     } else {
                         downloadUrl = getUrl(`rest/files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${data[0]}`);
                     }
