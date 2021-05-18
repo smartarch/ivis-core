@@ -328,6 +328,10 @@ export class ModalDialog extends Component {
     }
 }
 
+/**
+ * React component to render date-time. Renders relative time if the difference between now and timeStamp
+ * is less than thresholdDays. Renders exact time otherwise.
+ */
 export class RelativeTime extends Component {
     static propTypes = {
         timeStamp: PropTypes.string.isRequired,

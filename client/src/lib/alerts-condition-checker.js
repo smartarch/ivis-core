@@ -6,7 +6,13 @@ import { getUrl } from "./urls";
 import { SignalType } from "../../../shared/signals";
 import stats from "../../../shared/alerts-stats";
 
-export default function checkCondition(condition, sigSetId){
+/**
+ * Checks the syntax of the condition with the related signal set. Call twice after a change of sigSetId parameter.
+ * @param {string} condition - The condition to be checked.
+ * @param {number} sigSetId - The id of the signal set related to the condition.
+ * @returns {string} The result of the check, "ok" if correct, an error message if wrong.
+ */
+function checkCondition(condition, sigSetId){
     if (!sigSetId) return "You should fill in a signal set first!";
 
     if (sigSet !== sigSetId) setupScope(sigSetId);
@@ -27,6 +33,10 @@ export default function checkCondition(condition, sigSetId){
 let sigSet;
 let scope;
 
+/**
+ * Fills the two variables in this file with data.
+ * @param {number} sigSetId - The id of the signal set to work with.
+ */
 async function setupScope(sigSetId){
     sigSet = sigSetId;
     const result = await axios.get(getUrl(`rest/signals-simple-table/${sigSetId}`));
@@ -56,3 +66,5 @@ function getValueOfType(type){
     if (type === SignalType.BOOLEAN) return true;
     return 1;
 }
+
+export default checkCondition;

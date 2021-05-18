@@ -7,10 +7,17 @@ const addUrl = 'rest/alerts-log';
 
 let testReady = true;
 
-export default async function testTrigger (alertId){
+/**
+ * Sends a request to test the notifications of the alert. Works only once per minute.
+ * @param {number} alertId - The id of the alert to test.
+ * @returns {Promise<boolean>} True if and only if the request was actually made.
+ */
+async function testTrigger (alertId){
     if (!testReady) return false;
     testReady = false;
     axios.method(HTTPMethod.POST, getUrl(addUrl), {alert: alertId, type: 'test'});
     setTimeout(() => testReady = true, 60 * 1000);
     return true;
 }
+
+export default testTrigger;

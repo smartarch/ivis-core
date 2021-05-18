@@ -1,12 +1,24 @@
 'use strict';
 
-// look back
+/**
+ * Safely returns data from the past records.
+ * @param {Object[]} array - Array of records of a signal set.
+ * @param {string} key - Cid of a signal in the signal set.
+ * @param {number} distance - Distance in the past.
+ * @returns {*} The specified element from the signals set.
+ */
 function past(array, key, distance){
     if (distance >= array.length) distance = array.length - 1;
     return array[distance][key];
 }
 
-// average
+/**
+ * Calculates average of a numeric signal. Uses at most the number of past records specified in length.
+ * @param {Object[]} array - Array of records of a signal set.
+ * @param {string} key - Cid of a numeric signal in the signal set.
+ * @param {number} length - Maximum number of records to use for the calculation.
+ * @returns {number} The calculated average.
+ */
 function avg(array, key, length){
     if (length > array.length) length = array.length;
     let sum = 0;
@@ -21,7 +33,13 @@ function avg(array, key, length){
     return sum / count;
 }
 
-//variance
+/**
+ * Calculates variance of a numeric signal. Uses at most the number of past records specified in length.
+ * @param {Object[]} array - Array of records of a signal set.
+ * @param {string} key - Cid of a numeric signal in the signal set.
+ * @param {number} length - Maximum number of records to use for the calculation.
+ * @returns {number} The calculated variance.
+ */
 function vari(array, key, length){
     if (length > array.length) length = array.length;
     let aver;
@@ -44,7 +62,14 @@ function vari(array, key, length){
     return sum / count;
 }
 
-// minimum
+/**
+ * Returns the minimum of the signal. Uses at most the number of past records specified in length.
+ * @param {Object[]} array - Array of records of a signal set.
+ * @param {string} key - Cid of a signal in the signal set.
+ * @param {number} length - Maximum number of records to use for the search.
+ * @returns {number} The found minimum.
+ * @returns {*}
+ */
 function min(array, key, length){
     if (length > array.length) length = array.length;
     let min = null;
@@ -52,7 +77,14 @@ function min(array, key, length){
     return min;
 }
 
-// maximum
+/**
+ * Returns the maximum of the signal. Uses at most the number of past records specified in length.
+ * @param {Object[]} array - Array of records of a signal set.
+ * @param {string} key - Cid of a signal in the signal set.
+ * @param {number} length - Maximum number of records to use for the search.
+ * @returns {number} The found maximum.
+ * @returns {*}
+ */
 function max(array, key, length){
     if (length > array.length) length = array.length;
     let max = null;
@@ -60,7 +92,14 @@ function max(array, key, length){
     return max;
 }
 
-// quantile
+/**
+ * Calculates the quantile of the signal. Uses at most the number of past records specified in length.
+ * @param {Object[]} array - Array of records of a signal set.
+ * @param {string} key - Cid of a signal in the signal set.
+ * @param {number} length - Maximum number of records to use for the calculation.
+ * @param {number} q - 0 <= q <= 1, the quantile
+ * @returns {*} The element of the signal that is nearest to the quantile.
+ */
 function qnt(array, key, length, q){
     if (length > array.length) length = array.length;
     let values = [];

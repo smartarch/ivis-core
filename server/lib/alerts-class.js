@@ -7,11 +7,22 @@ const { sendEmail } = require('./mailer');
 const { sendSMS } = require('./SMS-sender');
 const config = require('./config');
 
+/**
+ * Instances of this class represent the alerts in the memory.
+ */
 class Alert{
+    /**
+     * Async method init should be usually called immediately after this constructor.
+     * @constructor
+     * @param {RowDataPacket} fields - Object of attributes from the database.
+     */
     constructor(fields) {
         this.fields = fields;
     }
 
+    /**
+     * Initializes new alert or restores old alerts after restart according to the attributes and elapsed time.
+     */
     async init() {
         await this.addLogEntry('init');
         if (!this.fields.enabled) return;
@@ -33,6 +44,10 @@ class Alert{
         }
     }
 
+    /**
+     * Updates the alert and changes the internal state according to the new values.
+     * @param {RowDataPacket} newFields - Object of updated attributes from the database.
+     */
     async update(newFields) {
         await this.addLogEntry('update');
         let ns = '';
@@ -63,12 +78,18 @@ class Alert{
         if (sit) await this.setIntervalTime();
     }
 
+    /**
+     * Clears all timers. Should be called when the alert is deleted.
+     */
     terminate(){
         clearTimeout(this.conditionClock);
         clearTimeout(this.repeatClock);
         clearTimeout(this.intervalClock);
     }
 
+    /**
+     * Executes the check of the related signal set. Should be called when a new record is entered to the related signal set.
+     */
     async execute(){
         if (!this.fields.enabled) return;
 
@@ -81,10 +102,11 @@ class Alert{
         else await this.addLogEntry(result);
     }
 
-    /*
-    * Possible states are: good, worse, bad, better.
-    * Boolean result means wrong incoming data, !result means right incoming data
-    */
+    /**
+     * Changes the internal state of the alert according to the current state and the parameter.
+     * Possible states are: good, worse, bad, better.
+     * @param {boolean} result - The result of the executed check of the signal set. true means bad data and false means good data.
+     */
     async changeState(result){
         if (result) {
             if (this.fields.state === 'good') {

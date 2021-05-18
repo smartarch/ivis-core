@@ -7,6 +7,12 @@ const adminContext = require('./context-helpers').getAdminContext();
 const config = require('./config');
 const stats = require('../../shared/alerts-stats');
 
+/**
+ * Evaluates the condition with the signal set.
+ * @param {string} condition - The condition to evaluate.
+ * @param {number} sigSetId - The id of the sinal set related to the condition.
+ * @returns {Promise<string|boolean>} The boolean value of the evaluation or string with error message.
+ */
 async function evaluate(condition, sigSetId){
     let result;
     try {
@@ -21,6 +27,11 @@ async function evaluate(condition, sigSetId){
     else return 'NotBoolError';
 }
 
+/**
+ * Creates scope of functions and data from signal set for the evaluator.
+ * @param {number} sigSetId - The id of the signal set.
+ * @returns {Promise<{}>} The scope for the evaluator.
+ */
 async function setupScope(sigSetId){
     const sigSetCid = (await knex('signal_sets').where('id', sigSetId).first('cid')).cid;
     const signals = [];

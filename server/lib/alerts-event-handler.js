@@ -5,8 +5,15 @@ const knex = require('./knex');
 const { Alert } = require('./alerts-class');
 const log = require('./log');
 
+/**
+ * Contains pairs of alert id and instance of Alert for every alert.
+ * @type {Map<number, Alert>}
+ */
 const alerts = new Map();
 
+/**
+ * Initializes the part of the framework for alerts when the framework is started.
+ */
 async function init(){
     log.info('Alerts', 'Initializing...');
     const tmp = await knex('alerts').select();
@@ -20,11 +27,21 @@ async function init(){
     log.info('Alerts', 'Initialized');
 }
 
+/**
+ * Executes the alerts related to the signal set.
+ * Called as an event handler.
+ * @param {string} cid - Cid of the signal set.
+ */
 async function handleSignalTrigger(cid){
     const alertIds = await knex('alerts').innerJoin('signal_sets', 'alerts.sigset', 'signal_sets.id').where('signal_sets.cid', cid).select('alerts.id');
     for (let i = 0; i < alertIds.length; i++) await alerts.get(alertIds[i].id).execute();
 }
 
+/**
+ * Called when an alert is created in the database by a user.
+ * @param {transaction} tx - Knex database transaction.
+ * @param {number} id - The id of the created alert.
+ */
 async function handleCreateTx(tx, id){
     const newAlert = await tx('alerts').where('id', id).first();
     const aux = new Alert(newAlert);
@@ -32,11 +49,20 @@ async function handleCreateTx(tx, id){
     alerts.set(newAlert.id, aux);
 }
 
+/**
+ * Called when an alert is updated in the database by a user.
+ * @param {transaction} tx - Knex database transaction.
+ * @param {number} id - The id of the updated alert.
+ */
 async function handleUpdateTx(tx, id){
     const updatedAlert = await tx('alerts').where('id', id).first();
     alerts.get(updatedAlert.id).update(updatedAlert);
 }
 
+/**
+ * Called when an alert is deleted in the database by a user.
+ * @param {number} id - The id of the deleted alert.
+ */
 async function handleDelete(id){
     alerts.get(id).terminate();
     alerts.delete(id);

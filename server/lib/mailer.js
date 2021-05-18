@@ -3,6 +3,14 @@
 const nodemailer = require('nodemailer');
 const config = require('./config');
 
+/**
+ * Sends email using Nodemailer.
+ * @param {string} senderName - The name of the sender. (e.g. IVIS Alerts)
+ * @param {string[]} receiverAddress - Array of email addresses.
+ * @param {string} subject - The subject of the email.
+ * @param {string} text - The body of the email.
+ * @returns {Promise<*>} Status of the operation.
+ */
 async function sendEmail(senderName, receiverAddress, subject, text) {
     try {
         let transporter = nodemailer.createTransport({
