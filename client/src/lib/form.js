@@ -183,7 +183,7 @@ class Fieldset extends Component {
             const validationMsg = id && owner.getFormValidationMessage(id);
             if (validationMsg) {
                 validationBlock =
-                    <small className="form-text text-muted" id={htmlId + '_help_validation'}>{validationMsg}</small>;
+                    <small className="form-text invalid-feedback" id={htmlId + '_help_validation'}>{validationMsg}</small>;
             }
         }
 

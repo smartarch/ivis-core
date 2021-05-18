@@ -7,9 +7,17 @@
 
   :global .fieldset-content {
     border: 1px solid #bdbdbd;
-    padding: 15px 15px 0px 15px;
+    padding: 15px 15px 5px 15px;
     border-radius: 3px;
     margin-bottom: 15px;
+  }
+
+  :global .is-invalid .fieldset-content {
+    border-color: #f86c6b;
+  }
+
+  :global .is-valid .fieldset-content {
+    border-color: #4dbd74;
   }
 
   .entry {
