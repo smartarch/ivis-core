@@ -72,19 +72,23 @@ async function createArimaModelTx(tx, context, sigSetId, params) {
     // source signal
     const signal = await tx('signals').where('namespace', namespace).where('cid', params.source).first();
 
-    const outSignals = [
-        {
-            cid: signal.cid,
-            name: signal.name,
-            description: signal.description,
-            namespace: namespace,
-            type: signal.type,
-            indexed: signal.indexed,
-            weight_list: 0
-        }
-    ]
+    const signals = {
+        main: [
+            {
+                cid: signal.cid,
+                name: signal.name,
+                description: signal.description,
+                namespace: namespace,
+                type: signal.type,
+                indexed: signal.indexed,
+                weight_list: 0
+            }
+        ]
+    };
 
-    const modelId = await predictions.registerPredictionModelTx(tx, context, prediction, outSignals);
+    prediction.signals = signals;
+
+    const modelId = await predictions.registerPredictionModelTx(tx, context, prediction);
 
     const outputConfig = await predictions.getOutputConfigTx(tx, context, modelId);
     job.params.output_config = outputConfig;
