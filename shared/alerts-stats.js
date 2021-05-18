@@ -25,7 +25,7 @@ function avg(array, key, length){
     let count = 0;
     for (let i = 0; i < length; i++) {
         if (array[i][key] !== null) {
-            if (typeof array[i][key] !== 'number') throw new Error('Argument in avg function is not a number!');
+            if (typeof array[i][key] !== 'number') throw new Error('Signal in avg function is not numerical!');
             sum += array[i][key];
             count++;
         }
@@ -47,14 +47,14 @@ function vari(array, key, length){
         aver = avg(array, key, length);
     }
     catch (error) {
-        if (error.message === 'Argument in avg function is not a number!') throw new Error('Argument in vari function is not a number!');
+        if (error.message === 'Signal in avg function is not numerical!') throw new Error('Signal in vari function is not numerical!');
         else throw error;
     }
     let sum = 0;
     let count = 0;
     for (let i = 0; i < length; i++) {
         if (array[i][key] !== null) {
-            if (typeof array[i][key] !== 'number') throw new Error('Argument in vari function is not a number!');
+            if (typeof array[i][key] !== 'number') throw new Error('Signal in vari function is not numerical!');
             sum += Math.pow(array[i][key] - aver, 2);
             count++;
         }

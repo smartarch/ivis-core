@@ -107,7 +107,7 @@ test('avg function on regular signal set #2', async () => {
 
 test('avg function on regular signal set #3', async () => {
     const result = await evaluate('avg("sigb", 6) == 148.984', 1);
-    expect(result).toBe('Argument in avg function is not a number!');
+    expect(result).toBe('Signal in avg function is not numerical!');
 });
 
 test('vari function on regular signal set', async () => {
@@ -314,7 +314,7 @@ test('avg function -1 length', async () => {
 
 test('vari function not numeric', async () => {
     const result = await evaluate('vari("id", 5) == 123', 1);
-    expect(result).toBe('Argument in vari function is not a number!');
+    expect(result).toBe('Signal in vari function is not numerical!');
 });
 
 test('vari function -1 length', async () => {
