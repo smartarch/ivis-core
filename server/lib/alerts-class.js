@@ -21,7 +21,7 @@ class Alert{
     }
 
     /**
-     * Initializes new alert or restores old alerts after restart according to the attributes and elapsed time.
+     * Initializes new alert or restores old alerts after restart of IVIS according to the attributes and elapsed time.
      */
     async init() {
         await this.addLogEntry('init');
@@ -46,7 +46,7 @@ class Alert{
 
     /**
      * Updates the alert and changes the internal state according to the new values.
-     * @param {RowDataPacket} newFields - Object of updated attributes from the database.
+     * @param {RowDataPacket} newFields - Object of attributes from the database. Contains updated values as well as unchanged values.
      */
     async update(newFields) {
         await this.addLogEntry('update');
@@ -88,7 +88,7 @@ class Alert{
     }
 
     /**
-     * Executes the check of the related signal set. Should be called when a new record is entered to the related signal set.
+     * Executes the check of the related signal set. Should be called when a new record is added to the related signal set.
      */
     async execute(){
         if (!this.fields.enabled) return;
@@ -103,7 +103,7 @@ class Alert{
     }
 
     /**
-     * Changes the internal state of the alert according to the current state and the parameter.
+     * Changes the internal state of the alert according to the current state and the parameter result.
      * Possible states are: good, worse, bad, better.
      * @param {boolean} result - The result of the executed check of the signal set. true means bad data and false means good data.
      */

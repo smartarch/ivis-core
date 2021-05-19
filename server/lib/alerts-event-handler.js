@@ -12,7 +12,7 @@ const log = require('./log');
 const alerts = new Map();
 
 /**
- * Initializes the part of the framework for alerts when the framework is started.
+ * Initializes the part of the framework responsible for alerts when the framework is started.
  */
 async function init(){
     log.info('Alerts', 'Initializing...');
@@ -29,7 +29,7 @@ async function init(){
 
 /**
  * Executes the alerts related to the signal set.
- * Called as an event handler.
+ * Called as an event handler when a new record is added to the signal set.
  * @param {string} cid - Cid of the signal set.
  */
 async function handleSignalTrigger(cid){
@@ -38,7 +38,7 @@ async function handleSignalTrigger(cid){
 }
 
 /**
- * Called when an alert is created in the database by a user.
+ * Called when a new alert is created in the database by a user.
  * @param {transaction} tx - Knex database transaction.
  * @param {number} id - The id of the created alert.
  */

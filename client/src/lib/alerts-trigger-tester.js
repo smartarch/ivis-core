@@ -8,7 +8,7 @@ const addUrl = 'rest/alerts-log';
 let testReady = true;
 
 /**
- * Sends a request to test the notifications of the alert. Works only once per minute.
+ * Sends a request to test the notifications of the alert with fake trigger. Works only once per minute.
  * @param {number} alertId - The id of the alert to test.
  * @returns {Promise<boolean>} True if and only if the request was actually made.
  */

@@ -10,8 +10,8 @@ const stats = require('../../shared/alerts-stats');
 /**
  * Evaluates the condition with the signal set.
  * @param {string} condition - The condition to evaluate.
- * @param {number} sigSetId - The id of the sinal set related to the condition.
- * @returns {Promise<string|boolean>} The boolean value of the evaluation or string with error message.
+ * @param {number} sigSetId - The id of the signal set related to the condition.
+ * @returns {Promise<string|boolean>} The boolean result of the evaluation or a string with an error message.
  */
 async function evaluate(condition, sigSetId){
     let result;
@@ -30,7 +30,7 @@ async function evaluate(condition, sigSetId){
 /**
  * Creates scope of functions and data from signal set for the evaluator.
  * @param {number} sigSetId - The id of the signal set.
- * @returns {Promise<{}>} The scope for the evaluator.
+ * @returns {Promise<Object>} The scope for the evaluator.
  */
 async function setupScope(sigSetId){
     const sigSetCid = (await knex('signal_sets').where('id', sigSetId).first('cid')).cid;

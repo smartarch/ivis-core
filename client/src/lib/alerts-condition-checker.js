@@ -7,7 +7,8 @@ import { SignalType } from "../../../shared/signals";
 import stats from "../../../shared/alerts-stats";
 
 /**
- * Checks the syntax of the condition with the related signal set. Call twice after a change of sigSetId parameter.
+ * Checks the syntax of the condition with the related signal set. Used in form validation.
+ * Needs to update the scope for evaluator when the signal set is changed. Call twice in this case.
  * @param {string} condition - The condition to be checked.
  * @param {number} sigSetId - The id of the signal set related to the condition.
  * @returns {string} The result of the check, "ok" if correct, an error message if wrong.
@@ -15,7 +16,7 @@ import stats from "../../../shared/alerts-stats";
 function checkCondition(condition, sigSetId){
     if (!sigSetId) return "You should fill in a signal set first!";
 
-    if (sigSet !== sigSetId) setupScope(sigSetId);
+    if (sigSet !== sigSetId) setupFakeScope(sigSetId);
     if (!scope) return "ok";
 
     let evaluated;
@@ -35,9 +36,10 @@ let scope;
 
 /**
  * Fills the two variables in this file with data.
+ * Parameter sigSetId is assigned to variable sigSet and generated scope is assigned to variable scope.
  * @param {number} sigSetId - The id of the signal set to work with.
  */
-async function setupScope(sigSetId){
+async function setupFakeScope(sigSetId){
     sigSet = sigSetId;
     const result = await axios.get(getUrl(`rest/signals-simple-table/${sigSetId}`));
 

@@ -1,10 +1,10 @@
 'use strict';
 
 /**
- * Safely returns data from the past records.
+ * Safely returns specified element from the signal set.
  * @param {Object[]} array - Array of records of a signal set.
  * @param {string} key - Cid of a signal in the signal set.
- * @param {number} distance - Distance in the past.
+ * @param {number} distance - Distance in the past. If the array is not long enough, the last element is used.
  * @returns {*} The specified element from the signals set.
  */
 function past(array, key, distance){
@@ -13,10 +13,10 @@ function past(array, key, distance){
 }
 
 /**
- * Calculates average of a numeric signal. Uses at most the number of past records specified in length.
+ * Calculates average of a numeric signal. Uses at most the number of latest records specified in length.
  * @param {Object[]} array - Array of records of a signal set.
  * @param {string} key - Cid of a numeric signal in the signal set.
- * @param {number} length - Maximum number of records to use for the calculation.
+ * @param {number} length - Maximum number of latest records to use for the calculation.
  * @returns {number} The calculated average.
  */
 function avg(array, key, length){
@@ -34,10 +34,10 @@ function avg(array, key, length){
 }
 
 /**
- * Calculates variance of a numeric signal. Uses at most the number of past records specified in length.
+ * Calculates variance of a numeric signal. Uses at most the number of latest records specified in length.
  * @param {Object[]} array - Array of records of a signal set.
  * @param {string} key - Cid of a numeric signal in the signal set.
- * @param {number} length - Maximum number of records to use for the calculation.
+ * @param {number} length - Maximum number of latest records to use for the calculation.
  * @returns {number} The calculated variance.
  */
 function vari(array, key, length){
@@ -63,12 +63,11 @@ function vari(array, key, length){
 }
 
 /**
- * Returns the minimum of the signal. Uses at most the number of past records specified in length.
+ * Returns the minimum of the signal. Uses at most the number of latest records specified in length.
  * @param {Object[]} array - Array of records of a signal set.
  * @param {string} key - Cid of a signal in the signal set.
- * @param {number} length - Maximum number of records to use for the search.
- * @returns {number} The found minimum.
- * @returns {*}
+ * @param {number} length - Maximum number of latest records to use for the search.
+ * @returns {*} The found minimum.
  */
 function min(array, key, length){
     if (length > array.length) length = array.length;
@@ -78,12 +77,11 @@ function min(array, key, length){
 }
 
 /**
- * Returns the maximum of the signal. Uses at most the number of past records specified in length.
+ * Returns the maximum of the signal. Uses at most the number of latest records specified in length.
  * @param {Object[]} array - Array of records of a signal set.
  * @param {string} key - Cid of a signal in the signal set.
- * @param {number} length - Maximum number of records to use for the search.
- * @returns {number} The found maximum.
- * @returns {*}
+ * @param {number} length - Maximum number of latest records to use for the search.
+ * @returns {*} The found maximum.
  */
 function max(array, key, length){
     if (length > array.length) length = array.length;
@@ -93,10 +91,10 @@ function max(array, key, length){
 }
 
 /**
- * Calculates the quantile of the signal. Uses at most the number of past records specified in length.
+ * Calculates the quantile of the signal and returns the element of the signal that is nearest to the quantile. Uses at most the number of latest records specified in length.
  * @param {Object[]} array - Array of records of a signal set.
  * @param {string} key - Cid of a signal in the signal set.
- * @param {number} length - Maximum number of records to use for the calculation.
+ * @param {number} length - Maximum number of latest records to use for the calculation.
  * @param {number} q - 0 <= q <= 1, the quantile
  * @returns {*} The element of the signal that is nearest to the quantile.
  */
