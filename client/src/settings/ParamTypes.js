@@ -19,7 +19,7 @@ import moment from "moment";
 import {TableSelectMode} from "../lib/table";
 import styles from "./ParamTypes.scss";
 import {getSignalTypes} from "../settings/signal-sets/signals/signal-types";
-import {rgb} from "d3-color";
+import {rgb, color} from "d3-color";
 import {getFieldsetPrefix, parseCardinality, resolveAbs} from "../../../shared/param-types-helpers";
 
 export default class ParamTypes {
@@ -35,9 +35,12 @@ export default class ParamTypes {
             return paramId;
         };
 
-        const ensureString = value => {
+        const ensureString = (spec, value) => {
             if (typeof value !== 'string') {
-                return ''
+                if (spec.hasOwnProperty('default'))
+                    return spec.default;
+                else
+                    return '';
             } else {
                 return value;
             }
@@ -59,8 +62,13 @@ export default class ParamTypes {
             }
         };
 
-        const ensureColor = value => {
+        const ensureColor = (spec, value) => {
             if (typeof value !== 'object') {
+                if (spec.hasOwnProperty('default')) {
+                    const defaultColor = color(spec.default);
+                    if (defaultColor !== null)
+                        return {r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, a: defaultColor.opacity};
+                }
                 return {r: 0, g: 0, b: 0, a: 1};
             } else {
                 return {r: value.r || 0, g: value.g || 0, b: value.b || 0, a: value.a || 1};
@@ -83,14 +91,14 @@ export default class ParamTypes {
             }
         };
 
-        const setStringFieldFromParam = (prefix, spec, param, data) => data[this.getParamFormId(prefix, spec.id)] = ensureString(param);
+        const setStringFieldFromParam = (prefix, spec, param, data) => data[this.getParamFormId(prefix, spec.id)] = ensureString(spec, param);
 
         const adoptString = (prefix, spec, state) => {
             const formId = this.getParamFormId(prefix, spec.id);
-            state.setIn([formId, 'value'], ensureString(state.getIn([formId, 'value'])));
+            state.setIn([formId, 'value'], ensureString(spec, state.getIn([formId, 'value'])));
         };
 
-        const upcastString = (spec, value) => ensureString(value);
+        const upcastString = (spec, value) => ensureString(spec, value);
 
         const getParamsFromField = (prefix, spec, data) => data[this.getParamFormId(prefix, spec.id)];
 
@@ -238,9 +246,9 @@ export default class ParamTypes {
         this.paramTypes.color = {
             adopt: (prefix, spec, state) => {
                 const formId = this.getParamFormId(prefix, spec.id);
-                state.setIn([formId, 'value'], ensureColor(state.getIn([formId, 'value'])));
+                state.setIn([formId, 'value'], ensureColor(spec, state.getIn([formId, 'value'])));
             },
-            setFields: (prefix, spec, param, data) => data[this.getParamFormId(prefix, spec.id)] = ensureColor(param),
+            setFields: (prefix, spec, param, data) => data[this.getParamFormId(prefix, spec.id)] = ensureColor(spec, param),
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
             },
@@ -248,7 +256,7 @@ export default class ParamTypes {
                                                          label={spec.label} help={spec.help}
                                                          disabled={spec.disabled}/>,
             upcast: (spec, value) => {
-                const col = ensureColor(value);
+                const col = ensureColor(spec, value);
                 return rgb(col.r, col.g, col.b, col.a);
             }
         };
