@@ -20,6 +20,10 @@
     border-color: #4dbd74;
   }
 
+  :global .disabled .fieldset-content {
+    background: #eeeeee;
+  }
+
   .entry {
     border-bottom: 1px solid #bdbdbd;
     margin-bottom: 15px;

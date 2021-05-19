@@ -43,6 +43,10 @@
     border: 1px solid #ccc;
   }
 
+  :global .ace_editor_readonly {
+    background-color: #eeeeee;
+  }
+
   .buttonRow:last-child {
     // This is to move Save/Delete buttons a bit down
     margin-top: 15px;
@@ -223,6 +227,11 @@
     height: 18px;
     border-radius: 2px;
   }
+}
+
+.colorPickerSwatchWrapperDisabled {
+  background: #eeeeee;
+  cursor: default;
 }
 
 .colorPickerWrapper {

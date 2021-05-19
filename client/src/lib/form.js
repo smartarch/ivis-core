@@ -446,7 +446,8 @@ class CheckBox extends Component {
         label: PropTypes.string,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         format: PropTypes.string,
-        className: PropTypes.string
+        className: PropTypes.string,
+        disabled: PropTypes.bool,
     }
 
     render() {
@@ -464,7 +465,8 @@ class CheckBox extends Component {
                             <div className={`form-group form-check my-2 ${this.props.className}`}>
                                 <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)}
                                        id={htmlId} aria-describedby={htmlId + '_help'}
-                                       onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}/>
+                                       onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}
+                                       disabled={props.disabled}/>
                                 <label className={styles.checkboxText} htmlFor={htmlId}>{props.text}</label>
                             </div>
                         );
@@ -608,7 +610,8 @@ class TextArea extends Component {
         placeholder: PropTypes.string,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         format: PropTypes.string,
-        className: PropTypes.string
+        className: PropTypes.string,
+        disabled: PropTypes.bool,
     }
 
     render() {
@@ -620,7 +623,8 @@ class TextArea extends Component {
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
             <textarea id={htmlId} placeholder={props.placeholder} value={owner.getFormValue(id) || ''}
-                      className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}></textarea>
+                      className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}
+                      disabled={props.disabled}/>
         );
     }
 }
@@ -642,11 +646,12 @@ class ColorPicker extends Component {
         id: PropTypes.string.isRequired,
         label: PropTypes.string.isRequired,
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+        disabled: PropTypes.bool,
     }
 
     toggle() {
         this.setState({
-            opened: !this.state.opened
+            opened: this.props.disabled ? false : !this.state.opened
         });
     }
 
@@ -668,7 +673,8 @@ class ColorPicker extends Component {
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
             <div>
                 <div className="input-group">
-                    <div className={styles.colorPickerSwatchWrapper} onClick={::this.toggle}>
+                    <div className={`${styles.colorPickerSwatchWrapper} ${props.disabled ? styles.colorPickerSwatchWrapperDisabled : ""}`}
+                         onClick={::this.toggle}>
                         <div className={styles.colorPickerSwatchColor}
                              style={{background: `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`}}/>
                     </div>
@@ -1468,7 +1474,8 @@ class ACEEditor extends Component {
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         height: PropTypes.string,
         mode: PropTypes.string,
-        format: PropTypes.string
+        format: PropTypes.string,
+        readOnly: PropTypes.bool,
     }
 
     render() {
@@ -1490,6 +1497,8 @@ class ACEEditor extends Component {
                 value={owner.getFormValue(id)}
                 tabSize={2}
                 setOptions={{useWorker: false}} // This disables syntax check because it does not always work well (e.g. in case of JS code in report templates)
+                readOnly={props.readOnly}
+                className={props.readOnly ? "ace_editor_readonly" : undefined}
             />
         );
     }

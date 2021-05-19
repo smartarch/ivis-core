@@ -118,7 +118,7 @@ export default class ParamTypes {
             },
             render: (self, prefix, spec) => <ACEEditor key={spec.id} id={this.getParamFormId(prefix, spec.id)}
                                                        label={spec.label} help={spec.help} mode={mode}
-                                                       height={spec.height}/>,
+                                                       height={spec.height} readOnly={spec.disabled}/>,
             upcast: upcastString
         });
 
@@ -138,7 +138,8 @@ export default class ParamTypes {
             validate: (prefix, spec, state) => {
             },
             render: (self, prefix, spec) => <CheckBox key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                      label={spec.label} text="" help={spec.help}/>,
+                                                      label={spec.label} text="" help={spec.help}
+                                                      disabled={spec.disabled}/>,
             upcast: (spec, value) => ensureBoolean(spec, value)
         };
 
@@ -155,7 +156,7 @@ export default class ParamTypes {
                 }
             },
             render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                        label={spec.label} help={spec.help}/>,
+                                                        label={spec.label} help={spec.help} disabled={spec.disabled}/>,
             upcast: upcastString
         };
 
@@ -173,7 +174,7 @@ export default class ParamTypes {
                 }
             },
             render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                        label={spec.label} help={spec.help}/>,
+                                                        label={spec.label} help={spec.help} disabled={spec.disabled}/>,
             upcast: (spec, value) => Number.parseInt(value)
         };
         this.paramTypes.number = this.paramTypes.integer; // for backwards compatibility
@@ -191,7 +192,7 @@ export default class ParamTypes {
                 }
             },
             render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                        label={spec.label} help={spec.help}/>,
+                                                        label={spec.label} help={spec.help} disabled={spec.disabled}/>,
             upcast: (spec, value) => Number.parseFloat(value)
         };
 
@@ -203,7 +204,7 @@ export default class ParamTypes {
             validate: (prefix, spec, state) => {
             },
             render: (self, prefix, spec) => <TextArea key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                      label={spec.label} help={spec.help}/>,
+                                                      label={spec.label} help={spec.help} disabled={spec.disabled}/>,
             upcast: upcastString
         };
 
@@ -229,7 +230,8 @@ export default class ParamTypes {
                 }
             },
             render: (self, prefix, spec) => <Dropdown key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                      label={spec.label} help={spec.help} options={spec.options}/>,
+                                                      label={spec.label} help={spec.help} options={spec.options}
+                                                      disabled={spec.disabled}/>,
             upcast: (spec, value) => ensureOption(spec.options, value)
         };
 
@@ -243,7 +245,8 @@ export default class ParamTypes {
             validate: (prefix, spec, state) => {
             },
             render: (self, prefix, spec) => <ColorPicker key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                         label={spec.label} help={spec.help}/>,
+                                                         label={spec.label} help={spec.help}
+                                                         disabled={spec.disabled}/>,
             upcast: (spec, value) => {
                 const col = ensureColor(value);
                 return rgb(col.r, col.g, col.b, col.a);
@@ -289,6 +292,7 @@ export default class ParamTypes {
                     selectionLabelIndex={2}
                     selectionKeyIndex={1}
                     dataUrl="rest/signal-sets-table"
+                    disabled={spec.disabled}
                 />;
             },
             upcast: (spec, value) => ensureSelection({min: 1, max: 1}, value)
@@ -369,6 +373,7 @@ export default class ParamTypes {
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSetCid}`}
                         searchCols={filterByType}
+                        disabled={spec.disabled}
                     />;
                 } else {
                     return <AlignedRow key={spec.id}>
@@ -596,13 +601,16 @@ export default class ParamTypes {
 
                         const childFields = [];
                         for (const childSpec of spec.children) {
-                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, childSpec));
+                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, {
+                                disabled: spec.disabled,
+                                ...childSpec,
+                            }));
                         }
 
                         fields.push(
                             <div key={card.max === 1 ? 'singleton' : entryId}
                                  className={styles.entry + (card.max === 1 && card.min === 1 ? '' : ' ' + styles.entryWithButtons)}>
-                                {!(card.min === 1 && card.max === 1) &&
+                                {!(card.min === 1 && card.max === 1) && !spec.disabled &&
                                 <div className={styles.entryButtons}>
                                     {((card.max === 1 && childEntries) || childEntries.length > card.min) &&
                                     <Button
@@ -678,7 +686,7 @@ export default class ParamTypes {
                         }
                     }
 
-                    if ((card.max === 1 && !childEntries) || childEntries.length < card.max) {
+                    if (((card.max === 1 && !childEntries) || childEntries.length < card.max) && !spec.disabled) {
                         fields.push(
                             <div key="newEntry" className={styles.newEntry}>
                                 <Button
@@ -693,7 +701,9 @@ export default class ParamTypes {
                 }
 
                 return <Fieldset key={spec.id} id={formId} label={spec.label} help={spec.help}
-                                 flat={spec.flat}>{fields}</Fieldset>;
+                                 flat={spec.flat} className={spec.disabled ? "disabled" : undefined}>
+                    {fields}
+                </Fieldset>;
             },
             upcast: (spec, value) => {
                 const upcastChild = (childConfig) => {
