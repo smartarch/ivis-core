@@ -13,9 +13,9 @@ from .common import get_aggregated_field
 
 def get_time_interval_filter(ts_field, time_interval):
     time_range = dict()
-    if time_interval["start"] != "":
+    if time_interval["start"] is not None and time_interval["start"] != "":
         time_range["gte"] = time_interval["start"]
-    if time_interval["end"] != "":
+    if time_interval["end"] is not None and time_interval["end"] != "":
         time_range["lte"] = time_interval["end"]
 
     return {

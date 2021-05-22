@@ -6,18 +6,22 @@ import { requiresAuthenticatedUser, withPageHelpers } from "../../lib/page";
 import { withComponentMixins } from "../../lib/decorator-helpers";
 import { withTranslation } from "../../lib/i18n";
 import { withErrorHandling } from "../../lib/error-handling";
-import {
-    Button,
-    ButtonRow, filterData,
-    Form,
-    FormSendMethod,
-    InputField,
-    withForm
-} from "../../lib/form";
+import { Button, ButtonRow, DateTimePicker, Fieldset, filterData, Form, FormSendMethod, InputField, withForm } from "../../lib/form";
 import ParamTypes from "../ParamTypes";
 import {SignalType} from "../../../../shared/signals";
 import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators";
 import moment from "moment";
+import paramTypesStyles from "../ParamTypes.scss";
+import * as dateMath from "../../lib/datemath";
+
+const parseDate = (str, end) => {
+    const date = dateMath.parse(str, end);
+    if (date && date.isValid()) {
+        return date.toDate();
+    } else {
+        return null;
+    }
+};
 
 const signalsConfigSpec = (id, label, help, sigSet, aggregated) => ({
     "id": id,
@@ -125,6 +129,8 @@ export default class CUD extends Component {
             aggregation: '',
             target_width: '1', // TODO (MT)
             input_width: '1', // TODO (MT)
+            time_interval_start: '',
+            time_interval_end: '',
             ...formValues,
         });
 
@@ -159,12 +165,17 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
         const paramData = this.paramTypes.getParams(this.configSpec(), data);
-        data = filterData(data, ['name','aggregation','target_width','input_width']);
 
         data.name = data.name.trim();
         data.aggregation = data.aggregation.trim();
         data.input_width = parseInt(data.input_width, 10)
         data.target_width = parseInt(data.target_width, 10)
+        data.time_interval = {
+            start: data.time_interval_start !== "" ? moment(data.time_interval_start).toISOString() : "",
+            end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
+        }
+
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval']);
 
         return {
             ...data,
@@ -179,6 +190,16 @@ export default class CUD extends Component {
             state.setIn([name, 'error'], this.props.t('Please enter an integer'));
         } else if (value <= 0) {
             state.setIn([name, 'error'], this.props.t('Please enter a positive integer'));
+        } else {
+            state.setIn([name, 'error'], null);
+        }
+    }
+
+    validateDate(state, name, roundUp) {
+        const valueStr = state.getIn([name, 'value']);
+        const value = dateMath.parse(valueStr, roundUp);
+        if (valueStr !== '' && !value.isValid()) {
+            state.setIn([name, 'error'], this.props.t('Date is invalid'));
         } else {
             state.setIn([name, 'error'], null);
         }
@@ -206,10 +227,13 @@ export default class CUD extends Component {
         }
 
         // number of predictions
-        this.validatePositiveInteger(state, 'target_width')
-
+        this.validatePositiveInteger(state, 'target_width');
         // number of observations
-        this.validatePositiveInteger(state, 'input_width')
+        this.validatePositiveInteger(state, 'input_width');
+
+        // time interval
+        this.validateDate(state, 'time_interval_start', false);
+        this.validateDate(state, 'time_interval_end', true);
 
         // TODO (MT): validate other fields
     }
@@ -314,6 +338,19 @@ export default class CUD extends Component {
                     TODO
 
                     <h4>Training parameters</h4>
+
+                    <Fieldset label="Time interval for training data" className={paramTypesStyles.params}>
+                        <DateTimePicker id="time_interval_start" label="Start"
+                                        formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 00:00:00'}
+                                        parseDate={str => parseDate(str, false)}
+                                        help={"Leave empty to use all the data."}
+                        />
+                        <DateTimePicker id="time_interval_end" label="End"
+                                        formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 23:59:59'}
+                                        parseDate={str => parseDate(str, true)}
+                                        help={"Leave empty to use all the data."}
+                        />
+                    </Fieldset>
 
                     TODO
 
