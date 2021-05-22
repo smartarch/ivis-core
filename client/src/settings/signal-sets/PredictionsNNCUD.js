@@ -6,13 +6,25 @@ import { requiresAuthenticatedUser, withPageHelpers } from "../../lib/page";
 import { withComponentMixins } from "../../lib/decorator-helpers";
 import { withTranslation } from "../../lib/i18n";
 import { withErrorHandling } from "../../lib/error-handling";
-import { Button, ButtonRow, DateTimePicker, Fieldset, filterData, Form, FormSendMethod, InputField, withForm } from "../../lib/form";
+import {
+    Button,
+    ButtonRow,
+    DateTimePicker,
+    Dropdown,
+    Fieldset,
+    filterData,
+    Form,
+    FormSendMethod,
+    InputField,
+    withForm
+} from "../../lib/form";
 import ParamTypes from "../ParamTypes";
 import {SignalType} from "../../../../shared/signals";
 import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators";
 import moment from "moment";
 import paramTypesStyles from "../ParamTypes.scss";
 import * as dateMath from "../../lib/datemath";
+import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../shared/predictions-nn";
 
 const parseDate = (str, end) => {
     const date = dateMath.parse(str, end);
@@ -104,10 +116,16 @@ export default class CUD extends Component {
             this.ts_configSpec,
             this.input_signals_configSpec(),
             this.target_signals_configSpec(),
+            this.getArchitectureParamsSpec(),
         );
 
-        this.initForm();
+        this.initForm({
+            onChange: {
+                architecture: ::this.onArchitectureChange,
+            }
+        });
         this.paramTypes = new ParamTypes(props.t);
+        this.rendered_architecture = null;
     }
 
     componentDidMount() {
@@ -125,15 +143,38 @@ export default class CUD extends Component {
 
         this.populateFormValues({
             loaded: true, // for determining whether the default values were already loaded
-            name: '', // TODO (MT)
+            name: '',
             aggregation: '',
             target_width: '1', // TODO (MT)
             input_width: '1', // TODO (MT)
             time_interval_start: '',
             time_interval_end: '',
+            architecture: NeuralNetworkArchitecturesList[0],
             ...formValues,
         });
+        this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
+    }
 
+    onArchitectureChange(state, key, oldVal, newVal) {
+        if (oldVal !== newVal)
+            this.rendered_architecture = null;
+    }
+
+    componentDidUpdate() {
+        if (this.getFormValue('architecture') !== this.rendered_architecture)
+            this.loadDefaultArchitectureParams();
+    }
+
+    loadDefaultArchitectureParams(architecture = null) {
+        if (!architecture)
+            architecture = this.getFormValue("architecture");
+        if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture)) {
+            const formValues = {};
+            const defaultValues = NeuralNetworkArchitecturesSpecs[architecture].defaultParams || {};
+            this.paramTypes.setFields(this.getArchitectureParamsSpec(architecture), defaultValues, formValues);
+            this.populateFormValues(formValues);
+            this.rendered_architecture = architecture;
+        }
     }
 
     async submitHandler(submitAndLeave) {
@@ -244,6 +285,22 @@ export default class CUD extends Component {
         return aggregation.trim() !== "";
     }
 
+    getArchitectureDropdownOptions() {
+        return NeuralNetworkArchitecturesList.map(arch => ({
+            key: arch,
+            label: NeuralNetworkArchitecturesSpecs[arch].label,
+        }));
+    }
+
+    getArchitectureParamsSpec(architecture = null) {
+        if (!architecture)
+            architecture = this.getFormValue('architecture');
+        if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture))
+            return NeuralNetworkArchitecturesSpecs[architecture].params;
+        else
+            return [];
+    }
+
     renderTotalPredictionTime() {
         const targetWidth = this.getFormValue('target_width').trim();
         const aggregation = this.getFormValue('aggregation').trim();
@@ -325,7 +382,7 @@ export default class CUD extends Component {
 
                     <h4>Neural Network architecture</h4>
 
-                    TODO
+                    <Dropdown id={"architecture"} label={"Architecture"} options={this.getArchitectureDropdownOptions()} />
 
                     <h4>Signals</h4>
 
@@ -335,7 +392,10 @@ export default class CUD extends Component {
 
                     <h4>Neural Network parameters</h4>
 
-                    TODO
+                    { this.rendered_architecture !== null
+                        ? renderParam(this.getArchitectureParamsSpec())
+                        : "Loading..."
+                    }
 
                     <h4>Training parameters</h4>
 
