@@ -5,13 +5,13 @@ from ivis import ivis
 
 
 def get_entities_signals(parameters):
-    sig_set_cid = parameters["signalSet"]
+    sig_set_cid = parameters["signal_set"]
     return ivis.entities["signals"][sig_set_cid]
 
 
 def get_ts_field(parameters):
     entities_signals = get_entities_signals(parameters)
-    cid = parameters["tsSigCid"]
+    cid = parameters["ts"]
     return entities_signals[cid]["field"]
 
 

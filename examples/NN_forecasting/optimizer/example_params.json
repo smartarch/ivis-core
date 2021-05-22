@@ -1,13 +1,13 @@
 {
-  "signalSet": "top:weather_prague",
-  "tsSigCid": "ts",
-  "timeInterval": {
+  "signal_set": "top:weather_prague",
+  "ts": "ts",
+  "time_interval": {
     "start": "2021-02-18",
-    "end": "2021-04-18",
-    "aggregation": "1d"
+    "end": "2021-04-18"
   },
+  "aggregation": "1d",
   "size": 50,
-  "inputSignals": [
+  "input_signals": [
     {
       "cid": "temperature",
       "data_type": "auto",
@@ -44,7 +44,7 @@
       "aggregation": "avg"
     }
   ],
-  "targetSignals": [
+  "target_signals": [
     {
       "cid": "temperature",
       "data_type": "auto",

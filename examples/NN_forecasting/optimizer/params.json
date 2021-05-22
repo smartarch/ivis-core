@@ -1,40 +1,44 @@
 [
   {
-    "id": "signalSet",
+    "id": "signal_set",
     "help": "Signal Set to predict",
     "type": "signalSet",
     "label": "Signal Set"
   },
   {
-    "id": "tsSigCid",
+    "id": "ts",
     "label": "Timestamp Signal",
     "type": "signal",
     "signalSetRef": "signalSet"
   },
   {
-    "id": "timeInterval",
+    "id": "time_interval",
     "label": "Time interval",
     "type": "fieldset",
     "cardinality": "1",
-    "children": [{
-      "id": "start",
-      "label": "Start",
-      "type": "string",
-      "help": "Start of the time interval, ISO string."
-    },{
-      "id": "end",
-      "label": "End",
-      "type": "string",
-      "help": "End of the time interval, ISO string."
-    },{
-      "id": "aggregation",
-      "label": "Aggregation interval",
-      "type": "string",
-      "help": "Resampling interval for the signals. Leave empty for no resampling. Possible values are integer + unit (ms, s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes)."
-    }]
+    "children": [
+      {
+        "id": "start",
+        "label": "Start",
+        "type": "string",
+        "help": "Start of the time interval, ISO string."
+      },
+      {
+        "id": "end",
+        "label": "End",
+        "type": "string",
+        "help": "End of the time interval, ISO string."
+      }
+    ]
   },
   {
-    "id": "inputSignals",
+    "id": "aggregation",
+    "label": "Aggregation interval",
+    "type": "string",
+    "help": "Resampling interval for the signals. Leave empty for no resampling. Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes)."
+  },
+  {
+    "id": "input_signals",
     "label": "Input Signals",
     "help": "Signals to use for prediction.",
     "type": "fieldset",
@@ -86,7 +90,7 @@
     }]
   },
   {
-    "id": "targetSignals",
+    "id": "target_signals",
     "label": "Target Signals",
     "help": "Signals to predict.",
     "type": "fieldset",

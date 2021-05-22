@@ -8,7 +8,7 @@ from .common import interval_string_to_milliseconds, get_ts_field, get_entities_
 
 def prepare_signal_parameters(signals, entities_signals, aggregated):
     """
-    Go through the `inputSignals` and `targetSignals` and preprocess the signal properties for later use. Modifies the `signals` array.
+    Go through the `input_signals` and `target_signals` and preprocess the signal properties for later use. Modifies the `signals` array.
     - Determine the automatic values of numerical/categorical data types for all signals in input and target.
     - Parse float values (min, max, ...).
     - Add field and type from entity information.
@@ -44,32 +44,32 @@ def prepare_signal_parameters(signals, entities_signals, aggregated):
 
 
 def get_els_index(parameters):
-    sig_set_cid = parameters["signalSet"]
+    sig_set_cid = parameters["signal_set"]
     return ivis.entities["signalSets"][sig_set_cid]["index"]
 
 
 def default_training_params(parameters, training_params_class=TrainingParams):
     training_params = training_params_class()
-    aggregated = parameters["timeInterval"]["aggregation"] != ""
+    aggregated = parameters["aggregation"] != ""
 
     entities_signals = get_entities_signals(parameters)
-    prepare_signal_parameters(parameters["inputSignals"], entities_signals, aggregated)
-    prepare_signal_parameters(parameters["targetSignals"], entities_signals, aggregated)
+    prepare_signal_parameters(parameters["input_signals"], entities_signals, aggregated)
+    prepare_signal_parameters(parameters["target_signals"], entities_signals, aggregated)
 
     training_params.index = get_els_index(parameters)
-    training_params.input_signals = parameters["inputSignals"]
-    training_params.target_signals = parameters["targetSignals"]
+    training_params.input_signals = parameters["input_signals"]
+    training_params.target_signals = parameters["target_signals"]
     training_params.input_width = parameters["input_width"]
     training_params.target_width = parameters["target_width"]
     ts_field = get_ts_field(parameters)
     training_params.ts_field = ts_field
 
-    signals = parameters["inputSignals"] + parameters["targetSignals"]
-    time_interval = parameters["timeInterval"]
+    signals = parameters["input_signals"] + parameters["target_signals"]
+    time_interval = parameters["time_interval"]
     size = parameters["size"]
 
     if aggregated:
-        aggregation_interval = parameters["timeInterval"]["aggregation"]
+        aggregation_interval = parameters["aggregation"]
         training_params.interval = interval_string_to_milliseconds(aggregation_interval)
         training_params.query_type = "histogram"
         training_params.query = es.get_histogram_query(signals, ts_field, aggregation_interval, time_interval, size)
