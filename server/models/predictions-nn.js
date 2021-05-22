@@ -27,7 +27,7 @@ async function createNNModelTx(tx, context, sigSetId, params) {
     // target signals – signals of the created prediction signal sets
     // TODO (MT): what to do with aggregated signals
     const targetSignals = [];
-    for (const sig of params.targetSignals) {
+    for (const sig of params.target_signals) {
         const signal = await tx('signals').where('namespace', namespace).where('cid', sig.cid).first();
 
         targetSignals.push({
