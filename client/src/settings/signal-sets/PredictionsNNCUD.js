@@ -19,7 +19,7 @@ import {SignalType} from "../../../../shared/signals";
 import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators";
 import moment from "moment";
 
-const signalsConfigSpec = (id, label, help, sigSet) => ({
+const signalsConfigSpec = (id, label, help, sigSet, aggregated) => ({
     "id": id,
     "label": label,
     "help": help,
@@ -68,7 +68,8 @@ const signalsConfigSpec = (id, label, help, sigSet) => ({
         },{
             "key": "max",
             "label": "Maximum"
-        }]
+        }],
+        "disabled": !aggregated,
     }]
 })
 
@@ -93,12 +94,12 @@ export default class CUD extends Component {
             "signalType": SignalType.DATE_TIME,
             "signalSet": props.signalSet.cid,
         }];
-        this.input_signals_configSpec = [signalsConfigSpec("input_signals", "Input Signals", "Signals to use for prediction.", props.signalSet.cid)]
-        this.target_signals_configSpec = [signalsConfigSpec("target_signals", "Target Signals", "Signals to predict.", props.signalSet.cid)]
-        this.configSpec = [].concat(
+        this.input_signals_configSpec = () => [signalsConfigSpec("input_signals", "Input Signals", "Signals to use for prediction.", props.signalSet.cid, this.isAggregated())]
+        this.target_signals_configSpec = () => [signalsConfigSpec("target_signals", "Target Signals", "Signals to predict.", props.signalSet.cid,  this.isAggregated())]
+        this.configSpec = () => [].concat(
             this.ts_configSpec,
-            this.input_signals_configSpec,
-            this.target_signals_configSpec,
+            this.input_signals_configSpec(),
+            this.target_signals_configSpec(),
         );
 
         this.initForm();
@@ -116,7 +117,7 @@ export default class CUD extends Component {
 
         // populate default values to the form inputs rendered using the ParamTypes
         const formValues = {};
-        this.paramTypes.setFields(this.configSpec, defaultValues, formValues);
+        this.paramTypes.setFields(this.configSpec(), defaultValues, formValues);
 
         this.populateFormValues({
             loaded: true, // for determining whether the default values were already loaded
@@ -157,7 +158,7 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        const paramData = this.paramTypes.getParams(this.configSpec, data);
+        const paramData = this.paramTypes.getParams(this.configSpec(), data);
         data = filterData(data, ['name','aggregation','target_width','input_width']);
 
         data.name = data.name.trim();
@@ -194,7 +195,7 @@ export default class CUD extends Component {
             }
         }
         // validate params
-        this.paramTypes.localValidate(this.configSpec, state);
+        this.paramTypes.localValidate(this.configSpec(), state);
 
         // aggregation interval
         const aggregationStr = state.getIn(['aggregation', 'value']).trim();
@@ -211,6 +212,12 @@ export default class CUD extends Component {
         this.validatePositiveInteger(state, 'input_width')
 
         // TODO (MT): validate other fields
+    }
+
+    isAggregated() {
+        const aggregation = this.getFormValue("aggregation");
+        if (!aggregation) return false;
+        return aggregation.trim() !== "";
     }
 
     renderTotalPredictionTime() {
@@ -280,7 +287,7 @@ export default class CUD extends Component {
                                 placeholder={t(`type interval or select from the hints`)}
                                 withHints={['', '1h', '12h', '1d', '30d']}
                     />
-                    {this.getFormValue("aggregation").trim() === "" && <div className={"form-group text-primary"}>
+                    {!this.isAggregated() && <div className={"form-group text-primary"}>
                         It is not recommended to leave the aggregation interval empty. {/* TODO (MT): better message */}
                     </div>}
 
@@ -298,9 +305,9 @@ export default class CUD extends Component {
 
                     <h4>Signals</h4>
 
-                    {renderParam(this.input_signals_configSpec)}
+                    {renderParam(this.input_signals_configSpec())}
 
-                    {renderParam(this.target_signals_configSpec)}
+                    {renderParam(this.target_signals_configSpec())}
 
                     <h4>Neural Network parameters</h4>
 
