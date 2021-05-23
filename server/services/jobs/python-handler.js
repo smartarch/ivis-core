@@ -214,7 +214,7 @@ async function init(config, onSuccess, onFail) {
         );
 
         virtEnv.on('error', async (error) => {
-            console.log(error);
+            log.error(error)
             onFail(null, [error.toString()]);
             await fs.removeAsync(buildDir);
             await fs.removeAsync(envBuildDir);
@@ -257,11 +257,11 @@ async function init(config, onSuccess, onFail) {
                 await fs.removeAsync(buildDir);
                 await fs.removeAsync(envBuildDir);
             } catch (error) {
-                console.error(error);
+                log.error(error);
             }
         });
     } catch (error) {
-        console.error(error);
+        log.error(error);
         onFail(null, [error.toString()]);
     }
 }
