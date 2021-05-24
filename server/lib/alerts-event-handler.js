@@ -23,7 +23,7 @@ async function init(){
         alerts.set(tmp[i].id, aux);
     }
 
-    esEmitter.on('insert', cid => {setTimeout(() => handleSignalTrigger(cid), 3000)}); //time delay to compensate for slow ElasticSearch
+    esEmitter.on('insert', cid => {setTimeout(() => handleRecordInsert(cid), 3000)}); //time delay to compensate for slow ElasticSearch
     log.info('Alerts', 'Initialized');
 }
 
@@ -32,7 +32,7 @@ async function init(){
  * Called as an event handler when a new record is added to the signal set.
  * @param {string} cid - Cid of the signal set.
  */
-async function handleSignalTrigger(cid){
+async function handleRecordInsert(cid){
     const alertIds = await knex('alerts').innerJoin('signal_sets', 'alerts.sigset', 'signal_sets.id').where('signal_sets.cid', cid).select('alerts.id');
     for (let i = 0; i < alertIds.length; i++) await alerts.get(alertIds[i].id).execute();
 }
