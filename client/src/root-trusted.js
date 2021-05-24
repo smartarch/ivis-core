@@ -507,7 +507,17 @@ const getStructure = t => {
                                                         resolve: {
                                                             prediction: params => `rest/predictions/${params.modelId}`
                                                         },
-                                                        // visible: resolved => false && resolved, // isn't really shown anywhere
+                                                        navs: {
+                                                            ':action(edit|delete)': {
+                                                                title: t('Settings'),
+                                                                link: params => `/settings/jobs/${params.jobId}/edit`,
+                                                                visible: resolved => resolved.prediction.permissions.includes('edit'),
+                                                                panelRender: props => <PredictionsArimaCUD
+                                                                    signalSet={props.resolved.signalSet}
+                                                                    prediction={props.resolved.prediction}
+                                                                    action={props.match.params.action}/>
+                                                            }
+                                                        },
                                                         panelRender: props => <ArimaOverview
                                                             signalSet={props.resolved.signalSet}
                                                             predictionId={props.match.params.modelId}

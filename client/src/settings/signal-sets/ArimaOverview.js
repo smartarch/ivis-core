@@ -372,15 +372,25 @@ export default class ArimaOverview extends Component {
         const from = this.state.first;
         const to = this.state.last;
         return (
-            <Panel title={t('ARIMA model overview')}
+            <Panel
+                title={t('ARIMA model overview')}
                 key={from} // Panel will be refreshed after data is fetched
             >
-                {/*
                 <Toolbar>
-                    <LinkButton to={`/settings/`} className="btn-primary"
-                        icon="plus"
+                    <LinkButton
+                        to={`/settings/signal-sets/${prediction.set}/predictions/${prediction.type}/${prediction.id}/edit`}
+                        className="btn-primary"
+                        icon="edit"
                         label={t('Edit')} />
-                </Toolbar>*/}
+                    <LinkButton
+                        to={`/settings/signal-sets/${prediction.set}/predictions/${prediction.type}/${prediction.id}/delete`}
+                        className="btn-danger"
+                        icon="trash-alt"
+                        label={t('Delete')} />
+                </Toolbar>
+                <table>
+                    ARIMA model:
+                </table>
                 <TimeContext
                     initialIntervalSpec={new IntervalSpec(from, to, null, moment.duration(1, 'd'))}
                 >

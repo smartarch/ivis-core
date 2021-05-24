@@ -139,6 +139,9 @@ export default class CUD extends Component {
 
     render() {
         const t = this.props.t;
+        const isEdit = !!this.props.prediction;
+        const canDelete = isEdit && this.props.prediction.permissions.includes('delete');
+
         const autoarima = this.getFormValue('autoarima');
         const useAggregation = this.getFormValue('useAggregation');
         const isSeasonal = this.getFormValue('isSeasonal');
@@ -152,15 +155,26 @@ export default class CUD extends Component {
             { data: 4, title: t('Type'), render: data => signalTypes[data] },
         ];
 
-        // we need deep copy here, because the elements are modified by the form (enclosed in <div></div>)
+        // we need a deep copy here, because the elements are modified by the form (they are enclosed in <div></div>)
         const signalColumns2 = signalColumns.map(x => Object.assign({}, x));
 
         return (
-            <Panel title="Add ARIMA model">
-                {/*<ButtonRow>
-                    <Button type="submit" className="btn-primary" label="Create Test Model" onClickAsync={x => this.createTestModel()}/>
-                </ButtonRow>*/}
-                <Form stateOwner={this} onSubmitAsync={this.submitHandler}>
+            <Panel title={isEdit ? t('Edit ARIMA model') : t('Create ARIMA model')}>
+                {canDelete &&
+                    <DeleteModalDialog
+                        stateOwner={this}
+                        visible={this.props.action === 'delete'}
+                        deleteUrl={`rest/signal-sets/${this.props.prediction.set}/predictions/${this.props.prediction.id}`}
+                        backUrl={`/settings/signal-sets/${this.props.prediction.set}/${this.props.prediction.type}/${this.props.prediction.id}`}
+                        successUrl={`/settings/signal-sets/${this.props.prediction.set}/predictions`}
+                        deletingMsg={t('Deleting ARIMA model ...')}
+                        deletedMsg={t('ARIMA model deleted')}
+                />
+                }
+                <Form
+                    stateOwner={this}
+                    onSubmitAsync={this.submitHandler}
+                >
                     <InputField id="name" label={t('Model name')} help={t('Has to be unique among models belonging to this signal set.')} />
                     <TableSelect
                         key="ts"
@@ -189,7 +203,6 @@ export default class CUD extends Component {
                             // don't show timestamp as a signal to predict
                             let out = [];
                             for (let x of array) {
-                                console.log(JSON.stringify(x));
                                 // x is array of signal set fields
                                 if (x[1] !== 'ts') { // 'id' != 'ts'
                                     out.push(x);
@@ -210,10 +223,13 @@ export default class CUD extends Component {
                     }*/}
                     <CheckBox id="autoarima" label={t('Use auto arima')} />
 
-                    <InputField id="futurePredictions" label="Future predictions" help={t('How many predictions into the future do we want to generate?')}/>
+                    <InputField id="futurePredictions" label="Future predictions" help={t('How many predictions into the future do we want to generate?')} />
 
                     {autoarima &&
-                        <CheckBox id="override_d" label={t('Override d')} help={t('Override the order of differencing (as opposed to estimating it using a differencing test.)')} />
+                        <CheckBox
+                            id="override_d"
+                            label={t('Override d')}
+                            help={t('Override the order of differencing (as opposed to estimating it using a differencing test.)')} />
                     }
                     {!autoarima &&
                         <InputField id="p" label="p" />
@@ -226,7 +242,12 @@ export default class CUD extends Component {
                     }
 
                     <ButtonRow>
-                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler(true)}/>
+                        <Button
+                            type="submit"
+                            className="btn-primary"
+                            icon="check"
+                            label={t('Save and leave')}
+                            onClickAsync={async () => await this.submitHandler(true)} />
                     </ButtonRow>
                 </Form>
             </Panel>
