@@ -9,6 +9,7 @@ const esClient = require('./elasticsearch');
 const getFilesDir = require('../models/files').getEntityFilesDir;
 const fs = require('fs-extra-promise');
 const config = require("./config");
+const simpleGit = require('simple-git');
 
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
@@ -45,6 +46,10 @@ function getTaskDir(id) {
  */
 function getTaskBuildOutputDir(id) {
     return path.join(getTaskDir(id), 'dist')
+}
+
+function getTaskDevelopmentDir(id) {
+    return path.join(getTaskDir(id), 'src')
 }
 
 let handlerProcess;
@@ -120,36 +125,63 @@ function checkLogRetention(logRetention) {
 
 function onFilesUpload(type, subtype, entityId, files) {
     if (type === 'task') {
+        const filesDir = getTaskDevelopmentDir(entityId);
+        const git = simpleGit({
+            baseDir: filesDir,
+            binary: 'git',
+            maxConcurrentProcesses: 6,
+        });
         setImmediate(async () => {
             const dir = getFilesDir(type, subtype, entityId);
-            const filesDir = getTaskBuildOutputDir(entityId);
+            const fileNames = [];
             for (const file of files) {
-                await fs.copyAsync(path.join(dir, file.name), path.join(filesDir, file.originalName), {});
+                if (file != PYTHON_JOB_FILE_NAME) {
+                    const destPath = path.join(filesDir, file.originalName);
+                    await fs.copyAsync(path.join(dir, file.name), destPath, {});
+                    fileNames.push(file.originalName);
+                    await git.add(destPath);
+                }
             }
+            await git.commit(`Files upload ${fileNames.join(', ')}`)
         });
     }
 }
 
 function onRemoveFile(type, subtype, entityId, file) {
     if (type === 'task') {
+        const git = simpleGit({
+            baseDir: getTaskDevelopmentDir(entityId),
+            binary: 'git',
+            maxConcurrentProcesses: 6,
+        });
         setImmediate(async () => {
-            const filePath = path.join(getTaskBuildOutputDir(entityId), file.originalName);
+            const filePath = path.join(getTaskDevelopmentDir(entityId), file.originalName);
             await fs.removeAsync(filePath);
+            await git.add(filePath);
+            await git.commit(`File removed ${file.originalName}`)
         })
     }
 }
 
 function onRemoveAllFiles(type, subtype, entityId) {
     if (type === 'task') {
+        const filesDir = path.join(getTaskDevelopmentDir(entityId));
+        const git = simpleGit({
+            baseDir: filesDir,
+            binary: 'git',
+            maxConcurrentProcesses: 6,
+        });
         setImmediate(async () => {
             try {
-                const filesDir = path.join(getTaskBuildOutputDir(entityId));
                 const files = await fs.readdirAsync(filesDir);
                 for (const file of files) {
                     if (file != PYTHON_JOB_FILE_NAME) {
-                        await fs.removeAsync(path.join(filesDir, file));
+                        const filePath = path.join(filesDir, file);
+                        await fs.removeAsync(filePath);
+                        await git.add(filePath);
                     }
                 }
+                await git.commit("All files removed")
             } catch (e) {
                 log.error(e);
             }
