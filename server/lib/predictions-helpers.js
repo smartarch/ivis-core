@@ -50,6 +50,14 @@ async function getSigSetBoundaries(signalSetId, tsField = 'ts') {
         }
     });
 
+    if (!first.hits.hits[0] || !last.hits.hits[0]) {
+        return {
+            // we have to return non zero time interval
+            first: '1900-01-01T00:00:00.000Z',
+            last: '1900-01-02T00:00:00.000Z'
+        };
+    }
+
     return {
         first: first.hits.hits[0]['_source'][tsSigCid],
         last: last.hits.hits[0]['_source'][tsSigCid]
