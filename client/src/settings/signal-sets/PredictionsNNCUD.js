@@ -150,6 +150,7 @@ export default class CUD extends Component {
             time_interval_start: '',
             time_interval_end: '',
             architecture: NeuralNetworkArchitecturesList[0],
+            learning_rate: "0.001",
             ...formValues,
         });
         this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
@@ -180,8 +181,8 @@ export default class CUD extends Component {
     async submitHandler(submitAndLeave) {
         const t = this.props.t;
         const sendMethod = FormSendMethod.POST;
-        //const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/neural_network`;
-        const url = "intentionally_wrong_url"; // TODO (MT): for debug purposes
+        const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/neural_network`;
+        //const url = "intentionally_wrong_url"; // for debug purposes
 
         try {
             //this.disableForm(); // TODO (MT)
@@ -209,14 +210,15 @@ export default class CUD extends Component {
 
         data.name = data.name.trim();
         data.aggregation = data.aggregation.trim();
-        data.input_width = parseInt(data.input_width, 10)
-        data.target_width = parseInt(data.target_width, 10)
+        data.input_width = parseInt(data.input_width, 10);
+        data.target_width = parseInt(data.target_width, 10);
+        data.learning_rate = parseFloat(data.learning_rate);
         data.time_interval = {
             start: data.time_interval_start !== "" ? moment(data.time_interval_start).toISOString() : "",
             end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
         }
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval']);
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'learning_rate']);
 
         return {
             ...data,
@@ -276,7 +278,14 @@ export default class CUD extends Component {
         this.validateDate(state, 'time_interval_start', false);
         this.validateDate(state, 'time_interval_end', true);
 
-        // TODO (MT): validate other fields
+        const learningRateStr = state.getIn(['learning_rate', 'value']).trim();
+        if (!learningRateStr || isNaN(learningRateStr)) {
+            state.setIn(['learning_rate', 'error'], t('Please enter a number'));
+        } else if (Number(learningRateStr) <= 0) {
+            state.setIn(['learning_rate', 'error'], t('Please enter a positive number'));
+        } else {
+            state.setIn(['learning_rate', 'error'], null);
+        }
     }
 
     isAggregated() {
@@ -412,12 +421,7 @@ export default class CUD extends Component {
                         />
                     </Fieldset>
 
-                    TODO
-
-                    <h4>DEBUG</h4> {/* TODO (MT): remove */}
-
-                    <pre>{JSON.stringify(this.getFormValues(), null, 2)}</pre>
-                    <pre>{JSON.stringify(this.props.signalSet, null, 2)}</pre>
+                    <InputField id="learning_rate" label="Learning rate"/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler(true)}/>
