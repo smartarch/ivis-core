@@ -378,19 +378,11 @@ export default class ArimaOverview extends Component {
             >
                 <Toolbar>
                     <LinkButton
-                        to={`/settings/signal-sets/${prediction.set}/predictions/${prediction.type}/${prediction.id}/edit`}
-                        className="btn-primary"
-                        icon="edit"
-                        label={t('Edit')} />
-                    <LinkButton
                         to={`/settings/signal-sets/${prediction.set}/predictions/${prediction.type}/${prediction.id}/delete`}
                         className="btn-danger"
                         icon="trash-alt"
                         label={t('Delete')} />
                 </Toolbar>
-                <table>
-                    ARIMA model:
-                </table>
                 <TimeContext
                     initialIntervalSpec={new IntervalSpec(from, to, null, moment.duration(1, 'd'))}
                 >
