@@ -45,11 +45,12 @@ function getTaskDir(id) {
  * @returns {string}
  */
 function getTaskBuildOutputDir(id) {
-    return path.join(getTaskDir(id), 'dist')
+    return path.join(getTaskDir(id), 'dist');
 }
 
+// Currently we have only python, so no build, but this will be language specific in the future
 function getTaskDevelopmentDir(id) {
-    return path.join(getTaskDir(id), 'src')
+    return getTaskBuildOutputDir(id);
 }
 
 let handlerProcess;
@@ -125,67 +126,90 @@ function checkLogRetention(logRetention) {
 
 function onFilesUpload(type, subtype, entityId, files) {
     if (type === 'task') {
-        const filesDir = getTaskDevelopmentDir(entityId);
-        const git = simpleGit({
-            baseDir: filesDir,
-            binary: 'git',
-            maxConcurrentProcesses: 6,
-        });
-        setImmediate(async () => {
-            const dir = getFilesDir(type, subtype, entityId);
-            const fileNames = [];
-            for (const file of files) {
-                if (file != PYTHON_JOB_FILE_NAME) {
-                    const destPath = path.join(filesDir, file.originalName);
-                    await fs.copyAsync(path.join(dir, file.name), destPath, {});
-                    fileNames.push(file.originalName);
-                    await git.add(destPath);
+        try {
+            const filesDir = getTaskDevelopmentDir(entityId);
+            const git = simpleGit({
+                baseDir: filesDir,
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+            });
+            setImmediate(async () => {
+                try {
+                    const dir = getFilesDir(type, subtype, entityId);
+                    const fileNames = [];
+                    for (const file of files) {
+                        if (file != PYTHON_JOB_FILE_NAME) {
+                            const destPath = path.join(filesDir, file.originalName);
+                            await fs.copyAsync(path.join(dir, file.name), destPath, {});
+                            fileNames.push(file.originalName);
+                            await git.add(destPath);
+                        }
+                    }
+                    await git.commit(`Files upload ${fileNames.join(', ')}`)
+                } catch (e) {
+                    log.error(e);
                 }
-            }
-            await git.commit(`Files upload ${fileNames.join(', ')}`)
-        });
+            });
+        } catch (e) {
+            log.error(e);
+        }
     }
 }
 
 function onRemoveFile(type, subtype, entityId, file) {
     if (type === 'task') {
-        const git = simpleGit({
-            baseDir: getTaskDevelopmentDir(entityId),
-            binary: 'git',
-            maxConcurrentProcesses: 6,
-        });
-        setImmediate(async () => {
-            const filePath = path.join(getTaskDevelopmentDir(entityId), file.originalName);
-            await fs.removeAsync(filePath);
-            await git.add(filePath);
-            await git.commit(`File removed ${file.originalName}`)
-        })
+        try {
+
+            const git = simpleGit({
+                baseDir: getTaskDevelopmentDir(entityId),
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+            });
+            setImmediate(async () => {
+                try {
+                    if (file.originalName != PYTHON_JOB_FILE_NAME) {
+                        const filePath = path.join(getTaskDevelopmentDir(entityId), file.originalName);
+                        await fs.removeAsync(filePath);
+                        await git.add(filePath);
+                        await git.commit(`File removed ${file.originalName}`)
+                    }
+                } catch (e) {
+                    log.error(e);
+                }
+            })
+        } catch (e) {
+            log.error(e);
+        }
     }
 }
 
 function onRemoveAllFiles(type, subtype, entityId) {
     if (type === 'task') {
-        const filesDir = path.join(getTaskDevelopmentDir(entityId));
-        const git = simpleGit({
-            baseDir: filesDir,
-            binary: 'git',
-            maxConcurrentProcesses: 6,
-        });
-        setImmediate(async () => {
-            try {
-                const files = await fs.readdirAsync(filesDir);
-                for (const file of files) {
-                    if (file != PYTHON_JOB_FILE_NAME) {
-                        const filePath = path.join(filesDir, file);
-                        await fs.removeAsync(filePath);
-                        await git.add(filePath);
+        try {
+            const filesDir = path.join(getTaskDevelopmentDir(entityId));
+            const git = simpleGit({
+                baseDir: filesDir,
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+            });
+            setImmediate(async () => {
+                try {
+                    const files = await fs.readdirAsync(filesDir);
+                    for (const file of files) {
+                        if (file != PYTHON_JOB_FILE_NAME) {
+                            const filePath = path.join(filesDir, file);
+                            await fs.removeAsync(filePath);
+                            await git.add(filePath);
+                        }
                     }
+                    await git.commit("All files removed")
+                } catch (e) {
+                    log.error(e);
                 }
-                await git.commit("All files removed")
-            } catch (e) {
-                log.error(e);
-            }
-        })
+            })
+        } catch (e) {
+            log.error(e);
+        }
     }
 }
 

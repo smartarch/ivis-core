@@ -142,8 +142,8 @@ function getCommands(subtype) {
     return subtype ? taskSubtypeSpecs[subtype].cmds : null;
 }
 
-function getSrcDir(destDir) {
-    return path.join(destDir, '..', 'src');
+function getDevDir(destDir) {
+    return path.join(destDir, '..', 'dist');
 }
 
 /**
@@ -155,16 +155,18 @@ function getSrcDir(destDir) {
  */
 async function build(config, onSuccess, onFail) {
     const {id, code, destDir} = config;
-    let srcDir = getSrcDir(destDir);
+    let devDir = getDevDir(destDir);
     try {
-        await fs.writeFileAsync(path.join(srcDir, JOB_FILE_NAME), code);
-        await fs.moveAsync(srcDir, destDir, {overwrite: true});
+        await fs.writeFileAsync(path.join(devDir, JOB_FILE_NAME), code);
+        if (devDir != destDir) {
+            await fs.copyAsync(devDir, destDir, {overwrite: true});
+        }
         const git = simpleGit({
-            baseDir: srcDir,
+            baseDir: devDir,
             binary: 'git',
             maxConcurrentProcesses: 6,
         });
-        await git.add(srcDir)
+        await git.add(devDir)
         await git.commit('Building')
         await onSuccess(null);
     } catch (error) {
@@ -206,11 +208,11 @@ async function init(config, onSuccess, onFail) {
         const envBuildDir = path.join(destDir, '..', 'envbuild');
         await fs.emptyDirAsync(envBuildDir);
 
-        const srcDir = path.join(destDir, '..', 'src');
-        await fs.ensureDirAsync(srcDir)
+        const devDir = getDevDir(destDir);
+        await fs.ensureDirAsync(devDir)
 
         const git = simpleGit({
-            baseDir: srcDir,
+            baseDir: devDir,
             binary: 'git',
             maxConcurrentProcesses: 6,
         });
@@ -218,13 +220,13 @@ async function init(config, onSuccess, onFail) {
         const isRepo = await git.checkIsRepo("root");
         if (!isRepo) {
             await git.init();
-            // TODO somehow from instance config
+            // TODO take this somehow from instance config, so it can be instance specific
             await git.addConfig("user.email", "admin@example.com");
             await git.addConfig("user.name", "ivis-core");
         }
-        const codeFilePath = path.join(srcDir, JOB_FILE_NAME)
+        const codeFilePath = path.join(devDir, JOB_FILE_NAME)
         await fs.writeFileAsync(codeFilePath, code);
-        await git.add(srcDir)
+        await git.add(devDir)
         await git.commit('Init')
 
         const virtEnv = spawn(
@@ -254,13 +256,13 @@ async function init(config, onSuccess, onFail) {
         virtEnv.on('exit', async (code, signal) => {
             try {
                 if (code === 0) {
-                    // TODO this should involve better system for handling stored files / copying them on built to dist dir
-                    // for now we'll see what the required functionality will be, so we just keep the old files present
                     const envDir = path.join(destDir, '..', ENV_NAME);
                     await fs.ensureDirAsync(envDir)
                     await fs.ensureDirAsync(destDir)
 
-                    await fs.copyAsync(srcDir, destDir, {overwrite: true});
+                    if (devDir != destDir) {
+                        await fs.copyAsync(devDir, destDir, {overwrite: true});
+                    }
                     await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
                     await onSuccess(null);
                 } else {

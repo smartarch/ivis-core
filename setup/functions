@@ -164,15 +164,15 @@ EOF
 function installTasksPrerequisities {
     case "$hostType" in
         centos8-aws|centos8-minimal)
-            dnf -y install python3 python3-pip
+            dnf -y install git python3 python3-pip
             ;;
 
         centos7-aws|centos7-minimal)
-            yum -y install python3 python3-pip
+            yum -y install git python3 python3-pip
             ;;
 
         ubuntu1804)
-            apt-get install -y python3 python3-pip python3-venv
+            apt-get install -y git python3 python3-pip python3-venv
             ;;
     esac
 
