@@ -204,6 +204,7 @@ class RMSETable extends Component {
             to: to,
             sourceSetCid: this.props.sourceSetCid,
             predSetCid: this.props.predSetCid,
+            signalCid: this.props.signalCid,
         };
         let test = await axios.post(getUrl(`rest/predictions-rmse/`), testBody);
 
@@ -369,6 +370,8 @@ export default class ArimaOverview extends Component {
     render() {
         const t = this.props.t;
         const prediction = this.props.prediction;
+        // ARIMA always has a single main signal
+        const signalCid = this.props.prediction.signals['main'][0].cid;
         const from = this.state.first;
         const to = this.state.last;
         return (
@@ -396,11 +399,13 @@ export default class ArimaOverview extends Component {
                         onAheadChange={this.onAheadChange.bind(this)}
                     />
                     <TimeRangeSelector />
-                    <RMSETable
+                    {signalCid && <RMSETable
                         ahead={this.state.ahead}
                         sourceSetCid={this.state.sourceSetCid}
                         predSetCid={this.state.predSetCid}
+                        signalCid={signalCid}
                     />
+                    }
                 </TimeContext>
             </Panel>
         );

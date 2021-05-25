@@ -262,6 +262,7 @@ async function getById(context, id) {
         await shares.enforceEntityPermissionTx(tx, context, 'prediction', id, 'view');
         const entity = await tx('predictions').where('id', id).first();
         entity.settings = JSON.parse(entity.settings);
+        entity.signals = JSON.parse(entity.signals);
         entity.permissions = await shares.getPermissionsTx(tx, context, 'prediction', id);
 
         return entity;
