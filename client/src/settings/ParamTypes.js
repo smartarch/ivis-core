@@ -9,7 +9,7 @@ import {
     ColorPicker,
     Dropdown,
     Fieldset,
-    InputField,
+    InputField, StaticField,
     TableSelect,
     TextArea
 } from "../lib/form";
@@ -107,12 +107,10 @@ export default class ParamTypes {
 
                     try {
                         JSON.parse(val);
-                    }
-                    catch (e) {
+                    } catch (e) {
                         if (e instanceof SyntaxError) {
                             state.setIn([formId, 'error'], t('Please enter a valid JSON.') + " (" + e.message + ")");
-                        }
-                        else throw e;
+                        } else throw e;
                     }
                 }
             },
@@ -355,6 +353,7 @@ export default class ParamTypes {
                     filterByType = [null, null, null, types, null, null]; // this should have the same length as signalColumns
                 }
 
+                console.log('rendering')
                 if (signalSetCid) {
                     return <TableSelect
                         key={spec.id}
@@ -371,12 +370,12 @@ export default class ParamTypes {
                         searchCols={filterByType}
                     />;
                 } else {
-                    return <AlignedRow key={spec.id}>
-                        <div>{t('Select signal set to see the list of signals.')}</div>
-                    </AlignedRow>
+                    return (
+                        <StaticField key={spec.id} id={spec.id} label={spec.label}>
+                            {t('Select signal set to see the list of signals.')}
+                        </StaticField>
+                    );
                 }
-
-
             },
             upcast: (spec, value) => {
                 const card = parseCardinality(spec.cardinality);

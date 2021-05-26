@@ -7,6 +7,7 @@ const readline = require('readline');
 const ivisConfig = require('../../lib/config');
 const em = require('../../lib/extension-manager');
 const log = require('../../lib/log');
+const simpleGit = require('simple-git');
 
 // Directory name where virtual env is saved for task
 const ENV_NAME = 'env';
@@ -144,6 +145,10 @@ function getCommands(subtype) {
     return subtype ? taskSubtypeSpecs[subtype].cmds : null;
 }
 
+function getDevDir(destDir) {
+    return path.join(destDir, '..', 'dist');
+}
+
 /**
  * Build task
  * @param config
@@ -153,21 +158,44 @@ function getCommands(subtype) {
  */
 async function build(config, onSuccess, onFail) {
     const {id, code, destDir} = config;
-    let buildDir;
+    let devDir = getDevDir(destDir);
     try {
-        buildDir = path.join(destDir, '..', 'build');
-        await fs.emptyDirAsync(buildDir);
-        const filePath = path.join(buildDir, JOB_FILE_NAME);
-        await fs.writeFileAsync(filePath, code);
-        await fs.moveAsync(filePath, path.join(destDir, JOB_FILE_NAME), {overwrite: true});
-        await fs.removeAsync(buildDir);
+        await fs.writeFileAsync(path.join(devDir, JOB_FILE_NAME), code);
+        if (devDir != destDir) {
+            await fs.copyAsync(devDir, destDir, {overwrite: true});
+        }
+        const git = simpleGit({
+            baseDir: devDir,
+            binary: 'git',
+            maxConcurrentProcesses: 6,
+        });
+        await git.add(devDir)
+        await git.commit('Building')
         await onSuccess(null);
     } catch (error) {
-        if (buildDir) {
-            await fs.remove(buildDir);
-        }
         onFail(null, [error.toString()]);
     }
+}
+
+function getInitScript(subtype, envBuildDir) {
+    const packages = getPackages(subtype);
+    const commands = getCommands(subtype);
+
+    const virtDir = path.join(envBuildDir, 'bin', 'activate');
+
+    const cmdsChain = []
+    cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envBuildDir}`)
+    cmdsChain.push(`source ${virtDir}`)
+    if (packages) {
+        cmdsChain.push(`pip install ${packages.join(' ')} `)
+    }
+    if (commands) {
+        cmdsChain.push(...commands)
+    }
+    cmdsChain.push(`pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis `)
+    cmdsChain.push(`deactivate`)
+
+    return cmdsChain.join(' && ');
 }
 
 /**
@@ -180,46 +208,40 @@ async function build(config, onSuccess, onFail) {
 async function init(config, onSuccess, onFail) {
     const {id, subtype, code, destDir} = config;
     try {
-
-        const packages = getPackages(subtype);
-        const commands = getCommands(subtype);
-
-        const envDir = path.join(destDir, '..', ENV_NAME);
-        const srcDir = path.join(destDir, '..', 'src');
-        const buildDir = path.join(destDir, '..', 'build');
         const envBuildDir = path.join(destDir, '..', 'envbuild');
-
-        await fs.emptyDirAsync(buildDir);
         await fs.emptyDirAsync(envBuildDir);
 
-        const filePath = path.join(buildDir, JOB_FILE_NAME);
-        await fs.writeFileAsync(filePath, code);
+        const devDir = getDevDir(destDir);
+        await fs.ensureDirAsync(devDir)
 
+        const git = simpleGit({
+            baseDir: devDir,
+            binary: 'git',
+            maxConcurrentProcesses: 6,
+        });
 
-        const virtDir = path.join(envBuildDir, 'bin', 'activate');
-
-        const cmdsChain = []
-        cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envBuildDir}`)
-        cmdsChain.push(`source ${virtDir}`)
-        if (packages) {
-            cmdsChain.push(`pip install ${packages.join(' ')} `)
+        const isRepo = await git.checkIsRepo("root");
+        if (!isRepo) {
+            await git.init();
+            // TODO take this somehow from instance config, so it can be instance specific
+            await git.addConfig("user.email", "admin@example.com");
+            await git.addConfig("user.name", "ivis-core");
         }
-        if (commands) {
-            cmdsChain.push(...commands)
-        }
-        cmdsChain.push(`pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis `)
-        cmdsChain.push(`deactivate`)
+        const codeFilePath = path.join(devDir, JOB_FILE_NAME)
+        await fs.writeFileAsync(codeFilePath, code);
+        await git.add(devDir)
+        await git.commit('Init')
+
         const virtEnv = spawn(
-            cmdsChain.join(' && '),
+            getInitScript(subtype, envBuildDir),
             {
                 shell: '/bin/bash'
             }
         );
 
         virtEnv.on('error', async (error) => {
-            console.log(error);
+            log.error(error)
             onFail(null, [error.toString()]);
-            await fs.removeAsync(buildDir);
             await fs.removeAsync(envBuildDir);
         });
 
@@ -237,34 +259,26 @@ async function init(config, onSuccess, onFail) {
         virtEnv.on('exit', async (code, signal) => {
             try {
                 if (code === 0) {
-                    // TODO this should involve better system for handling stored files / copying them on built to dist dir
-                    // for now we'll see what the required functionality will be, so we just keep the old files present
-                    const destExists = await fs.existsAsync(destDir);
-                    if (destExists) {
-                        const files = await fs.readdirAsync(destDir);
-                        for (const file of files) {
-                            if (file != JOB_FILE_NAME) {
-                                await fs.copyAsync(path.join(destDir, file), path.join(buildDir, file), {overwrite: false});
-                            }
-                        }
-                    }
-
-                    await fs.ensureDirAsync(destDir)
+                    const envDir = path.join(destDir, '..', ENV_NAME);
                     await fs.ensureDirAsync(envDir)
-                    await fs.moveAsync(buildDir, destDir, {overwrite: true});
+                    await fs.ensureDirAsync(destDir)
+
+                    if (devDir != destDir) {
+                        await fs.copyAsync(devDir, destDir, {overwrite: true});
+                    }
                     await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
                     await onSuccess(null);
                 } else {
                     await onFail(null, [`Init ended with code ${code} and the following error:\n${output}`]);
                 }
-                await fs.removeAsync(buildDir);
+
                 await fs.removeAsync(envBuildDir);
             } catch (error) {
-                console.error(error);
+                log.error(error);
             }
         });
     } catch (error) {
-        console.error(error);
+        log.error(error);
         onFail(null, [error.toString()]);
     }
 }
