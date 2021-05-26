@@ -86,11 +86,11 @@ class ModelWrapper:
         return pred_ts, pred_values
 
 
-def get_source_index_name(params):
+def get_source_index_name(params) -> str:
     return ivis.entities['signalSets'][params['sigSet']]['index']
 
 
-def get_source_index_field_name(params, field_name):
+def get_source_index_field_name(params, field_name) -> str:
     return ivis.entities['signals'][params['sigSet']][field_name]['field']
 
 
@@ -113,12 +113,14 @@ def get_training_portion(params) -> float:
 
 
 def get_is_autoarima(params) -> bool:
-    return True
+    def is_true(string):
+        return True if string == 'True' or string == 'true' or string == True else False
+    return is_true(params['autoarima'])
 
 
 def get_arima_order(params):
     """ARIMA order, e.g. (5,0,1). Only applicable when not using autoarima."""
-    return (5, 0, 1)
+    return (int(params['p']), int(params['d']), int(params['q']))
 
 def get_ahead_count(params):
     return int(params['futurePredictions'])
@@ -130,18 +132,34 @@ def get_is_aggregated(params) -> bool:
     else:
         return False
 
+def get_ts_cid(params) -> str:
+    return 'ts'
+
+def get_value_cid(params) -> str:
+    # ARIMA always has exactly one main signal
+    return params['output_config']['signals']['main'][0]['cid']
+
+def get_ts_field(params) -> str:
+    return get_source_index_field_name(params, get_ts_cid(params))
+
+def get_value_field(params) -> str:
+    return get_source_index_field_name(params, get_value_cid(params))
+
 
 def get_aggregation_interval(params) -> str:
     return params['resampling_interval']
 
 
 def write_predictions(params, timestamps, values):
+    ts_cid = get_ts_cid(params)
+    value_cid = get_value_cid(params)
+
     with ts.PredictionsWriter(output_config) as writer:
         writer.clear_future()
         for ahead, (t, v) in enumerate(zip(timestamps, values), start=1):
             record = {
-                'ts': t,
-                'value': v
+                ts_cid: t,
+                value_cid: v
             }
             writer.write(record, ahead)
 
@@ -151,8 +169,8 @@ def create_data_reader(params):
     # validation) that will be read at once. The other for all remaining and
     # future data
     index_name = get_source_index_name(params)
-    ts_field = get_source_index_field_name(params, 'ts')
-    value_field = get_source_index_field_name(params, 'value')
+    ts_field = get_ts_field(params)
+    value_field = get_value_field(params)
 
     # first ts that is not potentially part of the training data
     split_ts = get_max_training_ts(params)
@@ -197,9 +215,11 @@ def train_model(params) -> ModelWrapper:
 
     # train model
     if autoarima:
+        logging.info(f"Training model with autoarima")
         model = pmd.auto_arima(val_train)
     else:
         order = get_arima_order(params)
+        logging.info(f"Training model of order {order}")
         model = pmd.ARIMA(order)
         model.fit(val_train)
 
