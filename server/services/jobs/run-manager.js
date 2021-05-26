@@ -302,6 +302,7 @@ async function storeRunState(id, state) {
     try {
         await es.index({index: INDEX_JOBS, type: TYPE_JOBS, id: id, body: jobBody});
     } catch (err) {
+        log.error(LOG_ID, err);
         return {error: err.message};
     }
 }
