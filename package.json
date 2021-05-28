@@ -1,30 +1,13 @@
 {
   "name": "ivis-core",
   "version": "1.0.0",
-  "description": "Global development environment.",
-  "main": "index.js",
+  "description": "Environment for examples.",
   "directories": {
     "example": "examples"
   },
-  "scripts": {
-    "client-build": "npm run build --prefix client/",
-    "client-watch": "npm run watch --prefix client/",
-    "server-run-dev": "NODE_ENV=development node server/index.js",
-    "server-watch-dev": "NODE_ENV=development nodemon -w server -i server/files -- server/index.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dburian/ivis-core.git"
-  },
   "author": "Tomas Bures",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/dburian/ivis-core/issues"
-  },
-  "homepage": "https://github.com/dburian/ivis-core#readme",
-  "devDependencies": {
-    "nodemon": "^2.0.2"
-  },
+  "devDependencies": {},
   "dependencies": {
     "systeminformation": "^4.27.10"
   }

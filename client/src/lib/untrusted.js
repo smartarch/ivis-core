@@ -164,9 +164,6 @@ export class UntrustedContentHost extends Component {
     }
 
     render() {
-            console.log(this.props.contenSrc);
-            console.log(getSandboxUrl(this.props.contenSrc));
-
         return (
             // The 40 px below corresponds to the height in .sandbox-loading-message
             <iframe className={styles.untrustedContent + ' ' + this.props.className} height="40px"

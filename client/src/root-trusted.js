@@ -61,7 +61,6 @@ import SettingsSidebar from './settings/Sidebar';
 
 import SamplePanel from './workspaces/SamplePanel';
 import SamplePanel2 from './workspaces/SamplePanel2';
-import SamplePanel3 from './workspaces/SamplePanel3';
 
 import MainMenuAuthenticated from './MainMenuAuthenticated';
 import MainMenuAnonymous from './MainMenuAnonymous';
@@ -178,11 +177,6 @@ const getStructure = t => {
                         title: t('Sample workspace 2'),
                         link: '/workspaces/sample2',
                         panelComponent: SamplePanel2,
-                    },
-                    sample3: {
-                        title: t('Sample workspace 3'),
-                        link: '/workspaces/sample3',
-                        panelComponent: SamplePanel3,
                     },
                 }
             },

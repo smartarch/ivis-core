@@ -346,7 +346,7 @@ export class TimeBasedChartBase extends Component {
                 return;
             }
 
-            // throw err;
+            throw err;
         }
     }
 
