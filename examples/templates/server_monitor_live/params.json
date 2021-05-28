@@ -56,8 +56,10 @@
                     },
                     {
                         "id": "positionFormatString",
-                        "label": "Label format of current time and date",
-                        "help": "Possible format tokens can be found at https://momentjs.com/docs/#/displaying/format/",
+                        "label":
+                            "Label format of current time and date",
+                        "help":
+"Format tokens can be found at momentjs.com/docs/#/displaying/format/",
                         "type": "string"
                     }
                 ]
@@ -110,4 +112,3 @@
         "type": "color"
     }
 ]
-

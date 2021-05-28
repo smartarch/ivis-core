@@ -1,40 +1,4 @@
 {
-  "animationConfig": {
-    "initialStatus": {
-      "isPlaying": true,
-      "playbackSpeedFactor": "86400"
-    },
-    "controls": {
-      "playPause": {
-        "visible": true,
-        "enabled": true
-      },
-      "stop": {
-        "visible": false,
-        "enabled": true
-      },
-      "jumpForward": {
-        "visible": false,
-        "enabled": true,
-        "jumpFactor": "0.5"
-      },
-      "jumpBackward": {
-        "visible": false,
-        "enabled": true,
-        "jumpFactor": "0.5"
-      },
-      "changeSpeed": {
-        "visible": true,
-        "enabled": true,
-        "steps": []
-      },
-      "timeline": {
-        "visible": true,
-        "enabled": true,
-        "positionFormatString": ""
-      }
-    }
-  },
   "areachart": {
     "sigSets": [
       {

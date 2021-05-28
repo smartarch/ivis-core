@@ -4,7 +4,9 @@ import React, {Component} from 'react';
 import moment from 'moment';
 import {
     RecordedAnimation,
-    OnelineLayout,
+    PlayPauseButton,
+    Timeline,
+    ChangeSpeedDropdown,
     animated,
     AreaChart,
     SimpleBarChart,
@@ -12,7 +14,6 @@ import {
     withPanelConfig,
     linearInterpolation,
     cubicInterpolation,
-    expensiveCubicInterpolation,
     TimeRangeSelector,
     IntervalSpec
 } from 'ivis';
@@ -20,10 +21,36 @@ import PropTypes from 'prop-types';
 
 import styles from './styles.scss';
 
+const AnimatedAreaChart = animated(AreaChart);
+const AnimatedBarChart = animated(SimpleBarChart);
+
 const areaChartDtSourceKey = 'areachart_dt';
 const barChartDtSourceKey = 'barchart_dt';
 
-const AnimatedBarChart = animated(SimpleBarChart);
+class AreaChartSection extends Component {
+    static propTypes = {
+        config: PropTypes.object.isRequired,
+    }
+
+    render() {
+        return (
+            <div className="container-fluid">
+                <AnimatedAreaChart
+                    dataSourceKey={areaChartDtSourceKey}
+                    config={{
+                        yAxes: [{
+                            visible: true,
+                            belowMin: 0.1,
+                            aboveMax: 0.2
+                        }],
+                        signalSets: this.props.config.sigSets,
+                    }}
+                    height={500}
+                />
+            </div>
+        );
+    }
+}
 class BarChartSection extends Component {
     static propTypes = {
         categories: PropTypes.array,
@@ -72,8 +99,7 @@ class BarChartSection extends Component {
         const isHorizontal = this.props.dataSets.length > 4;
         const height = isHorizontal ?
             this.props.dataSets.length * this.props.categories.length * 35 :
-            600
-        ;
+            600;
 
         return (
             <div className="px-1 text-center">
@@ -107,30 +133,6 @@ class BarChartSection extends Component {
     }
 }
 
-const AnimatedAreaChart = animated(AreaChart);
-class AreaChartSection extends Component {
-    static propTypes = {
-        config: PropTypes.object.isRequired,
-    }
-
-    render() {
-        const config = {
-            yAxes: [{visible: true, belowMin: 0.1, aboveMax: 0.2}],
-            signalSets: this.props.config.sigSets,
-        };
-
-        return (
-            <div className="container-fluid">
-                <AnimatedAreaChart
-                    dataSourceKey={areaChartDtSourceKey}
-                    config={config}
-                    height={500}
-                />
-            </div>
-        );
-    }
-}
-
 @withPanelConfig
 export default class Panel extends Component {
     getAnimationConfig() {
@@ -140,7 +142,7 @@ export default class Panel extends Component {
         const barChartDtSets = this.getPanelConfig(['barchart', 'dataSets']);
         dataSources[barChartDtSourceKey] = {
             type: 'generic',
-            interpolation: expensiveCubicInterpolation,
+            interpolation: linearInterpolation,
 
             sigSets: barChartDtSets.map(dtSet => ({
                 cid: dtSet.sigSetCid,
@@ -149,7 +151,10 @@ export default class Panel extends Component {
             })),
         };
 
-        const areaChartSigSets  = this.getPanelConfig(['areachart', 'sigSets']);
+        const areaChartSigSets  = this.getPanelConfig(
+            ['areachart', 'sigSets']
+        );
+
         dataSources[areaChartDtSourceKey] = {
             type: 'timeSeries',
             interpolation: cubicInterpolation,
@@ -158,53 +163,38 @@ export default class Panel extends Component {
             sigSets: areaChartSigSets,
         }
 
-
-        return {
-            initialStatus: ac.initialStatus && {
-                isPlaying: !!ac.initialStatus.isPlaying,
-                playbackSpeedFactor: ac.initialStatus.playbackSpeedFactor,
-            },
-            dataSources,
-            initialIntervalSpec: new IntervalSpec('2020-02-20 00:00:00', 'now', null, null),
-        };
-    }
-
-    getControlsConfig() {
-        const config = this.getPanelConfig(['animationConfig', 'controls']);
-
-        if (config.timeline.positionFormatString.length === 0) {
-            config.timeline.positionFormatString = undefined;
-        }
-
-        const changeSpeedSteps = config.changeSpeed.steps;
-        if (changeSpeedSteps.length === 0) {
-            config.changeSpeed.steps = undefined;
-        } else {
-            config.changeSpeed.steps = changeSpeedSteps.map(step => step.step);
-        }
-
-        if (Number.isNaN(config.jumpForward.jumpFactor))
-            config.jumpForward.jumpFactor = undefined;
-        if (Number.isNaN(config.jumpBackward.jumpFactor))
-            config.jumpBackward.jumpFactor = undefined;
-
-        return config
+        return { dataSources };
     }
 
     render() {
+        const heightStyle = { height: "25px" };
+
+        const barChartConf = this.getPanelConfig(['barchart']);
+
         return (
             <RecordedAnimation {...this.getAnimationConfig()}>
                 <TimeRangeSelector />
-                <OnelineLayout {...this.getControlsConfig()} />
+                <div className="row py-3">
+                    <div className="btn-group col-auto" style={heightStyle}>
+                        <PlayPauseButton enabled />
+                        <ChangeSpeedDropdown enabled />
+                    </div>
 
-                <AreaChartSection config={this.getPanelConfig(['areachart'])} />
+                    <div className="col" style={heightStyle}>
+                        <Timeline enabled />
+                    </div>
+                </div>
+
+                <AreaChartSection
+                    config={this.getPanelConfig(['areachart'])}
+                />
                 <hr />
                 <BarChartSection
-                    domainLabel={this.getPanelConfig(['barchart', 'domainLabel'])}
-                    codomainLabel={this.getPanelConfig(['barchart', 'codomainLabel'])}
-                    valueFormatSpecifier={this.getPanelConfig(['barchart', 'valueFormatSpecifier'])}
-                    categories={this.getPanelConfig(['barchart', 'categories'])}
-                    dataSets={this.getPanelConfig(['barchart', 'dataSets'])}
+                    domainLabel={barChartConf.domainLabel}
+                    codomainLabel={barChartConf.codomainLabel}
+                    valueFormatSpecifier={barChartConf.valueFormatSpecifier}
+                    categories={barChartConf.categories}
+                    dataSets={barChartConf.dataSets}
                     />
             </RecordedAnimation>
         );

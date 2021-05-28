@@ -29,6 +29,28 @@
                 ]
             },
             {
+                "id": "timeDomain",
+                "label": "Time period to be played back",
+                "type": "fieldset",
+                "cardinality": "1..1",
+                "children": [
+                    {
+                        "id": "from",
+                        "label": "From",
+                        "type": "string",
+                        "help":
+                            "Only formats accepted by the TimeRangeSelector."
+                    },
+                    {
+                        "id": "to",
+                        "label": "To",
+                        "type": "string",
+                        "help":
+                            "Only formats accepted by the TimeRangeSelector."
+                    }
+                ]
+            },
+            {
                 "id": "controls",
                 "label": "Controls configuration",
                 "type": "fieldset",
@@ -165,8 +187,10 @@
                             },
                             {
                                 "id": "positionFormatString",
-                                "label": "Label format of current time and date",
-                                "help": "Possible format tokens can be found at https://momentjs.com/docs/#/displaying/format/",
+                                "label":
+                                    "Label format of current time and date",
+                                "help":
+"Possible tokens can be found at momentjs.com/docs/#/displaying/format/",
                                 "type": "string"
                             }
                         ]
@@ -268,7 +292,8 @@
                     },
                     {
                         "id": "sigSetCid",
-                        "help": "Must be unique among all signal sets inside all pie chart contexts",
+                        "help":
+                            "Must be unique among all pie chart contexts",
                         "label": "Signal set",
                         "type": "signalSet"
                     },

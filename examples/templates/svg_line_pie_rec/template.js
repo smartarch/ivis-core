@@ -17,7 +17,6 @@ import {
     withPanelConfig,
     linearInterpolation,
     cubicInterpolation,
-    expensiveCubicInterpolation,
     TimeRangeSelector,
     SVG,
     IntervalSpec,
@@ -48,7 +47,11 @@ class SVGChart extends Component {
         this.boundUpdateDots = ::this.updateDots;
         this.resizeListener = ::this.updateContainerWidth;
         this.svgImg = `
-        <svg id="svg" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+        <svg
+            id="svg"
+            xmlns="http://www.w3.org/2000/svg"
+            font-family="sans-serif">
+
             <g id="content">
                 <g id="grid">
                     <g id="horizontal"/>
@@ -87,7 +90,6 @@ class SVGChart extends Component {
         const gridSel = this.svgSel.select('#grid');
         const legendSel = this.svgSel.select('#legend');
 
-
         const conf = this.props.config;
         const data = this.props.data;
 
@@ -96,8 +98,10 @@ class SVGChart extends Component {
 
         const getCoordsFromLineConf = (lineConf) => (
             data[lineConf.sigSetCid]
-                .map(kf => ({x: kf.ts, y: kf.data[lineConf.signalCid][lineConf.agg]}))
-                .filter(({x, y}) => x !== null && y !== null)
+                .map(kf => ({
+                    x: kf.ts,
+                    y: kf.data[lineConf.signalCid][lineConf.agg]
+                })).filter(({x, y}) => x !== null && y !== null)
         );
 
         const xExtents = [
@@ -107,7 +111,10 @@ class SVGChart extends Component {
 
         let yExtents = [];
         for (const lineConf of conf.lines) {
-            yExtents = extent([...yExtents, ...getCoordsFromLineConf(lineConf).map(c => c.y)]);
+            yExtents = extent([
+                ...yExtents,
+                ...getCoordsFromLineConf(lineConf).map(c => c.y)
+            ]);
         }
 
         if (yExtents.every(v => v === undefined)) {
@@ -117,16 +124,21 @@ class SVGChart extends Component {
             messageSel.text(null);
         }
 
-
         const yExtremesSpan = yExtents[1] - yExtents[0];
         const xExtremesSpan = xExtents[1] - xExtents[0];
 
         const y = scaleLinear()
-            .domain([yExtents[0] - 0.5*yExtremesSpan, yExtents[1] + 0.5*yExtremesSpan])
+            .domain([
+                yExtents[0] - 0.5*yExtremesSpan,
+                yExtents[1] + 0.5*yExtremesSpan
+            ])
             .range([height, 0]);
 
         const x = scaleTime()
-            .domain([xExtents[0] - 0.5*xExtremesSpan, xExtents[1] + 0.5*xExtremesSpan])
+            .domain([
+                xExtents[0] - 0.5*xExtremesSpan,
+                xExtents[1] + 0.5*xExtremesSpan
+            ])
             .range([0, width]);
 
         gridSel.select('#vertical')
@@ -177,7 +189,10 @@ class SVGChart extends Component {
 
     render() {
         return (
-            <div className={this.props.className} ref={node => this.containerNode = node}>
+            <div
+                className={this.props.className}
+                ref={node => this.containerNode = node}>
+
                 {this.state.width &&
                     <SVG
                         width={this.state.width + "px"}
@@ -187,9 +202,21 @@ class SVGChart extends Component {
                             this.svgSel = select(node);
                             const dotsSel = this.svgSel.select('#dots');
 
-                            this.svgSel.call(zoom()
-                                .extent([[0, 0], [this.state.width, this.props.height]])
-                                .translateExtent([[-0.5*this.state.width, -0.5*this.props.height], [1.5*this.state.width, 1.5*this.props.height]])
+                            this.svgSel.call(
+                                zoom().extent([
+                                    [0, 0],
+                                    [this.state.width, this.props.height]
+                                ])
+                                .translateExtent([
+                                    [
+                                        -0.5*this.state.width,
+                                        -0.5*this.props.height
+                                    ],
+                                    [
+                                        1.5*this.state.width,
+                                        1.5*this.props.height
+                                    ]
+                                ])
                                 .scaleExtent([0.9, 10])
                                 .on('zoom', () => {
                                     this.svgSel.select('#content')
@@ -207,8 +234,11 @@ class SVGChart extends Component {
     }
 }
 
-
 const AnimatedLineChart = animated(LineChart);
+const AnimatedPieChart = animated(StaticPieChart);
+const AnimatedSVGChart = animated(SVGChart);
+
+
 class LineChartSection extends Component {
     static propTypes = {
         config: PropTypes.object.isRequired,
@@ -233,7 +263,6 @@ class LineChartSection extends Component {
     }
 }
 
-const AnimatedPieChart = animated(StaticPieChart);
 class PieChartsSection extends Component {
     static propTypes = {
         sectors: PropTypes.array.isRequired,
@@ -279,7 +308,9 @@ class PieChartsSection extends Component {
         return (
             <div className="container-fluid">
                 <div className="row">
-                    {pieChartsProps.map(props => <SinglePieChartSection {...props} />)}
+                    {pieChartsProps.map(props =>
+                        <SinglePieChartSection {...props} />
+                    )}
                 </div>
             </div>
         );
@@ -307,7 +338,6 @@ class SinglePieChartSection extends Component {
     }
 }
 
-const AnimatedSVGChart = animated(SVGChart);
 class SVGChartSection extends Component {
     static propTypes = {
         sigSets: PropTypes.array.isRequired,
@@ -351,12 +381,12 @@ class SVGChartSection extends Component {
 export default class Panel extends Component {
     getAnimationConfig() {
         const c = this.getPanelConfig(['animationConfig']);
-        const pieChartDtSets = this.getPanelConfig(['pieChart', 'dataSets']);
-
         const dataSources = {};
+
+        const pieChartDtSets = this.getPanelConfig(['pieChart', 'dataSets']);
         dataSources[PIE_CHART_DATA_SOURCE_KEY] = {
             type: 'generic',
-            interpolation: linearInterpolation,
+            interpolation: cubicInterpolation,
 
             sigSets: pieChartDtSets.map(dtSet => ({
                 cid: dtSet.sigSetCid,
@@ -365,8 +395,10 @@ export default class Panel extends Component {
             })),
         };
 
+        const lineChartSigSets = this.getPanelConfig(
+            ['lineChart', 'sigSets']
+        );
 
-        const lineChartSigSets = this.getPanelConfig(['lineChart', 'sigSets']);
         dataSources[LINE_CHART_DATA_SOURCE_KEY] = {
             type: 'timeSeries',
             interpolation: linearInterpolation,
@@ -379,20 +411,23 @@ export default class Panel extends Component {
         dataSources[SVG_CHART_DATA_SOURCE_KEY] = {
             type: 'generic',
             history: SVG_CHART_HISTORY,
-            interpolation: linearInterpolation,
+            interpolation: cubicInterpolation,
 
             sigSets: svgChartSigSets,
         };
 
-        return {
-            initialStatus: c.initialStatus && {
-                isPlaying: !!c.initialStatus.isPlaying,
-                position: c.initialStatus.positionISO && moment.utc(c.initialStatus.positionISO).valueOf(),
-                playbackSpeedFactor: c.initialStatus.playbackSpeedFactor,
-            },
-            dataSources,
-            initialIntervalSpec: new IntervalSpec('now-1y', 'now', null, null)
+        const initialIntervalSpec = c.timeDomain.from && c.timeDomain.to ?
+            new IntervalSpec(c.timeDomain.from, c.timeDomain.to, null, null):
+            undefined;
+
+        const initialStatus = c.initialStatus && {
+            isPlaying: !!c.initialStatus.isPlaying,
+            position: c.initialStatus.positionISO &&
+                moment.utc(c.initialStatus.positionISO).valueOf(),
+            playbackSpeedFactor: c.initialStatus.playbackSpeedFactor,
         };
+
+        return { initialStatus, dataSources, initialIntervalSpec };
     }
 
     getControlsConfig() {
@@ -406,7 +441,9 @@ export default class Panel extends Component {
         if (changeSpeedSteps.length === 0) {
             config.changeSpeed.steps = undefined;
         } else {
-            config.changeSpeed.steps = changeSpeedSteps.map(step => step.step);
+            config.changeSpeed.steps = changeSpeedSteps.map(
+                step => step.step
+            );
         }
 
         if (Number.isNaN(config.jumpForward.jumpFactor))
