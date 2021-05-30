@@ -4,11 +4,12 @@ import {max, extent, range} from "d3-array";
 import {scaleBand, scaleLinear} from "d3-scale";
 import {axisBottom, axisLeft} from "d3-axis";
 import {select} from "d3-selection";
+
 import styles from "./SimpleBarChart.scss";
 
 export class SimpleBarChart extends Component {
     static propTypes = {
-        config: PropTypes.object,
+        config: PropTypes.object.isRequired,
         data: PropTypes.object,
 
         codomainLabel: PropTypes.string,
@@ -131,8 +132,9 @@ export class SimpleBarChart extends Component {
             if (typeof value === "number") return value;
             else {
                 let resValue = null;
-                if (value.sigSetCid && value.signalCid) resValue = data[value.sigSetCid][value.signalCid];
-                if (value.agg && resValue) resValue = resValue[value.agg];
+                if (data && value.sigSetCid && value.signalCid && value.agg) {
+                    resValue = data[value.sigSetCid][value.signalCid][value.agg];
+                }
 
                 return resValue;
             }
