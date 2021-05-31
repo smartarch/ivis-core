@@ -5,6 +5,7 @@ const {getVirtualNamespaceId} = require("../../shared/namespaces");
 const {TaskSource, BuildState, TaskType} = require("../../shared/tasks");
 const em = require('../lib/extension-manager');
 const arima = require('./arima/arima.js');
+const neural_networks = require('./neural_networks/neural-networks-tasks');
 
 const aggregationTask = {
     name: 'aggregation',
@@ -461,7 +462,8 @@ const builtinTasks = [
     aggregationTask,
     flattenTask,
     arimaTask,
-    rmseTask
+    rmseTask,
+    ...neural_networks.tasks,
 ];
 
 em.on('builtinTasks.add', addTasks);
