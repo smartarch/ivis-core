@@ -1,11 +1,10 @@
 import tensorflow as tf
-from ivis.nn import elasticsearch as es
-from ivis.nn import preprocessing as pre
-from ivis.nn import model as nn_model
-from ivis.nn import PredictionParams
+from . import preprocessing as pre
+from . import model as nn_model
+from . import PredictionParams
 
 
-def run_training(training_parameters, data, model_save_folder):
+def run_training(training_parameters, dataframes):
     """
     Run the training of neural network with specified parameters and data.
 
@@ -14,28 +13,23 @@ def run_training(training_parameters, data, model_save_folder):
     training_parameters : ivis.nn.TrainingParams
         The parameters passed from Optimizer (converted to ``dict`` because they were serialized to JSON along the way).
         Before serialization, the parameters were a class derived from Optimizer.TrainingParams.
-    data : dict
-        The data for training, received from Elasticsearch.
-    model_save_folder : str
-        Path to save the trained model.
+    dataframes : (pd.DataFrame, pd.DataFrame, pd.DataFrame)
+        The training, validation and test data.
 
     Returns
     -------
     dict
-        The computed losses, etc. This should be returned back to the Optimizer.
-
+        The computed losses, etc. for Optimizer.
+    tf.keras.Model
+        The neural network model (which can then be saved into IVIS).
     """
 
-    dataframe = es.parse_data(training_parameters, data)
-    train_df, val_df, test_df = pre.split_data(training_parameters, dataframe)
-
-    norm_coeffs = pre.compute_normalization_coefficients(training_parameters, train_df)
-    train_df, val_df, test_df = pre.preprocess_dataframes(norm_coeffs, train_df, val_df, test_df)
+    train_df, val_df, test_df = dataframes
 
     input_width = training_parameters.input_width
     target_width = training_parameters.target_width
-    input_column_names = pre.get_column_names(norm_coeffs, training_parameters.input_signals)
-    target_column_names = pre.get_column_names(norm_coeffs, training_parameters.target_signals)
+    input_column_names = pre.get_column_names(training_parameters.normalization_coefficients, training_parameters.input_signals)
+    target_column_names = pre.get_column_names(training_parameters.normalization_coefficients, training_parameters.target_signals)
 
     window_generator_params = {
         "input_width": input_width,
@@ -73,14 +67,7 @@ def run_training(training_parameters, data, model_save_folder):
     metrics_history = model.fit(train, **fit_params)
     print(metrics_history.history)
 
-    # save the model
-    model.save(model_save_folder + "model.h5")
-    # save the prediction parameters
-    prediction_parameters = PredictionParams(training_parameters, norm_coeffs)
-    with open(model_save_folder + "prediction_parameters.json", 'w') as file:
-        print(prediction_parameters.to_json(), file=file)
-
     return {
         "train_loss": 1.22,
         "test_loss": 3.4,
-    }
+    }, model

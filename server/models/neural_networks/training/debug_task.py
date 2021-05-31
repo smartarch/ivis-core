@@ -5,20 +5,19 @@ from ivis import ivis
 # mock IVIS
 with open('example_entities.json') as entities_file:
     ivis.entities = json.load(entities_file)
+class ESMock:
+    def search(self, index, body):
+        # print(json.dumps(body, indent=2))
+        if "_source" in body:  # docs
+            with open('docs.json') as file:
+                return json.load(file)
+        else:  # histogram
+            with open('histogram.json') as file:
+                return json.load(file)
+ivis.elasticsearch = ESMock()
 
-from optimizer import *
-
-
-def run_training(training_params):
-    print(training_params.to_json())
-    return {
-        "train_loss": 1.22,
-        "test_loss": 3.4,
-    }
-
-
-def finish_training(save_model):
-    pass
+from ivis.nn.optimizer import run_optimizer
+from ivis.nn.training import run_training
 
 
 def print_log(message):
@@ -32,4 +31,5 @@ if __name__ == "__main__":
     else:
         with open('example_params_docs.json') as params_file:
             params = json.load(params_file)
-    run_optimizer(params, run_training, finish_training, print_log)
+
+    run_optimizer(params, run_training, print_log)
