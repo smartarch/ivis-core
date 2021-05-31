@@ -14,8 +14,8 @@ class ESMock:
                 return json.load(file)
 ivis.elasticsearch = ESMock()
 
-from ivis.nn import PredictionParams
-from prediction import *
+from ivis.nn.ParamsClasses.PredictionParams import PredictionParams
+from ivis.nn import run_prediction
 
 
 def print_log(message):

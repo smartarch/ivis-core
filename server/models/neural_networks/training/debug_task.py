@@ -16,8 +16,7 @@ class ESMock:
                 return json.load(file)
 ivis.elasticsearch = ESMock()
 
-from ivis.nn.optimizer import run_optimizer
-from ivis.nn.training import run_training
+from ivis.nn import run_optimizer, run_training
 
 
 def print_log(message):
