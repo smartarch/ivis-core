@@ -9,7 +9,7 @@
     "id": "ts",
     "label": "Timestamp Signal",
     "type": "signal",
-    "signalSetRef": "signalSet"
+    "signalSetRef": "signal_set"
   },
   {
     "id": "time_interval",
@@ -47,7 +47,7 @@
       "id": "cid",
       "label": "Signal",
       "type": "signal",
-      "signalSetRef": "../../signalSet"
+      "signalSetRef": "../../signal_set"
     },{
       "id": "data_type",
       "label": "Data Type",
@@ -99,7 +99,7 @@
       "id": "cid",
       "label": "Signal",
       "type": "signal",
-      "signalSetRef": "../../signalSet"
+      "signalSetRef": "../../signal_set"
     },{
       "id": "data_type",
       "label": "Data Type",

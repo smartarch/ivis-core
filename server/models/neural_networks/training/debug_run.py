@@ -13,12 +13,12 @@ if __name__ == "__main__":
             params = TrainingParams().from_json(params_file.read())
         with open('histogram.json') as results_file:
             results = json.load(results_file)
-        model_save_path = "../prediction/example_histogram/"
+        model_save_path = "example_histogram/"
     else:
         with open('example_training_params_docs.json') as params_file:
             params = TrainingParams().from_json(params_file.read())
         with open('docs.json') as results_file:
             results = json.load(results_file)
-        model_save_path = "../prediction/example_docs/"
+        model_save_path = "example_docs/"
 
     run_training(params, results, model_save_path)
