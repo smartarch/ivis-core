@@ -261,8 +261,6 @@ async function initBuiltin() {
         if (hasFiles) {
             const files = await fs.readdirAsync(filesPath);
             for (const file of files) {
-                console.log(task.id);
-                console.log(path.join(getTaskBuildOutputDir(task.id), file));
                 await fs.copyAsync(path.join(filesPath, file), path.join(getTaskBuildOutputDir(task.id), file), {overwrite: true});
             }
         }
