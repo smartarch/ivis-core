@@ -37,7 +37,7 @@ const aggregationTask = {
 
 es = ivis.elasticsearch
 state = ivis.state
-params= ivis.parameters
+params= ivis.params
 entities= ivis.entities
 #owned= ivis.owned
 
