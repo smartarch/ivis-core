@@ -223,7 +223,36 @@ class PredictionsGraph extends Component {
     }
 
     async getConfig() {
-        const colors = ["rgb(255,0,0)", "rgb(0,255,0)", "rgb(0,0,255)"]
+        // colors are adapted from matplotlib's and seaborn's tab20 scheme
+        // see: https://seaborn.pydata.org/tutorial/color_palettes.html
+        // generally speaking, for a given index i, the future color is a less
+        // saturated variant of the ahead color.
+        const colorsFuture = [
+            'rgb(31,119,180)',
+            'rgb(255,127,14)',
+            'rgb(44,160,44)',
+            'rgb(214,39,40)',
+            'rgb(148,103,189)',
+            'rgb(140,86,75)',
+            'rgb(227,119,194)',
+            'rgb(127,127,127)',
+            'rgb(188,189,34)',
+            'rgb(23,190,207)'
+        ];
+        const colorsAhead = [
+            'rgb(174,199,232)',
+            'rgb(255,187,120)',
+            'rgb(152,223,138)',
+            'rgb(255,152,150)',
+            'rgb(197,176,213)',
+            'rgb(196,156,148)',
+            'rgb(247,182,210)',
+            'rgb(199,199,199)',
+            'rgb(219,219,141)',
+            'rgb(158,218,229)'
+        ];
+        // colors will be reused and cycled if more than 10 models are plotted
+
         let config = {
             signalSets: [
                 {
@@ -231,7 +260,7 @@ class PredictionsGraph extends Component {
                     signals: [
                         {
                             label: "original data",
-                            color: "#220000",
+                            color: "#000000",
                             cid: this.props.signalCid,
                             enabled: true,
                         }
@@ -252,7 +281,7 @@ class PredictionsGraph extends Component {
                 signals: [
                     {
                         label: model.name + "_futr", // TODO
-                        color: colors[i % colors.length], // TODO
+                        color: colorsAhead[i % colorsAhead.length],
                         cid: this.props.signalCid,
                         enabled: true,
                     }
@@ -264,7 +293,7 @@ class PredictionsGraph extends Component {
                 signals: [
                     {
                         label: model.name + "_hist", // TODO
-                        color: colors[i % colors.length], // TODO
+                        color: colorsFuture[i % colorsFuture.length], // TODO
                         cid: this.props.signalCid,
                         enabled: true,
                     }
@@ -385,7 +414,7 @@ export default class PredictionsCompare extends Component {
             { data: 0, title: t('Model id') },
             { data: 2, title: t('Name') },
             { data: 3, title: t('Type') },
-            { data: 4, title: t('Predicted signal') },
+            //{ data: 4, title: t('Predicted signal') },
             //{ data: 4, title: t('Type'), render: data => signalTypes[data] },
         ];
         return (
