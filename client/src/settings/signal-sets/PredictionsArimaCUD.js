@@ -54,6 +54,9 @@ export default class CUD extends Component {
             bucketSize: '1M',
             seasonality_m: 12,
             futurePredictions: 5,
+            seasonal_P: 0,
+            seasonal_D: 0,
+            seasonal_Q: 0,
         });
     }
 
@@ -212,15 +215,17 @@ export default class CUD extends Component {
                         }}
                         columns={signalColumns2}
                     />
-                    {/*
                     <CheckBox id="useAggregation" label={t('Use bucket aggregation')} />
                     {useAggregation &&
                         <InputField id="bucketSize" label={t('Bucket interval')} withHints={['1h', '1d', '1w', '1M']}/>
                     }
                     <CheckBox id="isSeasonal" label={t('Use seasonal model')} />
                     {isSeasonal &&
-                        <InputField id='seasonality_m' label={t('Seasonality m')} help={t('What is the period of seasonality? (integer)')} />
-                    }*/}
+                        <InputField id='seasonality_m'
+                            label={t('Seasonality m')}
+                            help={t('What is the period of seasonality? (integer)')}
+                            withHints={ [7, 12, 52] } />
+                    }
                     <CheckBox id="autoarima" label={t('Use auto arima')} />
 
                     <InputField id="futurePredictions" label="Future predictions" help={t('How many predictions into the future do we want to generate?')} />
@@ -239,6 +244,15 @@ export default class CUD extends Component {
                     }
                     {!autoarima &&
                         <InputField id="q" label="q" />
+                    }
+                    {!autoarima && isSeasonal &&
+                        <InputField id="seasonal_P" label="P" />
+                    }
+                    {!autoarima && isSeasonal &&
+                        <InputField id="seasonal_D" label="D" />
+                    }
+                    {!autoarima && isSeasonal &&
+                        <InputField id="seasonal_Q" label="Q" />
                     }
 
                     <ButtonRow>

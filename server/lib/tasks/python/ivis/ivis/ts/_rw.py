@@ -241,7 +241,7 @@ class TsAggReader:
         if len(ts) > 0:
             self.set_latest(ts[-1])
 
-        return ds, ts
+        return ts, ds
 
     def _old_read(self):  # read new observations
         agg = dsl.A('date_histogram', field=self.ts_field,
