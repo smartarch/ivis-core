@@ -15,6 +15,7 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {cursorAccessMixin} from "./CursorContext";
+import _ from "lodash";
 
 
 const SelectedState = {
@@ -163,7 +164,7 @@ export class LineChartBase extends Component {
         minimumIntervalMs: PropTypes.number,
 
         getExtraQueries: PropTypes.func,
-        processGraphContent: PropTypes.func,
+        processGraphContent: PropTypes.func, // FIXME: this is probably unused
 
         controlTimeIntervalChartWidth: PropTypes.bool
     }
@@ -421,8 +422,7 @@ export class LineChartBase extends Component {
             mousePosition = {x: containerPos[0], y: containerPos[1]};
             if (noData) {
                 if (selection !== baseState.selection ||
-                    mousePosition.x !== baseState.mousePosition.x ||
-                    mousePosition.y !== baseState.mousePosition.y) {
+                    !_.isEqual(mousePosition, baseState.mousePosition)) {
                     base.setState({
                         selection: null,
                         mousePosition
