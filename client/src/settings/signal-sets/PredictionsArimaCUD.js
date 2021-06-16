@@ -57,6 +57,7 @@ export default class CUD extends Component {
             seasonal_P: 0,
             seasonal_D: 0,
             seasonal_Q: 0,
+            useAggregation: false,
         });
     }
 

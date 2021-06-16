@@ -30,4 +30,11 @@ router.getAsync('/predictions-set-boundaries/:signalSetId', passport.loggedIn, a
     return res.json(await getSigSetBoundaries(signalSetId));
 });
 
+router.getAsync('/predictions-arima-job-state/:predictionId', passport.loggedIn, async (req, res) => {
+    const predictionId = castToInteger(req.params.predictionId);
+    const arimaJobState = await arima.getJobState(req.context, predictionId);
+
+    return res.json(await arimaJobState);
+});
+
 module.exports = router;

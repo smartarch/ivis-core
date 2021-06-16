@@ -4,13 +4,14 @@ const knex = require('./knex');
 const signalSets = require('../models/signal-sets');
 const es = require('./elasticsearch');
 const moment = require('moment');
+const shares = require('../models/shares');
 
 function getSetIndexName(sigSetCid) {
     return `signal_set_${sigSetCid}`;
 }
 
 async function getSignalIndexField(context, signalSetId, signalField) {
-    // TODO: enforce sigset permission
+    await shares.enforceEntityPermission(context, 'signalSet', signalSetId, 'view');
     const signals = await knex.transaction(async tx => {
         return await signalSets.getSignalByCidMapTx(tx, { id: signalSetId });
     });
@@ -128,8 +129,11 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
     }
 
     // const tsField = `s${sourcesSignals[tsField].id}`;
-    let interval = '1d'; // TODO: selecting appropriate interval is probably pain
-    interval = selectIntervalFixed(from, to);
+    let interval = '1d';
+    if (from < to) {
+        interval = selectIntervalFixed(from, to);
+        console.log(`selected interval: ${interval}, from: ${from}, to: ${to}`);
+    }
 
     const { minArray: minArraySource, maxArray: maxArraySource, tsArray: tsArraySource } = await minMaxAgg(context, sourceSetCid, from, to, interval, valueField);
     const { minArray: minArrayPred, maxArray: maxArrayPred, tsArray: tsArrayPred } = await minMaxAgg(context, predSetCid, from, to, interval, valueField);
@@ -241,6 +245,10 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
             }
         }
 
+        if (minTs && maxTs && minTs >= maxTs) {
+            console.error(`minTs >= maxTs, minTs: ${minTs}, maxTs: ${maxTs}`);
+        }
+
         if (!minTs && !maxTs) {
             query.body.query = { match_all: {} };
         } else {
@@ -267,7 +275,6 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
 
         const resValueField = 'value';
         for (let bucket of results.aggregations.hist.buckets) {
-            // console.log(bucket);
             minArray.push(bucket.min_value[resValueField ]);
             maxArray.push(bucket.max_value[resValueField ]);
             tsArray.push(bucket.key_as_string);

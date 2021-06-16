@@ -31,6 +31,7 @@ def ensure_date(timestamps):
 
 class ModelState:
     UNKNOWN = 'unknown'
+    TRAINING = 'training'
     ACTIVE = 'active'
     DEGRADED = 'degraded'
 
@@ -114,7 +115,7 @@ class Params:
 
     @property
     def is_aggregated(self) -> bool:
-        return self._params['useAggregation']
+        return 'useAggregation' in self._params and self._params['useAggregation']
 
     @property
     def ts_cid(self) -> str:
@@ -415,16 +416,22 @@ def load_model(state):
     return blob['wrapped_model'], blob['reader']
 
 
-def main():
+def set_training_state():
+    state = {
+        'state': ModelState.TRAINING
+    }
+    ivis.store_state(state)
+
+
+def main(state):
     es = ivis.elasticsearch
-    state = ivis.state
     params = Params(ivis.params)
     entities = ivis.entities
 
-    print(f"params: {params}")
+    set_training_state()
 
     # Parse params, decide what to do
-    if state is None:  # job is running for a first time
+    if state is None:  # job is running for the first time
         # train new model
         model, reader = train_model(params)
         store_model(model, reader, model_state=ModelState.ACTIVE)
@@ -447,4 +454,22 @@ if __name__ == "__main__":
     import sys
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     print(f"ivis.params {json.dumps(ivis.params, indent=4)}")
-    main()
+
+    old_state = ivis.state
+
+    try:
+        main(old_state)
+    except Exception as e:
+        new_state = {
+            'state': ModelState.DEGRADED,
+        }
+
+        # ideally, we also want to remember model_info and blob if they were
+        # already stored
+        if 'model_info' in old_state:
+            new_state['model_info'] = old_state['model_info']
+        if 'blob' in old_state:
+            new_state['blob'] = old_state['blob']
+
+        ivis.store_state(new_state)
+        raise e  # raise the exception again so that it is visible in the job run log
