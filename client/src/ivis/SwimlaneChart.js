@@ -346,6 +346,8 @@ export class BooleanSwimlaneChart extends Component {
         getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
+        getExtraQueries: PropTypes.func,
+        prepareExtraData: PropTypes.func,
 
         discontinuityInterval: PropTypes.number,
         paddingInner: PropTypes.number,
@@ -378,10 +380,14 @@ export class BooleanSwimlaneChart extends Component {
             }
         }
 
-        return [{
+        const queries = [{
             type: "timeSeries",
             args: [signalSets, abs]
-        }]
+        }];
+        if (this.props.getExtraQueries) {
+            queries.push(...this.props.getExtraQueries(createBase(base, this), abs));
+        }
+        return queries;
     }
 
     prepareData(base, results) {
@@ -448,8 +454,14 @@ export class BooleanSwimlaneChart extends Component {
             }
         }
 
+        let extraData;
+        if (this.props.prepareExtraData) {
+            extraData = this.props.prepareExtraData(createBase(base, this), results[0], results.slice(1));
+        }
+
         return {
-            signalSetsData: rows
+            signalSetsData: rows,
+            ...extraData,
         };
     }
 
@@ -499,6 +511,8 @@ export class MaximumSwimlaneChart extends Component {
         getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
+        getExtraQueries: PropTypes.func,
+        prepareExtraData: PropTypes.func,
 
         discontinuityInterval: PropTypes.number,
         paddingInner: PropTypes.number,
@@ -536,10 +550,14 @@ export class MaximumSwimlaneChart extends Component {
             }
         }
 
-        return [{
+        const queries = [{
             type: "timeSeries",
             args: [signalSets, abs]
-        }]
+        }];
+        if (this.props.getExtraQueries) {
+            queries.push(...this.props.getExtraQueries(createBase(base, this), abs));
+        }
+        return queries;
     }
 
     prepareData(base, results) {
@@ -614,11 +632,17 @@ export class MaximumSwimlaneChart extends Component {
             label: last.signal.label,
         });
 
+        let extraData;
+        if (this.props.prepareExtraData) {
+            extraData = this.props.prepareExtraData(createBase(base, this), results[0], results.slice(1));
+        }
+
         return {
             signalSetsData: [{
                 label: "",
                 bars,
             }],
+            ...extraData,
         };
     }
 
