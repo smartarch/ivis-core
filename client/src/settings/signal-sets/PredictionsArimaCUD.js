@@ -58,6 +58,7 @@ export default class CUD extends Component {
             seasonal_D: 0,
             seasonal_Q: 0,
             useAggregation: false,
+            trainingPortion: 0.75,
         });
     }
 
@@ -229,7 +230,9 @@ export default class CUD extends Component {
                     }
                     <CheckBox id="autoarima" label={t('Use auto arima')} />
 
-                    <InputField id="futurePredictions" label="Future predictions" help={t('How many predictions into the future do we want to generate?')} />
+                    <InputField id="trainingPortion" label={t('Training portion')} help={t('What portion of the first data batch will be used to train the model?')} />
+
+                    <InputField id="futurePredictions" label={t('Future predictions')} help={t('How many predictions into the future do we want to generate?')} />
 
                     {autoarima &&
                         <CheckBox

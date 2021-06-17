@@ -69,7 +69,7 @@ class Params:
     @property
     def training_portion(self) -> float:
         """Return what portion of the first batch is used for training the model."""
-        return 0.75  # TODO
+        return float(self._params['trainingPortion']) if 'trainingPortion' in self._params else 0.75
 
     @property
     def is_autoarima(self) -> bool:
