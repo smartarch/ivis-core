@@ -256,14 +256,14 @@ def create_data_reader(params):
     split_ts = params.max_training_ts
 
     if not params.is_aggregated:
-        reader = ts.TsReader(index_name, ts_field,
-                             value_field, to_ts=split_ts)
+        reader = ts.UniTsReader(index_name, ts_field,
+                             value_field, end_ts=split_ts)
         logging.info(
             f"Created a normal reader index={index_name}; split_ts={split_ts}")
     else:
         # ex.
         interval = params.aggregation_interval
-        reader = ts.TsAggReader(index_name, ts_field,
+        reader = ts.UniTsAggReader(index_name, ts_field,
                                 value_field, interval)  # FIXME: use to_ts
         logging.info(
             f"Created an aggregated reader index={index_name}; interval={interval}; split_ts={split_ts}")
@@ -279,7 +279,7 @@ def train_model(params) -> ModelWrapper:
     reader_train = create_data_reader(params)
 
     # load training data
-    timestamps, values = reader_train.read()
+    timestamps, values = reader_train.read_all()
 
     # convert signal values from str to float
     values = list(map(float, values))

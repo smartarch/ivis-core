@@ -1,9 +1,9 @@
 import abc
+from typing import List, Tuple, Any
 import elasticsearch as es
 import elasticsearch.helpers as esh
 import elasticsearch_dsl as dsl
 import datetime as dt
-import dateutil as du
 import numpy as np
 import pendulum
 import logging
@@ -11,6 +11,7 @@ import logging
 from ivis import ivis
 
 DATEFORMAT = "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]"  # brackets are used for escaping
+
 
 def _string2date(s: str):
     # convert timestamps to pendulum.DateTime
@@ -20,52 +21,118 @@ def _string2date(s: str):
 def _date2string(date: pendulum.DateTime):
     return date.format(DATEFORMAT)
 
-class TsReader:
-    def __init__(self, index_name, ts_field, value_field, from_ts='', to_ts=''):
+
+class UniTsReader:
+    """Helper class for reading univariate time series data from IVIS
+    """
+
+    def __init__(self, index_name: str, ts_field: str, value_field: str, start_ts='', end_ts='', start_inclusive: bool = True, end_inclusive: bool = False):
+        """[summary]
+
+        Args:
+            index_name (str): Elasticsearch index name
+            ts_field (str): Elasticsearch field holding timestamps
+            value_field (str): Elasticsearch field holding the selected signal
+            start_ts (str, optional): Start timestamp. Defaults to ''.
+            end_ts (str, optional): End timestamp. Defaults to ''.
+            start_inclusive (bool, optional): Is starting ts inclusive? Defaults to True.
+            end_inclusive (bool, optional): Is end ts inclusive? Defaults to False.
+        """
         self.index_name = index_name
         self.ts_field = ts_field
         self.value_field = value_field
 
-        self.latest_ts = None
+        self.from_ts = start_ts
+        self.to_ts = end_ts
 
-        self.from_ts = from_ts
-        self.to_ts = to_ts
+        self.start_inclusive = start_inclusive
+        self.end_inclusive = end_inclusive
 
-    def set_latest(self, ts):
-        self.latest_ts = ts
+    def read(self, batch_size: int = 10000) -> Tuple[List[Any], List[Any]]:
+        """Read a next batch of at most batch_size values. batch_size has to be
+        less than or equal to Elasticsearch's index.max_result_window which is
+        10000 by default.
 
-    def read(self):
-        return self._read()
+        Args:
+            batch_size (int, optional): Size of the batch. Defaults to 10000.
 
-    def _read(self):
-        s = dsl.Search(using=ivis.elasticsearch, index=self.index_name).sort(
-            {self.ts_field: 'asc'})
+        Returns:
+            Tuple[List[Any], List[Any]]: (timestamps, values)
+        """
+        return self._read(batch_size)
 
-        if self.from_ts:
-            s = s.filter('range', **{self.ts_field: {'gte': self.from_ts}})
-        if self.to_ts:
-            s = s.filter('range', **{self.ts_field: {'lt': self.to_ts}})
+    def read_all(self) -> Tuple[List[Any], List[Any]]:
+        """Read all available data
 
-        if self.latest_ts:  # query only not yet seen values
-            s = s.filter('range', **{self.ts_field: {'gt': self.latest_ts}})
-
-        timestamps = []
-        values = []
-
-        batch_size = 10000
-
-        i = 0
+        Returns:
+            Tuple[List[Any], List[Any]]: (timestamps, values)
+        """
+        timestamps, values = [], []
         while True:
-            res = s[i * batch_size:(i + 1) * batch_size].execute()
-            timestamps.extend(map(lambda x: x[self.ts_field], res))
-            values.extend(map(lambda x: x[self.value_field], res))
+            new_ts, new_val = self.read()
 
-            i += 1
-            if len(res) < batch_size:
+            timestamps.extend(new_ts)
+            values.extend(new_val)
+
+            if not new_ts:
                 break
 
-        if len(timestamps) > 0:
-            self.set_latest(timestamps[-1])
+        return timestamps, values
+
+    def _read(self, batch_size=10000) -> Tuple[List[Any], List[Any]]:
+        def _build_query(ts_field, start_ts=None, end_ts=None, start_inclusive=True, end_inclusive=False):
+            body = {
+                'query': {
+                    'match_all': {}
+                },
+                'size': batch_size,
+                'sort': {
+                    ts_field: 'asc'
+                }
+            }
+
+            # convert match_all to range query if any boundary is specified
+            if start_ts or end_ts:
+                body['query'].pop('match_all')
+                body['query']['range'] = {ts_field: {}}
+
+            if start_ts:
+                if start_inclusive:
+                    start_type = 'gte'
+                else:
+                    start_type = 'gt'
+                body['query']['range'][ts_field][start_type] = start_ts
+
+            if end_ts:
+                if end_inclusive:
+                    end_type = 'lte'
+                else:
+                    end_type = 'lt'
+                body['query']['range'][ts_field][end_type] = end_ts
+
+            return body
+
+        body = _build_query(self.ts_field,
+                            start_ts=self.from_ts,
+                            end_ts=self.to_ts,
+                            start_inclusive=self.start_inclusive,
+                            end_inclusive=self.end_inclusive)
+
+        es = ivis.elasticsearch
+        res = es.search(index=self.index_name, body=body)
+
+        records = [hit['_source'] for hit in res['hits']['hits']]
+
+        timestamps = [record[self.ts_field] for record in records]
+        values = [record[self.value_field] for record in records]
+
+        if len(timestamps):
+            # in the next batch, we want to get elements right after
+            # the latest one
+            self.from_ts = timestamps[-1]
+
+            # don't read the last element twice
+            self.start_inclusive = False
 
         # convert string timestamps to pendulum.DateTime
         timestamps = [_string2date(x) for x in timestamps]
@@ -120,7 +187,7 @@ pythondateformat2 = "%Y-%m-%dT%H:%M:%S"
 # TODO: From old code, neetds to be reworked
 
 
-class TsAggReader:
+class UniTsAggReader:
     def __init__(self, index_name, ts_field, value_field, agg_interval,
                  agg_method='avg', from_ts=None):
         self.index_name = index_name
@@ -134,6 +201,9 @@ class TsAggReader:
 
     def set_latest(self, ts):
         self.latest_ts = ts
+
+    def read_all(self):
+        return self.read()
 
     def read(self):
         def linear_interp(data):  # interpolation of empty buckets
@@ -256,9 +326,10 @@ class TsAggReader:
         res = s.execute()
         return res
 
+
 def estimate_delta(timestamps, sample_size=1000):
     # timestamps is of [pendulum.DateTime]
-    last_ts = timestamps[-1] # TODO
+    last_ts = timestamps[-1]  # TODO
     # Only take sample of sample_size into account. We are taking a median here
     # to compansate for *a few* ptential missing values. In case there are many,
     # data should definitely somehow preprocessed.
@@ -280,6 +351,7 @@ def estimate_delta(timestamps, sample_size=1000):
     # convert back to pendulum
     delta_time = pendulum.duration(seconds=median)
     return TsDelta(last_ts, delta_time)
+
 
 def logical_delta(interval):
     intervals = {
@@ -303,7 +375,8 @@ def logical_delta(interval):
     except KeyError:
         raise ValueError
 
-class TsDelta: # invent future timestamps
+
+class TsDelta:  # invent future timestamps
     def __init__(self, last_ts, delta_time: pendulum.Duration):
         self.valid = False
         self.last_ts = last_ts
@@ -312,10 +385,10 @@ class TsDelta: # invent future timestamps
     def _next_ts(self):
         return self.last_ts + self.delta_time
 
-    def peek(self): # preview next timestamp
+    def peek(self):  # preview next timestamp
         return self._next_ts()
 
-    def read(self): # read (and consume) next timestamp
+    def read(self):  # read (and consume) next timestamp
         self.last_ts = self._next_ts()
         return self.last_ts
 
@@ -368,12 +441,15 @@ def _pred_signals(namespace: int):
 
     return SIGNALS
 
+
 def _create_predictions_signal_set(set_name: str, namespace: int):
     return ivis.create_signal_set(set_name, namespace, set_name, set_name, signals=_pred_signals(namespace))
+
 
 def _get_field(set_name: str, field_name: str):
     return ivis.entities['signals'][set_name][field_name]['field']
 
+
 class PredReader:
     def __init__(self, index_name):
-        self.TsReader = TsReader(index_name, 'ts', 'value')
+        self.TsReader = UniTsReader(index_name, 'ts', 'value')
