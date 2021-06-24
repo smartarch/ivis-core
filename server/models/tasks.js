@@ -13,7 +13,7 @@ const fs = require('fs-extra-promise');
 const taskHandler = require('../lib/task-handler');
 const files = require('./files');
 const dependencyHelpers = require('../lib/dependency-helpers');
-const {getWizard } = require("../lib/wizards");
+const {getWizard} = require("../lib/wizards");
 
 const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);
