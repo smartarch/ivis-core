@@ -59,13 +59,13 @@ async function setupScope(sigSetId){
     const scope = {};
     Object.keys(latest).forEach(key => scope['$' + key] = latest[key])
 
-    const rest = results[0].docs;
-    scope.past = (cid, distance) => stats.past(rest, cid, distance);
-    scope.avg = (cid, length) => stats.avg(rest, cid, length);
-    scope.vari = (cid, length) => stats.vari(rest, cid, length);
-    scope.min = (cid, length) => stats.min(rest, cid, length);
-    scope.max = (cid, length) => stats.max(rest, cid, length);
-    scope.qnt = (cid, length, q) => stats.qnt(rest, cid, length, q);
+    const records = results[0].docs;
+    scope.past = (cid, distance) => stats.past(records, cid, distance);
+    scope.avg = (cid, length) => stats.avg(records, cid, length);
+    scope.vari = (cid, length) => stats.vari(records, cid, length);
+    scope.min = (cid, length) => stats.min(records, cid, length);
+    scope.max = (cid, length) => stats.max(records, cid, length);
+    scope.qnt = (cid, length, q) => stats.qnt(records, cid, length, q);
 
     return scope;
 }
