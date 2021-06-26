@@ -120,6 +120,11 @@ export default class CUD extends Component {
 
                 if (builtinTask) {
                     state.formState = state.formState.setIn(['data', 'taskParams', 'value'], builtinTask.settings.params);
+                    state.formState = state.formState.withMutations(mutState => {
+                        mutState.update('data', stateData => stateData.withMutations(mutStateData => {
+                            this.paramTypes.adopt(builtinTask.settings.params, mutStateData);
+                        }))
+                    })
                 } else {
                     const defaultTask = this.getDefaultBuiltinTask();
                     state.formState = state.formState.setIn(['data', 'task', 'value'], defaultTask.id);

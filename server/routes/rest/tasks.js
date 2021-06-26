@@ -48,4 +48,9 @@ router.postAsync('/task-build/:taskId', passport.loggedIn, async (req, res) => {
     return res.json(params);
 });
 
+router.postAsync('/task-reinitialize/:taskId', passport.loggedIn, async (req, res) => {
+    const params = await tasks.compile(req.context, castToInteger(req.params.taskId), true);
+    return res.json(params);
+});
+
 module.exports = router;

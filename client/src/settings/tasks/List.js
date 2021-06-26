@@ -66,6 +66,12 @@ export default class List extends Component {
         table.refresh();
     }
 
+    @withAsyncErrorHandler
+    async reinitialize(table, id) {
+        await axios.post(getUrl(`rest/task-reinitialize/${id}`));
+        table.refresh();
+    }
+
     componentDidMount() {
         this.fetchPermissions();
     }
@@ -122,6 +128,12 @@ export default class List extends Component {
                             label: <Icon icon="edit" title={t('Settings')}/>,
                             link: `/settings/tasks/${data[0]}/edit`
                         });
+
+
+                        actions.push({
+                            label: <Icon icon="cogs" family="fas" title={t('Reinitialize')}/>,
+                            action: (table) => this.reinitialize(table, data[0])
+                        });
                     }
 
                     if (perms.includes('share')) {
@@ -131,7 +143,8 @@ export default class List extends Component {
                         });
                     }
 
-                    tableAddDeleteButton(actions, this, perms,`rest/tasks/${data[0]}`, data[1], t('Deleting task ...'), t('Task deleted'));
+
+                    tableAddDeleteButton(actions, this, perms, `rest/tasks/${data[0]}`, data[1], t('Deleting task ...'), t('Task deleted'));
 
                     return {refreshTimeout, actions};
                 }

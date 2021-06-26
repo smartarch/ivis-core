@@ -224,7 +224,7 @@ function scheduleInit(id, settings) {
  * @param id the primary key of the task
  * @returns {Promise<void>}
  */
-async function compile(context, id) {
+async function compile(context, id, forceInit = false) {
     let task;
     let uninitialized = true;
     await knex.transaction(async tx => {
@@ -235,7 +235,8 @@ async function compile(context, id) {
             throw new Error(`Task not found`);
         }
 
-        uninitialized = (task.build_state === BuildState.UNINITIALIZED);
+        // Reinitialization can be forced by argument
+        uninitialized = forceInit || (task.build_state === BuildState.UNINITIALIZED);
 
         await tx('tasks').where('id', id).update({build_state: BuildState.SCHEDULED});
     });
