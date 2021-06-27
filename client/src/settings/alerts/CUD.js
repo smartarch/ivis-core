@@ -95,7 +95,7 @@ export default class CUD extends Component {
         }
 
         if (!state.getIn(['sigset', 'value'])) {
-            state.setIn(['sigset', 'error'], t('Signal Set must not be empty'));
+            state.setIn(['sigset', 'error'], t('Signal set must not be empty'));
         } else {
             state.setIn(['sigset', 'error'], null);
         }
@@ -130,7 +130,7 @@ export default class CUD extends Component {
 
         const minRepeat = 10;
         if (!this.validateNumericalInput(state, 'repeat', minRepeat)) {
-            state.setIn(['repeat', 'error'], t(`This value must be 0 or a number greater than ${minRepeat}`));
+            state.setIn(['repeat', 'error'], t(`This value must be 0 or a number greater than or equal to ${minRepeat}`));
         } else {
             state.setIn(['repeat', 'error'], null);
         }
@@ -237,7 +237,7 @@ export default class CUD extends Component {
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
                     <InputField id="name" label={t('Name')}/>
                     <TextArea id="description" label={t('Description')} help={t('This description is used in email notifications.')}/>
-                    <TableSelect id="sigset" label={t('Signal Set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2} help={t('Select signal set to watch.')}/>
+                    <TableSelect id="sigset" label={t('Signal set')} withHeader dropdown dataUrl="rest/signal-sets-table" columns={sigSetColumns} selectionLabelIndex={2} help={t('Select signal set to watch.')}/>
                     <InputField id="duration" label={t('Duration')} help={t('How long the condition shall be satisfied before the alert is triggered. Use minutes!')}/>
                     <InputField id="delay" label={t('Delay')} help={t('How long the condition shall not be satisfied before the triggered alert is revoked. Use minutes!')}/>
                     <InputField id="interval" label={t('Maximum interval')} help={t('The alert is triggered if new data do not arrive from the sensors in this time. Use minutes! Use 0 if not applicable!')}/>
