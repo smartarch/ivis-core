@@ -14,6 +14,7 @@ const aggregationTask = {
     description: 'Task used by aggregation feature for signal sets',
     type: TaskType.PYTHON,
     settings: {
+        builtin_reinitOnUpdate: true,
         params: [{
             "id": "signalSet",
             "type": "signalSet",
@@ -45,6 +46,7 @@ const flattenTask = {
     description: 'Task will combine specified signals into single signal set and resolve conflicts on the same time point with the chosen method',
     type: TaskType.PYTHON,
     settings: {
+        builtin_reinitOnUpdate: true,
         params: [
             {
                 "id": "resolutionMethod",
@@ -179,12 +181,15 @@ async function addBuiltinTask(tx, builtinTask) {
  * @param builtinTask columns being updated
  * @return {Promise<void>}
  */
-async function updateBuiltinTask(tx, id, builtinTask) {
+async function updateBuiltinTask(tx, id, builtinTask, reinit = false) {
     const task = {...builtinTask};
     task.source = TaskSource.BUILTIN;
     task.namespace = getVirtualNamespaceId();
     task.settings = JSON.stringify(task.settings);
-    await tx('tasks').where('id', id).update({...task, build_state: BuildState.UNINITIALIZED});
+    if (reinit) {
+        task.build_state = BuildState.UNINITIALIZED;
+    }
+    await tx('tasks').where('id', id).update(task);
 }
 
 /**
@@ -196,12 +201,8 @@ async function storeBuiltinTasks() {
     for (const builtinTask of builtinTasks) {
         const task = {...builtinTask}
         if (builtinTask.settings.code == null) {
-            // WARN mutating settings
+            // WARN mutating defaults
             builtinTask.settings.code = await getCodeForBuiltinTask(builtinTask.name);
-        }
-        if (task.builtin_initOnStart) {
-            delete task.builtin_initOnStart;
-            tasks.push(task);
         }
     }
     await addTasks(tasks);
@@ -221,7 +222,7 @@ async function getCodeForBuiltinTask(taskName) {
  * @param tasks
  * @return {Promise<void>}
  */
-async function addTasks(tasks) {
+async function addTasks(tasks,) {
     if (!Array.isArray(tasks)) {
         tasks = [tasks];
     }
@@ -232,7 +233,9 @@ async function addTasks(tasks) {
             if (!exists) {
                 await addBuiltinTask(tx, task);
             } else {
-                await updateBuiltinTask(tx, exists.id, task);
+                const reinit = (task.settings.builtin_reinitOnUpdate === true)
+                delete task.settings.builtin_reinitOnUpdate;
+                await updateBuiltinTask(tx, exists.id, task, reinit);
             }
         });
     }
