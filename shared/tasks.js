@@ -31,7 +31,8 @@ const BuildState = {
 
 const TaskSource = {
     USER: 'user',
-    BUILTIN: 'builtin'
+    BUILTIN: 'builtin',
+    SYSTEM: 'system'
 };
 
 function getFinalStates() {
