@@ -83,6 +83,7 @@ import ivisConfig from "ivisConfig";
 import {TranslationRoot} from "./lib/i18n";
 
 import {SignalSetKind} from "../../shared/signal-sets";
+import {TaskSource} from "../../shared/tasks";
 
 emCommonDefaults.setDefaults(em);
 
@@ -344,13 +345,13 @@ const getStructure = t => {
                                     develop: {
                                         title: t('Code'),
                                         link: params => `/settings/tasks/${params.taskId}/develop`,
-                                        visible: resolved => resolved.task.permissions.includes('edit'),
+                                        visible: resolved => resolved.task.source === TaskSource.BUILTIN || resolved.task.permissions.includes('edit'),
                                         panelRender: props => <TasksDevelop entity={props.resolved.task} />
                                     },
                                     output: {
                                         title: t('Output'),
                                         link: params => `/settings/tasks/${params.taskId}/output`,
-                                        visible: resolved => resolved.task.permissions.includes('edit'),
+                                        visible: resolved => resolved.task.source === TaskSource.BUILTIN || resolved.task.permissions.includes('edit'),
                                         panelRender: props => <TasksOutput entity={props.resolved.task} />
                                     },
                                     ':action(edit|delete)': {

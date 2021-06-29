@@ -81,7 +81,7 @@ export default class List extends Component {
                 actions: data => {
                     const id = data[0];
                     const label = data[2];
-                    const perms = data[9];
+                    const perms = data[10];
 
                     if (perms.includes('query')) {
                         return [
@@ -100,14 +100,23 @@ export default class List extends Component {
                 }
             },
             { data: 3, title: t('Description') },
-            {data: 4, title: t('Type')},
+            { data: 4, title: t('Type')},
             { data: 5, title: t('Status'), render: data => this.indexingStates[data.indexing.status] },
+            {
+                data: 9,
+                title: t('Last data modification'),
+                render: (data, type) => {
+                    if (type === "display" && (data === null || moment(data).isBefore(moment('1000-12-31'))))
+                        return <i>not available</i>;
+                    return moment(data).fromNow();
+                }
+            },
             { data: 6, title: t('Created'), render: data => moment(data).fromNow() },
             { data: 8, title: t('Namespace') },
             {
                 actions: data => {
                     const actions = [];
-                    const perms = data[9];
+                    const perms = data[10];
 
                     if (perms.includes('edit')) {
                         actions.push({
@@ -153,7 +162,7 @@ export default class List extends Component {
                                 label={labels['Create Signal Set']}/>
                 </Toolbar>
                 }
-                <Table ref={node => this.table = node} withHeader dataUrl="rest/signal-sets-table" columns={columns}/>
+                <Table ref={node => this.table = node} withHeader dataUrl="rest/signal-sets-table" columns={columns} order={[[5, 'desc']]} />
             </Panel>
         );
     }

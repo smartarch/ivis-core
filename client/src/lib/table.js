@@ -54,6 +54,8 @@ class Table extends Component {
         withHeader: PropTypes.bool,
         refreshInterval: PropTypes.number,
         pageLength: PropTypes.number,
+        lengthMenu: PropTypes.arrayOf(PropTypes.number),
+        order: PropTypes.array,
         search: PropTypes.string, // initial value of the search field
         searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
     }
@@ -61,7 +63,9 @@ class Table extends Component {
     static defaultProps = {
         selectMode: TableSelectMode.NONE,
         selectionKeyIndex: 0,
-        pageLength: 50
+        pageLength: 50,
+        order: [[0, 'asc']],
+        lengthMenu: [10, 25, 50, 100, 250]
     }
 
     refresh() {
@@ -280,8 +284,10 @@ class Table extends Component {
 
         const dtOptions = {
             columns,
+            order: [...this.props.order],
             autoWidth: false,
             pageLength: this.props.pageLength,
+            lengthMenu: this.props.lengthMenu,
             dom: // This overrides Bootstrap 4 settings. It may need to be updated if there are updates in the DataTables Bootstrap 4 plugin.
                 "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
                 "<'row'<'col-sm-12'<'" + styles.dataTableTable + "'tr>>>" +
@@ -294,6 +300,8 @@ class Table extends Component {
                 search: value,
             }) : null)
         }
+        if (this.props.order)
+            dtOptions.order = this.props.order;
 
         const self = this;
         dtOptions.createdRow = function(row, data) {
@@ -326,6 +334,31 @@ class Table extends Component {
                 }
             });
         };
+
+        const t = this.props.t;
+        dtOptions.language = {
+          "sEmptyTable":     t("dTsEmptyTable"),
+          "sInfo":           t("dTsInfo"),
+          "sInfoEmpty":      t("dTsInfoEmpty"),
+          "sInfoFiltered":   t("dTsInfoFiltered"),
+          "sInfoPostFix":    t("dTsInfoPostFix"),
+          "sInfoThousands":  t("dTsInfoThousands"),
+          "sLengthMenu":     t("dTsLengthMenu"),
+          "sLoadingRecords": t("dTsLoadingRecords"),
+          "sProcessing":     t("dTsProcessing"),
+          "sSearch":         t("dTsSearch"),
+          "sZeroRecords":    t("dTsZeroRecords"),
+          "oPaginate": {
+            "sFirst":    t("dTsFirst"),
+            "sLast":     t("dTsLast"),
+            "sNext":     t("dTsNext"),
+            "sPrevious": t("dTsPrevious")
+          },
+          "oAria": {
+           "sSortAscending":  t("dTsSortAscending"),
+           "sSortDescending": t("dTsSortDescending")
+          }
+       }
 
         dtOptions.initComplete = function() {
             self.jqSelectInfo = jQuery('<div class="dataTable_selection_info"/>');

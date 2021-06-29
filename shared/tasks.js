@@ -16,29 +16,10 @@ const PythonSubtypes = {
 
 // File name of every build output
 const PYTHON_JOB_FILE_NAME = 'job.py';
+const PYTHON_BUILTIN_CODE_FILE_NAME = 'code.py';
 
 const subtypesByType = {
     [TaskType.PYTHON]: PythonSubtypes
-};
-
-const defaultPythonLibs = ['elasticsearch'];
-
-const taskSubtypeSpecs = {
-    [TaskType.PYTHON]: {
-        libs: defaultPythonLibs,
-        [PythonSubtypes.ENERGY_PLUS]: {
-            label: 'EnergyPlus task',
-            libs: [...defaultPythonLibs, 'eppy', 'requests']
-        },
-        [PythonSubtypes.NUMPY]: {
-            label: 'Numpy task',
-            libs: [...defaultPythonLibs, 'numpy', 'dtw']
-        },
-        [PythonSubtypes.ARIMA]: {
-            label: 'ARIMA task',
-            libs: [...defaultPythonLibs, 'numpy', 'statsmodels', 'pmdarima']
-        }
-    }
 };
 
 const BuildState = {
@@ -52,7 +33,8 @@ const BuildState = {
 
 const TaskSource = {
     USER: 'user',
-    BUILTIN: 'builtin'
+    BUILTIN: 'builtin',
+    SYSTEM: 'system'
 };
 
 function getFinalStates() {
@@ -87,5 +69,6 @@ module.exports = {
     getTransitionStates,
     isTransitionState,
     PYTHON_JOB_FILE_NAME,
+    PYTHON_BUILTIN_CODE_FILE_NAME,
     WizardType
 };

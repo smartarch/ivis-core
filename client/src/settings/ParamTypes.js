@@ -9,7 +9,7 @@ import {
     ColorPicker,
     Dropdown,
     Fieldset,
-    InputField,
+    InputField, StaticField,
     TableSelect,
     TextArea
 } from "../lib/form";
@@ -115,12 +115,10 @@ export default class ParamTypes {
 
                     try {
                         JSON.parse(val);
-                    }
-                    catch (e) {
+                    } catch (e) {
                         if (e instanceof SyntaxError) {
                             state.setIn([formId, 'error'], t('Please enter a valid JSON.') + " (" + e.message + ")");
-                        }
-                        else throw e;
+                        } else throw e;
                     }
                 }
             },
@@ -367,6 +365,7 @@ export default class ParamTypes {
                     filterByType = [null, null, null, types, null, null]; // this should have the same length as signalColumns
                 }
 
+                console.log('rendering')
                 if (signalSetCid) {
                     return <TableSelect
                         key={spec.id}
@@ -384,12 +383,12 @@ export default class ParamTypes {
                         disabled={spec.disabled}
                     />;
                 } else {
-                    return <AlignedRow key={spec.id}>
-                        <div>{t('Select signal set to see the list of signals.')}</div>
-                    </AlignedRow>
+                    return (
+                        <StaticField key={spec.id} id={spec.id} label={spec.label}>
+                            {t('Select signal set to see the list of signals.')}
+                        </StaticField>
+                    );
                 }
-
-
             },
             upcast: (spec, value) => {
                 const card = parseCardinality(spec.cardinality);
@@ -426,7 +425,7 @@ export default class ParamTypes {
                 if (spec.children) {
                     if (card.max === 1) {
                         if (card.min === 1) {
-                            // If cardinality is 1, initilize the children
+                            // If cardinality is 1, initialize the children
                             const childPrefix = getFieldsetPrefix(prefix, spec);
                             for (const childSpec of spec.children) {
                                 this.getSanitizedParamType(childSpec.type).adopt(childPrefix, childSpec, state);

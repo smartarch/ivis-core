@@ -9,10 +9,16 @@ const esClient = require('./elasticsearch');
 const getFilesDir = require('../models/files').getEntityFilesDir;
 const fs = require('fs-extra-promise');
 const config = require("./config");
+const simpleGit = require('simple-git');
 
 const knex = require('./knex');
 const {RunStatus, HandlerMsgType} = require('../../shared/jobs');
-const {BuildState, getTransitionStates, PYTHON_JOB_FILE_NAME} = require('../../shared/tasks');
+const {
+    BuildState,
+    getTransitionStates,
+    PYTHON_BUILTIN_CODE_FILE_NAME,
+    PYTHON_JOB_FILE_NAME
+} = require('../../shared/tasks');
 const {storeBuiltinTasks, list} = require('../models/builtin-tasks');
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
@@ -44,7 +50,12 @@ function getTaskDir(id) {
  * @returns {string}
  */
 function getTaskBuildOutputDir(id) {
-    return path.join(getTaskDir(id), 'dist')
+    return path.join(getTaskDir(id), 'dist');
+}
+
+// Currently we have only python, so no build, but this will be language specific in the future
+function getTaskDevelopmentDir(id) {
+    return getTaskBuildOutputDir(id);
 }
 
 let handlerProcess;
@@ -120,40 +131,90 @@ function checkLogRetention(logRetention) {
 
 function onFilesUpload(type, subtype, entityId, files) {
     if (type === 'task') {
-        setImmediate(async () => {
-            const dir = getFilesDir(type, subtype, entityId);
-            const filesDir = getTaskBuildOutputDir(entityId);
-            for (const file of files) {
-                await fs.copyAsync(path.join(dir, file.name), path.join(filesDir, file.originalName), {});
-            }
-        });
+        try {
+            const filesDir = getTaskDevelopmentDir(entityId);
+            const git = simpleGit({
+                baseDir: filesDir,
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+            });
+            setImmediate(async () => {
+                try {
+                    const dir = getFilesDir(type, subtype, entityId);
+                    const fileNames = [];
+                    for (const file of files) {
+                        if (file != PYTHON_BUILTIN_CODE_FILE_NAME) {
+                            const destPath = path.join(filesDir, file.originalName);
+                            await fs.copyAsync(path.join(dir, file.name), destPath, {});
+                            fileNames.push(file.originalName);
+                            await git.add(destPath);
+                        }
+                    }
+                    await git.commit(`Files upload ${fileNames.join(', ')}`)
+                } catch (e) {
+                    log.error(e);
+                }
+            });
+        } catch (e) {
+            log.error(e);
+        }
     }
 }
 
 function onRemoveFile(type, subtype, entityId, file) {
     if (type === 'task') {
-        setImmediate(async () => {
-            const filePath = path.join(getTaskBuildOutputDir(entityId), file.originalName);
-            await fs.removeAsync(filePath);
-        })
+        try {
+
+            const git = simpleGit({
+                baseDir: getTaskDevelopmentDir(entityId),
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+            });
+            setImmediate(async () => {
+                try {
+                    if (file.originalName != PYTHON_JOB_FILE_NAME) {
+                        const filePath = path.join(getTaskDevelopmentDir(entityId), file.originalName);
+                        await fs.removeAsync(filePath);
+                        await git.add(filePath);
+                        await git.commit(`File removed ${file.originalName}`)
+                    }
+                } catch (e) {
+                    log.error(e);
+                }
+            })
+        } catch (e) {
+            log.error(e);
+        }
     }
 }
 
 function onRemoveAllFiles(type, subtype, entityId) {
     if (type === 'task') {
-        setImmediate(async () => {
-            try {
-                const filesDir = path.join(getTaskBuildOutputDir(entityId));
-                const files = await fs.readdirAsync(filesDir);
-                for (const file of files) {
-                    if (file != PYTHON_JOB_FILE_NAME) {
-                        await fs.removeAsync(path.join(filesDir, file));
+        try {
+            const filesDir = path.join(getTaskDevelopmentDir(entityId));
+            const git = simpleGit({
+                baseDir: filesDir,
+                binary: 'git',
+                maxConcurrentProcesses: 6,
+            });
+            setImmediate(async () => {
+                try {
+                    const files = await fs.readdirAsync(filesDir);
+                    for (const file of files) {
+                        if (file != PYTHON_JOB_FILE_NAME) {
+                            const filePath = path.join(filesDir, file);
+                            await fs.removeAsync(filePath);
+                            await git.add(filePath);
+                        }
                     }
+                    await git.commit("All files removed")
+                } catch (e) {
+                    log.error(e);
                 }
-            } catch (e) {
-                log.error(e);
-            }
-        })
+            })
+        } catch (e) {
+            log.error(e);
+        }
     }
 }
 
@@ -205,9 +266,9 @@ async function initBuiltin() {
         if (hasFiles) {
             const files = await fs.readdirAsync(filesPath);
             for (const file of files) {
-                console.log(task.id);
-                console.log(path.join(getTaskBuildOutputDir(task.id), file));
-                await fs.copyAsync(path.join(filesPath, file), path.join(getTaskBuildOutputDir(task.id), file), {overwrite: true});
+                if (file != PYTHON_JOB_FILE_NAME) {
+                    await fs.copyAsync(path.join(filesPath, file), path.join(getTaskBuildOutputDir(task.id), file), {overwrite: true});
+                }
             }
         }
     }

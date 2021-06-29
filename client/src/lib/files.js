@@ -60,7 +60,7 @@ export default class Files extends Component {
         usePublicDownloadUrls: true
     }
 
-    getFilesUploadedMessage(response){
+    getFilesUploadedMessage(response) {
         const t = this.props.t;
         const details = [];
         if (response.data.added) {
@@ -76,7 +76,7 @@ export default class Files extends Component {
         return t('countFileUploaded', {count: response.data.uploaded}) + detailsMessage;
     }
 
-    onDrop(files){
+    onDrop(files) {
         const t = this.props.t;
         if (files.length > 0) {
             this.setFlashMessage('info', t('uploadingCountFile', {count: files.length}));
@@ -85,23 +85,22 @@ export default class Files extends Component {
                 data.append('files[]', file)
             }
             axios.post(getUrl(`rest/files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${this.props.entity.id}`), data)
-            .then(res => {
-                this.filesTable.refresh();
-                const message = this.getFilesUploadedMessage(res);
-                this.setFlashMessage('info', message);
-            })
-            .catch(res => this.setFlashMessage('danger', t('fileUploadFailed') + ' ' + res.message));
-        }
-        else{
+                .then(res => {
+                    this.filesTable.refresh();
+                    const message = this.getFilesUploadedMessage(res);
+                    this.setFlashMessage('info', message);
+                })
+                .catch(res => this.setFlashMessage('danger', t('fileUploadFailed') + ' ' + res.message));
+        } else {
             this.setFlashMessage('info', t('noFilesToUpload'));
         }
     }
 
-    deleteFile(fileId, fileName){
+    deleteFile(fileId, fileName) {
         this.setState({fileToDeleteId: fileId, fileToDeleteName: fileName})
     }
 
-    async hideDeleteFile(){
+    async hideDeleteFile() {
         this.setState({fileToDeleteId: null, fileToDeleteName: null})
     }
 
@@ -133,7 +132,7 @@ export default class Files extends Component {
 
                     let downloadUrl;
                     if (this.props.usePublicDownloadUrls) {
-                        downloadUrl = getUrl(`files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${this.props.entity.id}/${data[2]}`);
+                        downloadUrl = getUrl(`files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${this.props.entity.id}/${data[1]}`);
                     } else {
                         downloadUrl = getUrl(`rest/files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${data[0]}`);
                     }

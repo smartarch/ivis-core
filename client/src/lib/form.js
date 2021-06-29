@@ -139,8 +139,7 @@ class Form extends Component {
                         </fieldset>
                         {!props.noStatus && statusMessageText &&
                         <AlignedRow format={props.format} htmlId="form-status-message">
-                            <div className={`alert alert-${statusMessageSeverity} ${styles.formStatus}`}
-                                 role="alert">{statusMessageText}</div>
+                            <div className={`alert alert-${statusMessageSeverity} ${styles.formStatus}`} role="alert">{statusMessageText}</div>
                         </AlignedRow>
                         }
                     </FormStateOwnerContext.Provider>
@@ -463,8 +462,10 @@ class CheckBox extends Component {
 
                         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                             <div className={`form-group form-check my-2 ${this.props.className}`}>
-                                <input className={inputClassName} type="checkbox" checked={owner.getFormValue(id)}
-                                       id={htmlId} aria-describedby={htmlId + '_help'}
+                                <input className={inputClassName} type="checkbox"
+                                       checked={owner.getFormValue(id)}
+                                       id={htmlId}
+                                       aria-describedby={htmlId + '_help'}
                                        onChange={evt => owner.updateFormValue(id, !owner.getFormValue(id))}
                                        disabled={props.disabled}/>
                                 <label className={styles.checkboxText} htmlFor={htmlId}>{props.text}</label>
@@ -522,7 +523,10 @@ class CheckBoxGroup extends Component {
 
             let number = options.push(
                 <div key={option.key} className="form-group form-check my-2">
-                    <input id={optId} type="checkbox" className={optClassName} checked={selection.includes(option.key)}
+                    <input id={optId}
+                           type="checkbox"
+                           className={optClassName}
+                           checked={selection.includes(option.key)}
                            onChange={evt => this.onChange(option.key)}/>
                     <label className="form-check-label" htmlFor={optId}>{option.label}</label>
                 </div>
@@ -571,7 +575,11 @@ class RadioGroup extends Component {
 
             let number = options.push(
                 <div key={option.key} className="form-group form-check my-2">
-                    <input id={optId} type="radio" className={optClassName} name={htmlId} checked={value === option.key}
+                    <input id={optId}
+                           type="radio"
+                           className={optClassName}
+                           name={htmlId}
+                           checked={value === option.key}
                            onChange={evt => owner.updateFormValue(id, option.key)}/>
                     <label className="form-check-label" htmlFor={optId}>{option.label}</label>
                 </div>
@@ -622,8 +630,12 @@ class TextArea extends Component {
         const className = owner.addFormValidationClass('form-control ' + (props.className || ''), id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <textarea id={htmlId} placeholder={props.placeholder} value={owner.getFormValue(id) || ''}
-                      className={className} aria-describedby={htmlId + '_help'} onChange={this.onChange}
+            <textarea id={htmlId}
+                      placeholder={props.placeholder}
+                      value={owner.getFormValue(id) || ''}
+                      className={className}
+                      aria-describedby={htmlId + '_help'}
+                      onChange={this.onChange}
                       disabled={props.disabled}/>
         );
     }
@@ -1063,8 +1075,12 @@ class Dropdown extends Component {
         const className = owner.addFormValidationClass('form-control ' + (props.className || ''), id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <select id={htmlId} className={className} aria-describedby={htmlId + '_help'} value={owner.getFormValue(id)}
-                    onChange={evt => owner.updateFormValue(id, evt.target.value)} disabled={props.disabled}>
+            <select id={htmlId}
+                    className={className}
+                    aria-describedby={htmlId + '_help'}
+                    value={owner.getFormValue(id)}
+                    onChange={evt => owner.updateFormValue(id, evt.target.value)}
+                    disabled={props.disabled}>
                 {options}
             </select>
         );
@@ -1325,8 +1341,11 @@ class TreeTableSelect extends Component {
         const className = owner.addFormValidationClass('', id);
 
         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-            <TreeTable className={className} data={props.data} dataUrl={props.dataUrl}
-                       selectMode={TreeSelectMode.SINGLE} selection={owner.getFormValue(id)}
+            <TreeTable className={className}
+                       data={props.data}
+                       dataUrl={props.dataUrl}
+                       selectMode={TreeSelectMode.SINGLE}
+                       selection={owner.getFormValue(id)}
                        onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
         );
     }
@@ -1352,6 +1371,7 @@ class TableSelect extends Component {
         search: PropTypes.func, // initial value of the search field
         searchCols: PropTypes.arrayOf(PropTypes.string), // should have same length as `columns`, set items to `null` to prevent search
         columns: PropTypes.array,
+        order: PropTypes.array,
         selectionKeyIndex: PropTypes.number,
         selectionLabelIndex: PropTypes.number,
         selectionAsArray: PropTypes.bool,
@@ -1364,6 +1384,7 @@ class TableSelect extends Component {
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         format: PropTypes.string,
         disabled: PropTypes.bool,
+        withClear: PropTypes.bool,
 
         pageLength: PropTypes.number
     }
@@ -1409,6 +1430,15 @@ class TableSelect extends Component {
         });
     }
 
+    async clear() {
+        const owner = this.getFormStateOwner();
+        if (this.props.selectMode === TableSelectMode.SINGLE && !this.props.selectionAsArray) {
+            owner.updateFormValue(this.props.id, null);
+        } else {
+            owner.updateFormValue(this.props.id, []);
+        }
+    }
+
     refresh() {
         this.table.refresh();
     }
@@ -1420,27 +1450,41 @@ class TableSelect extends Component {
         const htmlId = 'form_' + id;
         const t = props.t;
 
+        const selection = owner.getFormValue(id);
+
         if (props.dropdown) {
             const className = owner.addFormValidationClass('form-control', id);
 
             return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                 <div>
                     <div className={(props.disabled ? '' : 'input-group ') + styles.tableSelectDropdown}>
-                        <input type="text" className={className} value={this.state.selectedLabel}
-                               onClick={::this.toggleOpen} readOnly={!props.disabled} disabled={props.disabled}/>
+                        <input type="text"
+                               className={className}
+                               value={this.state.selectedLabel}
+                               onClick={::this.toggleOpen}
+                               readOnly={!props.disabled}
+                               disabled={props.disabled}/>
                         {!props.disabled &&
                         <div className="input-group-append">
                             <Button label={t('select')} className="btn-secondary" onClickAsync={::this.toggleOpen}/>
+                            {props.withClear && selection && <Button icon="times" title={t('Clear')} className="btn-secondary" onClickAsync={::this.clear}/>}
                         </div>
                         }
                     </div>
                     <div
                         className={styles.tableSelectTable + (this.state.open ? '' : ' ' + styles.tableSelectTableHidden)}>
-                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
-                               search={props.search} searchCols={props.searchCols}
-                               columns={props.columns} selectMode={props.selectMode}
-                               selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
-                               selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
+                        <Table ref={node => this.table = node}
+                               data={props.data}
+                               dataUrl={props.dataUrl}
+                               search={props.search}
+                               searchCols={props.searchCols}
+                               columns={props.columns}
+                               order={props.order}
+                               selectMode={props.selectMode}
+                               selectionAsArray={this.props.selectionAsArray}
+                               withHeader={props.withHeader}
+                               selectionKeyIndex={props.selectionKeyIndex}
+                               selection={selection}
                                onSelectionDataAsync={::this.onSelectionDataAsync}
                                onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
                     </div>
@@ -1450,11 +1494,19 @@ class TableSelect extends Component {
             return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
                 <div>
                     <div>
-                        <Table ref={node => this.table = node} data={props.data} dataUrl={props.dataUrl}
-                               search={props.search} searchCols={props.searchCols}
-                               columns={props.columns} pageLength={props.pageLength} selectMode={props.selectMode}
-                               selectionAsArray={this.props.selectionAsArray} withHeader={props.withHeader}
-                               selectionKeyIndex={props.selectionKeyIndex} selection={owner.getFormValue(id)}
+                        <Table ref={node => this.table = node}
+                               data={props.data}
+                               dataUrl={props.dataUrl}
+                               search={props.search}
+                               searchCols={props.searchCols}
+                               columns={props.columns}
+                               order={props.order}
+                               pageLength={props.pageLength}
+                               selectMode={props.selectMode}
+                               selectionAsArray={this.props.selectionAsArray}
+                               withHeader={props.withHeader}
+                               selectionKeyIndex={props.selectionKeyIndex}
+                               selection={selection}
                                onSelectionChangedAsync={::this.onSelectionChangedAsync}/>
                     </div>
                 </div>
@@ -1496,6 +1548,7 @@ class ACEEditor extends Component {
                 showPrintMargin={false}
                 value={owner.getFormValue(id)}
                 tabSize={2}
+                readOnly={props.readOnly}
                 setOptions={{useWorker: false}} // This disables syntax check because it does not always work well (e.g. in case of JS code in report templates)
                 readOnly={props.readOnly}
                 className={props.readOnly ? "ace_editor_readonly" : undefined}

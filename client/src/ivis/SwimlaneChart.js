@@ -13,6 +13,8 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {getTextColor} from "./common";
 import {withPageHelpers} from "../lib/page-common";
 import {createBase, RenderStatus, TimeBasedChartBase, XAxisType} from "./TimeBasedChartBase";
+import {cursorAccessMixin} from "./CursorContext";
+import * as d3Array from "d3-array";
 
 /** get moment object exactly in between two moment object */
 function midpoint(ts1, ts2) {
@@ -24,6 +26,7 @@ function midpoint(ts1, ts2) {
  */
 @withComponentMixins([
     withErrorHandling,
+    cursorAccessMixin(),
 ])
 export class SwimlaneChart extends Component {
     constructor(props) {
@@ -61,6 +64,11 @@ export class SwimlaneChart extends Component {
         withBrush: PropTypes.bool,
         minimumIntervalMs: PropTypes.number,
         loadingOverlayColor: PropType_d3Color(),
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
+        withCursorFromCursorContext: PropTypes.bool, // load cursor position from cursor context
+        cursorContextTooltipY: PropTypes.number, // fraction of height -> 0 = top, 1 = bottom
+        selectBarFromX: PropTypes.func, // used for drawing tooltip when cursor is defined by CursorContext; (x, signalSetsData) => bar
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
@@ -87,6 +95,15 @@ export class SwimlaneChart extends Component {
         withBrush: false,
         getLabelColor: getTextColor,
         tooltipContentRender: (props) => props.selection.label,
+        cursorContextTooltipY: 0,
+        withCursorFromCursorContext: true,
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.withCursorFromCursorContext) {
+            if (this.getCursor() !== this.getCursor(prevProps))
+                this.drawCursor(this.getCursor());
+        }
     }
 
     /**
@@ -109,8 +126,11 @@ export class SwimlaneChart extends Component {
         const yAxis = d3Axis.axisLeft(yScale);
         base.yAxisSelection.call(yAxis);
 
-        if (signalSetsData.length === 0 || signalSetsData.every(d => d.bars.length === 0))
+        if (signalSetsData.length === 0 || signalSetsData.every(d => d.bars.length === 0)) {
+            if (this.props.withCursor)
+                this.createChartCursor(base, innerWidth, innerHeight, xScale, signalSetsData);
             return RenderStatus.NO_DATA;
+        }
 
         const xIsDate = this.props.xAxisType === XAxisType.DATETIME;
         signalSetsData.forEach(r => r.bars.forEach(b => {
@@ -172,7 +192,7 @@ export class SwimlaneChart extends Component {
         }
 
         if (this.props.withCursor)
-            this.createChartCursor(base, innerWidth, innerHeight);
+            this.createChartCursor(base, innerWidth, innerHeight, xScale, signalSetsData);
 
         if (this.props.createChart)
             return this.props.createChart(createBase(base, this), signalSetsData, baseState, interval, xScale, yScale);
@@ -181,11 +201,12 @@ export class SwimlaneChart extends Component {
 
     /** Handles mouse movement to display cursor line.
      *  Called from this.createChart(). */
-    createChartCursor(base, xSize, ySize) {
+    createChartCursor(base, xSize, ySize, xScale, signalSetsData) {
         const self = this;
+        let mousePosition = null;
 
-        const mouseMove = function (bar = null) {
-            const containerPos = d3Selection.mouse(base.containerNode);
+        const selectBar = function (bar = null, mousePos = null) {
+            const containerPos = mousePos !== null ? mousePos : d3Selection.mouse(base.containerNode);
 
             base.cursorSelection
                 .attr('x1', containerPos[0])
@@ -195,19 +216,39 @@ export class SwimlaneChart extends Component {
             const y = self.props.tooltipYPosition !== undefined
                 ? self.props.tooltipYPosition + self.props.margin.top
                 : containerPos[1];
-            const mousePosition = { x: containerPos[0], y };
+            mousePosition = { x: containerPos[0], y };
             base.setState({
                 mousePosition,
                 selection: bar,
             });
         };
 
+        const mouseMove = function(bar) {
+            selectBar(bar);
+        }
+
         const mouseLeave = function () {
+            mousePosition = null;
             base.cursorSelection.attr('visibility', 'hidden');
             base.setState({
                 selection: null,
                 mousePosition: null
             });
+        }
+
+        this.drawCursor = function (timeCursor) {
+            if (timeCursor === null)
+                mouseLeave();
+            else {
+                const x = xScale(timeCursor) + self.props.margin.left;
+                const y = self.props.cursorContextTooltipY * (self.props.height - self.props.margin.top - self.props.margin.bottom) + self.props.margin.top;
+                if (mousePosition === null || (Math.abs(mousePosition.x - x) > 1)) { // call only if the cursor moved (to prevent drawing again in the same chart)
+                    let bar = null;
+                    if (typeof(self.props.selectBarFromX) === "function")
+                        bar = self.props.selectBarFromX(timeCursor, signalSetsData);
+                    selectBar(bar, [x, y]);
+                }
+            }
         }
 
         base.brushSelection
@@ -268,6 +309,8 @@ export class SwimlaneChart extends Component {
                 xAxisTicksCount={props.xAxisTicksCount}
                 xAxisTicksFormat={props.xAxisTicksFormat}
                 drawBrushAreaBehindData={true}
+                withCursorContext={props.withCursorContext}
+                cursorContextName={props.cursorContextName}
             />
         )
     }
@@ -303,6 +346,8 @@ export class BooleanSwimlaneChart extends Component {
         getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
+        getExtraQueries: PropTypes.func,
+        prepareExtraData: PropTypes.func,
 
         discontinuityInterval: PropTypes.number,
         paddingInner: PropTypes.number,
@@ -313,6 +358,8 @@ export class BooleanSwimlaneChart extends Component {
         withTooltip: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to `null` to disable updates
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
@@ -333,10 +380,14 @@ export class BooleanSwimlaneChart extends Component {
             }
         }
 
-        return [{
+        const queries = [{
             type: "timeSeries",
             args: [signalSets, abs]
-        }]
+        }];
+        if (this.props.getExtraQueries) {
+            queries.push(...this.props.getExtraQueries(createBase(base, this), abs));
+        }
+        return queries;
     }
 
     prepareData(base, results) {
@@ -403,8 +454,14 @@ export class BooleanSwimlaneChart extends Component {
             }
         }
 
+        let extraData;
+        if (this.props.prepareExtraData) {
+            extraData = this.props.prepareExtraData(createBase(base, this), results[0], results.slice(1));
+        }
+
         return {
-            signalSetsData: rows
+            signalSetsData: rows,
+            ...extraData,
         };
     }
 
@@ -454,6 +511,8 @@ export class MaximumSwimlaneChart extends Component {
         getSvgDefs: PropTypes.func,
         getGraphContent: PropTypes.func,
         createChart: PropTypes.func,
+        getExtraQueries: PropTypes.func,
+        prepareExtraData: PropTypes.func,
 
         discontinuityInterval: PropTypes.number,
         paddingInner: PropTypes.number,
@@ -465,6 +524,8 @@ export class MaximumSwimlaneChart extends Component {
         withTooltip: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to `null` to disable updates
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
@@ -489,10 +550,14 @@ export class MaximumSwimlaneChart extends Component {
             }
         }
 
-        return [{
+        const queries = [{
             type: "timeSeries",
             args: [signalSets, abs]
-        }]
+        }];
+        if (this.props.getExtraQueries) {
+            queries.push(...this.props.getExtraQueries(createBase(base, this), abs));
+        }
+        return queries;
     }
 
     prepareData(base, results) {
@@ -567,12 +632,28 @@ export class MaximumSwimlaneChart extends Component {
             label: last.signal.label,
         });
 
+        let extraData;
+        if (this.props.prepareExtraData) {
+            extraData = this.props.prepareExtraData(createBase(base, this), results[0], results.slice(1));
+        }
+
         return {
             signalSetsData: [{
                 label: "",
                 bars,
             }],
+            ...extraData,
         };
+    }
+
+    selectBarFromX(x, signalSetsData) {
+        if (signalSetsData.length === 0) return null;
+        const bars = signalSetsData[0].bars;
+        const bisector = d3Array.bisector(b => b.end).right;
+        const idx = bisector(bars, x);
+        if (idx >= bars.length) return null;
+        if (bars[idx].begin > x) return null;
+        return bars[idx];
     }
 
     render() {
@@ -581,6 +662,7 @@ export class MaximumSwimlaneChart extends Component {
             tooltipYPosition={-10}
             getQueries={::this.getQueries}
             prepareData={::this.prepareData}
+            selectBarFromX={::this.selectBarFromX}
             {...this.props}
         />
     }

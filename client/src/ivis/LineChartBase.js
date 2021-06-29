@@ -14,6 +14,8 @@ import {DataPathApproximator} from "./DataPathApproximator";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
+import {cursorAccessMixin} from "./CursorContext";
+import _ from "lodash";
 
 
 const SelectedState = {
@@ -101,7 +103,8 @@ export function getAxisIdx(sigConf) {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslation,
+    cursorAccessMixin(),
 ])
 export class LineChartBase extends Component {
     constructor(props){
@@ -138,6 +141,10 @@ export class LineChartBase extends Component {
         tooltipContentComponent: PropTypes.func,
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
+        withCursorFromCursorContext: PropTypes.bool, // load cursor position from cursor context
+        cursorContextTooltipY: PropTypes.number, // fraction of height -> 0 = top, 1 = bottom
 
         signalAggs: PropTypes.array.isRequired,
         lineAgg: PropTypes.string.isRequired,
@@ -157,7 +164,7 @@ export class LineChartBase extends Component {
         minimumIntervalMs: PropTypes.number,
 
         getExtraQueries: PropTypes.func,
-        processGraphContent: PropTypes.func,
+        processGraphContent: PropTypes.func, // FIXME: this is probably unused
 
         controlTimeIntervalChartWidth: PropTypes.bool
     }
@@ -167,6 +174,15 @@ export class LineChartBase extends Component {
         lineCurve: d3Shape.curveLinear,
         withPoints: true,
         lineWidth: 1.5,
+        cursorContextTooltipY: 0,
+        withCursorFromCursorContext: true,
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.withCursorFromCursorContext) {
+            if (this.getCursor() !== this.getCursor(prevProps))
+                this.drawCursor(this.getCursor());
+        }
     }
 
     createChart(base, signalSetsData, baseState, abs, xScale) {
@@ -388,8 +404,8 @@ export class LineChartBase extends Component {
         let selection = null;
         let mousePosition = null;
 
-        const selectPoints = function () {
-            const containerPos = d3Selection.mouse(base.containerNode);
+        const selectPoints = function (mousePos = null) {
+            const containerPos = mousePos !== null ? mousePos : d3Selection.mouse(base.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
             const ts = xScale.invert(x);
@@ -403,7 +419,15 @@ export class LineChartBase extends Component {
                 base.cursorLineVisible = true;
             }
 
+            mousePosition = {x: containerPos[0], y: containerPos[1]};
             if (noData) {
+                if (selection !== baseState.selection ||
+                    !_.isEqual(mousePosition, baseState.mousePosition)) {
+                    base.setState({
+                        selection: null,
+                        mousePosition
+                    });
+                }
                 return;
             }
 
@@ -513,15 +537,16 @@ export class LineChartBase extends Component {
                 }
             }
 
-
             selection = isSelection ? selection : null;
 
-            mousePosition = {x: containerPos[0], y: containerPos[1]};
-
-            base.setState({
-                selection,
-                mousePosition
-            });
+            if (selection !== baseState.selection ||
+                mousePosition.x !== baseState.mousePosition.x ||
+                mousePosition.y !== baseState.mousePosition.y) {
+                base.setState({
+                    selection,
+                    mousePosition
+                });
+            }
         };
 
         const deselectPoints = function () {
@@ -571,6 +596,18 @@ export class LineChartBase extends Component {
             .on('mousemove', selectPoints)
             .on('mouseleave', deselectPoints)
             .on('click', click);
+
+        this.drawCursor = function (timeCursor) {
+            if (timeCursor === null)
+                deselectPoints();
+            else {
+                const x = xScale(timeCursor) + self.props.margin.left;
+                const y = self.props.cursorContextTooltipY * (self.props.height - self.props.margin.top - self.props.margin.bottom) + self.props.margin.top;
+                if (mousePosition === null || (Math.abs(mousePosition.x - x) > 1)) { // call only if the cursor moved (to prevent drawing again in the same chart)
+                    selectPoints([x, y]);
+                }
+            }
+        }
 
 
         if (noData) {
@@ -763,6 +800,8 @@ export class LineChartBase extends Component {
                 displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
                 minimumIntervalMs={this.props.minimumIntervalMs}
                 xAxisType={this.props.xAxisType}
+                withCursorContext={props.withCursorContext}
+                cursorContextName={props.cursorContextName}
             />
         );
     }
