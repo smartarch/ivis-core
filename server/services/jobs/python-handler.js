@@ -18,6 +18,9 @@ const runningProc = new Map();
 // const defaultPythonLibs = ivisConfig.tasks.python.defaultPythonLibs;
 const defaultPythonLibs = ['elasticsearch', 'requests'];
 const taskSubtypeSpecs = {
+    [defaultSubtypeKey]:{
+        libs: [...defaultPythonLibs]
+    },
     [PythonSubtypes.ENERGY_PLUS]: {
         libs: [...defaultPythonLibs, 'eppy', 'requests']
     },
@@ -138,7 +141,11 @@ function getPackages(subtype) {
     return subtype ? taskSubtypeSpecs[subtype].libs : defaultPythonLibs;
 }
 
-function getCommands(subtype) {
+function getCommandsBefore(subtype) {
+    return subtype ? taskSubtypeSpecs[subtype].cmdsBefore : null;
+}
+
+function getCommandsAfter(subtype) {
     return subtype ? taskSubtypeSpecs[subtype].cmds : null;
 }
 
@@ -183,18 +190,22 @@ async function build(config, onSuccess, onFail) {
 
 function getInitScript(subtype, envBuildDir) {
     const packages = getPackages(subtype);
-    const commands = getCommands(subtype);
+    const commandsBefore = getCommandsBefore(subtype);
+    const commandsAfter = getCommandsAfter(subtype);
 
     const virtDir = path.join(envBuildDir, 'bin', 'activate');
 
     const cmdsChain = []
     cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envBuildDir}`)
     cmdsChain.push(`source ${virtDir}`)
+    if (commandsBefore) {
+        cmdsChain.push(...commandsBefore)
+    }
     if (packages) {
         cmdsChain.push(`pip install ${packages.join(' ')} `)
     }
-    if (commands) {
-        cmdsChain.push(...commands)
+    if (commandsAfter) {
+        cmdsChain.push(...commandsAfter)
     }
     cmdsChain.push(`pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis `)
     cmdsChain.push(`deactivate`)
