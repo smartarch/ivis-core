@@ -9,6 +9,7 @@ const csv = require('csvtojson');
 const {getIndexName} = require('../../lib/indexers/elasticsearch-common');
 const elasticsearch = require('../../lib/elasticsearch');
 
+const totalRecordLimit = 3000000; //>10000
 const insertLimit = 10000;
 
 async function loadJSONFromCsv(url) {
@@ -17,13 +18,26 @@ async function loadJSONFromCsv(url) {
         https.get(url, res => {
             const data = [];
 
+            let recordNum = 0;
+            let resolved = false;
+
+            const done = () => {
+                if (resolved) return;
+
+                resolved = true;
+                console.log(`Fetching ${url} completed`);
+                resolve(data);
+            };
+
+
             csv({delimiter: ',', trim: true, checkType: true}, {objectMode: true})
                 .fromStream(res)
-                .on('data', row => data.push(row))
-                .on('done', () => {
-                    console.log(`Fetching ${url} completed`);
-                    resolve(data);
-                });
+                .on('data', row => {
+                    recordNum += 1;
+                    if (recordNum <= totalRecordLimit) data.push(row);
+                    else done();
+                })
+                .on('done', done);
         });
     });
 }
@@ -67,7 +81,8 @@ async function createSigSet(knex, sigSetCid, data, population, regionName) {
     const sigSet = {
         cid: sigSetCid,
         name: regionName,
-        indexing: JSON.stringify({status: 1}),
+        settings: JSON.stringify({}),
+        state: JSON.stringify({indexing: {status: 1}}),
         namespace: 1
     };
     const ids = await knex('signal_sets').insert(sigSet);
@@ -174,6 +189,7 @@ exports.seed = (knex) => (async () => {
             .map(datum => datum.key)
         );
 
+    console.log(indexData);
     function filterData(data) {
         return data.filter(datum => italyKeysToFilter.has(datum.key)).map(datum => {
             datum.key = datum.key.toLowerCase()
