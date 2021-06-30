@@ -201,9 +201,9 @@ async function storeBuiltinTasks() {
     for (const builtinTask of builtinTasks) {
         const task = {...builtinTask}
         if (builtinTask.settings.code == null) {
-            // WARN mutating defaults
-            builtinTask.settings.code = await getCodeForBuiltinTask(builtinTask.name);
+            task.settings.code = await getCodeForBuiltinTask(builtinTask.name);
         }
+        tasks.push(task)
     }
     await addTasks(tasks);
 }
@@ -222,7 +222,7 @@ async function getCodeForBuiltinTask(taskName) {
  * @param tasks
  * @return {Promise<void>}
  */
-async function addTasks(tasks,) {
+async function addTasks(tasks) {
     if (!Array.isArray(tasks)) {
         tasks = [tasks];
     }
