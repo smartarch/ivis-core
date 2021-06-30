@@ -274,10 +274,10 @@ async function storeBuiltinTasks() {
     const tasks = [];
     for (const builtinTask of builtinTasks) {
         const task = {...builtinTask}
+        tasks.push(task);
         if (builtinTask.settings.code == null) {
             task.settings.code = await getCodeForBuiltinTask(builtinTask.name);
         }
-        tasks.push(task)
     }
     await addTasks(tasks);
 }

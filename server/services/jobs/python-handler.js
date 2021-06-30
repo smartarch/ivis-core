@@ -31,7 +31,8 @@ const taskSubtypeSpecs = {
         libs: [...defaultPythonLibs, 'pandas']
     },
     [PythonSubtypes.NEURAL_NETWORK]: {
-        libs: [...defaultPythonLibs, 'numpy', 'pandas', 'tensorflow']
+        cmdsBefore: ['pip install --upgrade pip'],
+        libs: [...defaultPythonLibs, 'numpy', 'pandas', 'tensorflow>=2.4']
     },
     [PythonSubtypes.ARIMA]: {
         libs: [...defaultPythonLibs, 'numpy', 'statsmodels', 'pmdarima', 'pendulum']
@@ -147,7 +148,11 @@ function getPackages(subtype) {
     return subtype ? taskSubtypeSpecs[subtype].libs : defaultPythonLibs;
 }
 
-function getCommands(subtype) {
+function getCommandsBefore(subtype) {
+    return subtype ? taskSubtypeSpecs[subtype].cmdsBefore : null;
+}
+
+function getCommandsAfter(subtype) {
     return subtype ? taskSubtypeSpecs[subtype].cmds : null;
 }
 
@@ -192,18 +197,22 @@ async function build(config, onSuccess, onFail) {
 
 function getInitScript(subtype, envBuildDir) {
     const packages = getPackages(subtype);
-    const commands = getCommands(subtype);
+    const commandsBefore = getCommandsBefore(subtype);
+    const commandsAfter = getCommandsAfter(subtype);
 
     const virtDir = path.join(envBuildDir, 'bin', 'activate');
 
     const cmdsChain = []
     cmdsChain.push(`${ivisConfig.tasks.python.venvCmd} ${envBuildDir}`)
     cmdsChain.push(`source ${virtDir}`)
+    if (commandsBefore) {
+        cmdsChain.push(...commandsBefore)
+    }
     if (packages) {
         cmdsChain.push(`pip install ${packages.join(' ')} `)
     }
-    if (commands) {
-        cmdsChain.push(...commands)
+    if (commandsAfter) {
+        cmdsChain.push(...commandsAfter)
     }
     cmdsChain.push(`pip install --no-index --find-links=${IVIS_PCKG_DIR} ivis `)
     cmdsChain.push(`deactivate`)
