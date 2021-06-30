@@ -1,15 +1,20 @@
 'use strict';
 
 const knex = require('../lib/knex');
+const path = require('path');
+const fs = require('fs-extra-promise');
 const {getVirtualNamespaceId} = require("../../shared/namespaces");
-const {TaskSource, BuildState, TaskType} = require("../../shared/tasks");
+const {TaskSource, BuildState, TaskType, PYTHON_BUILTIN_CODE_FILE_NAME} = require("../../shared/tasks");
 const em = require('../lib/extension-manager');
+
+// code is loaded from file
 
 const aggregationTask = {
     name: 'aggregation',
     description: 'Task used by aggregation feature for signal sets',
     type: TaskType.PYTHON,
     settings: {
+        builtin_reinitOnUpdate: true,
         params: [{
             "id": "signalSet",
             "type": "signalSet",
@@ -23,145 +28,114 @@ const aggregationTask = {
             "label": "Timestamp signal",
             "help": "Timestamp for aggregation"
         }, {
+            "id": "offset",
+            "type": "string",
+            "label": "Offset",
+            "help": "Since when should aggregation be done"
+        }, {
             "id": "interval",
-            "type": "number",
+            "type": "string",
             "label": "Interval",
-            "help": "Bucket interval in seconds"
+            "help": "Bucket interval"
         }],
-        code: `from ivis import ivis
-
-es = ivis.elasticsearch
-state = ivis.state
-params= ivis.parameters
-entities= ivis.entities
-#owned= ivis.owned
-
-sig_set_cid = params['signalSet']
-sig_set = entities['signalSets'][sig_set_cid]
-ts = entities['signals'][sig_set_cid][params['ts']]
-interval = params['interval']
-#offset = params['offset']
-
-agg_set_cid =  f"aggregation_{interval}s_{sig_set_cid}"
-
-numeric_signals = { cid: signal for (cid,signal) in entities['signals'][sig_set_cid].items() if (signal['type'] in ['integer','long','float','double']) }
-
-if state is None or state.get(agg_set_cid) is None:
-  ns = sig_set['namespace']
-    
-  signals= []
-  for cid, signal in numeric_signals.items():
-    signal_base = {
-      "cid": signal['cid'],
-      "name": signal['name'],
-      "description": signal['description'],
-      "namespace": signal['namespace'],
-      "type": signal['type'],
-      "indexed": signal['indexed'],
-      "settings": signal['settings']
-    }
-    signals.append(signal_base)
-  
-    for stat in ['min', 'max', 'count']:
-      signal = signal_base.copy()
-      signal.update({
-        "cid": f"{signal_base['cid']}_{stat}",
-        "name": f"{stat} of {signal_base['cid']}",
-        "description": f"Stat {stat} for aggregation of signal {signal_base['cid']}"
-      })
-      signals.append(signal)
-
-  signals.append({
-      "cid": ts['cid'],
-      "name": ts['name'],
-      "description": ts['description'],
-      "namespace": ts['namespace'],
-      "type": ts['type'],
-      "indexed": ts['indexed'],
-      "settings": ts['settings']
-  })
-
-  state = ivis.create_signal_set(
-    agg_set_cid,
-    ns,
-    agg_set_cid,
-    f"aggregation with interval {interval}s for signal set {sig_set_cid}",
-    None,
-    signals)
-    
-  state['last'] = None
-  ivis.store_state(state)
-  
-if state is not None and state.get('last') is not None:
-  last = state['last']
-  query_content = {
-    "range" : {
-      ts['field'] : {
-        "gte" : last
-      }
-    }
-  }
-  
-  es.delete_by_query(index=state[agg_set_cid]['index'], body={
-    "query": { 
-      "match": {
-        state[agg_set_cid]['fields']['ts']: last
-      }
-    }}
-  )
-  
-else:
-  query_content = {'match_all': {}}
-
-
-avg_aggs = {}
-for cid, signal in numeric_signals.items():
-  avg_aggs[cid] = {
-            "stats": {
-              "field": signal['field']
-            }
-          }
-          
-# interval is deprecated in the newer elasticsearch, instead fixed_interval should be used
-query = {
-  'size': 0,
-  'query': query_content,
-  "aggs": {
-    "sig_set_aggs": {
-      "date_histogram": {
-        "field": ts['field'],
-        "interval": f"{interval}s"
-      },
-      "aggs": avg_aggs
-    }
-  }
-}
-
-res = es.search(index=sig_set['index'], body=query)
-
-for hit in res['aggregations']['sig_set_aggs']['buckets']:
-  last = hit['key_as_string']
-  doc = {}
-  for cid in numeric_signals.keys():
-    doc[state[agg_set_cid]['fields'][f"{cid}_min"]]= hit[cid]['min']
-    doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['avg']
-    doc[state[agg_set_cid]['fields'][f"{cid}_max"]]= hit[cid]['max']
-    doc[state[agg_set_cid]['fields'][f"{cid}_count"]]= hit[cid]['count']
-  
-  doc[state[agg_set_cid]['fields'][ts['cid']]] = last
-  res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
-
-
-state['last'] = last
-ivis.store_state(state)`
     },
 };
 
+const flattenTask = {
+    name: 'Flatten',
+    description: 'Task will combine specified signals into single signal set and resolve conflicts on the same time point with the chosen method',
+    type: TaskType.PYTHON,
+    settings: {
+        builtin_reinitOnUpdate: true,
+        params: [
+            {
+                "id": "resolutionMethod",
+                "type": "option",
+                "label": "Resolution method",
+                "help": "Conflict resolution method",
+                "options": [
+                    {
+                        "key": "avg",
+                        "label": "Avarage"
+                    },
+                    {
+                        "key": "min",
+                        "label": "Minimum"
+                    },
+                    {
+                        "key": "max",
+                        "label": "Maximum"
+                    }
+                ]
+            },
+            {
+                "id": "sets",
+                "label": "Signal sets",
+                "help": "Signal sets to flatten",
+                "type": "fieldset",
+                "cardinality": "2..n",
+                "children": [
+                    {
+                        "id": "cid",
+                        "label": "Signal set",
+                        "type": "signalSet"
+                    },
+                    {
+                        "id": "ts",
+                        "type": "signal",
+                        "label": "Timestamp",
+                        "cardinality": "1",
+                        "signalSetRef": "cid"
+                    },
+                    {
+                        "id": "signals",
+                        "type": "signal",
+                        "label": "Signals",
+                        "cardinality": "1..n",
+                        "signalSetRef": "cid"
+                    }
+                ]
+            },
+            {
+                "id": "signalSet",
+                "label": "New signal set properties",
+                "help": "Resulting signal set",
+                "type": "fieldset",
+                "cardinality": "1",
+                "children": [
+                    {
+                        "id": "cid",
+                        "label": "CID",
+                        "type": "string",
+                        "isRequired": true
+                    },
+                    {
+                        "id": "namespace",
+                        "label": "Namespace",
+                        "help": "id of namespace",
+                        "type": "number"
+                    },
+                    {
+                        "id": "name",
+                        "label": "Name",
+                        "type": "string"
+                    },
+                    {
+                        "id": "description",
+                        "label": "Description",
+                        "type": "string"
+                    }
+                ]
+            }
+        ],
+    },
+};
 /**
  * All default builtin tasks
  */
 const builtinTasks = [
-    aggregationTask
+    aggregationTask,
+    flattenTask
 ];
 
 em.on('builtinTasks.add', addTasks);
@@ -173,7 +147,7 @@ async function getBuiltinTask(name) {
 }
 
 /**
- * Check if builtin in task with fiven name alredy exists
+ * Check if builtin in task with given name already exists
  * @param tx
  * @param name
  * @return {Promise<any>} undefined if not found, found task otherwise
@@ -207,12 +181,15 @@ async function addBuiltinTask(tx, builtinTask) {
  * @param builtinTask columns being updated
  * @return {Promise<void>}
  */
-async function updateBuiltinTask(tx, id, builtinTask) {
+async function updateBuiltinTask(tx, id, builtinTask, reinit = false) {
     const task = {...builtinTask};
     task.source = TaskSource.BUILTIN;
     task.namespace = getVirtualNamespaceId();
     task.settings = JSON.stringify(task.settings);
-    await tx('tasks').where('id', id).update({...task, build_state: BuildState.UNINITIALIZED});
+    if (reinit) {
+        task.build_state = BuildState.UNINITIALIZED;
+    }
+    await tx('tasks').where('id', id).update(task);
 }
 
 /**
@@ -220,7 +197,24 @@ async function updateBuiltinTask(tx, id, builtinTask) {
  * @return {Promise<void>}
  */
 async function storeBuiltinTasks() {
-    await addTasks(builtinTasks);
+    const tasks = [];
+    for (const builtinTask of builtinTasks) {
+        const task = {...builtinTask}
+        if (builtinTask.settings.code == null) {
+            task.settings.code = await getCodeForBuiltinTask(builtinTask.name);
+        }
+        tasks.push(task)
+    }
+    await addTasks(tasks);
+}
+
+async function getCodeForBuiltinTask(taskName) {
+    const builtinCodeFile = path.join(__dirname, '..', 'builtin-files', taskName, PYTHON_BUILTIN_CODE_FILE_NAME);
+    const hasCode = await fs.existsAsync(builtinCodeFile);
+    if (hasCode) {
+        return await fs.readFileAsync(builtinCodeFile, 'utf-8')
+    }
+    return '';
 }
 
 /**
@@ -239,7 +233,9 @@ async function addTasks(tasks) {
             if (!exists) {
                 await addBuiltinTask(tx, task);
             } else {
-                await updateBuiltinTask(tx, exists.id, task);
+                const reinit = (task.settings.builtin_reinitOnUpdate === true)
+                delete task.settings.builtin_reinitOnUpdate;
+                await updateBuiltinTask(tx, exists.id, task, reinit);
             }
         });
     }

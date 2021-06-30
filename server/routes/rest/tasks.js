@@ -2,6 +2,9 @@
 
 const passport = require('../../lib/passport');
 const tasks = require('../../models/tasks');
+const builtinTasks = require('../../models/builtin-tasks');
+const {TaskSource} = require("../../../shared/tasks");
+const {getAdminContext} = require("../../lib/context-helpers");
 
 const router = require('../../lib/router-async').create();
 const {castToInteger} = require('../../lib/helpers');
@@ -33,6 +36,10 @@ router.postAsync('/tasks-table', passport.loggedIn, async (req, res) => {
     return res.json(await tasks.listDTAjax(req.context, req.body));
 });
 
+router.postAsync('/builtin-tasks', passport.loggedIn, async (req, res) => {
+    return res.json(await tasks.listDTAjaxWithoutPerms(req.body, TaskSource.BUILTIN));
+});
+
 router.getAsync('/task-params/:taskId', passport.loggedIn, async (req, res) => {
     const params = await tasks.getParamsById(req.context, castToInteger(req.params.taskId));
     return res.json(params);
@@ -40,6 +47,11 @@ router.getAsync('/task-params/:taskId', passport.loggedIn, async (req, res) => {
 
 router.postAsync('/task-build/:taskId', passport.loggedIn, async (req, res) => {
     const params = await tasks.compile(req.context, castToInteger(req.params.taskId));
+    return res.json(params);
+});
+
+router.postAsync('/task-reinitialize/:taskId', passport.loggedIn, async (req, res) => {
+    const params = await tasks.compile(req.context, castToInteger(req.params.taskId), true);
     return res.json(params);
 });
 
