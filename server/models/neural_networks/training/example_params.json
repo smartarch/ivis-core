@@ -6,7 +6,6 @@
     "end": "2021-04-18"
   },
   "aggregation": "1d",
-  "size": 50,
   "input_signals": [
     {
       "cid": "temperature",

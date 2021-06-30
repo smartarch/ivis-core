@@ -2,7 +2,8 @@
 Code for hyperparameter optimizer.
 """
 from ivis import ivis
-from . import elasticsearch as es, preprocessing as pre, TrainingParams, PredictionParams
+from . import elasticsearch as es, preprocessing as pre
+from .ParamsClasses import TrainingParams, PredictionParams
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals
 
 
@@ -79,7 +80,7 @@ def get_query_and_index(parameters):
     aggregated = is_aggregated(parameters)
     signals = parameters["input_signals"] + parameters["target_signals"]
     time_interval = parameters["time_interval"]
-    size = parameters["size"]
+    size = parameters["size"] if "size" in parameters else 10000
     ts_field = get_ts_field(parameters)
 
     if aggregated:
@@ -99,7 +100,7 @@ def parse_data(parameters, data):
 
 def load_data(parameters):
     query, index = get_query_and_index(parameters)
-    data = ivis.elasticsearch.search(index, query)
+    data = ivis.elasticsearch.search(index=index, body=query)
     return parse_data(parameters, data)
 
 

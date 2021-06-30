@@ -1,7 +1,6 @@
 import tensorflow as tf
 from . import preprocessing as pre
 from . import model as nn_model
-from . import PredictionParams
 
 
 def run_training(training_parameters, dataframes):
@@ -23,6 +22,8 @@ def run_training(training_parameters, dataframes):
     tf.keras.Model
         The neural network model (which can then be saved into IVIS).
     """
+
+    # print("tensorflow version:", tf.__version__)
 
     train_df, val_df, test_df = dataframes
 
