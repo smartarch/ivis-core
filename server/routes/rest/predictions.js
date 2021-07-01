@@ -16,26 +16,25 @@ const { castToInteger } = require('../../lib/helpers');
 const { getSigSetBoundaries, calculateRMSE } = require('../../lib/predictions-helpers');
 
 router.postAsync('/predictions-rmse/', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    const x = (await req).body;
-    console.log(`req: ${JSON.stringify(x, null, 4)}`);
-    const response = {
-        from: x.from,
-        to: x.to,
-        min: `0 (${Date.now()})`,
-        max: 'inf',
-    };
-    if (!x.sourceSetCid) { // ignore invalid request (signal set not specified)
+    const body = (await req).body;
+    if (!body.sourceSetCid) { // ignore invalid request (signal set not specified)
         return res.json();
     }
-    const response2 = await calculateRMSE(req.context, x.from, x.to, x.sourceSetCid, x.predSetCid);
-    console.log(`RMSE resp: ${JSON.stringify(response2, null, 4)}`);
-    return res.json(response2);
+    const response = await calculateRMSE(req.context, body.from, body.to, body.sourceSetCid, body.predSetCid, body.signalCid);
+    return res.json(response);
 });
 
 router.getAsync('/predictions-set-boundaries/:signalSetId', passport.loggedIn, async (req, res) => {
     const signalSetId = castToInteger(req.params.signalSetId);
 
     return res.json(await getSigSetBoundaries(signalSetId));
+});
+
+router.getAsync('/predictions-arima-job-state/:predictionId', passport.loggedIn, async (req, res) => {
+    const predictionId = castToInteger(req.params.predictionId);
+    const arimaJobState = await arima.getJobState(req.context, predictionId);
+
+    return res.json(await arimaJobState);
 });
 
 module.exports = router;

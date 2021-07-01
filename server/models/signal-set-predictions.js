@@ -20,6 +20,8 @@ const { arimaCleanupTx } = require('./predictions-arima');
 
 const allowedKeys = new Set(['name', 'set', 'type', 'namespace', 'settings', 'ahead_count', 'future_count', 'signals']);
 
+/** These type specific function are called during model deletion
+ */
 const deleteCallbacks = {
     /* signature: async x(tx, context, predictionId )*/
     [PredictionTypes.ARIMA]: arimaCleanupTx
@@ -41,6 +43,7 @@ const deleteCallbacks = {
  * signals = {
  *      main: [
  *      ],
+ *      // extra signals are optional, can be omitted or []
  *      extra: [
  *      ],
  * };
@@ -50,20 +53,31 @@ const deleteCallbacks = {
 /** Create an entry for prediction model and create its output signal sets
  *
  */
-async function registerPredictionModelTx(tx, context, prediction, outSignals, extraSignals) {
+async function registerPredictionModelTx(tx, context, prediction) {
     const signalSet = await tx('signal_sets').where('id', prediction.set).first();
     enforce(signalSet, `Signal set ${prediction.set} not found`);
 
-    const signals = {
+    const outSignals = prediction.signals.main;
+    const extraSignals = prediction.signals.extra;
+
+    if (!outSignals) {
+        throw new Error("A prediction model has to have output signals!");
+    }
+
+    const filteredSignals = {
         'main': outSignals ? outSignals : [],
         'extra': extraSignals ? extraSignals : [],
     };
 
-    prediction.signals = JSON.stringify(signals);
+    // stringify because we want to store it in the database
+    prediction.signals = JSON.stringify(filteredSignals);
 
     const predId = await _createPredictionTx(tx, context, prediction);
     prediction.id = predId;
     await _createOutputSignalSets(tx, context, prediction, outSignals);
+    if (extraSignals) {
+        await _createOutputSignalSets(tx, context, prediction, extraSignals);
+    }
 
     return predId;
 }
@@ -248,6 +262,8 @@ async function getById(context, id) {
         await shares.enforceEntityPermissionTx(tx, context, 'prediction', id, 'view');
         const entity = await tx('predictions').where('id', id).first();
         entity.settings = JSON.parse(entity.settings);
+        entity.signals = JSON.parse(entity.signals);
+        entity.permissions = await shares.getPermissionsTx(tx, context, 'prediction', id);
 
         return entity;
     });
@@ -319,7 +335,7 @@ function _stripNonPrintable(string) {
 }
 
 async function getPrefix(tx, context, modelId) {
-    // enforce
+    shares.enforceEntityPermissionTx(tx, context, 'prediction', modelId, 'view');
     const prediction = await tx('predictions').where('id', modelId).first();
     const sourceSet = await tx('signal_sets').where('id', prediction.set).first();
 

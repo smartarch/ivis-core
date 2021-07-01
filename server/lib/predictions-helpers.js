@@ -4,13 +4,14 @@ const knex = require('./knex');
 const signalSets = require('../models/signal-sets');
 const es = require('./elasticsearch');
 const moment = require('moment');
+const shares = require('../models/shares');
 
 function getSetIndexName(sigSetCid) {
     return `signal_set_${sigSetCid}`;
 }
 
 async function getSignalIndexField(context, signalSetId, signalField) {
-    // TODO: enforce sigset permission
+    await shares.enforceEntityPermission(context, 'signalSet', signalSetId, 'view');
     const signals = await knex.transaction(async tx => {
         return await signalSets.getSignalByCidMapTx(tx, { id: signalSetId });
     });
@@ -49,6 +50,14 @@ async function getSigSetBoundaries(signalSetId, tsField = 'ts') {
             }
         }
     });
+
+    if (!first.hits.hits[0] || !last.hits.hits[0]) {
+        return {
+            // we have to return non zero time interval
+            first: '1900-01-01T00:00:00.000Z',
+            last: '1900-01-02T00:00:00.000Z'
+        };
+    }
 
     return {
         first: first.hits.hits[0]['_source'][tsSigCid],
@@ -96,7 +105,7 @@ async function getSigSetBoundariesByCid(context, signalSetCid, tsField = 'ts') {
     return await getSigSetBoundaries(signalSet.id, tsField);
 }
 
-async function calculateRMSE(context, from, to, sourceSetCid, predSetCid) {
+async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueField) {
     // find the common subinterval of both predictions and real observation on
     // the given evaluation interval
     const b1 = await getSigSetBoundariesByCid(context, sourceSetCid);
@@ -119,10 +128,12 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid) {
         to = b2.last;
     }
 
-    const valueField = 'value';
     // const tsField = `s${sourcesSignals[tsField].id}`;
-    let interval = '1d'; // TODO: selecting appropriate interval is probably pain
-    interval = selectIntervalFixed(from, to);
+    let interval = '1d';
+    if (from < to) {
+        interval = selectIntervalFixed(from, to);
+        console.log(`selected interval: ${interval}, from: ${from}, to: ${to}`);
+    }
 
     const { minArray: minArraySource, maxArray: maxArraySource, tsArray: tsArraySource } = await minMaxAgg(context, sourceSetCid, from, to, interval, valueField);
     const { minArray: minArrayPred, maxArray: maxArrayPred, tsArray: tsArrayPred } = await minMaxAgg(context, predSetCid, from, to, interval, valueField);
@@ -202,7 +213,6 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid) {
     async function minMaxAgg(context, sigSetCid, minTs, maxTs, interval, valueField, tsField = 'ts') {
         const signalSet = await signalSets.getByCid(context, sigSetCid);
         const index = `signal_set_${signalSet.id}`;
-        console.log(`signalSet: ${JSON.stringify(signalSet, null, 4)}`);
         const signals = await knex.transaction(async tx => {
             return await signalSets.getSignalByCidMapTx(tx, { id: signalSet.id });
         });
@@ -235,6 +245,10 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid) {
             }
         }
 
+        if (minTs && maxTs && minTs >= maxTs) {
+            console.error(`minTs >= maxTs, minTs: ${minTs}, maxTs: ${maxTs}`);
+        }
+
         if (!minTs && !maxTs) {
             query.body.query = { match_all: {} };
         } else {
@@ -259,10 +273,10 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid) {
         const counts = [];
         const tsArray = [];
 
+        const resValueField = 'value';
         for (let bucket of results.aggregations.hist.buckets) {
-            // console.log(bucket);
-            minArray.push(bucket.min_value[valueField]);
-            maxArray.push(bucket.max_value[valueField]);
+            minArray.push(bucket.min_value[resValueField ]);
+            maxArray.push(bucket.max_value[resValueField ]);
             tsArray.push(bucket.key_as_string);
         }
 

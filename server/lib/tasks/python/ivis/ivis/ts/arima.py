@@ -136,6 +136,17 @@ class ArimaPredictor:
 
         return predictions
 
+    def forecast(self, count=1):
+        """Predict future values
+
+        Args:
+            count (int, optional): How many values. Defaults to 1.
+
+        Returns:
+            [type]: A list of predicted values
+        """
+        return self.predict(count)
+
     def shrink(self):
         """Delete unneeded observations
         """

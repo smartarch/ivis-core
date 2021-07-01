@@ -46,7 +46,6 @@ class PredicionsLineChart extends Component {
         const prediction = this.props.prediction;
         const outputConfig = (await axios.get(getUrl(`rest/predictions-output-config/${modelId}`))).data;
         const signalSet = (await axios.get(getUrl(`rest/signal-sets/${prediction.set}`))).data;
-        console.log(`outputConfig.signals ${outputConfig.signals}`);
         const signalCid = outputConfig.signals['main'][0].cid;
 
         return {
@@ -93,8 +92,6 @@ class PredicionsLineChart extends Component {
 
     fetchData() {
         const predictionId = this.props.prediction.id;
-        // this.getModel(predictionId).then(x => { console.log(x) });
-        // this.getOutputConfig(predictionId).then(x => { });
         this.getChartConfig(predictionId).then(config => this.setState({ config: config, ready: true }));
     }
 
@@ -117,10 +114,10 @@ class PredicionsLineChart extends Component {
         return (
             <div>
                 {config &&
-                        /* We need the key here so that the LineChart is recreated
-                        and not only updated. During the update, there is a
-                        small time window when having the cursor inside the chart
-                        can crash the client. */
+                    /* We need the key here so that the LineChart is recreated
+                    and not only updated. During the update, there is a
+                    small time window when having the cursor inside the chart
+                    can crash the client. */
                     <LineChart
                         key={config.signalSets[0].cid} config={config}
                     />
@@ -144,6 +141,99 @@ class SignalSelector extends Component {
                 </select>
             </div>
         );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+])
+class ARIMAModelInfoTable extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            isLoading: true,
+        }
+    }
+
+    async componentDidMount() {
+        try {
+            const jobStateRes = await axios.get(getUrl(`rest/predictions-arima-job-state/${this.props.predictionId}`));
+            const jobState = jobStateRes.data;
+
+            this.setState({
+                jobState,
+                isLoading: false,
+            });
+        } catch (error) {
+            this.setState({
+                error,
+                isLoading: false,
+            });
+        }
+
+        this.setState();
+    }
+
+    render() {
+        const t = this.props.t;
+
+        if (this.state.isLoading) {
+            return (
+                <div>Loading...</div>
+            );
+        } else {
+            const jobState = this.state.jobState;
+            const modelState = jobState.state;
+
+            // jobState.modelInfo might not exist in which case the model is
+            // not yet trained
+            let order = '';
+            let seasonalOrder = '';
+
+            if ('model_info' in jobState) {
+                order = jobState.model_info.order;
+                seasonalOrder = jobState.model_info.seasonal_order;
+            }
+
+            const states = {
+                'unknown': t('Unknown'),
+                'training': t('Training'),
+                'active': t('Active'),
+                'degraded': t('Degraded'),
+            };
+
+            let orderDesc = '';
+            if (order) {
+                orderDesc = `ARIMA(${order[0]},${order[1]},${order[2]})`;
+            }
+
+            if (seasonalOrder && seasonalOrder[0] || seasonalOrder[1] || seasonalOrder[2]) {
+                orderDesc = `SARIMA(${order[0]},${order[1]},${order[2]})(${seasonalOrder[0]},${seasonalOrder[1]},${seasonalOrder[2]})${seasonalOrder[3]}`;
+            }
+
+            return (
+                <table className={'table table-striped table-bordered'}>
+                    <thead>
+                        <tr>
+                            <th colspan="2">{'Model info'}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th>{t('Current state')}:</th>
+                            <td>{states[modelState]}</td>
+                        </tr>
+                        {orderDesc &&
+                            <tr>
+                                <th>{t('Order')}:</th>
+                                <td>{orderDesc}</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            );
+        }
     }
 }
 
@@ -204,6 +294,7 @@ class RMSETable extends Component {
             to: to,
             sourceSetCid: this.props.sourceSetCid,
             predSetCid: this.props.predSetCid,
+            signalCid: this.props.signalCid,
         };
         let test = await axios.post(getUrl(`rest/predictions-rmse/`), testBody);
 
@@ -258,8 +349,8 @@ class RMSETable extends Component {
                             <td>{ahead} ahead</td>
                         </tr>
                         <tr>
-                            <th scope="row">{t('Range')}:</th>
-                            <td>{this.state.realFrom} - {this.state.realTo}</td>
+                            <th scope="row">{t('Evaluation range')}:</th>
+                            <td>{t('{{from}} to {{to}}', { from: this.state.realFrom, to: this.state.realTo })}</td>
                         </tr>
                         <tr>
                             <th scope="row">{t('MAE min')}:</th>
@@ -345,8 +436,6 @@ export default class ArimaOverview extends Component {
     async fetchBoundaries(signalSetId) {
         const x = (await axios.get(getUrl(`rest/predictions-set-boundaries/${signalSetId}`))).data;
 
-        console.log(`x: ${JSON.stringify(await x, null, 4)}`);
-
         let offset = moment(x.last).diff(moment(x.first)) / 5;
         let last = moment(x.last).add(offset);
 
@@ -369,18 +458,23 @@ export default class ArimaOverview extends Component {
     render() {
         const t = this.props.t;
         const prediction = this.props.prediction;
+        // ARIMA always has a single main signal
+        const signalCid = this.props.prediction.signals['main'][0].cid;
         const from = this.state.first;
         const to = this.state.last;
         return (
-            <Panel title={t('ARIMA model overview')}
+            <Panel
+                title={t('ARIMA model overview')}
                 key={from} // Panel will be refreshed after data is fetched
             >
-                {/*
                 <Toolbar>
-                    <LinkButton to={`/settings/`} className="btn-primary"
-                        icon="plus"
-                        label={t('Edit')} />
-                </Toolbar>*/}
+                    <LinkButton
+                        to={`/settings/signal-sets/${prediction.set}/predictions/${prediction.type}/${prediction.id}/delete`}
+                        className="btn-danger"
+                        icon="trash-alt"
+                        label={t('Delete')} />
+                </Toolbar>
+                <ARIMAModelInfoTable predictionId={prediction.id} />
                 <TimeContext
                     initialIntervalSpec={new IntervalSpec(from, to, null, moment.duration(1, 'd'))}
                 >
@@ -394,11 +488,13 @@ export default class ArimaOverview extends Component {
                         onAheadChange={this.onAheadChange.bind(this)}
                     />
                     <TimeRangeSelector />
-                    <RMSETable
+                    {signalCid && <RMSETable
                         ahead={this.state.ahead}
                         sourceSetCid={this.state.sourceSetCid}
                         predSetCid={this.state.predSetCid}
+                        signalCid={signalCid}
                     />
+                    }
                 </TimeContext>
             </Panel>
         );

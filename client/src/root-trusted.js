@@ -504,17 +504,38 @@ const getStructure = t => {
                                                         panelRender: props => <PredictionsArimaCUD signalSet={props.resolved.signalSet} action="create" />,
                                                     },
                                                     ':modelId([0-9]+)': {
-                                                        title: t('ARIMA model overview'),
-                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}`,
+                                                        title: resolved => t('Model "{{name}}"', {name: resolved.prediction.name}),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}/overview`,
                                                         resolve: {
                                                             prediction: params => `rest/predictions/${params.modelId}`
                                                         },
-                                                        // visible: resolved => false && resolved, // isn't really shown anywhere
-                                                        panelRender: props => <ArimaOverview
-                                                            signalSet={props.resolved.signalSet}
-                                                            predictionId={props.match.params.modelId}
-                                                            prediction={props.resolved.prediction}
-                                                            action="create" />,
+                                                        navs: {
+                                                            'overview': {
+                                                                title: t('Overview'),
+                                                                link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}/overview`,
+                                                                visible: resolved => resolved.prediction.permissions.includes('view'),
+                                                                panelRender: props => <ArimaOverview
+                                                                    signalSet={props.resolved.signalSet}
+                                                                    predictionId={props.match.params.modelId}
+                                                                    prediction={props.resolved.prediction}
+                                                                    action="create"/>,
+                                                            },
+                                                            ':action(edit|delete)': {
+                                                                title: t('Edit'),
+                                                                link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}/edit`, // edit CUD also takes care of the deletion
+                                                                visible: resolved => resolved.prediction.permissions.includes('edit'),
+                                                                panelRender: props => <PredictionsArimaCUD
+                                                                    signalSet={props.resolved.signalSet}
+                                                                    prediction={props.resolved.prediction}
+                                                                    action={props.match.params.action}/>
+                                                            },
+                                                            'share': {
+                                                                title: t('Share'),
+                                                                link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}/share`,
+                                                                visible: resolved => resolved.prediction.permissions.includes('share'),
+                                                                panelRender: props => <Share title={t('Share')} entity={props.resolved.prediction} entityTypeId="prediction" />
+                                                            }
+                                                        },
                                                     }
                                                 }
                                             },

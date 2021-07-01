@@ -8,7 +8,9 @@ const log = require('../lib/log');
 //const { createTx } = require('./signals');
 const { enforce } = require('../lib/helpers');
 const predictions = require('./signal-set-predictions');
-const { PredictionTypes, OutputSignalTypes } = require('../../shared/predictions');
+const { PredictionTypes, ArimaModelStates } = require('../../shared/predictions');
+const { enforceEntityPermissionTx, enforceEntityPermission } = require('./shares');
+const es = require('../lib/elasticsearch');
 
 function _generateJobName(signalSetName, modelName, modelType, postfix = '') {
     if (postfix == '')
@@ -72,19 +74,23 @@ async function createArimaModelTx(tx, context, sigSetId, params) {
     // source signal
     const signal = await tx('signals').where('namespace', namespace).where('cid', params.source).first();
 
-    const outSignals = [
-        {
-            cid: signal.cid,
-            name: signal.name,
-            description: signal.description,
-            namespace: namespace,
-            type: signal.type,
-            indexed: signal.indexed,
-            weight_list: 0
-        }
-    ]
+    const signals = {
+        main: [
+            {
+                cid: signal.cid,
+                name: signal.name,
+                description: signal.description,
+                namespace: namespace,
+                type: signal.type,
+                indexed: signal.indexed,
+                weight_list: 0
+            }
+        ]
+    };
 
-    const modelId = await predictions.registerPredictionModelTx(tx, context, prediction, outSignals);
+    prediction.signals = signals;
+
+    const modelId = await predictions.registerPredictionModelTx(tx, context, prediction);
 
     const outputConfig = await predictions.getOutputConfigTx(tx, context, modelId);
     job.params.output_config = outputConfig;
@@ -111,7 +117,52 @@ async function createAndStart(context, sigSetId, params) {
 async function arimaCleanupTx(tx, context, predictionId) {
 }
 
-//module.exports.create = createArimaModel;
+/** Return a job state of a ARIMA job belonging to a given model instance
+ *
+ * @param {int} modelId ARIMA model id
+ * @returns Stored job state
+ */
+async function getJobState(context, modelId) {
+    enforceEntityPermission(context, 'prediction', modelId, 'view');
+
+    const prediction = await predictions.getById(context, modelId);
+
+    // check that it is indeed  ARIMA
+    enforce(prediction.type === PredictionTypes.ARIMA, "Is not an ARIMA model.");
+
+    // Get the id of the only job we use for ARIMA
+    const predictionJob = await knex.transaction(async tx => {
+        return await tx('predictions_jobs').where('prediction', modelId).first();
+    });
+
+    const jobId = predictionJob.job;
+    enforceEntityPermission(context, 'job', jobId, 'view');
+
+    try {
+        // State may not exist yet
+        const response = await es.search({
+            index: 'jobs',
+            body: {
+                query: {
+                    term: {
+                        '_id': jobId
+                    }
+                }
+            }
+        });
+
+        let state = response.hits.hits[0]['_source'].state;
+        delete state.blob; // client is not interested in the base64 binary blob
+
+        return state;
+    } catch (error) {
+        return {
+            state: ArimaModelStates.UNKNOWN
+        }
+    }
+}
+
 module.exports.create = createAndStart;
 module.exports.createTx = createArimaModelTx;
+module.exports.getJobState = getJobState;
 module.exports.arimaCleanupTx = arimaCleanupTx;

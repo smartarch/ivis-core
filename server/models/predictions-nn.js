@@ -50,8 +50,11 @@ async function createNNModelTx(tx, context, sigSetId, params) {
             weight_list: signal.weight_list
         });
     }
+    prediction.signals = {
+        main: targetSignals,
+    }
 
-    prediction.id = await predictions.registerPredictionModelTx(tx, context, prediction, targetSignals);
+    prediction.id = await predictions.registerPredictionModelTx(tx, context, prediction);
 
     const jobs = await createJobsTx(tx, context, signalSet, prediction, params);
 
