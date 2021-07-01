@@ -197,15 +197,13 @@ async function updateBuiltinTask(tx, id, builtinTask, reinit = false) {
  * @return {Promise<void>}
  */
 async function storeBuiltinTasks() {
-    const tasks = [];
     for (const builtinTask of builtinTasks) {
-        const task = {...builtinTask}
         if (builtinTask.settings.code == null) {
-            task.settings.code = await getCodeForBuiltinTask(builtinTask.name);
+            // WARN mutating
+            builtinTask.settings.code = await getCodeForBuiltinTask(builtinTask.name);
         }
-        tasks.push(task)
     }
-    await addTasks(tasks);
+    await addTasks(builtinTasks);
 }
 
 async function getCodeForBuiltinTask(taskName) {
