@@ -191,6 +191,8 @@ def _get_hits(data):
 
 
 def _get_buckets(data):
+    if "aggregations" not in data:
+        return []
     return data["aggregations"]["aggregated_data"]["buckets"]
 
 
@@ -213,6 +215,8 @@ def parse_docs(signals, data):
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES).
     """
     docs = _get_hits(data)
+    if not docs:
+        raise NoDataError
 
     dataframe = pd.DataFrame()
 
@@ -246,6 +250,8 @@ def parse_histogram(signals, data):
         Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (buckets from ES).
     """
     buckets = _get_buckets(data)
+    if not buckets:
+        raise NoDataError
 
     dataframe = pd.DataFrame()
 
@@ -256,3 +262,8 @@ def parse_histogram(signals, data):
 
     dataframe.set_index("ts", inplace=True)
     return dataframe
+
+
+class NoDataError(Exception):
+    def __str__(self):
+        return "No data."

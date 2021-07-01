@@ -139,11 +139,15 @@ def run_optimizer(parameters, run_training_callback, log_callback=print):
     training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
     # load the data
-    log_callback("Loading data...")
-    data = load_data(parameters)
-    log_callback("Processing data...")
-    dataframes = prepare_data(training_params, data)
-    log_callback("Data successfully loaded.")
+    try:
+        log_callback("Loading data...")
+        data = load_data(parameters)
+        log_callback("Processing data...")
+        dataframes = prepare_data(training_params, data)
+        log_callback("Data successfully loaded.")
+    except es.NoDataError:
+        log_callback("No data in the defined time range, can't continue.")
+        raise es.NoDataError from None
 
     # print(training_params)
 

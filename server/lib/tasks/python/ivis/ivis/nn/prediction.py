@@ -161,16 +161,21 @@ def run_prediction(prediction_parameters, model_path, log_callback=print):
 
     log_callback("Initializing...")
 
-    log_callback("Loading data...")
-    dataframe = load_data(prediction_parameters)
-    log_callback("Processing data...")
-    dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
-    print(dataframe)  # TODO (MT): remove
+    try:
+        log_callback("Loading data...")
+        dataframe = load_data(prediction_parameters)
+        log_callback("Processing data...")
+        dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
+        print(dataframe)  # TODO (MT): remove
 
-    dataset = get_windowed_dataset(prediction_parameters, dataframe)
-    log_callback("Data successfully loaded.")
-    for d in dataset.as_numpy_iterator():  # TODO (MT): remove
-        print(d)
+        dataset = get_windowed_dataset(prediction_parameters, dataframe)
+        log_callback("Data successfully loaded.")
+        for d in dataset.as_numpy_iterator():  # TODO (MT): remove
+            print(d)
+
+    except es.NoDataError:
+        log_callback("No data in the defined time range, can't continue.")
+        raise es.NoDataError from None
 
     log_callback("Loading model...")
     model = tf.keras.models.load_model(model_path)
