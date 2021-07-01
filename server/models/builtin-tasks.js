@@ -131,12 +131,26 @@ const flattenTask = {
     },
 };
 
+const systemTask = {
+    name: 'system',
+    description: 'Test system task',
+    type: TaskType.PYTHON,
+    source: TaskSource.SYSTEM,
+    settings: {
+        builtin_reinitOnUpdate: true,
+        params: [],
+        code: ""
+    },
+};
+
+
 /**
  * All default builtin tasks
  */
 const builtinTasks = [
     aggregationTask,
     flattenTask,
+    systemTask,
 ];
 
 em.on('builtinTasks.add', addTasks);
@@ -154,10 +168,12 @@ async function getBuiltinTask(name) {
  * @return {Promise<any>} undefined if not found, found task otherwise
  */
 async function checkExistence(tx, name) {
-    return await tx('tasks').where({
-        source: TaskSource.BUILTIN,
-        name: name
-    }).first();
+    return await tx('tasks')
+        .where({
+            name: name
+        })
+        .whereIn('source', [TaskSource.BUILTIN, TaskSource.SYSTEM])
+        .first();
 }
 
 /**
@@ -168,7 +184,12 @@ async function checkExistence(tx, name) {
  */
 async function addBuiltinTask(tx, builtinTask) {
     const task = {...builtinTask};
-    task.source = TaskSource.BUILTIN;
+    // Only Builtin or system tasks allowed here
+    if (builtinTask.source === TaskSource.SYSTEM) {
+        task.source = TaskSource.SYSTEM;
+    } else {
+        task.source = TaskSource.BUILTIN;
+    }
     task.namespace = getVirtualNamespaceId();
     task.settings = JSON.stringify(task.settings);
     task.build_state = BuildState.UNINITIALIZED;
@@ -185,7 +206,11 @@ async function addBuiltinTask(tx, builtinTask) {
  */
 async function updateBuiltinTask(tx, id, builtinTask, reinit = false) {
     const task = {...builtinTask};
-    task.source = TaskSource.BUILTIN;
+    if (builtinTask.source === TaskSource.SYSTEM) {
+        task.source = TaskSource.SYSTEM;
+    } else {
+        task.source = TaskSource.BUILTIN;
+    }
     task.namespace = getVirtualNamespaceId();
     task.settings = JSON.stringify(task.settings);
     if (reinit) {
