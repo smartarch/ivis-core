@@ -106,16 +106,21 @@ export default class CUD extends Component {
 
     onTaskChange(state, key, oldVal, newVal) {
         if (oldVal !== newVal) {
+
             const taskSource = state.formState.getIn(['data', 'taskSource', 'value']);
 
-            const taskId = state.formState.getIn(['data', 'task', 'value']);
             if (taskSource === TaskSource.USER) {
                 state.formState = state.formState.setIn(['data', 'taskParams', 'value'], '');
+                if (key === 'taskSource') {
+                    state.formState = state.formState.setIn(['data', 'task', 'value'], '');
+                }
 
+                const taskId = state.formState.getIn(['data', 'task', 'value']);
                 if (taskId) {
                     this.fetchTaskParams(taskId);
                 }
             } else {
+                const taskId = state.formState.getIn(['data', 'task', 'value']);
                 const builtinTask = this.state.builtinTasks && this.state.builtinTasks.find(task => task.id == taskId);
 
                 if (builtinTask) {
