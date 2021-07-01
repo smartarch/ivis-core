@@ -3,7 +3,7 @@ from . import preprocessing as pre
 from . import model as nn_model
 
 
-def run_training(training_parameters, dataframes):
+def run_training(training_parameters, dataframes, log_callback=print):
     """
     Run the training of neural network with specified parameters and data.
 
@@ -14,6 +14,8 @@ def run_training(training_parameters, dataframes):
         Before serialization, the parameters were a class derived from Optimizer.TrainingParams.
     dataframes : (pd.DataFrame, pd.DataFrame, pd.DataFrame)
         The training, validation and test data.
+    log_callback : callable
+        Function to print to Job log.
 
     Returns
     -------
@@ -23,8 +25,9 @@ def run_training(training_parameters, dataframes):
         The neural network model (which can then be saved into IVIS).
     """
 
-    # print("tensorflow version:", tf.__version__)
+    log_callback(f"Preparing training using TensorFlow (version {tf.__version__}).")
 
+    log_callback("Generating training dataset...")
     train_df, val_df, test_df = dataframes
 
     input_width = training_parameters.input_width
@@ -40,11 +43,14 @@ def run_training(training_parameters, dataframes):
         "target_column_names": target_column_names,
     }
     train, val, test = pre.make_datasets(train_df, val_df, test_df, window_generator_params)
+    log_callback("Dataset generated.")
 
     # example = list(train.as_numpy_iterator())
     # for ex in example:
     #     print(ex[0])
     #     print(ex[1])
+
+    log_callback("Creating model...")
 
     input_shape = (input_width, len(input_column_names))
     target_shape = (target_width, len(target_column_names))
@@ -60,12 +66,15 @@ def run_training(training_parameters, dataframes):
         optimizer=nn_model.get_optimizer(training_parameters),
         loss=tf.losses.mse
     )
-    model.summary()
+    model.summary(print_fn=log_callback)
+
+    log_callback("Starting training...")
 
     fit_params = {
-        "epochs": 3  # TODO
+        "epochs": 3,  # TODO
     }
-    metrics_history = model.fit(train, **fit_params)
+    metrics_history = model.fit(train, **fit_params, verbose=2)
+    log_callback("Training done.")
     print(metrics_history.history)
 
     return {

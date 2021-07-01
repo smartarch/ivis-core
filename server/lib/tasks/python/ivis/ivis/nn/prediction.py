@@ -137,7 +137,7 @@ def postprocess(prediction_parameters, data):
 ##################
 
 
-def run_prediction(prediction_parameters, model_path, log_callback):
+def run_prediction(prediction_parameters, model_path, log_callback=print):
     """
     Predicts future values using the given model and new data.
 
@@ -159,19 +159,27 @@ def run_prediction(prediction_parameters, model_path, log_callback):
         New predictions to be inserted into the signal set in Elasticsearch.
     """
 
+    log_callback("Initializing...")
+
+    log_callback("Loading data...")
     dataframe = load_data(prediction_parameters)
+    log_callback("Processing data...")
     dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
-    print(dataframe)
+    print(dataframe)  # TODO (MT): remove
 
     dataset = get_windowed_dataset(prediction_parameters, dataframe)
-    for d in dataset.as_numpy_iterator():
+    log_callback("Data successfully loaded.")
+    for d in dataset.as_numpy_iterator():  # TODO (MT): remove
         print(d)
 
+    log_callback("Loading model...")
     model = tf.keras.models.load_model(model_path)
-    model.summary()
+    model.summary(print_fn=log_callback)
 
+    log_callback("Computing predictions...")
     predicted = model.predict(dataset)
 
     predicted_dataframes = postprocess(prediction_parameters, predicted)
 
+    log_callback("Saving data...")  # TODO (MT)
     return True, predicted_dataframes

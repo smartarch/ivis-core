@@ -18,10 +18,6 @@ from ivis.nn.ParamsClasses.PredictionParams import PredictionParams
 from ivis.nn import run_prediction
 
 
-def print_log(message):
-    print(message)
-
-
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "docs":
         with open('example_histogram/prediction_parameters.json') as params_file:
@@ -31,5 +27,5 @@ if __name__ == "__main__":
         with open('example_docs/prediction_parameters.json') as params_file:
             params = PredictionParams().from_json(params_file.read())
         model_path = 'example_docs/model.h5'
-    _, predictions = run_prediction(params, model_path, print_log)
+    _, predictions = run_prediction(params, model_path)
     print(predictions)

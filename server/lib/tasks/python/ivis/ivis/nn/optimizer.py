@@ -114,7 +114,7 @@ def prepare_data(training_parameters, dataframe):
     return train_df, val_df, test_df
 
 
-def run_optimizer(parameters, run_training_callback, log_callback):
+def run_optimizer(parameters, run_training_callback, log_callback=print):
     """
     Runs the optimizer to try to find the best possible model for the data.
 
@@ -130,6 +130,8 @@ def run_optimizer(parameters, run_training_callback, log_callback):
         Function to print to Job log.
     """
 
+    log_callback("Initializing...")
+
     # prepare the parameters
     training_params = get_default_training_params(parameters)
 
@@ -137,8 +139,11 @@ def run_optimizer(parameters, run_training_callback, log_callback):
     training_params.split = {"train": 0.7, "val": 0, "test": 0.3}
 
     # load the data
+    log_callback("Loading data...")
     data = load_data(parameters)
+    log_callback("Processing data...")
     dataframes = prepare_data(training_params, data)
+    log_callback("Data successfully loaded.")
 
     # print(training_params)
 
@@ -146,7 +151,7 @@ def run_optimizer(parameters, run_training_callback, log_callback):
 
         # do some magic...
 
-        log_callback(f"Starting iteration {i}.")
+        log_callback(f"\nStarting iteration {i}.")
         training_result, model = run_training_callback(training_params, dataframes)
         log_callback(f"Result: {training_result['test_loss']}.")
         save_model = True

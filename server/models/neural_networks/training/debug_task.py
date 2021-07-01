@@ -19,10 +19,6 @@ ivis.elasticsearch = ESMock()
 from ivis.nn import run_optimizer, run_training
 
 
-def print_log(message):
-    print(message)
-
-
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "docs":
         with open('example_params.json') as params_file:
@@ -31,4 +27,4 @@ if __name__ == "__main__":
         with open('example_params_docs.json') as params_file:
             params = json.load(params_file)
 
-    run_optimizer(params, run_training, print_log)
+    run_optimizer(params, run_training)
