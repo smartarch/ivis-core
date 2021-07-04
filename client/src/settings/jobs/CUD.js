@@ -34,6 +34,7 @@ import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {TaskSource} from "../../../../shared/tasks"
+import {getVirtualNamespaceId} from "../../../../shared/namespaces"
 
 import {
     fetchBuiltinTasks
@@ -324,7 +325,9 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
+        const isSystemJob = isEdit && this.props.entity.namespace === getVirtualNamespaceId();
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
+        console.log(this.getFormValue('taskSource'));
 
         let stateOptions = CUD.getStateOptions(t);
 
@@ -344,11 +347,12 @@ export default class CUD extends Component {
         ];
 
         const configSpec = this.getFormValue('taskParams');
-        const params = configSpec ? this.paramTypes.render(configSpec, this) : null;
+        const params = configSpec ? this.paramTypes.render(configSpec, this, isSystemJob) : null;
 
         const taskSourceOptions = [
             {key: TaskSource.USER, label: t('User-defined task')},
             {key: TaskSource.BUILTIN, label: t('Built-in task')},
+            {key: TaskSource.SYSTEM, label: t('System task')},
         ];
 
         const builtinTaskOptions = [];
@@ -358,8 +362,16 @@ export default class CUD extends Component {
             }
         }
 
+
+        let title = 'Create Job'
+        if (isEdit) {
+            title = t('Job Settings');
+            if (isSystemJob) {
+                title = t('System Job Settings');
+            }
+        }
         return (
-            <Panel title={isEdit ? t('Job Settings') : t('Create Job')}>
+            <Panel title={title}>
                 <ImportExportModalDialog
                     visible={this.state.importExportModalShown}
                     onClose={() => {
@@ -371,9 +383,11 @@ export default class CUD extends Component {
                         return JSON.stringify(params, null, 2);
                     }}
                     onImport={code => {
-                        const data = {};
-                        this.paramTypes.setFields(configSpec, code, data);
-                        this.populateFormValues(data);
+                        if (!isSystemJob) {
+                            const data = {};
+                            this.paramTypes.setFields(configSpec, code, data);
+                            this.populateFormValues(data);
+                        }
                         this.setState({importExportModalShown: false});
                     }}
                 />
@@ -389,8 +403,9 @@ export default class CUD extends Component {
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
-                    <InputField id="name" label={t('Name')}/>
-                    <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}/>
+                    <InputField id="name" label={t('Name')} disabled={isSystemJob}/>
+                    <TextArea id="description" label={t('Description')} help={t('HTML is allowed')}
+                              disabled={isSystemJob}/>
 
 
                     {this.state.builtinTasks ? (
@@ -409,14 +424,23 @@ export default class CUD extends Component {
                         <Dropdown id="task" label={t('Task')} options={builtinTaskOptions} disabled={isEdit}/>
                     }
 
-                    <Dropdown id="state" label={t('State')} options={stateOptions}/>
-                    <NamespaceSelect/>
+                    <Dropdown id="state" label={t('State')} options={stateOptions} disabled={isSystemJob}/>
+
+                    {!isSystemJob ?
+                        <NamespaceSelect/>
+                        :
+                        <StaticField key={'namespace'} id={'namespace'} label={t('Namespace')} >
+                            {t('Virtual')}
+                        </StaticField>
+                    }
+
                     <Fieldset id="triggers" label={t('Triggers')}>
                         <InputField id="trigger" label={t('Periodic trigger')}
-                                    placeholder="Automatic trigger time in seconds"/>
+                                    placeholder="Automatic trigger time in seconds" disabled={isSystemJob}/>
                         <InputField id="min_gap" label={t('Minimal interval')}
-                                    placeholder="Minimal time between runs in seconds"/>
-                        <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"/>
+                                    placeholder="Minimal time between runs in seconds" disabled={isSystemJob}/>
+                        <InputField id="delay" label={t('Delay')} placeholder="Delay before triggering in seconds"
+                                    disabled={isSystemJob}/>
                     </Fieldset>
 
                     <ListCreator
@@ -433,6 +457,7 @@ export default class CUD extends Component {
                             />
                         }
                         initValues={signal_sets_triggers}
+                        disabled={isSystemJob}
                     />
 
                     {configSpec ?
@@ -453,6 +478,7 @@ export default class CUD extends Component {
                         <div className="alert alert-info" role="alert">{t('Loading task...')}</div>
                     }
 
+                    {!isSystemJob &&
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
@@ -465,6 +491,7 @@ export default class CUD extends Component {
                             to={`/settings/jobs/${this.props.entity.id}/delete`}
                         />}
                     </ButtonRow>
+                    }
                 </Form>
             </Panel>
         );

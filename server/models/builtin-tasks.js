@@ -4,13 +4,12 @@ const knex = require('../lib/knex');
 const path = require('path');
 const fs = require('fs-extra-promise');
 const {getVirtualNamespaceId} = require("../../shared/namespaces");
-const {TaskSource, BuildState, TaskType, PYTHON_BUILTIN_CODE_FILE_NAME} = require("../../shared/tasks");
+const {BuiltinTaskNames, TaskSource, BuildState, TaskType, PYTHON_BUILTIN_CODE_FILE_NAME} = require("../../shared/tasks");
 const em = require('../lib/extension-manager');
 
 // code is loaded from file
-
 const aggregationTask = {
-    name: 'aggregation',
+    name: BuiltinTaskNames.AGGREGATION,
     description: 'Task used by aggregation feature for signal sets',
     type: TaskType.PYTHON,
     settings: {
@@ -42,9 +41,10 @@ const aggregationTask = {
 };
 
 const flattenTask = {
-    name: 'Flatten',
+    name: BuiltinTaskNames.FLATTEN,
     description: 'Task will combine specified signals into single signal set and resolve conflicts on the same time point with the chosen method',
     type: TaskType.PYTHON,
+    source: TaskSource.SYSTEM,
     settings: {
         builtin_reinitOnUpdate: true,
         params: [
@@ -131,26 +131,12 @@ const flattenTask = {
     },
 };
 
-const systemTask = {
-    name: 'system',
-    description: 'Test system task',
-    type: TaskType.PYTHON,
-    source: TaskSource.SYSTEM,
-    settings: {
-        builtin_reinitOnUpdate: true,
-        params: [],
-        code: ""
-    },
-};
-
-
 /**
  * All default builtin tasks
  */
 const builtinTasks = [
     aggregationTask,
     flattenTask,
-    systemTask,
 ];
 
 em.on('builtinTasks.add', addTasks);

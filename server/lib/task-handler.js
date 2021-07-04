@@ -20,6 +20,7 @@ const {
     PYTHON_JOB_FILE_NAME
 } = require('../../shared/tasks');
 const {storeBuiltinTasks, list} = require('../models/builtin-tasks');
+const {storeSystemJobs, list: listSystemJobs} = require('../models/system-jobs');
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
 const {emitter: taskEmitter} = require('./task-events');
@@ -79,7 +80,7 @@ async function init() {
     }
 
     try {
-        await initBuiltin();
+        await initBuiltinAndSystemTasks();
     } catch (err) {
         log.error(LOG_ID, err);
     }
@@ -254,9 +255,17 @@ async function initIndices() {
 
 }
 
-async function initBuiltin() {
-    await storeBuiltinTasks();
+async function initBuiltinAndSystemTasks() {
+    await initBuiltinTasks();
+    await storeSystemJobs();
+}
 
+/**
+ * Initialize system and builtin tasks
+ * @returns {Promise<void>}
+ */
+async function initBuiltinTasks(){
+    await storeBuiltinTasks();
     // Copy the builtin-files to dist folder
     const builtinTaskFilesDir = path.join(__dirname, '..', 'builtin-files');
     const builtinTasks = await list();

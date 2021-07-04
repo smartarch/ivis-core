@@ -60,6 +60,11 @@ const WizardType = {
     MODEL_COMPARISON: 'model_comparison'
 };
 
+const BuiltinTaskNames = {
+    AGGREGATION: "aggregation",
+    FLATTEN: "flatten",
+}
+
 module.exports = {
     TaskType,
     subtypesByType,
@@ -73,5 +78,6 @@ module.exports = {
     PYTHON_JOB_FILE_NAME,
     PYTHON_BUILTIN_CODE_FILE_NAME,
     WizardType,
-    isBuiltinSource
+    isBuiltinSource,
+    BuiltinTaskNames
 };
