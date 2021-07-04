@@ -35,6 +35,10 @@ const TaskSource = {
     SYSTEM: 'system'
 };
 
+function isBuiltinSource(taskSource) {
+    return taskSource === TaskSource.BUILTIN || taskSource === TaskSource.SYSTEM;
+}
+
 function getFinalStates() {
     return [BuildState.FINISHED, BuildState.FAILED, BuildState.UNINITIALIZED];
 }
@@ -56,6 +60,11 @@ const WizardType = {
     MODEL_COMPARISON: 'model_comparison'
 };
 
+const BuiltinTaskNames = {
+    AGGREGATION: "aggregation",
+    FLATTEN: "flatten",
+}
+
 module.exports = {
     TaskType,
     subtypesByType,
@@ -68,5 +77,7 @@ module.exports = {
     isTransitionState,
     PYTHON_JOB_FILE_NAME,
     PYTHON_BUILTIN_CODE_FILE_NAME,
-    WizardType
+    WizardType,
+    isBuiltinSource,
+    BuiltinTaskNames
 };
