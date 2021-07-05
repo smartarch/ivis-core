@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const {  TaskType, PythonSubtypes} = require("../../../shared/tasks");
+const { TaskType, PythonSubtypes, TaskSource } = require("../../../shared/tasks");
 
 // training
 const trainingPath = path.join(__dirname, 'training', 'task.py'); // relative path
@@ -13,6 +13,7 @@ const trainingTask = {
     name: 'Neural Network Training',
     description: 'TODO', // TODO (MT)
     type: TaskType.PYTHON,
+    source: TaskSource.SYSTEM,
     settings: {
         params: trainingParams,
         code: trainingCode,
@@ -29,6 +30,7 @@ const predictionTask = {
     name: 'Neural Network Prediction',
     description: 'TODO', // TODO (MT)
     type: TaskType.PYTHON,
+    source: TaskSource.SYSTEM,
     settings: {
         params: predictionParams,
         code: predictionCode,
