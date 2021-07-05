@@ -164,7 +164,7 @@ export default class ParamTypes {
             render: (self, prefix, spec, disabled) => <InputField key={spec.id}
                                                                   id={this.getParamFormId(prefix, spec.id)}
                                                                   label={spec.label} help={spec.help}
-                                                                  disabled={disabled}/>, // TODO(MT): check if `spec.disabled` works
+                                                                  disabled={disabled}/>,
             upcast: upcastString
         };
 
@@ -617,13 +617,13 @@ export default class ParamTypes {
 
                         const childFields = [];
                         for (const childSpec of spec.children) {
-                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, childSpec, disabled)); // TODO(MT): || spec.disabled
+                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, childSpec, disabled || spec.disabled));
                         }
 
                         fields.push(
                             <div key={card.max === 1 ? 'singleton' : entryId}
                                  className={styles.entry + (disabled || (card.max === 1 && card.min === 1) ? '' : ' ' + styles.entryWithButtons)}>
-                                {!disabled && !(card.min === 1 && card.max === 1) &&  // TODO(MT): && !spec.disabled
+                                {!disabled && !(card.min === 1 && card.max === 1) &&
                                 <div className={styles.entryButtons}>
                                     {((card.max === 1 && childEntries) || childEntries.length > card.min) &&
                                     <Button
@@ -699,7 +699,7 @@ export default class ParamTypes {
                         }
                     }
 
-                    if (!disabled && (( card.max === 1 && !childEntries) || childEntries.length < card.max)) { // TODO(MT): spec.disabled
+                    if (!disabled && (( card.max === 1 && !childEntries) || childEntries.length < card.max)) {
                         fields.push(
                             <div key="newEntry" className={styles.newEntry}>
                                 <Button
@@ -818,13 +818,13 @@ export default class ParamTypes {
 
         if (Array.isArray(configSpec)) {
             for (const spec of configSpec) {
-                const field = this.getSanitizedParamType(spec.type).render(self, '/', spec, disabled);
+                const field = this.getSanitizedParamType(spec.type).render(self, '/', spec, disabled || spec.disabled);
                 if (field) {
                     params.push(field);
                 }
             }
         } else {
-            const field = this.getSanitizedParamType(configSpec.type).render(self, null, configSpec, disabled);
+            const field = this.getSanitizedParamType(configSpec.type).render(self, null, configSpec, disabled || configSpec.disabled);
             if (field) {
                 params.push(field);
             }
