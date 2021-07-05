@@ -4,4 +4,4 @@ These use the IVIS core time series forecasting using neural networks (`ivis.nn`
 
 TODO (MT): improve this readme
 
-TODO (MT): remove the example params after development is finished
+TODO (MT): remove the example params after development is finished (in builtin-files)

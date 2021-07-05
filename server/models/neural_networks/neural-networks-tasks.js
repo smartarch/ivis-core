@@ -4,10 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { TaskType, PythonSubtypes, TaskSource } = require("../../../shared/tasks");
 
-// training
-const trainingPath = path.join(__dirname, 'training', 'task.py'); // relative path
-const trainingCode = fs.readFileSync(trainingPath, 'utf-8');
-const trainingParams = require('./training/params.json');
+// code and params are in the 'builtin-files' folder
 
 const trainingTask = {
     name: 'Neural Network Training',
@@ -15,16 +12,9 @@ const trainingTask = {
     type: TaskType.PYTHON,
     source: TaskSource.SYSTEM,
     settings: {
-        params: trainingParams,
-        code: trainingCode,
         subtype: PythonSubtypes.NEURAL_NETWORK,
     },
 };
-
-// prediction
-const predictionPath = path.join(__dirname, 'prediction', 'prediction.py'); // relative path
-const predictionCode = fs.readFileSync(predictionPath, 'utf-8');
-const predictionParams = [];
 
 const predictionTask = {
     name: 'Neural Network Prediction',
@@ -32,8 +22,7 @@ const predictionTask = {
     type: TaskType.PYTHON,
     source: TaskSource.SYSTEM,
     settings: {
-        params: predictionParams,
-        code: predictionCode,
+        params: [],
         subtype: PythonSubtypes.NEURAL_NETWORK,
     },
 };
