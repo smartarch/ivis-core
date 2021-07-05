@@ -7,7 +7,8 @@ import { withTranslation } from "../../lib/i18n";
 import { withAsyncErrorHandler, withErrorHandling } from "../../lib/error-handling";
 import { Panel } from "../../lib/panel";
 import { Table } from "../../lib/table";
-import { Toolbar, LinkButton, requiresAuthenticatedUser } from "../../lib/page";
+import {Toolbar, LinkButton, requiresAuthenticatedUser, DropdownLink} from "../../lib/page";
+import {ButtonDropdown} from "../../lib/bootstrap-components";
 
 @withComponentMixins([
     withTranslation,
@@ -96,13 +97,10 @@ export default class PredictionsList extends Component {
                     <LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/compare`} className="btn-primary"
                         //icon="plus"
                         label={t('Compare models')} />
-                    <LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/arima/create`} className="btn-primary"
-                        icon="plus"
-                        label={t('Add ARIMA model')} />
-                    <LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/neural_network/create`}
-                                className="btn-primary"
-                                icon="plus"
-                                label={t('Add Neural Network model')} />
+                    <ButtonDropdown id={"add_model"} label={t('Add model')} buttonClassName={"btn-primary"} menuClassName={"dropdown-menu-right"} icon={"plus"}>
+                        <DropdownLink to={`/settings/signal-sets/${sigSetId}/predictions/arima/create`}>{t('ARIMA')}</DropdownLink>
+                        <DropdownLink to={`/settings/signal-sets/${sigSetId}/predictions/neural_network/create`}>{t('Neural network')}</DropdownLink>
+                    </ButtonDropdown>
                 </Toolbar>
 
                 <Table ref={node => this.table = node} withHeader
