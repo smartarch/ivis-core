@@ -122,9 +122,9 @@ export default class ParamTypes {
                     }
                 }
             },
-            render: (self, prefix, spec) => <ACEEditor key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                       label={spec.label} help={spec.help} mode={mode}
-                                                       height={spec.height} readOnly={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <ACEEditor key={spec.id} id={this.getParamFormId(prefix, spec.id)}
+                                                                 label={spec.label} help={spec.help} mode={mode}
+                                                                 height={spec.height} readOnly={disabled}/>,
             upcast: upcastString
         });
 
@@ -143,9 +143,9 @@ export default class ParamTypes {
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
             },
-            render: (self, prefix, spec) => <CheckBox key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                      label={spec.label} text="" help={spec.help}
-                                                      disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <CheckBox key={spec.id} id={this.getParamFormId(prefix, spec.id)}
+                                                                label={spec.label} text="" help={spec.help}
+                                                                disabled={disabled}/>,
             upcast: (spec, value) => ensureBoolean(spec, value)
         };
 
@@ -161,8 +161,10 @@ export default class ParamTypes {
                     state.setIn([formId, 'error'], t('Input is required'));
                 }
             },
-            render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                        label={spec.label} help={spec.help} disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <InputField key={spec.id}
+                                                                  id={this.getParamFormId(prefix, spec.id)}
+                                                                  label={spec.label} help={spec.help}
+                                                                  disabled={disabled}/>, // TODO(MT): check if `spec.disabled` works
             upcast: upcastString
         };
 
@@ -179,8 +181,11 @@ export default class ParamTypes {
                     state.setIn([formId, 'error'], t('Please enter an integer'));
                 }
             },
-            render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                        label={spec.label} help={spec.help} disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <InputField key={spec.id}
+                                                                  id={this.getParamFormId(prefix, spec.id)}
+                                                                  label={spec.label} help={spec.help}
+                                                                  disabled={disabled}
+            />,
             upcast: (spec, value) => Number.parseInt(value)
         };
         this.paramTypes.number = this.paramTypes.integer; // for backwards compatibility
@@ -197,8 +202,10 @@ export default class ParamTypes {
                     state.setIn([formId, 'error'], t('Please enter a number'));
                 }
             },
-            render: (self, prefix, spec) => <InputField key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                        label={spec.label} help={spec.help} disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <InputField key={spec.id}
+                                                                  id={this.getParamFormId(prefix, spec.id)}
+                                                                  label={spec.label} help={spec.help}
+                                                                  disabled={disabled}/>,
             upcast: (spec, value) => Number.parseFloat(value)
         };
 
@@ -209,8 +216,9 @@ export default class ParamTypes {
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
             },
-            render: (self, prefix, spec) => <TextArea key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                      label={spec.label} help={spec.help} disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <TextArea key={spec.id} id={this.getParamFormId(prefix, spec.id)}
+                                                                label={spec.label} help={spec.help}
+                                                                disabled={disabled}/>,
             upcast: upcastString
         };
 
@@ -235,9 +243,9 @@ export default class ParamTypes {
                     state.setIn([formId, 'error'], t('Option is not allowed.'));
                 }
             },
-            render: (self, prefix, spec) => <Dropdown key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                      label={spec.label} help={spec.help} options={spec.options}
-                                                      disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <Dropdown key={spec.id} id={this.getParamFormId(prefix, spec.id)}
+                                                                label={spec.label} help={spec.help}
+                                                                options={spec.options} disabled={disabled}/>,
             upcast: (spec, value) => ensureOption(spec.options, value)
         };
 
@@ -250,9 +258,11 @@ export default class ParamTypes {
             getParams: getParamsFromField,
             validate: (prefix, spec, state) => {
             },
-            render: (self, prefix, spec) => <ColorPicker key={spec.id} id={this.getParamFormId(prefix, spec.id)}
-                                                         label={spec.label} help={spec.help}
-                                                         disabled={spec.disabled}/>,
+            render: (self, prefix, spec, disabled) => <ColorPicker key={spec.id}
+                                                                   id={this.getParamFormId(prefix, spec.id)}
+                                                                   label={spec.label} help={spec.help}
+                                                                   disabled={disabled}
+            />,
             upcast: (spec, value) => {
                 const col = ensureColor(spec, value);
                 return rgb(col.r, col.g, col.b, col.a);
@@ -277,7 +287,7 @@ export default class ParamTypes {
                     state.setIn([formId, 'error'], t('Exactly one item has to be selected'));
                 }
             },
-            render: (self, prefix, spec) => {
+            render: (self, prefix, spec, disabled) => {
                 const signalColumns = [
                     {data: 1, title: t('Id')},
                     {data: 2, title: t('Name')},
@@ -298,7 +308,7 @@ export default class ParamTypes {
                     selectionLabelIndex={2}
                     selectionKeyIndex={1}
                     dataUrl="rest/signal-sets-table"
-                    disabled={spec.disabled}
+                    disabled={disabled}
                 />;
             },
             upcast: (spec, value) => ensureSelection({min: 1, max: 1}, value)
@@ -342,7 +352,7 @@ export default class ParamTypes {
                 }
 
             },
-            render: (self, prefix, spec) => {
+            render: (self, prefix, spec, disabled) => {
                 let signalSetCid = spec.signalSet;
                 if (spec.signalSetRef) {
                     const signalSetFormId = this.getParamFormId(prefix, spec.signalSetRef);
@@ -365,7 +375,6 @@ export default class ParamTypes {
                     filterByType = [null, null, null, types, null, null]; // this should have the same length as signalColumns
                 }
 
-                console.log('rendering')
                 if (signalSetCid) {
                     return <TableSelect
                         key={spec.id}
@@ -380,7 +389,7 @@ export default class ParamTypes {
                         selectionKeyIndex={1}
                         dataUrl={`rest/signals-table-by-cid/${signalSetCid}`}
                         searchCols={filterByType}
-                        disabled={spec.disabled}
+                        disabled={disabled}
                     />;
                 } else {
                     return (
@@ -568,7 +577,7 @@ export default class ParamTypes {
                     }
                 }
             },
-            render: (self, prefix, spec) => {
+            render: (self, prefix, spec, disabled) => {
                 const card = parseCardinality(spec.cardinality);
                 const formId = this.getParamFormId(prefix, spec.id);
 
@@ -608,16 +617,13 @@ export default class ParamTypes {
 
                         const childFields = [];
                         for (const childSpec of spec.children) {
-                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, {
-                                disabled: spec.disabled,
-                                ...childSpec,
-                            }));
+                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, childSpec, disabled)); // TODO(MT): || spec.disabled
                         }
 
                         fields.push(
                             <div key={card.max === 1 ? 'singleton' : entryId}
-                                 className={styles.entry + (card.max === 1 && card.min === 1 ? '' : ' ' + styles.entryWithButtons)}>
-                                {!(card.min === 1 && card.max === 1) && !spec.disabled &&
+                                 className={styles.entry + (disabled || (card.max === 1 && card.min === 1) ? '' : ' ' + styles.entryWithButtons)}>
+                                {!disabled && !(card.min === 1 && card.max === 1) &&  // TODO(MT): && !spec.disabled
                                 <div className={styles.entryButtons}>
                                     {((card.max === 1 && childEntries) || childEntries.length > card.min) &&
                                     <Button
@@ -693,7 +699,7 @@ export default class ParamTypes {
                         }
                     }
 
-                    if (((card.max === 1 && !childEntries) || childEntries.length < card.max) && !spec.disabled) {
+                    if (!disabled && (( card.max === 1 && !childEntries) || childEntries.length < card.max)) { // TODO(MT): spec.disabled
                         fields.push(
                             <div key="newEntry" className={styles.newEntry}>
                                 <Button
@@ -807,18 +813,18 @@ export default class ParamTypes {
         }
     }
 
-    render(configSpec, self) {
+    render(configSpec, self, disabled) {
         const params = [];
 
         if (Array.isArray(configSpec)) {
             for (const spec of configSpec) {
-                const field = this.getSanitizedParamType(spec.type).render(self, '/', spec);
+                const field = this.getSanitizedParamType(spec.type).render(self, '/', spec, disabled);
                 if (field) {
                     params.push(field);
                 }
             }
         } else {
-            const field = this.getSanitizedParamType(configSpec.type).render(self, null, configSpec);
+            const field = this.getSanitizedParamType(configSpec.type).render(self, null, configSpec, disabled);
             if (field) {
                 params.push(field);
             }
@@ -883,7 +889,7 @@ export default class ParamTypes {
                 },
                 onChange: (prefix, spec, state, key, oldVal, newVal) => {
                 },
-                render: (self, prefix, spec) => {
+                render: (self, prefix, spec, disabled) => {
                 },
                 upcast: value => null
             };

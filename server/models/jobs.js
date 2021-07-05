@@ -9,12 +9,28 @@ const namespaceHelpers = require('../lib/namespace-helpers');
 const contextHelpers = require('../lib/context-helpers');
 const shares = require('./shares');
 const {RunStatus} = require('../../shared/jobs');
+const {TaskSource} = require('../../shared/tasks');
 const jobHandler = require('../lib/task-handler');
 const signalSets = require('./signal-sets');
 const allowedKeys = new Set(['name', 'description', 'task', 'params', 'state', 'trigger', 'min_gap', 'delay', 'namespace']);
+const {getVirtualNamespaceId} = require('../../shared/namespaces');
+
+const columns = ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name', 'tasks.source'];
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, allowedKeys));
+}
+
+function getQueryFun(taskSource) {
+    if (!Array.isArray(taskSource)) {
+        taskSource = [taskSource];
+    }
+
+    return builder => builder
+        .from('jobs')
+        .innerJoin('tasks', 'tasks.id', 'jobs.task')
+        .whereIn('tasks.source', taskSource)
+        .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace')
 }
 
 /**
@@ -25,8 +41,13 @@ function hash(entity) {
  */
 async function getById(context, id) {
     return await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
         const entity = await tx('jobs').where('id', id).first();
+
+        if (entity && entity.namespace === getVirtualNamespaceId()) {
+            shares.enforceGlobalPermission(context, 'viewSystemJobs');
+        } else {
+            await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
+        }
         entity.params = JSON.parse(entity.params);
         entity.permissions = await shares.getPermissionsTx(tx, context, 'job', id);
         const triggs = await tx('job_triggers').select('signal_set').where('job', id);
@@ -46,9 +67,10 @@ async function getByIdWithTaskParams(context, id) {
 
         const job = await getById(context, id);
 
-        let settings = await tx('tasks').select('settings').where({id: job.task}).first();
-        settings = JSON.parse(settings.settings);
+        let task = await tx('tasks').select('settings', 'source').where({id: job.task}).first();
+        const settings = JSON.parse(task.settings);
         job.taskParams = settings.params;
+        job.taskSource = task.source;
         return job;
     });
 }
@@ -82,35 +104,55 @@ async function listByTaskDTAjax(context, taskId, params) {
     );
 }
 
+async function listSystemDTAjax(context, params) {
+    shares.enforceGlobalPermission(context, 'viewSystemJobs');
+    return await dtHelpers.ajaxList(
+        params,
+        getQueryFun(TaskSource.SYSTEM),
+        columns
+    );
+}
+
 async function listDTAjax(context, params) {
     return await dtHelpers.ajaxListWithPermissions(
         context,
         [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
-        builder => builder
-            .from('jobs')
-            .innerJoin('tasks', 'tasks.id', 'jobs.task')
-            .innerJoin('namespaces', 'namespaces.id', 'jobs.namespace'),
-        ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name']
+        getQueryFun([TaskSource.BUILTIN, TaskSource.USER]),
+        columns
     );
 }
 
 async function listRunsDTAjax(context, id, params) {
     return await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
+        const job = await tx('jobs').where('id', id).first();
+        enforce(job != null, "Job doesn't exists")
 
-        return await dtHelpers.ajaxListWithPermissionsTx(
-            tx,
-            context,
-            [{entityTypeId: 'job', requiredOperations: ['delete']}],
-            params,
+        const columns = ['job_runs.id', 'job_runs.job', 'job_runs.started_at', 'job_runs.finished_at', 'job_runs.status']
+        const queryFun =
             builder => builder
                 .from('job_runs')
                 .innerJoin('jobs', 'job_runs.job', 'jobs.id')
                 .where({'jobs.id': id})
-                .orderBy('job_runs.id', 'desc'),
-            ['job_runs.id', 'job_runs.job', 'job_runs.started_at', 'job_runs.finished_at', 'job_runs.status']
-        );
+                .orderBy('job_runs.id', 'desc');
+
+        if (job.namespace !== getVirtualNamespaceId()) {
+            await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
+
+            return await dtHelpers.ajaxListWithPermissionsTx(
+                tx,
+                context,
+                [{entityTypeId: 'job', requiredOperations: ['delete']}],
+                params,
+                queryFun,
+                columns
+            );
+        } else {
+            return await dtHelpers.ajaxListTx(tx,
+                params,
+                queryFun,
+                columns);
+        }
     });
 }
 
@@ -355,6 +397,7 @@ module.exports.getById = getById;
 module.exports.getByIdWithTaskParams = getByIdWithTaskParams;
 module.exports.getRunById = getRunById;
 module.exports.listDTAjax = listDTAjax;
+module.exports.listSystemDTAjax = listSystemDTAjax;
 module.exports.listRunsDTAjax = listRunsDTAjax;
 module.exports.listOwnedSignalSetsDTAjax = listOwnedSignalSetsDTAjax;
 module.exports.listRunningDTAjax = listRunningDTAjax;
