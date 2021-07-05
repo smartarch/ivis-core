@@ -609,7 +609,7 @@ export default class ParamTypes {
 
                         const childFields = [];
                         for (const childSpec of spec.children) {
-                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, childSpec, disabled));
+                            childFields.push(this.getSanitizedParamType(childSpec.type).render(self, childPrefix, childSpec, disabled || spec.disabled));
                         }
 
                         fields.push(
@@ -808,13 +808,13 @@ export default class ParamTypes {
 
         if (Array.isArray(configSpec)) {
             for (const spec of configSpec) {
-                const field = this.getSanitizedParamType(spec.type).render(self, '/', spec, disabled);
+                const field = this.getSanitizedParamType(spec.type).render(self, '/', spec, disabled || spec.disabled);
                 if (field) {
                     params.push(field);
                 }
             }
         } else {
-            const field = this.getSanitizedParamType(configSpec.type).render(self, null, configSpec, disabled);
+            const field = this.getSanitizedParamType(configSpec.type).render(self, null, configSpec, disabled || configSpec.disabled);
             if (field) {
                 params.push(field);
             }
