@@ -305,7 +305,14 @@ def train_model(params) -> ModelWrapper:
     if autoarima:
         logging.info(f"Training model with pmdarima.auto_arima")
         m = params.seasonal_m if params.is_seasonal else 1  # 1 means non-seasonal
-        model = pmd.auto_arima(val_train, m=m)
+
+        # For higher seasonality, we use our imlementation of auto_arima, that
+        # is slower, but does not crash when some of the models that are tried
+        # to fit takes too much memory
+        if m > 12:
+            model = ar.auto_arima(val_train, m=m)
+        else:
+            model = pmd.auto_arima(val_train, m=m)
     else:
         order = params.arima_order
         seasonal_order = params.seasonal_order
