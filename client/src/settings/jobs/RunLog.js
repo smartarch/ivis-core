@@ -81,7 +81,7 @@ export default class Log extends Component {
                         link: `/settings/jobs/${data[1]}/log/${data[0]}`
                     });
 
-                    if (this.props.job.namespace !== getVirtualNamespaceId()) {
+                    if (job.namespace !== getVirtualNamespaceId()) {
                         tableAddDeleteButton(actions, this, null, `rest/jobs/${job.id}/run/${data[0]}`, data[0], t('Deleting run ...'), t('Run deleted'));
                     }
                     return {undefined, actions};

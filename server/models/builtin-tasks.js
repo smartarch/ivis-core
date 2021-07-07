@@ -4,7 +4,7 @@ const knex = require('../lib/knex');
 const path = require('path');
 const fs = require('fs-extra-promise');
 const {getVirtualNamespaceId} = require("../../shared/namespaces");
-const {BuiltinTaskNames, TaskSource, BuildState, TaskType, PYTHON_BUILTIN_CODE_FILE_NAME} = require("../../shared/tasks");
+const {BuiltinTaskNames, TaskSource, BuildState, TaskType, PYTHON_BUILTIN_CODE_FILE_NAME, PYTHON_BUILTIN_PARAMS_FILE_NAME} = require("../../shared/tasks");
 const em = require('../lib/extension-manager');
 
 // code is loaded from file
@@ -215,6 +215,10 @@ async function storeBuiltinTasks() {
             // WARN mutating
             builtinTask.settings.code = await getCodeForBuiltinTask(builtinTask.name);
         }
+        if (builtinTask.settings.params == null) {
+            // WARN mutating
+            builtinTask.settings.params = await getParamsForBuiltinTask(builtinTask.name);
+        }
     }
     await addTasks(builtinTasks);
 }
@@ -226,6 +230,16 @@ async function getCodeForBuiltinTask(taskName) {
         return await fs.readFileAsync(builtinCodeFile, 'utf-8')
     }
     return '';
+}
+
+async function getParamsForBuiltinTask(taskName) {
+    const builtinParamsFile = path.join(__dirname, '..', 'builtin-files', taskName, PYTHON_BUILTIN_PARAMS_FILE_NAME);
+    const hasParams = await fs.existsAsync(builtinParamsFile);
+    if (hasParams) {
+        const params = await fs.readFileAsync(builtinParamsFile, 'utf-8')
+        return JSON.parse(params)
+    }
+    return [];
 }
 
 /**
