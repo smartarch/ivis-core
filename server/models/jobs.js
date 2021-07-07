@@ -206,7 +206,7 @@ async function create(context, job) {
         await namespaceHelpers.validateEntity(tx, job);
 
         const exists = await tx('tasks').where({id: job.task}).first();
-        enforce(exists != null, 'Task doesn\'t exists');
+        enforce(exists != null && exists.source !== TaskSource.SYSTEM, 'Task doesn\'t exists');
 
         const filteredEntity = filterObject(job, allowedKeys);
         filteredEntity.params = JSON.stringify(filteredEntity.params);
