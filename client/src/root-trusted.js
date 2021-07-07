@@ -53,9 +53,10 @@ import SignalSetAggregations from './settings/signal-sets/Aggregations';
 import AggregationsCUD from './settings/signal-sets/AggregationsCUD';
 import SignalSetPredictions from './settings/signal-sets/Predictions';
 import PredictionsArimaCUD from './settings/signal-sets/PredictionsArimaCUD';
-import PredictionsNNCUD from './settings/signal-sets/PredictionsNNCUD';
+import PredictionsNNCUD from './settings/signal-sets/neural_networks/CUD';
 import PredictionsCompare from './settings/signal-sets/PredictionsCompare';
 import ArimaOverview from './settings/signal-sets/ArimaOverview';
+import NNOverview from './settings/signal-sets/neural_networks/Overview';
 import RecordsList from './settings/signal-sets/RecordsList';
 import RecordsCUD from './settings/signal-sets/RecordsCUD';
 
@@ -570,21 +571,20 @@ const getStructure = t => {
                                                         link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/create`,
                                                         panelRender: props => <PredictionsNNCUD signalSet={props.resolved.signalSet} action="create" />,
                                                     },
-                                                    /* TODO (MT)
                                                     ':modelId([0-9]+)': {
                                                         title: t('Neural Network model overview'),
                                                         link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/${params.modelId}`,
                                                         resolve: {
-                                                            prediction: params => `rest/predictions/${params.modelId}`
+                                                            prediction: params => `rest/predictions/${params.modelId}`,
+                                                            jobs: params => `rest/predictions-nn-jobs/${params.modelId}`,
                                                         },
-                                                        // visible: resolved => false && resolved, // isn't really shown anywhere
-                                                        panelRender: props => <ArimaOverview
+                                                        panelRender: props => <NNOverview
                                                             signalSet={props.resolved.signalSet}
                                                             predictionId={props.match.params.modelId}
                                                             prediction={props.resolved.prediction}
+                                                            jobs={props.resolved.jobs}
                                                             action="create" />,
                                                     }
-                                                    */
                                                 }
                                             },
                                             'compare': {

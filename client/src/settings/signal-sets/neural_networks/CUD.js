@@ -1,11 +1,11 @@
 'use strict';
 
 import React, { Component } from "react";
-import { Panel } from "../../lib/panel";
-import { requiresAuthenticatedUser, withPageHelpers } from "../../lib/page";
-import { withComponentMixins } from "../../lib/decorator-helpers";
-import { withTranslation } from "../../lib/i18n";
-import { withErrorHandling } from "../../lib/error-handling";
+import { Panel } from "../../../lib/panel";
+import { requiresAuthenticatedUser, withPageHelpers } from "../../../lib/page";
+import { withComponentMixins } from "../../../lib/decorator-helpers";
+import { withTranslation } from "../../../lib/i18n";
+import { withErrorHandling } from "../../../lib/error-handling";
 import {
     Button,
     ButtonRow,
@@ -17,14 +17,14 @@ import {
     FormSendMethod,
     InputField,
     withForm
-} from "../../lib/form";
-import ParamTypes from "../ParamTypes";
-import {SignalType} from "../../../../shared/signals";
-import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators";
+} from "../../../lib/form";
+import ParamTypes from "../../ParamTypes";
+import {SignalType} from "../../../../../shared/signals";
+import {isSignalSetAggregationIntervalValid} from "../../../../../shared/validators";
 import moment from "moment";
-import paramTypesStyles from "../ParamTypes.scss";
-import * as dateMath from "../../lib/datemath";
-import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../shared/predictions-nn";
+import paramTypesStyles from "../../ParamTypes.scss";
+import * as dateMath from "../../../lib/datemath";
+import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
 
 const parseDate = (str, end) => {
     const date = dateMath.parse(str, end);

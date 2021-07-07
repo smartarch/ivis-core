@@ -6,6 +6,7 @@ const signalSets = require('../../models/signal-sets');
 const signalSetsAggregations = require('../../models/signal-set-aggregations');
 const signalSetsPredictions = require('../../models/signal-set-predictions');
 const arima = require('../../models/predictions-arima');
+const nn = require('../../models/predictions-nn')
 const panels = require('../../models/panels');
 const templates = require('../../models/templates');
 const users = require('../../models/users');
@@ -35,6 +36,12 @@ router.getAsync('/predictions-arima-job-state/:predictionId', passport.loggedIn,
     const arimaJobState = await arima.getJobState(req.context, predictionId);
 
     return res.json(await arimaJobState);
+});
+
+router.getAsync('/predictions-nn-jobs/:predictionId', passport.loggedIn, async (req, res) => {
+    const predictionId = castToInteger(req.params.predictionId);
+    const predictionJobs = await nn.getJobsIds(req.context, predictionId);
+    return res.json(predictionJobs);
 });
 
 module.exports = router;

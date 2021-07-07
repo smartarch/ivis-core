@@ -6,7 +6,9 @@ const predictions = require('./signal-set-predictions');
 const {JobState} = require("../../shared/jobs");
 const {getBuiltinTask} = require("./builtin-tasks");
 const jobs = require('./jobs');
+const {NN_TRAINING_TASK_NAME, NN_PREDICTION_TASK_NAME} = require("./neural_networks/neural-networks-tasks");
 const { PredictionTypes} = require('../../shared/predictions');
+const { enforceEntityPermission } = require('./shares');
 
 async function createNNModelTx(tx, context, sigSetId, params) {
 
@@ -136,4 +138,33 @@ async function createNNModel(context, sigSetId, params) {
     });
 }
 
+async function getJobsIds(context, predictionId) {
+    await enforceEntityPermission(context, 'prediction', predictionId, 'view');
+
+    const prediction = await predictions.getById(context, predictionId);
+
+    // check that it is NN
+    enforce(prediction.type === PredictionTypes.NN, "Is not a Neural network model.");
+
+    // Get the ids of the jobs
+    const jobs = await knex.transaction(async tx => {
+        return tx('predictions_jobs')
+            .join('jobs', 'predictions_jobs.job', 'jobs.id')
+            .join('tasks', 'jobs.task', 'tasks.id')
+            .where('prediction', predictionId)
+            .select('jobs.id', 'tasks.name');
+    });
+
+    const trainingJob = jobs.find(j => j.name === NN_TRAINING_TASK_NAME);
+    enforce(trainingJob, 'Training job not found');
+    const predictionJob = jobs.find(j => j.name === NN_PREDICTION_TASK_NAME);
+    enforce(predictionJob, 'Prediction job not found');
+
+    return {
+        training: trainingJob.id,
+        prediction: predictionJob.id,
+    }
+}
+
 module.exports.create = createNNModel;
+module.exports.getJobsIds = getJobsIds;

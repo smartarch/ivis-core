@@ -51,6 +51,11 @@ router.getAsync('/jobs/:jobId/run/:runId', passport.loggedIn, async (req, res) =
     return res.json(run);
 });
 
+router.getAsync('/jobs/:jobId/last-run', passport.loggedIn, async (req, res) => {
+    const run = await jobs.getLastRun(req.context, castToInteger(req.params.jobId));
+    return res.json(run || null);
+});
+
 router.deleteAsync('/jobs/:jobId/run/:runId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     await jobs.removeRun(req.context, castToInteger(req.params.jobId), castToInteger(req.params.runId));
     return res.json();

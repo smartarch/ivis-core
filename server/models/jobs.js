@@ -89,6 +89,19 @@ async function getRunById(context, jobId, runId) {
     });
 }
 
+/**
+ * Return the run with latest start time for a given job.
+ * @param context
+ * @param jobId the primary key of the job
+ * @returns {Promise<any>}
+ */
+async function getLastRun(context, jobId) {
+    return await knex.transaction(async tx => {
+        await shares.enforceEntityPermissionTx(tx, context, 'job', jobId, 'view');
+        return await tx('job_runs').where('job', jobId).orderBy('started_at', 'desc').first();
+    });
+}
+
 async function listByTaskDTAjax(context, taskId, params) {
     return await dtHelpers.ajaxListWithPermissions(
         context,
@@ -396,6 +409,7 @@ module.exports.hash = hash;
 module.exports.getById = getById;
 module.exports.getByIdWithTaskParams = getByIdWithTaskParams;
 module.exports.getRunById = getRunById;
+module.exports.getLastRun = getLastRun;
 module.exports.listDTAjax = listDTAjax;
 module.exports.listSystemDTAjax = listSystemDTAjax;
 module.exports.listRunsDTAjax = listRunsDTAjax;
