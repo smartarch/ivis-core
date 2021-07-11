@@ -15,6 +15,7 @@ const PythonSubtypes = {
 // File name of every build output
 const PYTHON_JOB_FILE_NAME = 'job.py';
 const PYTHON_BUILTIN_CODE_FILE_NAME = 'code.py';
+const PYTHON_BUILTIN_PARAMS_FILE_NAME = 'params.json';
 
 const subtypesByType = {
     [TaskType.PYTHON]: PythonSubtypes
@@ -77,6 +78,7 @@ module.exports = {
     isTransitionState,
     PYTHON_JOB_FILE_NAME,
     PYTHON_BUILTIN_CODE_FILE_NAME,
+    PYTHON_BUILTIN_PARAMS_FILE_NAME,
     WizardType,
     isBuiltinSource,
     BuiltinTaskNames
