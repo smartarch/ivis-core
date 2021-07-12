@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
 
-from datetime import time
-from ivis import ivis
+import base64
+import io
+import json
+import logging
+from typing import Tuple
+
 import ivis.ts as ts
 import ivis.ts.arima as ar
-import pmdarima as pmd
-import pendulum
 import joblib
-import io
-import base64
-import logging
-import json
-from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper
-from typing import Tuple
+import pendulum
+import pmdarima as pmd
+from ivis import ivis
 
 # pendulum formatting string, brackets are used for escaping
 DATEFORMAT = "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]"
 
 
-def _string2date(s: str):
-    # convert timestamps to pendulum.DateTime
-    return pendulum.from_format(s, DATEFORMAT)
-
-
 def ensure_date(timestamps):
     if timestamps and isinstance(timestamps[0], str):
-        timestamps = [_string2date(x) for x in timestamps]
+        timestamps = [ts.parse_date(x) for x in timestamps]
     return timestamps
 
 
@@ -145,10 +139,6 @@ print(f"ivis.entities: {json.dumps(ivis.entities, indent=4)}")
 print(f"output_config: {json.dumps(output_config, indent=4)}")
 
 
-def _date2string(date: pendulum.DateTime):
-    return date.format(DATEFORMAT)
-
-
 class ModelWrapper:
     """Wraps around our ARIMA model and adds handling of timestamps."""
 
@@ -169,7 +159,7 @@ class ModelWrapper:
         """Add a single new observation."""
 
         if isinstance(timestamp, str):
-            timestamp = _string2date(timestamp)
+            timestamp = ts.parse_date(timestamp)
 
         # check whether the new timestamp is approximately at the expected
         # datetime, e.g. that there was not a skipped observation
@@ -257,14 +247,14 @@ def create_data_reader(params):
 
     if not params.is_aggregated:
         reader = ts.UniTsReader(index_name, ts_field,
-                             value_field, end_ts=split_ts)
+                                value_field, end_ts=split_ts)
         logging.info(
             f"Created a normal reader index={index_name}; split_ts={split_ts}")
     else:
         # ex.
         interval = params.aggregation_interval
         reader = ts.UniTsAggReader(index_name, ts_field,
-                                value_field, interval)  # FIXME: use to_ts
+                                   value_field, interval, end_ts=split_ts)
         logging.info(
             f"Created an aggregated reader index={index_name}; interval={interval}; split_ts={split_ts}")
 
@@ -354,7 +344,7 @@ def train_model(params) -> ModelWrapper:
     # Remove the boundary from the reader and reuse it to read the following
     # values
     reader_future = reader_train
-    reader_future.to_ts = ''
+    reader_future.end_ts = ''
 
     return wrapped_model, reader_future
 
