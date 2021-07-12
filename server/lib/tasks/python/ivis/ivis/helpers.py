@@ -17,6 +17,7 @@ class Ivis:
         self.params = self._data['params']
         self.entities = self._data['entities']
         self.owned = self._data['owned']
+        self.accessToken = self._data['accessToken']
 
     @property
     def elasticsearch(self):
@@ -124,6 +125,11 @@ class Ivis:
 
         Ivis._send_request_message(msg)
         return Ivis._get_response_message()
+
+    def upload_file(file):
+        url = f"http://localhost:8444/{self.accessToken}/rest/files/job/file/{self.id}/"
+        test_file = open("job.py", "rb")
+        test_response = requests.post(url, files = {"files[]": test_file})
 
 
 ivis = Ivis()
