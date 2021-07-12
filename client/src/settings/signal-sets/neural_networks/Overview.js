@@ -9,6 +9,7 @@ import { withAsyncErrorHandler, withErrorHandling } from '../../../lib/error-han
 import {getUrl} from "../../../lib/urls";
 import axios from "../../../lib/axios";
 import RunConsole from "../../jobs/RunConsole";
+import {Button, ModalDialog} from "../../../lib/bootstrap-components";
 
 @withComponentMixins([
     withTranslation,
@@ -21,6 +22,8 @@ export default class NNOverview extends Component {
 
         this.state = {
             lastRun: null,
+            runTrainingModalVisible: false,
+            timeout: null,
         }
     }
 
@@ -29,12 +32,51 @@ export default class NNOverview extends Component {
         this.fetchData();
     }
 
+    componentWillUnmount() {
+        if (this.state.timeout !== null)
+            clearTimeout(this.state.timeout);
+    }
+
+    @withAsyncErrorHandler
     async fetchData() {
         const trainingJobId = this.props.jobs.training;
-        const lastRun = await axios.get(getUrl(`rest/jobs/${trainingJobId}/last-run`))
+        const lastRunResult = await axios.get(getUrl(`rest/jobs/${trainingJobId}/last-run`))
+        const lastRun = lastRunResult.data;
+
+        let timeout = null;
+        if (this.state.timeout && lastRun.finished_at) { // last run finished
+            clearTimeout(this.state.timeout);
+        }
+        else if (lastRun && !lastRun.finished_at) {  // last run not finished and timeout not yet set
+            timeout = setTimeout(::this.fetchData, 1000);
+        }
+
         this.setState({
-            lastRun: lastRun.data,
+            lastRun,
+            timeout,
         });
+    }
+
+    @withAsyncErrorHandler
+    async stopTraining() {
+        if (this.state.lastRun)
+            await axios.post(getUrl(`rest/job-stop/${this.state.lastRun.id}`));
+    }
+
+    showRunTrainingModal() {
+        this.setState({runTrainingModalVisible: true});
+    }
+
+    hideRunTrainingModal() {
+        this.setState({runTrainingModalVisible: false});
+    }
+
+    @withAsyncErrorHandler
+    async runTraining() {
+        this.hideRunTrainingModal()
+        await axios.post(getUrl(`rest/job-run/${this.props.jobs.training}`));
+        // noinspection ES6MissingAwait
+        this.fetchData();
     }
 
     render() {
@@ -43,23 +85,24 @@ export default class NNOverview extends Component {
         const trainingJobId = this.props.jobs.training;
 
         return (
-            <Panel
-                title={t('Neural network model overview')}
-            >
-                {/*<Toolbar>
-                    <LinkButton
-                        to={`/settings/signal-sets/${prediction.set}/predictions/${prediction.type}/${prediction.id}/delete`}
-                        className="btn-danger"
-                        icon="trash-alt"
-                        label={t('Delete')} />
-                </Toolbar>*/}
+            <Panel title={t('Neural network model overview') + ": " + prediction.name}>
+                <Toolbar className={"text-left"}>
+                    {this.state.lastRun && !this.state.lastRun.finished_at && <Button onClickAsync={::this.stopTraining} label={"Stop training"} className="btn-danger" icon={"stop"} />}
+                    <Button onClickAsync={::this.showRunTrainingModal} label={"Re-run training"} className="btn-danger" icon={"retweet"} />
+                </Toolbar>
+
+                <ModalDialog hidden={!this.state.runTrainingModalVisible} title={"Re-run training"} onCloseAsync={::this.hideRunTrainingModal} buttons={[
+                    { label: t('no'), className: 'btn-primary', onClickAsync: ::this.hideRunTrainingModal },
+                    { label: t('yes'), className: 'btn-danger', onClickAsync: ::this.runTraining }
+                ]}>
+                    Are you sure? This will delete the previously trained model.
+                </ModalDialog>
 
                 <h3>Training log</h3>
                 {this.state.lastRun !== null
-                    ? <RunConsole jobId={trainingJobId} runId={this.state.lastRun.id} />
+                    ? <RunConsole jobId={trainingJobId} runId={this.state.lastRun.id} key={this.state.lastRun.id} />
                     : "Not available."
                 }
-
             </Panel>
         );
     }
