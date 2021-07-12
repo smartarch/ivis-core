@@ -16,6 +16,7 @@ const {createRunManager} = require('./jobs/run-manager');
 const {getRestrictedAccessToken, getAccessToken} = require('../models/users');
 const contextHelpers = require('../lib/context-helpers');
 
+
 const es = require('../lib/elasticsearch');
 const {TYPE_JOBS, INDEX_JOBS, STATE_FIELD} = require('../lib/task-handler').esConstants
 
@@ -832,13 +833,25 @@ async function handleRun(workEntry) {
             runId: runId,
             taskDir: spec.taskDir,
             inputData: {
-                params: spec.params,
+                context: {
+                    jobId: jobId,
+                },
+                params: spec.params || {},
                 entities: spec.entities,
                 owned: spec.owned,
                 accessToken: spec.accessToken,
+                es: {
+                    host: `${config.elasticsearch.host}`,
+                    port: `${config.elasticsearch.port}`
+                },
+                server: {
+                    trustedUrlBase: config.www.trustedUrlBase,
+                    sandboxUrlBase: config.www.sandboxUrlBase
+                },
                 state: await loadJobState(jobId)
             }
         };
+
 
         // TODO move interaction, as running and stopping, to run manager
         // there is a lot of overhead for running a job so it will serve as intermediate layer for handlers

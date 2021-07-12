@@ -465,7 +465,7 @@ export default class ParamTypes {
                         dropdown
                         selectMode={card.max === 1 ? TableSelectMode.SINGLE : TableSelectMode.MULTI}
                         selectionLabelIndex={2}
-                        selectionKeyIndex={1}
+                        selectionKeyIndex={0}
                         dataUrl={dataUrl}
                     />;
                 } else {
