@@ -9,6 +9,7 @@ import { withErrorHandling } from "../../../lib/error-handling";
 import {
     Button,
     ButtonRow,
+    CheckBox,
     DateTimePicker,
     Dropdown,
     Fieldset,
@@ -151,6 +152,7 @@ export default class CUD extends Component {
             time_interval_end: '',
             architecture: NeuralNetworkArchitecturesList[0],
             learning_rate: "0.001",
+            start_training: true,
             ...formValues,
         });
         this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
@@ -191,11 +193,7 @@ export default class CUD extends Component {
             const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
             if (submitResult) {
-                if (submitAndLeave) {
-                    this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/predictions`, 'success', t('Prediction model saved'));
-                } else {
-                    // TODO (MT)
-                }
+                this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/${submitResult.prediction.id}`, 'success', t('Prediction model saved'));
             } else {
                 this.enableForm();
                 this.setFormStatusMessage('warning', t('There are errors in the form. Please fix them and submit again.'));
@@ -218,7 +216,7 @@ export default class CUD extends Component {
             end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
         }
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'learning_rate']);
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'learning_rate', 'start_training']);
 
         return {
             ...data,
@@ -339,7 +337,7 @@ export default class CUD extends Component {
         const targetWidth = Number(this.getFormValue('target_width').trim());
 
         if (inputWidth < targetWidth) {
-            return (<div className={"form-group text-primary"}>
+            return (<div className={"form-group alert alert-warning"} role={"alert"}>
                 It is recommended to set the number of observations to be higher than the number of future predictions.
             </div>);
         } else {
@@ -377,7 +375,7 @@ export default class CUD extends Component {
                                 placeholder={t(`type interval or select from the hints`)}
                                 withHints={['', '1h', '12h', '1d', '30d']}
                     />
-                    {!this.isAggregated() && <div className={"form-group text-primary"}>
+                    {!this.isAggregated() && <div className={"form-group alert alert-warning"} role={"alert"}>
                         It is not recommended to leave the aggregation interval empty. {/* TODO (MT): better message */}
                     </div>}
 
@@ -423,8 +421,10 @@ export default class CUD extends Component {
 
                     <InputField id="learning_rate" label="Learning rate"/>
 
+                    <CheckBox id={"start_training"} label={"Start training immediately"} help={"Start the training immediately when the model is created (recommended)."}/>
+
                     <ButtonRow>
-                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler(true)}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler()}/>
                     </ButtonRow>
                 </Form>
             </Panel>

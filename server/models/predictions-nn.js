@@ -132,10 +132,19 @@ async function createPredictionJobTx(tx, context, signalSet, prediction) {
     return jobId;
 }
 
+async function startTrainingJob(context, jobId) {
+    await jobs.run(context, jobId)
+}
+
 async function createNNModel(context, sigSetId, params) {
-    return await knex.transaction(async tx => {
+    const response = await knex.transaction(async tx => {
         return await createNNModelTx(tx, context, sigSetId, params);
     });
+
+    if (params.start_training)
+        await startTrainingJob(context, response.trainingJobId);
+
+    return response;
 }
 
 async function getJobsIds(context, predictionId) {
