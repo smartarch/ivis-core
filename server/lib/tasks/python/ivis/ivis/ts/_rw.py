@@ -1,13 +1,9 @@
-import abc
-import logging
 from typing import Any, List, Tuple
 
-import elasticsearch as es
-import elasticsearch.helpers as esh
-import elasticsearch_dsl as dsl
+from elasticsearch import Elasticsearch
 import numpy as np
 import pendulum
-from ivis import ivis
+
 
 # brackets are used for escaping
 DATEFORMAT_PENDULUM = "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]"
@@ -23,6 +19,15 @@ def parse_date(date: str) -> pendulum.DateTime:
     return pendulum.from_format(date, DATEFORMAT_PENDULUM)
 
 
+def ivis_get_elasticsearch():
+    from ivis import ivis
+    return ivis.elasticsearch
+
+
+def test_get_elasticsearch():
+    return Elasticsearch()
+
+
 class UniTsReader:
     """Helper class for reading univariate time series data from IVIS
     """
@@ -34,7 +39,8 @@ class UniTsReader:
                  start_ts='',
                  end_ts='',
                  start_inclusive: bool = True,
-                 end_inclusive: bool = False):
+                 end_inclusive: bool = False,
+                 get_elasticsearch=ivis_get_elasticsearch):
         """[summary]
 
         Args:
@@ -55,6 +61,8 @@ class UniTsReader:
 
         self.start_inclusive = start_inclusive
         self.end_inclusive = end_inclusive
+
+        self.get_elasticsearch = get_elasticsearch
 
     def read(self, batch_size: int = 10000) -> Tuple[List[Any], List[Any]]:
         """Read a next batch of at most batch_size values. batch_size has to be
@@ -126,7 +134,7 @@ class UniTsReader:
                             start_inclusive=self.start_inclusive,
                             end_inclusive=self.end_inclusive)
 
-        es = ivis.elasticsearch
+        es = self.get_elasticsearch()
         res = es.search(index=self.index_name, body=body)
 
         records = [hit['_source'] for hit in res['hits']['hits']]
@@ -157,7 +165,7 @@ def estimate_end_ts(first_ts, interval, buckets_count):
     with a respective bucket end! Last bucket should therefore be ignored,
     because it might not include all the observations."""
 
-    start_date = pendulum.from_format(first_ts, DATEFORMAT_PENDULUM)
+    start_date = parse_date(first_ts)
 
     markers = {  # Note: These are upper bounds, that's why the values are wrong!
         'y': pendulum.duration(days=366),
@@ -200,7 +208,8 @@ class UniTsAggReader:
                  start_ts: str = '',
                  end_ts: str = '',
                  start_inclusive: bool = True,
-                 end_inclusive: bool = False):
+                 end_inclusive: bool = False,
+                 get_elasticsearch=ivis_get_elasticsearch):
         self.index_name = index_name
         self.ts_field = ts_field
         self.value_field = value_field
@@ -215,10 +224,25 @@ class UniTsAggReader:
         self.start_inclusive = start_inclusive
         self.end_inclusive = end_inclusive
 
-    def read_all(self):
-        return self.read()
+        self.get_elasticsearch = get_elasticsearch
 
-    def read(self):
+    def read(self, batch_size: int = 1000):
+        return self._read_batch(batch_size)
+
+    def read_all(self):
+        timestamps, values = [], []
+        while True:
+            new_ts, new_vs = self.read()
+
+            if not new_ts:
+                break
+
+            timestamps.extend(new_ts)
+            values.extend(new_vs)
+
+        return timestamps, values
+
+    def _read_batch(self, buckets_count: int):
         def linear_interp(data):  # interpolation of empty buckets
             # there should be no empty buckets on both sides
             for i in range(len(data)):
@@ -237,11 +261,11 @@ class UniTsAggReader:
                     for m in range(i, j):
                         data[m] = data[m - 1] + step
 
-        def get_first_ts(es, index_name, ts_name, start_ts):
+        def get_first_ts(es, start_ts):
             query = {
                 'size': 1,  # we only need the first record that was found
                 'sort': {
-                    ts_name: 'asc'
+                    self.ts_field: 'asc'
                 }
             }
             if not start_ts:
@@ -249,36 +273,59 @@ class UniTsAggReader:
             else:
                 query['query'] = {}
                 query['query']['range'] = {
-                    ts_name: {
+                    self.ts_field: {
                         'gte': start_ts
                     }
                 }
-            results = es.search(index=index_name, body=query)
+            results = es.search(index=self.index_name, body=query)
 
             # This will raise KeyError on empty time series
-            return results['hits']['hits'][0]['_source'][ts_name]
+            return results['hits']['hits'][0]['_source'][self.ts_field]
 
         def _read_batch(es,
-                        index_name: str,
-                        ts_name: str,
-                        value_name: str,
                         start_ts: str,
-                        sample_interval: str,
-                        agg_method: str,
-                        buckets_count: int):
+                        start_inclusive: bool = True,
+                        end_ts: str = None,
+                        end_inclusive: bool = False,
+                        sample_interval: str = '1M',
+                        agg_method: str = 'avg',
+                        buckets_count: int = 1000):
             """Read a single batch"""
 
+            # We estimate what segment of the time series do we filter to get
+            # approximately the given buckets_count.
+            if not start_ts:
+                start_ts = get_first_ts(es, start_ts=None)
             approx_end_ts = estimate_end_ts(
                 start_ts, sample_interval, buckets_count)
+
+            if end_ts:
+                end_ts = parse_date(end_ts)
+
+                # Consider the earlier end timestamp
+                if approx_end_ts > end_ts:
+                    end_ts_final = format_date(end_ts)
+                else:
+                    end_ts_final = format_date(approx_end_ts)
+            else:
+                end_ts_final = format_date(approx_end_ts)
+
+            # Although end_inclusive is only meant for the end_ts, in case we
+            # use our estimated end timestamp, the inequality does not matter so
+            # we can use the same one.
+            end_ineq = 'lte' if end_inclusive else 'lt'
+
+            start_ineq = 'gte' if start_inclusive else 'gt'
+
             # we are using the range query here to limit the number of buckets
             # that the Elasticsearch returns us, because an attempt to return
             # too many at once results in an error.
             query = {
                 "query": {
                     "range": {
-                        ts_name: {
-                            "gte": start_ts,
-                            "lt": approx_end_ts
+                        self.ts_field: {
+                            start_ineq: start_ts,
+                            end_ineq: end_ts_final
                         }
                     }
                 },
@@ -286,14 +333,14 @@ class UniTsAggReader:
                 "aggs": {
                     "by_sample": {
                         "date_histogram": {
-                            "field": ts_name,
+                            "field": self.ts_field,
                             "interval": sample_interval,
                             "format": DATEFORMAT_ELASTIC,
                         },
                         "aggs": {
                             "resampled": {
                                 agg_method: {
-                                    "field": value_name
+                                    "field": self.value_field
                                 }
                             }
                         }
@@ -304,64 +351,50 @@ class UniTsAggReader:
             values = []
             timestamps = []
 
-            results = es.search(index=index_name, body=query)
+            results = es.search(index=self.index_name, body=query)
 
             buckets = [x for x in results['aggregations']
                        ['by_sample']['buckets']]
             values = [x['resampled']['value'] for x in buckets]
             timestamps = [x['key_as_string'] for x in buckets]
 
-            return timestamps, values
+            if timestamps:
+                # Do not return the last (potentially incomplete) bucket
+                timestamps.pop()
+                values.pop()
 
-        def _read_resampled(es,
-                            index_name: str,
-                            ts_name: str,
-                            value_name: str,
-                            start_ts=None,  # first timestamp, inclusive
-                            sample_interval='1M',
-                            agg_method='avg'):
-            buckets = 100  # approximate count of buckets to get in one request
-
-            first_ts = get_first_ts(es, index_name, ts_name, start_ts)
-
-            values = []
-            timestamps = []
-
-            while True:
-                nts, nvs = _read_batch(es, index_name, ts_name, value_name,
-                                       first_ts, sample_interval, agg_method, buckets)
-                if len(nts) > 1:
-                    # we overlap the last bucket with a new one to fix alignment issues
-                    first_ts = nts[-1]
-
-                    # do not read the last (potentially incomplete) bucket
-                    nvs.pop()
-                    nts.pop()
-
-                    values.extend(nvs)
-                    timestamps.extend(nts)
-                else:  # len(nts) <= 1
-                    # do not read the last (potentially incomplete) bucket
-                    break
-
+            # In case there are any empty buckets, estimate their values using
+            # linear interpolation
             linear_interp(values)
 
             return timestamps, values
 
-        timestamps, values = _read_resampled(ivis.elasticsearch,
-                                             self.index_name,
-                                             self.ts_field,
-                                             self.value_field,
-                                             self.latest_ts,
-                                             sample_interval=self.agg_interval,
-                                             agg_method=self.agg_method)
+        if not self.latest_ts:
+            # first batch, so we can optionally skip some values in the time
+            # series when start_ts is not None
+            batch_start_ts = self.start_ts
+            batch_start_inclusive = self.start_inclusive
+        else:
+            # subsequent batches, we always take only values belonging to not
+            # yet returned buckets into account
+            batch_start_ts = self.latest_ts
+            batch_start_inclusive = True
 
-        if self.latest_ts and self.latest_ts == timestamps[0]:
+        timestamps, values = _read_batch(self.get_elasticsearch(),
+                                         start_ts=batch_start_ts,
+                                         start_inclusive=batch_start_inclusive,
+                                         end_ts=self.end_ts,
+                                         end_inclusive=self.end_inclusive,
+                                         sample_interval=self.agg_interval,
+                                         agg_method=self.agg_method,
+                                         buckets_count=buckets_count)
+
+        if self.latest_ts and timestamps and self.latest_ts == timestamps[0]:
             # do not return the first timestamps if we have already returned it
             timestamps.pop(0)
             values.pop(0)
 
-        if len(timestamps) > 0:
+        if timestamps:
             latest_timestamp = timestamps[-1]
             self.latest_ts = latest_timestamp
 
