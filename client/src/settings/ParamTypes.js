@@ -405,6 +405,91 @@ export default class ParamTypes {
             }
         };
 
+        this.paramTypes.file = {
+            adopt: (prefix, spec, state) => {
+                const card = parseCardinality(spec.cardinality);
+                const formId = this.getParamFormId(prefix, spec.id);
+                state.setIn([formId, 'value'], card.max === 1 ? null : []);
+            },
+            setFields: (prefix, spec, param, data) => {
+                const card = parseCardinality(spec.cardinality);
+                data[this.getParamFormId(prefix, spec.id)] = ensureSelection(card, param);
+            },
+            getParams: getParamsFromField,
+            validate: (prefix, spec, state) => {
+                const card = parseCardinality(spec.cardinality);
+                const formId = this.getParamFormId(prefix, spec.id);
+                const sel = state.getIn([formId, 'value']);
+
+                if (card.max === 1) {
+                    if ((sel === undefined || sel === null) && card.min === 1) {
+                        state.setIn([formId, 'error'], t('Exactly one item has to be selected'));
+                    }
+                } else if (sel.length < card.min) {
+                    state.setIn([formId, 'error'], t('At least {{ count }} item(s) have to be selected', {count: spec.min}));
+                } else if (sel.length > card.max) {
+                    state.setIn([formId, 'error'], t('At most {{ count }} item(s) can be selected', {count: spec.max}));
+                }
+            },
+            onChange: (prefix, spec, state, key, oldVal, newVal) => {
+                // TODO not usable now
+                if (spec.entityRef) {
+                    const signalSetFormId = this.getParamFormId(prefix, spec.entityRef);
+                    if (key === signalSetFormId && oldVal !== newVal) {
+                        const formId = this.getParamFormId(prefix, spec.id);
+                        const card = parseCardinality(spec.cardinality);
+                        state.setIn([formId, 'value'], card.max === 1 ? null : []);
+                    }
+                }
+
+            },
+            render: (self, prefix, spec) => {
+                let entityId = spec.entityId;
+                if (spec.entityRef) {
+                    const signalSetFormId = this.getParamFormId(prefix, spec.entityRef);
+                    entityId = self.getFormValue(signalSetFormId);
+                }
+
+                const card = parseCardinality(spec.cardinality);
+                const fileColumns = [
+                    {data: 1, title: t('Name')},
+                    {data: 2, title: t('Filename')},
+                    {data: 3, title: t('Description')},
+                    {data: 4, title: t('Size')},
+                    {data: 5, title: t('Created'), render: data => moment(data).fromNow()}
+                ];
+
+
+                if (entityId) {
+                    const type = 'job';
+                    const dataUrl = `rest/files-table/${type}/file/${entityId}`
+                    return <TableSelect
+                        key={spec.id}
+                        id={this.getParamFormId(prefix, spec.id)}
+                        label={spec.label}
+                        help={spec.help}
+                        columns={fileColumns}
+                        withHeader
+                        dropdown
+                        selectMode={card.max === 1 ? TableSelectMode.SINGLE : TableSelectMode.MULTI}
+                        selectionLabelIndex={2}
+                        selectionKeyIndex={0}
+                        dataUrl={dataUrl}
+                    />;
+                } else {
+                    return (
+                        <StaticField key={spec.id} id={spec.id} label={spec.label}>
+                            {t('Select entity to see the list of files.')}
+                        </StaticField>
+                    );
+                }
+            },
+            upcast: (spec, value) => {
+                const card = parseCardinality(spec.cardinality);
+                return ensureSelection(card, value);
+            }
+        }
+
         /*
           The form data has the following structure depending on cardinality:
           0..1:

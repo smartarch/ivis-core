@@ -39,7 +39,7 @@ function getQueryFun(taskSource) {
  * @param id the primary key of the job
  * @returns {Promise<Object>}
  */
-async function getById(context, id) {
+async function getById(context, id, includePermissions = true) {
     return await knex.transaction(async tx => {
         const entity = await tx('jobs').where('id', id).first();
 
@@ -49,7 +49,9 @@ async function getById(context, id) {
             await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
         }
         entity.params = JSON.parse(entity.params);
-        entity.permissions = await shares.getPermissionsTx(tx, context, 'job', id);
+        if (includePermissions) {
+            entity.permissions = await shares.getPermissionsTx(tx, context, 'job', id);
+        }
         const triggs = await tx('job_triggers').select('signal_set').where('job', id);
         entity.signal_sets_triggers = triggs.map(trig => trig.signal_set);
         return entity;
@@ -62,10 +64,10 @@ async function getById(context, id) {
  * @param id the primary key of the job
  * @returns {Promise<Object>}
  */
-async function getByIdWithTaskParams(context, id) {
+async function getByIdWithTaskParams(context, id, includePermissions = true) {
     return await knex.transaction(async tx => {
 
-        const job = await getById(context, id);
+        const job = await getById(context, id, includePermissions);
 
         let task = await tx('tasks').select('settings', 'source').where({id: job.task}).first();
         const settings = JSON.parse(task.settings);
@@ -229,8 +231,8 @@ async function createTx(tx, context, job) {
     await shares.enforceEntityPermissionTx(tx, context, 'namespace', job.namespace, 'createJob');
     await namespaceHelpers.validateEntity(tx, job);
 
-    const exists = await tx('tasks').where({ id: job.task }).first();
-    enforce(exists != null, 'Task doesn\'t exists');
+    const exists = await tx('tasks').where({id: job.task}).first();
+    enforce(exists != null && exists.source !== TaskSource.SYSTEM, 'Task doesn\'t exists');
 
     const filteredEntity = filterObject(job, allowedKeys);
     filteredEntity.params = JSON.stringify(filteredEntity.params);
@@ -239,6 +241,8 @@ async function createTx(tx, context, job) {
     filteredEntity.min_gap = parseTriggerStr(filteredEntity.min_gap);
     filteredEntity.trigger = parseTriggerStr(filteredEntity.trigger);
 
+    filteredEntity.owner = context.user.id;
+
     const ids = await tx('jobs').insert(filteredEntity);
     const id = ids[0];
 
@@ -246,7 +250,7 @@ async function createTx(tx, context, job) {
         await updateSetTriggersTx(tx, id, job.signal_sets_triggers);
     }
 
-    await shares.rebuildPermissionsTx(tx, { entityTypeId: 'job', entityId: id });
+    await shares.rebuildPermissionsTx(tx, {entityTypeId: 'job', entityId: id});
 
     return id;
 }

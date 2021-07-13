@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import requests
 
 from .exceptions import *
 
@@ -18,6 +19,9 @@ class Ivis:
         self.params = self._data['params']
         self.entities = self._data['entities']
         self.owned = self._data['owned']
+        self._accessToken = self._data['accessToken']
+        self._jobId = self._data['context']['jobId']
+        self._sandboxUrlBase = self._data['server']['sandboxUrlBase']
 
     @property
     def elasticsearch(self):
@@ -208,6 +212,13 @@ class Ivis:
         # occur when we index the new data.
         body = {'query': {'match_all': {}}}
         ivis.elasticsearch.delete_by_query(index=index, body=body, refresh=True)
+
+    def upload_file(self, file):
+        url = f"{self._sandboxUrlBase}/{self._accessToken}/rest/files/job/file/{self._jobId}/"
+        response = requests.post(url, files = {"files[]": file})
+
+    def get_job_file(self, id):
+        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/rest/files/job/file/{id}")
 
 
 ivis = Ivis()

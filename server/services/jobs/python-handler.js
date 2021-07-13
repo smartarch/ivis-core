@@ -56,14 +56,7 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
     try {
         let errOutput = '';
 
-        const dataInput = {
-            params: {},
-            es: {
-                host: `${ivisConfig.elasticsearch.host}`,
-                port: `${ivisConfig.elasticsearch.port}`
-            },
-            ...inputData
-        };
+
 
         const pythonExec = path.join(taskDir, '..', ENV_NAME, 'bin', 'python');
         const jobProc = spawn(`${pythonExec} ${JOB_FILE_NAME}`, {
@@ -90,7 +83,7 @@ async function run({jobId, runId, taskDir, inputData}, onEvent, onSuccess, onFai
         let storeConfig = null;
 
         // Send all configs and params to process on stdin in json format
-        jobProc.stdin.write(JSON.stringify(dataInput) + '\n');
+        jobProc.stdin.write(JSON.stringify(inputData) + '\n');
 
         // Error output is just gathered throughout the run and stored after run is done
         jobProc.stderr.on('data', (data) => {

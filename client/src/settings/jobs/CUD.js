@@ -327,7 +327,6 @@ export default class CUD extends Component {
         const isEdit = !!this.props.entity;
         const isSystemJob = isEdit && this.props.entity.namespace === getVirtualNamespaceId();
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
-        console.log(this.getFormValue('taskSource'));
 
         let stateOptions = CUD.getStateOptions(t);
 
@@ -352,8 +351,12 @@ export default class CUD extends Component {
         const taskSourceOptions = [
             {key: TaskSource.USER, label: t('User-defined task')},
             {key: TaskSource.BUILTIN, label: t('Built-in task')},
-            {key: TaskSource.SYSTEM, label: t('System task')},
         ];
+
+        if (isEdit) {
+            // Source can't be changed in edit so this is sufficient
+            taskSourceOptions.push({key: TaskSource.SYSTEM, label: t('System task')});
+        }
 
         const builtinTaskOptions = [];
         if (this.state.builtinTasks) {
@@ -429,7 +432,7 @@ export default class CUD extends Component {
                     {!isSystemJob ?
                         <NamespaceSelect/>
                         :
-                        <StaticField key={'namespace'} id={'namespace'} label={t('Namespace')} >
+                        <StaticField key={'namespace'} id={'namespace'} label={t('Namespace')}>
                             {t('Virtual')}
                         </StaticField>
                     }

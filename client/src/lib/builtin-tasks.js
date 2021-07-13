@@ -1,6 +1,6 @@
 "use strict";
 
-import axios from "axios";
+import axios from "../lib/axios";
 import {getUrl} from "./urls";
 
 export async function fetchBuiltinTasks() {

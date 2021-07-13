@@ -9,6 +9,7 @@ const arima = require('../../models/predictions-arima');
 const predictions_nn = require('../../models/predictions-nn');
 const panels = require('../../models/panels');
 const templates = require('../../models/templates');
+const jobs = require('../../models/jobs');
 const users = require('../../models/users');
 const contextHelpers = require('../../lib/context-helpers');
 const base64url = require('base64-url');
@@ -16,7 +17,7 @@ const base64url = require('base64-url');
 const router = require('../../lib/router-async').create();
 const {castToInteger} = require('../../lib/helpers');
 
-function getSignalsPermissions(allowedSignalsMap){
+function getSignalsPermissions(allowedSignalsMap) {
     const signalSetsPermissions = {};
     const signalsPermissions = {};
 
@@ -29,6 +30,32 @@ function getSignalsPermissions(allowedSignalsMap){
 
     return {signalSetsPermissions, signalsPermissions};
 }
+
+users.registerRestrictedAccessTokenMethod('job', async ({jobId}) => {
+    const job = await jobs.getByIdWithTaskParams(contextHelpers.getAdminContext(), jobId, false);
+
+    const ret = {
+        permissions: {
+            task: {
+                [job.task]: new Set(['execute', 'viewFiles'])
+            },
+            job: {}
+        }
+    };
+
+    // TODO this is way too broad, it needs to be selected based on the task parameters, specifically file param type
+    ret.permissions.job['default'] = new Set(['viewFiles']);
+    ret.permissions.job[job.id] = new Set(['view', 'viewFiles', 'manageFiles']);
+
+    const allowedSignalsMap = await signalSets.getAllowedSignals(job.taskParams, job.params);
+
+    const {signalSetsPermissions, signalsPermissions} = getSignalsPermissions(allowedSignalsMap);
+
+    ret.permissions.signalSet = signalSetsPermissions;
+    ret.permissions.signal = signalsPermissions;
+
+    return ret;
+});
 
 users.registerRestrictedAccessTokenMethod('panel', async ({panelId}) => {
     const panel = await panels.getByIdWithTemplateParams(contextHelpers.getAdminContext(), panelId, false);
@@ -74,7 +101,7 @@ users.registerRestrictedAccessTokenMethod('template', async ({templateId, params
     const ret = {
         permissions: {
             template: {
-                [template.id]: new Set(['view','execute', 'viewFiles'])
+                [template.id]: new Set(['view', 'execute', 'viewFiles'])
             }
         }
     };
