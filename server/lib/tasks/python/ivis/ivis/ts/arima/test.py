@@ -5,8 +5,9 @@ import pmdarima
 
 dataset = pmdarima.datasets.load_airpassengers()
 
-# Note: Tests here currently do not have vry high coverage and do not tell us
+# Note: Tests here currently do not have a very high coverage and do not tell us
 # much more than that the function does not crash in the simplest example.
+
 
 class TestAutoArima(unittest.TestCase):
     def test_can_train_a_model(self):
