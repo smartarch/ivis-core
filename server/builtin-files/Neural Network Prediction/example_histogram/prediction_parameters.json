@@ -1,6 +1,5 @@
 {
   "architecture": "feedforward",
-  "index": "signal_set_2",
   "input_signals": [
     {
       "cid": "temperature",
@@ -60,7 +59,7 @@
       "field": "s9"
     }
   ],
-  "ts_field": "s8",
+  "aggregated": true,
   "interval": 86400000,
   "normalization_coefficients": {
     "s9_min": {
@@ -90,5 +89,7 @@
     }
   },
   "input_width": 3,
-  "target_width": 1
+  "target_width": 2,
+  "index": "signal_set_2",
+  "ts_field": "s8"
 }

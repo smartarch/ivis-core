@@ -30,7 +30,7 @@
     }
   ],
   "ts_field": "s8",
-  "interval": null,
+  "interval": 7200067,
   "normalization_coefficients": {
     "s9": {
       "mean": 2.573500156402588,
@@ -52,5 +52,6 @@
     }
   },
   "input_width": 3,
-  "target_width": 1
+  "target_width": 1,
+  "aggregated": false
 }

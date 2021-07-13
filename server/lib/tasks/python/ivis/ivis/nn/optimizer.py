@@ -67,6 +67,7 @@ def get_default_training_params(parameters, training_params_class=TrainingParams
     training_params.input_width = parameters["input_width"]
     training_params.target_width = parameters["target_width"]
 
+    training_params.aggregated = aggregated
     if aggregated:
         aggregation_interval = parameters["aggregation"]
         training_params.interval = interval_string_to_milliseconds(aggregation_interval)
@@ -114,6 +115,10 @@ def prepare_data(training_parameters, dataframe):
     return train_df, val_df, test_df
 
 
+def _infer_interval_from_data(dataframe):
+    return dataframe.index[-1] - dataframe.index[-2]  # difference between the last two records
+
+
 def run_optimizer(parameters, run_training_callback, log_callback=print):
     """
     Runs the optimizer to try to find the best possible model for the data.
@@ -142,12 +147,16 @@ def run_optimizer(parameters, run_training_callback, log_callback=print):
     try:
         log_callback("Loading data...")
         data = load_data(parameters)
+        log_callback(f"Loaded {data.shape[0]} records.")
         log_callback("Processing data...")
         dataframes = prepare_data(training_params, data)
-        log_callback("Data successfully loaded.")
+        log_callback("Data successfully loaded and processed.")
     except es.NoDataError:
         log_callback("No data in the defined time range, can't continue.")
         raise es.NoDataError from None
+
+    if training_params.interval is None:
+        training_params.interval = _infer_interval_from_data(data)
 
     # print(training_params)
 
@@ -161,7 +170,7 @@ def run_optimizer(parameters, run_training_callback, log_callback=print):
         save_model = True
 
         # TODO (MT) save the model and prediction parameters
-        # model.save(model_save_folder + "model.h5")
+        model.save("model.h5")
         # # save the prediction parameters
         prediction_parameters = PredictionParams(training_params)
         prediction_parameters.index = get_els_index(parameters)

@@ -9,6 +9,7 @@ class ModelParams(Params):
         self.architecture = None  # the architecture of neural network
         self.input_signals = []  # The input signals and their types
         self.target_signals = []  # The target signals and their types, keep empty for autoregressive models
+        self.aggregated = False  # Whether the queries should be aggregated
         self.interval = None  # Aggregation interval in milliseconds.
         self.normalization_coefficients = dict()  #: Normalization coefficients for the signals
         self.input_width = 0  # Number of time steps used for prediction.
@@ -18,6 +19,7 @@ class ModelParams(Params):
             self.architecture = copy_from.architecture
             self.input_signals = copy_from.input_signals
             self.target_signals = copy_from.target_signals
+            self.aggregated = copy_from.aggregated
             self.interval = copy_from.interval
             self.normalization_coefficients = copy_from.normalization_coefficients
             self.input_width = copy_from.input_width

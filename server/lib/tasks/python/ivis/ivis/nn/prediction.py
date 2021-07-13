@@ -25,7 +25,7 @@ def load_data(prediction_parameters):
     index = prediction_parameters.index
     # TODO: handle data for multiple predictions at the same time
     input_width = prediction_parameters.input_width
-    if prediction_parameters.interval is not None:
+    if prediction_parameters.aggregated:
         aggregation_interval = f"{prediction_parameters.interval}ms"
         query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=input_width)  # TODO: time interval
         results = ivis.elasticsearch.search(index, query)
@@ -69,7 +69,7 @@ def _postprocess_sample(sample, signals, normalization_coefficients, column_indi
     Returns
     -------
     pd.DataFrame
-        The columns correspond to the `PredictionParams.target_signals`. TODO: and rows corresponding to the timestamp of the prediction
+        The columns correspond to the `PredictionParams.target_signals`, row are time steps of the prediction (without timestamps).
     """
 
     dataframe = pd.DataFrame()
@@ -111,7 +111,32 @@ def _postprocess_sample(sample, signals, normalization_coefficients, column_indi
     return dataframe
 
 
-def postprocess(prediction_parameters, data):
+def _set_sample_ts(sample, start_ts, interval):
+    """
+    Update the sample's index to correspond to the timestamps of the predictions.
+
+    Parameters
+    ----------
+    sample : pd.DataFrame
+        Shape is [time, signals]
+    start_ts : int
+        UNIX timestamp (ms).
+    interval : int
+        In milliseconds.
+
+    Returns
+    -------
+    pd.DataFrame
+        The index is altered to correspond to the timestamps of the predictions.
+    """
+    row_count = sample.shape[0]
+    end_ts = start_ts + row_count * interval
+    timestamps = pd.RangeIndex(start_ts, end_ts, interval)
+    sample.set_index(timestamps, inplace=True)
+    return sample
+
+
+def postprocess(prediction_parameters, data, last_ts):
     """
     Apply postprocessing the to a batch of predictions to denormalize the data, etc.
 
@@ -120,16 +145,26 @@ def postprocess(prediction_parameters, data):
     prediction_parameters : ivis.nn.PredictionParams
     data : np.ndarray
         The shape of the array is [samples, time, signals]
+    last_ts : int
+        The UNIX timestamp of the last record in the first prediction window. This is used to compute the timestamp of the prediction as `last_ts + interval`.
 
     Returns
     -------
     list[pd.DataFrame]
-        Each dataframe in the list has the columns corresponding to the `PredictionParams.target_signals`. TODO: and rows corresponding to the timestamp of the prediction
+        Each dataframe in the list has the columns corresponding to the `PredictionParams.target_signals` and rows corresponding to the timestamps of the prediction.
     """
     signals = prediction_parameters.target_signals
     normalization_coefficients = prediction_parameters.normalization_coefficients
     column_indices = get_column_indices(prediction_parameters.normalization_coefficients, prediction_parameters.target_signals)
-    return [_postprocess_sample(sample, signals, normalization_coefficients, column_indices) for sample in data]
+    interval = prediction_parameters.interval
+
+    processed = []
+    for index, sample in enumerate(data):
+        sample = _postprocess_sample(sample, signals, normalization_coefficients, column_indices)
+        start_ts = last_ts + (index + 1) * interval
+        sample = _set_sample_ts(sample, start_ts, interval)
+        processed.append(sample)
+    return processed
 
 
 ##################
@@ -164,12 +199,14 @@ def run_prediction(prediction_parameters, model_path, log_callback=print):
     try:
         log_callback("Loading data...")
         dataframe = load_data(prediction_parameters)
+        log_callback(f"Loaded {dataframe.shape[0]} records.")
         log_callback("Processing data...")
         dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
-        print(dataframe)  # TODO (MT): remove
+        # print(dataframe)  # TODO (MT): remove
+        last_ts = dataframe.index[-1]  # TODO (MT): rework when predicting multiple steps is added
 
         dataset = get_windowed_dataset(prediction_parameters, dataframe)
-        log_callback("Data successfully loaded.")
+        log_callback("Data successfully loaded and processed.")
         for d in dataset.as_numpy_iterator():  # TODO (MT): remove
             print(d)
 
@@ -184,7 +221,7 @@ def run_prediction(prediction_parameters, model_path, log_callback=print):
     log_callback("Computing predictions...")
     predicted = model.predict(dataset)
 
-    predicted_dataframes = postprocess(prediction_parameters, predicted)
+    predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
 
     log_callback("Saving data...")  # TODO (MT)
     return True, predicted_dataframes
