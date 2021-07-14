@@ -160,7 +160,10 @@ class Ivis:
         """
         doc = {}
         for key, value in record.items():
-            es_key = ivis.entities['signals'][set_cid][key]['field']
+            if key == "_id":
+                es_key = "_id"
+            else:
+                es_key = ivis.entities['signals'][set_cid][key]['field']
             doc[es_key] = value
 
         return doc

@@ -20,7 +20,7 @@ from ivis.nn.save import records_future, records_k_ahead
 
 
 def save_data(prediction_parameters, dataframes):
-    for k in range(prediction_parameters.target_width):
+    for k in range(1, prediction_parameters.target_width + 1):
         for r in records_k_ahead(prediction_parameters, dataframes, k):
             print(r)
         print()

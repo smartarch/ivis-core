@@ -58,7 +58,7 @@ async function createNNModelTx(tx, context, sigSetId, params) {
         if (aggregated) {
             targetSignals.push({
                 cid: signal.cid + "_" + sig.aggregation,
-                name: signal.name,
+                name: signal.name + `(${sig.aggregation})`,
                 description: signal.description,
                 namespace: namespace,
                 type: signal.type,

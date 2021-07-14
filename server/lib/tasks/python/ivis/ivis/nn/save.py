@@ -37,7 +37,8 @@ def _row_to_aggregated_records(prediction_parameters, row):
             records[agg][cid] = value
 
     for agg in records:
-        records[agg]["ts"] = row.name
+        records[agg]["ts"] = row.name  # unix ts (in ms)
+        records[agg]["_id"] = str(row.name)[:-3] + "_" + agg  # unix ts (in s)
         yield records[agg]
 
 
@@ -57,7 +58,8 @@ def _row_to_record(prediction_parameters, row):
         Record(s) for the dataframe row.
     """
     record = dict()
-    record["ts"] = row.name  # TODO(MT): do we need to convert the UNIX timestamp to ISO?
+    record["ts"] = row.name  # unix ts (in ms)
+    record["_id"] = str(row.name)[:-3]  # unix ts (in s)
 
     for sig in prediction_parameters.target_signals:
         cid = _get_output_signal_cid(sig)
