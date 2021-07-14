@@ -102,6 +102,26 @@ export default class ParamTypes {
 
         const getParamsFromField = (prefix, spec, data) => data[this.getParamFormId(prefix, spec.id)];
 
+        const validateSelectEntity = (prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                const sel = state.getIn([formId, 'value']);
+
+                if (sel === undefined || sel === null) {
+                    state.setIn([formId, 'error'], t('Exactly one item has to be selected'));
+                }
+            };
+
+        const setFieldsEntity = (prefix, spec, param, data) => {
+            data[this.getParamFormId(prefix, spec.id)] = ensureSelection({min: 1, max: 1}, param);
+        };
+
+        const adoptEntity = (prefix, spec, state) => {
+            const formId = this.getParamFormId(prefix, spec.id);
+            state.setIn([formId, 'value'], null);
+        };
+
+        const upcastEntity = (spec, value) => ensureSelection({min: 1, max: 1}, value);
+
         const getACEEditor = mode => ({
             adopt: adoptString,
             setFields: setStringFieldFromParam,
@@ -271,22 +291,10 @@ export default class ParamTypes {
 
 
         this.paramTypes.signalSet = {
-            adopt: (prefix, spec, state) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                state.setIn([formId, 'value'], null);
-            },
-            setFields: (prefix, spec, param, data) => {
-                data[this.getParamFormId(prefix, spec.id)] = ensureSelection({min: 1, max: 1}, param);
-            },
+            adopt: adoptEntity,
+            setFields: setFieldsEntity,
             getParams: getParamsFromField,
-            validate: (prefix, spec, state) => {
-                const formId = this.getParamFormId(prefix, spec.id);
-                const sel = state.getIn([formId, 'value']);
-
-                if (sel === undefined || sel === null) {
-                    state.setIn([formId, 'error'], t('Exactly one item has to be selected'));
-                }
-            },
+            validate: validateSelectEntity,
             render: (self, prefix, spec, disabled) => {
                 const signalColumns = [
                     {data: 1, title: t('Id')},
@@ -311,7 +319,7 @@ export default class ParamTypes {
                     disabled={disabled}
                 />;
             },
-            upcast: (spec, value) => ensureSelection({min: 1, max: 1}, value)
+            upcast: upcastEntity
         };
 
 
@@ -405,6 +413,38 @@ export default class ParamTypes {
             }
         };
 
+        this.paramTypes.job = {
+            adopt: adoptEntity,
+            setFields: setFieldsEntity,
+            getParams: getParamsFromField,
+            validate: validateSelectEntity,
+            render: (self, prefix, spec, disabled) => {
+                const signalColumns = [
+                    {data: 1, title: t('Name')},
+                    {data: 2, title: t('Description')},
+                    {data: 4, title: t('Created'), render: data => moment(data).fromNow()},
+                    {data: 9, title: t('Namespace')}
+                ];
+
+                return <TableSelect
+                    key={spec.id}
+                    id={this.getParamFormId(prefix, spec.id)}
+                    label={spec.label}
+                    help={spec.help}
+                    columns={signalColumns}
+                    withHeader
+                    dropdown
+                    selectMode={TableSelectMode.SINGLE}
+                    selectionLabelIndex={2}
+                    selectionKeyIndex={0}
+                    dataUrl="rest/jobs-table"
+                    disabled={disabled}
+                />;
+            },
+            upcast: upcastEntity
+        };
+
+
         this.paramTypes.file = {
             adopt: (prefix, spec, state) => {
                 const card = parseCardinality(spec.cardinality);
@@ -459,8 +499,8 @@ export default class ParamTypes {
                     {data: 5, title: t('Created'), render: data => moment(data).fromNow()}
                 ];
 
-
                 if (entityId) {
+                    // TODO this should be expanded for all the types, but we need to check for type in referenced id
                     const type = 'job';
                     const dataUrl = `rest/files-table/${type}/file/${entityId}`
                     return <TableSelect

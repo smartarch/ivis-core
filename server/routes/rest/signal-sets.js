@@ -44,7 +44,7 @@ users.registerRestrictedAccessTokenMethod('job', async ({jobId}) => {
     };
 
     // TODO this is way too broad, it needs to be selected based on the task parameters, specifically file param type
-    ret.permissions.job['default'] = new Set(['viewFiles']);
+    ret.permissions.job['default'] = new Set(['viewFiles', 'execute', 'edit']);
     ret.permissions.job[job.id] = new Set(['view', 'viewFiles', 'manageFiles']);
 
     const allowedSignalsMap = await signalSets.getAllowedSignals(job.taskParams, job.params);
