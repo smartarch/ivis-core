@@ -189,7 +189,7 @@ def run_prediction(prediction_parameters, model_path, log_callback=print):
     Returns
     -------
     bool
-        Whether the model was updated and should be uploaded to IVIS server. TODO: this is probably unnecessary as we can simply save the model back to the file from which it was loaded
+        Whether the model was updated and should be uploaded to IVIS server. TODO (MT): this is probably unnecessary as we can simply save the model back to the file from which it was loaded
     any
         New predictions to be inserted into the signal set in Elasticsearch.
     """

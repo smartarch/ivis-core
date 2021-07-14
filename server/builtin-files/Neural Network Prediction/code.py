@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
 from ivis import ivis
-from ivis.nn import run_prediction
+from ivis.nn import run_prediction, save_data
 
-print("TODO")  # TODO (MT)
+model_path = 'example_docs/model.h5'  # TODO(MT)
+_, predictions = run_prediction(ivis.params, model_path)
+save_data(ivis.params, predictions)

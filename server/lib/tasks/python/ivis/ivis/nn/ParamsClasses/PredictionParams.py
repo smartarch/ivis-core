@@ -11,5 +11,5 @@ class PredictionParams(ModelParams):
         copy_from : ivis.nn.ModelParams
         """
         super().__init__(copy_from)
-        self.index = str()  # the ES index (signal set)
+        self.index = str()     # the ES index (signal set)
         self.ts_field = str()  # the ts field in the ES index
