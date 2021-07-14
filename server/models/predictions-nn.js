@@ -35,22 +35,37 @@ async function createNNModelTx(tx, context, sigSetId, params) {
     };
 
     // target signals – signals of the created prediction signal sets
-    // TODO (MT): what to do with aggregated signals
+    const aggregated = params.aggregation !== '';
     const targetSignals = [];
     for (const sig of params.target_signals) {
         const signal = await tx('signals').where('set', sigSetId).where('cid', sig.cid).first();
 
         enforce(signal, `Signal '${sig.cid}' not found in '${signalSet.cid}'`);
 
-        targetSignals.push({
-            cid: signal.cid,
-            name: signal.name,
-            description: signal.description,
-            namespace: namespace,
-            type: signal.type,
-            indexed: signal.indexed,
-            weight_list: signal.weight_list
-        });
+        // add signal with same cid (but only once)
+        if (!targetSignals.some(s => s.cid === sig.cid)) {
+            targetSignals.push({
+                cid: signal.cid,
+                name: signal.name,
+                description: signal.description,
+                namespace: namespace,
+                type: signal.type,
+                indexed: signal.indexed,
+                weight_list: signal.weight_list
+            });
+        }
+        // add signal for predicted aggregated value (e.g. min, max, avg)
+        if (aggregated) {
+            targetSignals.push({
+                cid: signal.cid + "_" + sig.aggregation,
+                name: signal.name,
+                description: signal.description,
+                namespace: namespace,
+                type: signal.type,
+                indexed: signal.indexed,
+                weight_list: signal.weight_list
+            });
+        }
     }
     prediction.signals = {
         main: targetSignals,

@@ -28,11 +28,11 @@ def load_data(prediction_parameters):
     if prediction_parameters.aggregated:
         aggregation_interval = f"{prediction_parameters.interval}ms"
         query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=input_width)  # TODO: time interval
-        results = ivis.elasticsearch.search(index, query)
+        results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_histogram(prediction_parameters.input_signals, results)
     else:
         query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)  # TODO: time interval
-        results = ivis.elasticsearch.search(index, query)
+        results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_docs(prediction_parameters.input_signals, results)
 
 

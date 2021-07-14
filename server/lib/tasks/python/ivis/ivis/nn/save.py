@@ -15,6 +15,15 @@ def _get_output_signal_cid(signal):
         return signal["cid"]
 
 
+def _get_sigset_cid(suffix):
+    """Returns the cid of an owned signal set with defined suffix."""
+    try:
+        signal_sets = list(ivis.owned["signalSets"])
+        return next(filter(lambda s: s.endswith(suffix), signal_sets))
+    except StopIteration:
+        raise KeyError(f"Signal set with suffix '{suffix}' not found.") from None
+
+
 def _row_to_aggregated_records(prediction_parameters, row):
     """For aggregated signals, produce records with original signal cid and values for all the aggregations (each value has to be in a separate record, but they all have the same timestamp)."""
     records = defaultdict(dict)
@@ -69,7 +78,7 @@ def records_k_ahead(prediction_parameters, dataframes, k):
     dataframes : list[pd.DataFrame]
         Predicted dataframes.
     k : int
-        The (k - 1)th row of each dataframe is returned.
+        The k-th row of each dataframe is returned, 1 <= k <= prediction_parameters.target_width.
     prediction_parameters : ivis.nn.PredictionParams
 
     Yields
@@ -77,8 +86,9 @@ def records_k_ahead(prediction_parameters, dataframes, k):
     dict
         Record(s) to be saved.
     """
+    assert 1 <= k <= prediction_parameters.target_width
     for sample in dataframes:
-        yield from _row_to_record(prediction_parameters, sample.iloc[k])
+        yield from _row_to_record(prediction_parameters, sample.iloc[k - 1])
 
 
 def records_future(prediction_parameters, dataframes):
@@ -102,17 +112,22 @@ def records_future(prediction_parameters, dataframes):
 
 
 def _save_k_ahead(prediction_parameters, dataframes, k):
-    set_cid = None  # TODO (MT)
+    set_cid = _get_sigset_cid(f"{k}ahead")
     ivis.insert_records(set_cid, records_k_ahead(prediction_parameters, dataframes, k))
 
 
 def _save_future(prediction_parameters, dataframes):
-    set_cid = None  # TODO (MT)
+    set_cid = _get_sigset_cid(f"future")
     ivis.clear_records(set_cid)
     ivis.insert_records(set_cid, records_future(prediction_parameters, dataframes))
 
 
-def save_data(prediction_parameters, dataframes):
-    for k in range(prediction_parameters.target_width):
+def save_data(prediction_parameters, dataframes, log_callback=print):
+    for k in range(1, prediction_parameters.target_width + 1):
+        log_callback(f"Saving '{k}ahead' signal set...", end='')
         _save_k_ahead(prediction_parameters, dataframes, k)
+        log_callback("Done.")
+
+    log_callback(f"Saving 'future' signal set...", end='')
     _save_future(prediction_parameters, dataframes)
+    log_callback("Done.")

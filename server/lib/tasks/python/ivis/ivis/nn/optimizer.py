@@ -176,5 +176,5 @@ def run_optimizer(parameters, run_training_callback, log_callback=print):
         prediction_parameters.index = get_els_index(parameters)
         prediction_parameters.ts_field = get_ts_field(parameters)
         print(prediction_parameters.to_json())
-        # with open(model_save_folder + "prediction_parameters.json", 'w') as file:
-        #     print(prediction_parameters.to_json(), file=file)
+        with open("prediction_parameters.json", 'w') as file:
+            print(prediction_parameters.to_json(), file=file)
