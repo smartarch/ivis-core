@@ -34,8 +34,8 @@ function getEntityFilesDir(type, subType, entityId) {
     return path.join(filesDir, type, subType, entityId.toString());
 }
 
-function getFileUrl(context, type, subType, entityId, filename) {
-    return getTrustedUrl(`files/${type}/${subType}/${entityId}/${filename}`)
+function getFileUrl(context, type, subType, entityId, originalName) {
+    return getTrustedUrl(`files/${type}/${subType}/${entityId}/${encodeURIComponent(originalName)}`)
 }
 
 function getFilesTable(type, subType) {
@@ -212,10 +212,10 @@ async function createFiles(context, type, subType, entityId, files, replacementB
                     type: file.mimetype
                 };
 
-                filesRetEntry.url = getFileUrl(context, type, subType, entityId, file.filename);
+                filesRetEntry.url = getFileUrl(context, type, subType, entityId, originalName);
 
                 if (file.mimetype.startsWith('image/')) {
-                    filesRetEntry.thumbnailUrl = getFileUrl(context, type, subType, entityId, file.filename); // TODO - use smaller thumbnails,
+                    filesRetEntry.thumbnailUrl = getFileUrl(context, type, subType, entityId, originalName); // TODO - use smaller thumbnails,
                 }
 
                 filesRet.push(filesRetEntry);
