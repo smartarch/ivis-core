@@ -218,10 +218,10 @@ class Ivis:
 
     def upload_file(self, file):
         url = f"{self._sandboxUrlBase}/{self._accessToken}/rest/files/job/file/{self._jobId}/"
-        response = requests.post(url, files = {"files[]": file})
+        return requests.post(url, files={"files[]": file})
 
-    def get_job_file(self, id):
-        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/rest/files/job/file/{id}")
+    def get_job_file(self, jobId, filename):
+        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/files/job/file/{jobId}/{filename}")
 
 
 ivis = Ivis()

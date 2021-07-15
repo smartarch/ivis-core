@@ -435,7 +435,7 @@ export default class ParamTypes {
                     withHeader
                     dropdown
                     selectMode={TableSelectMode.SINGLE}
-                    selectionLabelIndex={2}
+                    selectionLabelIndex={1}
                     selectionKeyIndex={0}
                     dataUrl="rest/jobs-table"
                     disabled={disabled}
@@ -512,8 +512,8 @@ export default class ParamTypes {
                         withHeader
                         dropdown
                         selectMode={card.max === 1 ? TableSelectMode.SINGLE : TableSelectMode.MULTI}
-                        selectionLabelIndex={2}
-                        selectionKeyIndex={0}
+                        selectionLabelIndex={1}
+                        selectionKeyIndex={1}
                         dataUrl={dataUrl}
                     />;
                 } else {
