@@ -15,6 +15,7 @@ class ESMock:
             with open('histogram.json') as file:
                 return json.load(file)
 ivis.elasticsearch = ESMock()
+ivis.upload_file = lambda f: print(f"Mocking upload of '{f.name}'")
 
 from ivis.nn import run_optimizer, run_training
 

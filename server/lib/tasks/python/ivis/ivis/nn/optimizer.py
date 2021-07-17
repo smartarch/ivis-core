@@ -1,6 +1,8 @@
 """
 Code for hyperparameter optimizer.
 """
+import os
+from uuid import uuid4
 from ivis import ivis
 from . import elasticsearch as es, preprocessing as pre
 from .ParamsClasses import TrainingParams, PredictionParams
@@ -119,6 +121,39 @@ def _infer_interval_from_data(dataframe):
     return dataframe.index[-1] - dataframe.index[-2]  # difference between the last two records
 
 
+def save_model(parameters, model, training_params, log_callback):
+    save_folder = str(uuid4())
+
+    # temporarily save to the file system
+    log_callback("Saving model...")
+    model.save(save_folder + "/model.h5")
+
+    # save the prediction parameters
+    prediction_parameters = PredictionParams(training_params)
+    prediction_parameters.index = get_els_index(parameters)
+    prediction_parameters.ts_field = get_ts_field(parameters)
+
+    with open(save_folder + "/prediction_parameters.json", 'w') as file:
+        print(prediction_parameters.to_json(), file=file)
+
+    # upload the files to IVIS server
+    log_callback("Uploading to IVIS...")
+    with open(save_folder + "/model.h5", 'rb') as file:
+        ivis.upload_file(file)
+    with open(save_folder + "/prediction_parameters.json", 'r') as file:
+        ivis.upload_file(file)
+
+    # delete the temporary files
+    log_callback("Cleaning up...")
+    try:
+        os.remove(save_folder + "/model.h5")
+        os.remove(save_folder + "/prediction_parameters.json")
+        os.rmdir(save_folder)
+    except OSError as e:
+        print("Error while cleaning up temporary files:\n  %s - %s." % (e.filename, e.strerror))
+    log_callback("Model saved.")
+
+
 def run_optimizer(parameters, run_training_callback, log_callback=print):
     """
     Runs the optimizer to try to find the best possible model for the data.
@@ -167,14 +202,9 @@ def run_optimizer(parameters, run_training_callback, log_callback=print):
         log_callback(f"\nStarting iteration {i}.")
         training_result, model = run_training_callback(training_params, dataframes)
         log_callback(f"Result: {training_result['test_loss']}.")
-        save_model = True
 
-        # TODO (MT) save the model and prediction parameters
-        model.save("model.h5")
-        # # save the prediction parameters
-        prediction_parameters = PredictionParams(training_params)
-        prediction_parameters.index = get_els_index(parameters)
-        prediction_parameters.ts_field = get_ts_field(parameters)
-        print(prediction_parameters.to_json())
-        with open("prediction_parameters.json", 'w') as file:
-            print(prediction_parameters.to_json(), file=file)
+        # decide whether the new model is better and should be saved
+        should_save = True
+
+        if should_save:
+            save_model(parameters, model, training_params, log_callback)
