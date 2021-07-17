@@ -88,7 +88,7 @@ async function enforceTasks() {
 
 async function createJobsTx(tx, context, signalSet, prediction, params) {
     const trainingJobId = await createTrainingJobTx(tx, context, signalSet, prediction, params);
-    const predictionJobId = await createPredictionJobTx(tx, context, signalSet, prediction);
+    const predictionJobId = await createPredictionJobTx(tx, context, signalSet, prediction, trainingJobId);
 
     return { trainingJobId, predictionJobId };
 }
@@ -122,7 +122,7 @@ async function createTrainingJobTx(tx, context, signalSet, prediction, jobParams
     return jobId;
 }
 
-async function createPredictionJobTx(tx, context, signalSet, prediction) {
+async function createPredictionJobTx(tx, context, signalSet, prediction, trainingJobId) {
     const modelName = prediction.name;
     const jobName = _generateJobName(signalSet, modelName,"prediction");
 
@@ -134,7 +134,11 @@ async function createPredictionJobTx(tx, context, signalSet, prediction) {
         namespace: signalSet.namespace,
         task: task.id,
         state: JobState.DISABLED, // TODO (MT) enable job when training finishes
-        params: {},
+        params: {
+            "training_job": trainingJobId,
+            "model_file": "model.h5",
+            "prediction_parameters_file": "prediction_parameters.json"
+        },
         signal_sets_triggers: [signalSet.id],
         trigger: null,
         min_gap: null,

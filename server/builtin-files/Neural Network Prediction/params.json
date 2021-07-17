@@ -1,0 +1,19 @@
+[
+  {
+    "id": "training_job",
+    "type": "job",
+    "label": "Training job"
+  },
+  {
+    "id": "model_file",
+    "type": "file",
+    "entityRef": "training_job",
+    "label": "Model file"
+  },
+  {
+    "id": "prediction_parameters_file",
+    "type": "file",
+    "entityRef": "training_job",
+    "label": "Prediction parameters file"
+  }
+]

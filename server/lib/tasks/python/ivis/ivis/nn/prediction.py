@@ -1,6 +1,8 @@
 """
 Code for running the trained models for prediction.
 """
+import os
+from uuid import uuid4
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -8,6 +10,7 @@ from ivis import ivis
 from .common import get_aggregated_field
 from . import elasticsearch as es
 from .preprocessing import get_column_names, preprocess_using_coefficients
+from .ParamsClasses import PredictionParams
 
 
 def load_data(prediction_parameters):
@@ -142,7 +145,7 @@ def postprocess(prediction_parameters, data, last_ts):
 
     Parameters
     ----------
-    prediction_parameters : ivis.nn.PredictionParams
+    prediction_parameters : PredictionParams
     data : np.ndarray
         The shape of the array is [samples, time, signals]
     last_ts : int
@@ -167,22 +170,54 @@ def postprocess(prediction_parameters, data, last_ts):
     return processed
 
 
+def load_model(log_callback=print):
+    training_job = ivis.params["training_job"]
+    model_file = ivis.params["model_file"]
+    params_file = ivis.params["prediction_parameters_file"]
+    tmp_folder = str(uuid4())
+
+    # download the model from IVIS server
+    log_callback("Downloading model...")
+    model_path = tmp_folder + "/model.h5"
+    os.makedirs(tmp_folder)
+    with open(model_path, "wb") as file:
+        model_response = ivis.get_job_file(training_job, model_file)
+        file.write(model_response.content)
+
+    log_callback("Loading TensorFlow model...")
+    model = tf.keras.models.load_model(model_path)
+
+    log_callback("Cleaning temporary files...")
+    try:
+        os.remove(model_path)
+        os.rmdir(tmp_folder)
+    except OSError as e:
+        print("Error while cleaning up temporary files:\n  %s - %s." % (e.filename, e.strerror))
+
+    log_callback("Downloading prediction parameters...")
+    params_response = ivis.get_job_file(training_job, params_file)
+    prediction_parameters = PredictionParams().from_json(params_response.text)
+
+    log_callback("Model loaded.")
+    return prediction_parameters, model
+
+
 ##################
 # Run prediction #
 ##################
 
 
-def run_prediction(prediction_parameters, model_path, log_callback=print):
+def run_prediction(prediction_parameters, model, log_callback=print):
     """
     Predicts future values using the given model and new data.
 
     Parameters
     ----------
-    prediction_parameters : ivis.nn.PredictionParams
+    prediction_parameters : PredictionParams
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types.
-    model_path : str
-        Path to load the model from and save the model if it was updated.
+    model : tf.keras.Model
+        The model to use for predictions.
     log_callback : callable
         Function to print to Job log.
 
@@ -215,7 +250,6 @@ def run_prediction(prediction_parameters, model_path, log_callback=print):
         raise es.NoDataError from None
 
     log_callback("Loading model...")
-    model = tf.keras.models.load_model(model_path)
     model.summary(print_fn=log_callback)
 
     log_callback("Computing predictions...")

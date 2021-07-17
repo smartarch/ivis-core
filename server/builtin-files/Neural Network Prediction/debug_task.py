@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
+import tensorflow as tf
 from ivis import ivis
 # mock IVIS
 class ESMock:
@@ -35,11 +36,13 @@ if __name__ == "__main__":
         with open('example_histogram/prediction_parameters.json') as params_file:
             params = PredictionParams().from_json(params_file.read())
         model_path = 'example_histogram/model.h5'
+        model = tf.keras.models.load_model(model_path)
     else:
         with open('example_docs/prediction_parameters.json') as params_file:
             params = PredictionParams().from_json(params_file.read())
         model_path = 'example_docs/model.h5'
-    _, predictions = run_prediction(params, model_path)
+        model = tf.keras.models.load_model(model_path)
+    _, predictions = run_prediction(params, model)
     print(predictions)
     print()
 

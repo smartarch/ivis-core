@@ -1,8 +1,5 @@
-from ivis.nn import run_prediction, save_data
-from ivis.nn.ParamsClasses import PredictionParams
+from ivis.nn import run_prediction, save_data, load_model
 
-model_path = 'model.h5'  # TODO(MT)
-with open('prediction_parameters.json') as params_file:
-    params = PredictionParams().from_json(params_file.read())
-_, predictions = run_prediction(params, model_path)
+params, model = load_model()
+_, predictions = run_prediction(params, model)
 save_data(params, predictions)

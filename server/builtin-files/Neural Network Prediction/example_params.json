@@ -1,0 +1,5 @@
+{
+  "training_job": 1,
+  "model_file": "model.h5",
+  "prediction_parameters_file": "prediction_parameters.json"
+}
