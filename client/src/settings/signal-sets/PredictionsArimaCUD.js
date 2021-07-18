@@ -3,14 +3,11 @@
 import React, { Component } from "react";
 import { DeleteModalDialog } from "../../lib/modals";
 import { Panel } from "../../lib/panel";
-import { tableRestActionDialogInit, tableRestActionDialogRender } from "../../lib/modals";
 import { LinkButton, requiresAuthenticatedUser, withPageHelpers } from "../../lib/page";
 import { withComponentMixins } from "../../lib/decorator-helpers";
 import { withTranslation } from "../../lib/i18n";
 import { getSignalTypes } from "../signal-sets/signals/signal-types.js";
-import axios, { HTTPMethod } from '../../lib/axios';
 import { withErrorHandling } from "../../lib/error-handling";
-import { getUrl } from "../../lib/urls";
 import {
     Button,
     ButtonRow,
@@ -62,40 +59,9 @@ export default class CUD extends Component {
         });
     }
 
-    createTestModel() {
-        const sendMethod = FormSendMethod.POST;
-        const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/arima`;
-
-        //const submitResult = this.validateAndSendFormValuesToURL(sendMethod, url);
-
-        const data = {
-            context: {
-
-            },
-            params: {
-                signalSetId: this.props.signalSet.id,
-                sigSetCid: this.props.signalSet.id,
-            },
-            body: {
-
-            },
-        };
-
-        const params = {
-            ts: 'ts',
-
-            source: 'value',
-            seasonality: false,
-        }
-
-        const response = axios.post(getUrl(url), params);
-
-        console.log(response);
-    }
-
     async submitHandler(submitAndLeave) {
         const t = this.props.t;
-        // TODO: check
+
         const sendMethod = FormSendMethod.POST;
         const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/arima`;
 
@@ -108,8 +74,6 @@ export default class CUD extends Component {
             if (submitResult) {
                 if (submitAndLeave) {
                     this.navigateToWithFlashMessage(`/settings/signal-sets/${this.props.signalSet.id}/predictions`, 'success', t('Prediction model saved'));
-                } else {
-                    // TODO
                 }
             } else {
                 this.enableForm();

@@ -4,7 +4,6 @@ import React, { Component } from "react";
 import { withComponentMixins } from "../../lib/decorator-helpers";
 import { withTranslation } from "../../lib/i18n";
 import { Panel } from "../../lib/panel";
-import { Table } from "../../lib/table";
 import { Toolbar, LinkButton, requiresAuthenticatedUser } from "../../lib/page";
 import axios from '../../lib/axios';
 import { getUrl } from "../../lib/urls";
@@ -34,12 +33,6 @@ class PredicionsLineChart extends Component {
     async getOutputConfig(modelId) {
         let outputCofig = await axios.get(getUrl(`rest/predictions-output-config/${modelId}`));
         return await outputCofig.data;
-    }
-
-    async getPredictionInfo(modelId) {
-        const prediction = (await axios.get(getUrl(`rest/predictions/${modelId}`))).data;
-        const outputConfig = (await axios.get(getUrl(`rest/predictions-output-config/${modelId}`))).data;
-        const signalSet = (await axios.get(getUrl(`rest/signal-sets/${prediction.set}`))).data;
     }
 
     async getChartConfig(modelId) {
@@ -122,23 +115,6 @@ class PredicionsLineChart extends Component {
                         key={config.signalSets[0].cid} config={config}
                     />
                 }
-            </div>
-        );
-    }
-}
-
-class SignalSelector extends Component {
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        return (
-            <div className="input-group mb-3">
-                <label className="col-sm-2 col-form-label">Signal:</label>
-                <select className="custom-select">
-                    <option value="1">Main signal</option>
-                </select>
             </div>
         );
     }
@@ -289,16 +265,16 @@ class RMSETable extends Component {
     }
 
     async getRMSE(from, to) {
-        let testBody = {
+        let requestBody = {
             from: from,
             to: to,
             sourceSetCid: this.props.sourceSetCid,
             predSetCid: this.props.predSetCid,
             signalCid: this.props.signalCid,
         };
-        let test = await axios.post(getUrl(`rest/predictions-rmse/`), testBody);
+        let response = await axios.post(getUrl(`rest/predictions-rmse/`), requestBody);
 
-        return test.data;
+        return response.data;
     }
 
     @withAsyncErrorHandler
@@ -310,7 +286,6 @@ class RMSETable extends Component {
 
         const results = await this.getRMSE(from, to);
 
-        const rmseResult = '';
         this.setState({
             min: results.minMAE,
             max: results.maxMAE,
@@ -382,7 +357,6 @@ class RMSETable extends Component {
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
-    //withPageHelpers,
     requiresAuthenticatedUser
 ])
 export default class ArimaOverview extends Component {
@@ -436,6 +410,7 @@ export default class ArimaOverview extends Component {
     async fetchBoundaries(signalSetId) {
         const x = (await axios.get(getUrl(`rest/predictions-set-boundaries/${signalSetId}`))).data;
 
+        // leave some space on the right side of the graph
         let offset = moment(x.last).diff(moment(x.first)) / 5;
         let last = moment(x.last).add(offset);
 
@@ -482,7 +457,6 @@ export default class ArimaOverview extends Component {
                         prediction={prediction}
                         ahead={this.state.ahead}
                     />
-                    {/*<SignalSelector />*/}
                     <AheadSelector
                         aheadCount={prediction.ahead_count}
                         onAheadChange={this.onAheadChange.bind(this)}
