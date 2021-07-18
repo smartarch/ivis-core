@@ -115,7 +115,6 @@ roles:
       - showAdminJobs
       - showAdminTasks
       - viewSystemTasks
-      - viewSystemJobs
       - showAdminSignalSets
       - showAdminUsers
       - showAdminNamespaces
