@@ -153,6 +153,7 @@ export default class CUD extends Component {
             architecture: NeuralNetworkArchitecturesList[0],
             learning_rate: "0.001",
             start_training: true,
+            automatic_predictions: true,
             ...formValues,
         });
         this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
@@ -216,7 +217,7 @@ export default class CUD extends Component {
             end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
         }
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'learning_rate', 'start_training']);
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'learning_rate', 'start_training', 'automatic_predictions']);
 
         return {
             ...data,
@@ -422,6 +423,7 @@ export default class CUD extends Component {
                     <InputField id="learning_rate" label="Learning rate"/>
 
                     <CheckBox id={"start_training"} label={"Start training immediately"} help={"Start the training immediately when the model is created (recommended)."}/>
+                    <CheckBox id={"automatic_predictions"} label={"Enable automatic predictions"} help={"New predictions are computed when new data are added to the signal set (recommended)."}/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler()}/>

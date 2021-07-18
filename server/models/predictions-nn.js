@@ -32,6 +32,10 @@ async function createNNModelTx(tx, context, sigSetId, params) {
         ahead_count: params.target_width,
         future_count: 1, // TODO (MT): what is future_count?
         namespace: namespace,
+        settings: {
+            training_completed: false,
+            automatic_predictions: params.automatic_predictions || false,
+        }
     };
 
     // target signals – signals of the created prediction signal sets
@@ -72,6 +76,7 @@ async function createNNModelTx(tx, context, sigSetId, params) {
     }
 
     prediction.id = await predictions.registerPredictionModelTx(tx, context, prediction);
+    params.prediction_id = prediction.id;
 
     const jobs = await createJobsTx(tx, context, signalSet, prediction, params);
 
@@ -133,7 +138,7 @@ async function createPredictionJobTx(tx, context, signalSet, prediction, trainin
         description: `Neural Network Prediction for '${signalSet.cid}', '${modelName}'`,
         namespace: signalSet.namespace,
         task: task.id,
-        state: JobState.DISABLED, // TODO (MT) enable job when training finishes
+        state: JobState.DISABLED,
         params: {
             "training_job": trainingJobId,
             "model_file": "model.h5",
@@ -166,6 +171,28 @@ async function createNNModel(context, sigSetId, params) {
     return response;
 }
 
+async function trainingFinished(context, predictionId, params) {
+    const prediction = await predictions.getById(context, predictionId);
+    const settings = prediction.settings;
+
+    if (!settings.training_completed && settings.automatic_predictions) {
+        await enablePredictionJob(context, predictionId);
+    }
+
+    settings.training_completed = true;
+    await predictions.update(context, prediction);
+}
+
+async function enablePredictionJob(context, predictionId) {
+    const predictionJobId = (await getJobsIds(context, predictionId)).prediction;
+    const predictionJob = await jobs.getById(context, predictionJobId);
+    predictionJob.originalHash = jobs.hash(predictionJob);
+
+    predictionJob.state = JobState.ENABLED;
+
+    await jobs.updateWithConsistencyCheck(context, predictionJob);
+}
+
 async function getJobsIds(context, predictionId) {
     await enforceEntityPermission(context, 'prediction', predictionId, 'view');
 
@@ -196,3 +223,4 @@ async function getJobsIds(context, predictionId) {
 
 module.exports.create = createNNModel;
 module.exports.getJobsIds = getJobsIds;
+module.exports.trainingFinished = trainingFinished;

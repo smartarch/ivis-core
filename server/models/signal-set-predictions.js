@@ -110,6 +110,8 @@ async function update(context, prediction) {
         }
 
         const filtered = filterObject(prediction, allowedKeys);
+        filtered.signals = JSON.stringify(filtered.signals);
+        filtered.settings = JSON.stringify(filtered.settings);
         await tx('predictions').where('id', prediction.id).update(filtered);
 
         await shares.rebuildPermissionsTx(tx);

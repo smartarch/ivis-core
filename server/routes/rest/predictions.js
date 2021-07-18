@@ -44,4 +44,8 @@ router.getAsync('/predictions-nn-jobs/:predictionId', passport.loggedIn, async (
     return res.json(predictionJobs);
 });
 
+router.postAsync('/predictions-nn-finished/:predictionId', passport.loggedIn, async (req, res) => {
+    return res.json(await nn.trainingFinished(req.context, castToInteger(req.params.predictionId), req.body));
+})
+
 module.exports = router;

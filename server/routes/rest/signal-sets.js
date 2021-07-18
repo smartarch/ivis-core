@@ -44,8 +44,11 @@ users.registerRestrictedAccessTokenMethod('job', async ({jobId}) => {
     };
 
     // TODO this is way too broad, it needs to be selected based on the task parameters, specifically file param type
-    ret.permissions.job['default'] = new Set(['viewFiles', 'execute', 'edit']);
+    ret.permissions.job['default'] = new Set(['view','viewFiles', 'execute', 'edit']);
     ret.permissions.job[job.id] = new Set(['view', 'viewFiles', 'manageFiles']);
+    ret.permissions.prediction = {  // TODO: This is only necessary for the prediction connected to the job, not all of them (at least for neural network predictions). We should probably think of a way to add these permissions specifically for each system job type.
+        'default': new Set(['view', 'edit']),
+    }
 
     const allowedSignalsMap = await signalSets.getAllowedSignals(job.taskParams, job.params);
 

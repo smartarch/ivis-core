@@ -1,5 +1,12 @@
 [
   {
+    "id": "prediction_id",
+    "help": "Do not change!",
+    "type": "integer",
+    "label": "Prediction ID",
+    "disabled": "true"
+  },
+  {
     "id": "signal_set",
     "help": "Signal Set to predict",
     "type": "signalSet",

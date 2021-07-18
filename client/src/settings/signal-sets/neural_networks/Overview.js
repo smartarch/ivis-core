@@ -27,6 +27,7 @@ export default class NNOverview extends Component {
             timeout: null,
             predictionJob: null,
             enablePredictionButtonDisabled: false,
+            prediction: props.prediction,
         }
     }
 
@@ -58,10 +59,15 @@ export default class NNOverview extends Component {
         const predictionJobResult = await axios.get(getUrl(`rest/jobs/${predictionJobId}`))
         const predictionJob = predictionJobResult.data;
 
+        const predictionId = this.state.prediction.id;
+        const predictionResult = await axios.get(getUrl(`rest/predictions/${predictionId}`))
+        const prediction = predictionResult.data;
+
         this.setState({
             lastRun,
             timeout,
             predictionJob,
+            prediction
         });
     }
 
@@ -115,11 +121,11 @@ export default class NNOverview extends Component {
 
     render() {
         const t = this.props.t;
-        const prediction = this.props.prediction;
+        const prediction = this.state.prediction;
         const trainingJobId = this.props.jobs.training;
 
         let enablePredictionButton = null;
-        if (this.state.predictionJob) {
+        if (this.state.predictionJob && this.state.prediction.settings && this.state.prediction.settings.training_completed) {
             if (this.state.predictionJob.state === JobState.DISABLED) {
                 enablePredictionButton = <Button onClickAsync={::this.enablePredictionJob} label={"Enable automatic predictions"} className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
             } else if (this.state.predictionJob.state === JobState.ENABLED) {
