@@ -1,6 +1,3 @@
-from ._rmse import RMSE
-from ._rmse import DummyReader
-
 from ._rw import UniTsReader
 from ._rw import UniTsAggReader
 from ._predictions import PredictionsWriter
