@@ -10,6 +10,7 @@ import {getUrl} from "../../../lib/urls";
 import axios from "../../../lib/axios";
 import RunConsole from "../../jobs/RunConsole";
 import {Button, ModalDialog} from "../../../lib/bootstrap-components";
+import {JobState} from "../../../../../shared/jobs";
 
 @withComponentMixins([
     withTranslation,
@@ -24,6 +25,8 @@ export default class NNOverview extends Component {
             lastRun: null,
             runTrainingModalVisible: false,
             timeout: null,
+            predictionJob: null,
+            enablePredictionButtonDisabled: false,
         }
     }
 
@@ -51,9 +54,14 @@ export default class NNOverview extends Component {
             timeout = setTimeout(::this.fetchData, 1000);
         }
 
+        const predictionJobId = this.props.jobs.prediction;
+        const predictionJobResult = await axios.get(getUrl(`rest/jobs/${predictionJobId}`))
+        const predictionJob = predictionJobResult.data;
+
         this.setState({
             lastRun,
             timeout,
+            predictionJob,
         });
     }
 
@@ -79,16 +87,52 @@ export default class NNOverview extends Component {
         this.fetchData();
     }
 
+    @withAsyncErrorHandler
+    async setPredictionJobState(enabled) {
+        this.setState({enablePredictionButtonDisabled: true});
+
+        const predictionJobId = this.props.jobs.prediction;
+        const predictionJobResult = await axios.get(getUrl(`rest/jobs/${predictionJobId}`))
+        const predictionJob = predictionJobResult.data;
+        predictionJob.originalHash = predictionJob.hash;
+
+        predictionJob.state = enabled ? JobState.ENABLED : JobState.DISABLED;
+
+        await axios.put(getUrl(`rest/jobs/${predictionJobId}`), predictionJob);
+
+        this.setState({enablePredictionButtonDisabled: false, predictionJob});
+    }
+
+    @withAsyncErrorHandler
+    async enablePredictionJob() {
+        await this.setPredictionJobState(true);
+    }
+
+    @withAsyncErrorHandler
+    async disablePredictionJob() {
+        await this.setPredictionJobState(false);
+    }
+
     render() {
         const t = this.props.t;
         const prediction = this.props.prediction;
         const trainingJobId = this.props.jobs.training;
+
+        let enablePredictionButton = null;
+        if (this.state.predictionJob) {
+            if (this.state.predictionJob.state === JobState.DISABLED) {
+                enablePredictionButton = <Button onClickAsync={::this.enablePredictionJob} label={"Enable automatic predictions"} className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
+            } else if (this.state.predictionJob.state === JobState.ENABLED) {
+                enablePredictionButton = <Button onClickAsync={::this.disablePredictionJob} label={"Disable automatic predictions"} className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
+            }
+        }
 
         return (
             <Panel title={t('Neural network model overview') + ": " + prediction.name}>
                 <Toolbar className={"text-left"}>
                     {this.state.lastRun && !this.state.lastRun.finished_at && <Button onClickAsync={::this.stopTraining} label={"Stop training"} className="btn-danger" icon={"stop"} />}
                     <Button onClickAsync={::this.showRunTrainingModal} label={"Re-run training"} className="btn-danger" icon={"retweet"} />
+                    {enablePredictionButton}
                 </Toolbar>
 
                 <ModalDialog hidden={!this.state.runTrainingModalVisible} title={"Re-run training"} onCloseAsync={::this.hideRunTrainingModal} buttons={[
