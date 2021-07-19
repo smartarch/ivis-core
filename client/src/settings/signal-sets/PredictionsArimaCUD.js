@@ -144,7 +144,7 @@ export default class CUD extends Component {
                     stateOwner={this}
                     onSubmitAsync={this.submitHandler}
                 >
-                    <InputField id="name" label={t('Model name')} help={t('Has to be unique among models belonging to this signal set.')} />
+                    <InputField id="name" label={t('Model name')} />
                     <TableSelect
                         key="ts"
                         id="ts"
