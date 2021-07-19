@@ -6,8 +6,8 @@ const es = require('./elasticsearch');
 const moment = require('moment');
 const shares = require('../models/shares');
 
-function getSetIndexName(sigSetCid) {
-    return `signal_set_${sigSetCid}`;
+function getSetIndexName(sigSetId) {
+    return `signal_set_${sigSetId}`;
 }
 
 async function getSignalIndexField(context, signalSetId, signalField) {
@@ -65,11 +65,13 @@ async function getSigSetBoundaries(signalSetId, tsField = 'ts') {
     };
 }
 
-async function estimateSigSetPeriod(context, sigSetId, tsField = 'ts') {
+async function estimateSigSetPeriodByCid(context, sigSetCid, tsField = 'ts') {
     const size = 1000;
-    const tsSignal = await getSignalIndexField(context, sigSetId, tsField);
+
+    const signalSet = await signalSets.getByCid(context, sigSetCid);
+    const tsSignal = await getSignalIndexField(context, signalSet.id, tsField);
     const res = await es.search({
-        index: getSetIndexName(sigSetId),
+        index: getSetIndexName(signalSet.id),
         body: {
             query: {
                 match_all: {},
@@ -80,6 +82,11 @@ async function estimateSigSetPeriod(context, sigSetId, tsField = 'ts') {
             }
         }
     });
+
+    if (!res || !res.hits || !res.hits.hits || res.hits.hits.length <= 0) {
+        // signal set appears to be empty, in which case we return Infinity
+        return Infinity;
+    }
 
     const timestamps = [];
     for (let hit of res.hits.hits) {
@@ -105,7 +112,7 @@ async function getSigSetBoundariesByCid(context, signalSetCid, tsField = 'ts') {
     return await getSigSetBoundaries(signalSet.id, tsField);
 }
 
-async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueField) {
+async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueField, interval = null) {
     // find the common subinterval of both predictions and real observation on
     // the given evaluation interval
     const b1 = await getSigSetBoundariesByCid(context, sourceSetCid);
@@ -128,22 +135,35 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
         to = b2.last;
     }
 
-    // const tsField = `s${sourcesSignals[tsField].id}`;
-    let interval = '1d';
-    if (from < to) {
-        interval = selectIntervalFixed(from, to);
-        console.log(`selected interval: ${interval}, from: ${from}, to: ${to}`);
+    // In case we were not given the aggregation interval, we have to select
+    // it somehow.
+    if (!interval && from < to) {
+        const maxInterval = await findMaxInterval(from, to);
+
+        // We now want to select the aggregation interval. There are two main things
+        // to consider here. We want the aggregation to return less than 10000
+        // buckets so that we don't have to paginate and so that we have some
+        // reasonable upper limit on computation time.
+
+        // We also don't want the interval to be much lower than the period of the
+        // original timeseries, because that would make most of the buckets empty.
+
+        // we estimate the period of predictions signal set - that is because it will
+        // have either approximtely the same period as the source data or higher
+        // (when the model is trained on some aggregation). We generally want similarly
+        // sized or bigger buckets compared to the period - smaller buckets will not
+        // help us as they will have null value
+        const predPeriod = await estimateSigSetPeriodByCid(context, sourceSetCid);
+
+        const selectedInterval = Math.min(maxInterval, predPeriod);
+        interval = `${selectedInterval}ms`;
     }
 
     const { minArray: minArraySource, maxArray: maxArraySource, tsArray: tsArraySource } = await minMaxAgg(context, sourceSetCid, from, to, interval, valueField);
     const { minArray: minArrayPred, maxArray: maxArrayPred, tsArray: tsArrayPred } = await minMaxAgg(context, predSetCid, from, to, interval, valueField);
 
-    console.log(`minArraySource: ${minArraySource}`);
-
     fillValues(minArraySource, maxArraySource);
     fillValues(minArrayPred, maxArrayPred);
-
-    console.log(`minArraySource: ${minArraySource}`);
 
     let maxMAE = 0.0;
     let minMAE = 0.0;
@@ -151,7 +171,6 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
     let minMSE = 0.0;
     const length = Math.min(minArraySource.length, minArrayPred.length);
     for (let i = 0; i < length; i++) {
-        console.log(`${maxArraySource[i]} ${minArrayPred[i]} ${maxArrayPred[i]} ${minArraySource[i]}`);
         let dMax = Math.max(
             Math.abs(maxArraySource[i] - minArrayPred[i]),
             Math.abs(maxArrayPred[i] - minArraySource[i])
@@ -162,7 +181,6 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
             Math.abs(minArraySource[i] - minArrayPred[i])
         );
 
-        console.log(`d: ${dMax}`);
 
         maxMAE += dMax;
         minMAE += dMin;
@@ -176,20 +194,6 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
     maxMSE = maxMSE / length;
     minMSE = minMSE / length;
 
-    console.log(`maxMAE: ${maxMAE} minMAE: ${minMAE}`);
-    console.log(`maxMSE: ${maxMSE} minMSE: ${minMSE}`);
-    console.log(`maxRMSE: ${Math.sqrt(maxMSE)} minRMSE: ${Math.sqrt(minMSE)}`);
-
-    console.log(`tsArraySource ${tsArraySource.length} ${tsArraySource[0]}`);
-    console.log(`tsArrayPred ${tsArrayPred.length} ${tsArrayPred[0]}`);
-
-    // we estimate the period of predictions signal set - that is because it will
-    // have either approximtely the same period as the source data or higher
-    // (when the model is trained on some aggregation). We generally want similarly
-    // sized or bigger buckets compared to the period - smaller buckets will not
-    // help us as they will have null value
-    const predPeriod = estimateSigSetPeriod(context, 1);
-
     return {
         minMAE,
         maxMAE,
@@ -200,14 +204,14 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
         interval
     };
 
-    function selectIntervalFixed(from, to) {
+    /** Returns the maximum aggregation interval in ms for an specified count
+     *  of buckets. (Approximate)
+     *
+     */
+    function findMaxInterval(from, to, maxSamples = 8000) {
         const timespan = moment.duration(moment(to).diff(moment(from)));
-        const samples = 500;
 
-        console.log(`timespan: ${timespan}`);
-        console.log(`timespan: ${timespan} ${timespan.toISOString()}`);
-
-        return `${timespan.asMilliseconds() / samples}ms`;
+        return timespan.asMilliseconds() / maxSamples;
     }
 
     async function minMaxAgg(context, sigSetCid, minTs, maxTs, interval, valueField, tsField = 'ts') {
@@ -261,12 +265,7 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
             }
         }
 
-        console.log(`query: ${JSON.stringify(query, null, 4)}`);
-
         const results = await es.search(query);
-
-        //console.log(JSON.stringify(results, null, 4));
-        //console.log(results.body.aggregations);
 
         const minArray = [];
         const maxArray = [];
@@ -275,8 +274,8 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
 
         const resValueField = 'value';
         for (let bucket of results.aggregations.hist.buckets) {
-            minArray.push(bucket.min_value[resValueField ]);
-            maxArray.push(bucket.max_value[resValueField ]);
+            minArray.push(bucket.min_value[resValueField]);
+            maxArray.push(bucket.max_value[resValueField]);
             tsArray.push(bucket.key_as_string);
         }
 
