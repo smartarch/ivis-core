@@ -54,13 +54,15 @@ class Ivis:
 
         # Add newly created to owned
         for sig_set_cid, set_props in response.items():
-            signals_created = set_props.pop('signals', {})
+            signals_created = set_props.get('signals', {})
             if signal_sets is not None:
                 # Function allows passing in either array of signal sets or one signal set
                 if (isinstance(signal_sets, list) and any(map(lambda s: s["cid"] == sig_set_cid, signal_sets))) or (
                         not isinstance(signal_sets, list) and signal_sets["cid"] == sig_set_cid):
                     self.owned.setdefault('signalSets', {}).setdefault(sig_set_cid, {})
-            self.entities['signalSets'].setdefault(sig_set_cid, set_props)
+            setEntity = dict(set_props)
+            setEntity.pop('signals', None) # Don't belong to entities
+            self.entities['signalSets'].setdefault(sig_set_cid, setEntity)
             if signals_created:
                 self.owned.setdefault('signals', {}).setdefault(sig_set_cid, {})
                 for sigCid, sig_props in signals_created.items():

@@ -12,6 +12,7 @@ const aggregationTask = {
     name: BuiltinTaskNames.AGGREGATION,
     description: 'Task used by aggregation feature for signal sets',
     type: TaskType.PYTHON,
+    source: TaskSource.SYSTEM,
     settings: {
         builtin_reinitOnUpdate: true,
         params: [{
@@ -44,7 +45,6 @@ const flattenTask = {
     name: BuiltinTaskNames.FLATTEN,
     description: 'Task will combine specified signals into single signal set and resolve conflicts on the same time point with the chosen method',
     type: TaskType.PYTHON,
-    source: TaskSource.SYSTEM,
     settings: {
         builtin_reinitOnUpdate: true,
         params: [
