@@ -63,7 +63,6 @@ class PredictionsEvaluationTableMulti extends Component {
         const outputConfig = await fetchPredictionOutputConfig(modelId);
 
         const rmse = await this.fetchPredictionRMSE(this.props.signalCid, outputConfig, this.props.ahead, from, to);
-        console.log(`rmse: ${JSON.stringify(rmse, null, 4)}`);
         return {
             name: prediction.name,
             type: prediction.type,
