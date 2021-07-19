@@ -84,7 +84,7 @@ export default class CUD extends Component {
         }
     }
 
-    localValidateFormValues(state) { // TODO: finish validation after form is reworked
+    localValidateFormValues(state) {
         const t = this.props.t;
 
         if (!state.getIn(['name', 'value'])) {
@@ -104,6 +104,62 @@ export default class CUD extends Component {
         } else {
             state.setIn(['source', 'error'], null);
         }
+
+        const isAutoarima = state.getIn(['autoarima', 'value']);
+        const isSeasonal = state.getIn(['isSeasonal', 'value']);
+        const isOverride_d = state.getIn(['override_d', 'value']);
+
+        function checkPositiveInteger(formKey, min = 0) {
+            const str = state.getIn([formKey, 'value']);
+            const num = Number(str);
+
+            if (!Number.isInteger(num)) {
+                state.setIn([formKey, 'error'], t('Must be integer.'));
+            } else if (num < min) {
+                state.setIn([formKey, 'error'], t('Must be greater than or equal to {{min}}.', {min}));
+            } else {
+                state.setIn([formKey, 'error'], null);
+            }
+        }
+
+        function checkFloat(formKey, min = -Infinity, max = Infinity) {
+            const str = state.getIn([formKey, 'value']);
+            const num = Number(str);
+
+            if (!Number.isFinite(num)) {
+                state.setIn([formKey, 'error'], t('Must be finite float.'));
+            } else if (num < min) {
+                state.setIn([formKey, 'error'], t('Must be greater than or equal to {{min}}.', {min}));
+            } else if (num > max) {
+                state.setIn([formKey, 'error'], t('Must be less than or equal to {{max}}.', { max }));
+            } else {
+                state.setIn([formKey, 'error'], null);
+            }
+        }
+
+        if (!isAutoarima) {
+
+            checkPositiveInteger('p');
+            checkPositiveInteger('d');
+            checkPositiveInteger('q');
+
+            if (isSeasonal) {
+                checkPositiveInteger('seasonal_P');
+                checkPositiveInteger('seasonal_D');
+                checkPositiveInteger('seasonal_Q');
+            }
+        }
+
+        if (isSeasonal) {
+            checkPositiveInteger('seasonality_m');
+        }
+
+        if (!isAutoarima && isOverride_d) {
+            checkPositiveInteger('d');
+        }
+
+        checkFloat('trainingPortion', 0.0, 1.0);
+        checkPositiveInteger('futurePredictions', 1);
     }
 
     render() {
