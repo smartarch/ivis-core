@@ -19,6 +19,7 @@ import { TimeRangeSelector } from "../../ivis/TimeRangeSelector";
 import { IntervalSpec } from "../../ivis/TimeInterval";
 import moment from "moment";
 import axios from '../../lib/axios';
+import { fetchPrediction, fetchPredictionOutputConfig, fetchSignalSetBoundariesByCid } from "../../lib/predictions";
 import { getUrl } from "../../lib/urls";
 
 @withComponentMixins([
@@ -30,7 +31,7 @@ class PredictionsEvaluationTableMulti extends Component {
         super(props);
 
         this.state = {
-            modelInfos: [],
+            modelInfos: [],  // information about the model including its perfomance
             evalFrom: '',
             evalTo: '',
         };
@@ -40,10 +41,10 @@ class PredictionsEvaluationTableMulti extends Component {
         const sourceSetCid = this.props.sigSetCid;
         const predSetCid = outputConfig.ahead_sets[ahead];
 
-        return await this.fetchRMSE(signalCid, sourceSetCid, predSetCid, from, to);
+        return await this.fetchSigSetRMSE(signalCid, sourceSetCid, predSetCid, from, to);
     }
 
-    async fetchRMSE(signalCid, sourceSetCid, predSetCid, from, to) {
+    async fetchSigSetRMSE(signalCid, sourceSetCid, predSetCid, from, to) {
         const request = {
             signalCid,
             from,
@@ -57,22 +58,9 @@ class PredictionsEvaluationTableMulti extends Component {
         return rmse;
     }
 
-    async fetchSigSetBoundaries(sigSetCid, signalCid, from = null, to = null) {
-        // FIXME: Handle signal!
-        const signalSet = (await axios.get(getUrl(`rest/signal-sets-by-cid/${sigSetCid}`))).data;
-        const boundaries = (await axios.get(getUrl(`rest/predictions-set-boundaries/${signalSet.id}`))).data;
-
-        return boundaries;
-
-    }
-
-    async fetchModelInfo(modelId) {
-        const prediction = (await axios.get(getUrl(`rest/predictions/${modelId}`))).data;
-        const outputConfig = (await axios.get(getUrl(`rest/predictions-output-config/${modelId}`))).data;
-
-        const absInterval = await this.getIntervalAbsolute(); // from IntevalAccessMixin
-        const from = absInterval.from.toISOString();
-        const to = absInterval.to.toISOString();
+    async fetchModelInfo(modelId, from, to) {
+        const prediction = await fetchPrediction(modelId);
+        const outputConfig = await fetchPredictionOutputConfig(modelId);
 
         const rmse = await this.fetchPredictionRMSE(this.props.signalCid, outputConfig, this.props.ahead, from, to);
         console.log(`rmse: ${JSON.stringify(rmse, null, 4)}`);
@@ -91,15 +79,39 @@ class PredictionsEvaluationTableMulti extends Component {
     }
 
     async fetchData() {
-        const boundaries = [];
+        // get the interval which to evaluate on
+        const absInterval = await this.getIntervalAbsolute(); // from IntevalAccessMixin
+        const origFrom = absInterval.from.toISOString();
+        const origTo = absInterval.to.toISOString();
+
+        const froms = [origFrom];
+        const tos = [origTo];
+
+        // the segment can be larger than the common interval of all the models
+        // so we have to find the largest subsegment
         for (let modelId of this.props.models) {
-            //const boundary = await this.fetchSigSetBoundariesoundaries()
-            //boundaries.push();
+            const outputConfig = await fetchPredictionOutputConfig(modelId);
+            const ahead = this.props.ahead;
+            const sigSetCid = outputConfig.ahead_sets[`${ahead}`];
+
+            const bounds = await fetchSignalSetBoundariesByCid(sigSetCid);
+            froms.push(bounds.first);
+            tos.push(bounds.last);
         }
 
-        const modelInfos = {};
+        // dates are stored in ISO8601 so we can sort them lexicographically
+        froms.sort();
+        tos.sort();
+
+        // we are looking for the largest common segment, so we select the
+        // last from value and the earliest to value
+        const from = froms[froms.length - 1];
+        const to = tos[0];
+
+        const modelInfos = [];
+
         for (let modelId of this.props.models) {
-            modelInfos[modelId] = await this.fetchModelInfo(modelId);
+            modelInfos[modelId] = await this.fetchModelInfo(modelId, from, to);
         }
 
         this.setState({
@@ -114,8 +126,9 @@ class PredictionsEvaluationTableMulti extends Component {
     componentDidUpdate(prevProps) {
         const intervalChanged = this.getIntervalAbsolute(prevProps) !== this.getIntervalAbsolute();
         const modelsChanged = this.props.models !== prevProps.models;
-        // do not fetch data if no importatnt props changed
-        if (intervalChanged || modelsChanged) {
+        const aheadChanged = this.props.ahead != prevProps.ahead;
+        // do not fetch data if no important props changed
+        if (intervalChanged || modelsChanged || aheadChanged) {
             this.fetchData();
         }
     }
@@ -126,59 +139,62 @@ class PredictionsEvaluationTableMulti extends Component {
 
         const loading = t('Loading...');
 
-        const evalFrom = this.state.evalFrom;
-        const evalTo = this.state.evalTo;
-
         for (let modelId of this.props.models) {
             const modelInfo = this.state.modelInfos[modelId] || {};
             const row = (
-                <tr>
-                    <td>{modelInfo.name || loading}</td>
-                    <td>{modelInfo.type || loading}</td>
-                    <td>{modelInfo.aheadCount || "(stub)1"}</td>
-                    <td>{modelInfo.period || "(stub)1d"}</td>
-                    <td>{modelInfo.minMSE || "(stub)0"}</td>
-                    <td>{modelInfo.maxMSE || "(stub)infinity"}</td>
-                    <td>{modelInfo.minMAE || "(stub)0"}</td>
-                    <td>{modelInfo.maxMAE || "(stub)infinity"}</td>
+                <tr id={modelId}>
+                    <td id="1">{modelInfo.name || loading}</td>
+                    <td id="2">{modelInfo.type || loading}</td>
+                    <td id="3">{modelInfo.aheadCount || loading}</td>
+                    <td id="4">{modelInfo.period || loading}</td>
+                    <td id="5">{modelInfo.minMSE || loading}</td>
+                    <td id="6">{modelInfo.maxMSE || loading}</td>
+                    <td id="7">{modelInfo.minMAE || loading}</td>
+                    <td id="8">{modelInfo.maxMAE || loading}</td>
                 </tr>
             );
             rows.push(row);
         }
 
-        // TODO: Replace this with accurate value
-        let fakeEvalFrom = ' '; // first printable char
-        let fakeEvalTo = 'z'; // printable char after numbers
+        let evalFrom = ' '; // first printable char
+        let evalTo = 'z'; // printable char after numbers
 
+        const fromValues = [];
+        const toValues = [];
         for (const [key, value] of Object.entries(this.state.modelInfos) || {}) {
-            if (value.from > fakeEvalFrom) {
-                fakeEvalFrom = value.from;
-            }
+            fromValues.push(value.from);
+            toValues.push(value.to)
+        }
 
-            if (value.to < fakeEvalTo) {
-                fakeEvalTo = value.to;
-            }
+        // dates are stored in ISO8601 so we can sort them lexicographically
+        fromValues.sort();
+        toValues.sort();
+
+        if (fromValues.length > 0 && toValues.length > 0) {
+            evalFrom = moment(fromValues[fromValues.length - 1]).format('YYYY-MM-DD HH:mm:ss');
+            evalTo = moment(toValues[0]).format('YYYY-MM-DD HH:mm:ss');
+        } else {
+            evalFrom = loading;
+            evalTo = loading;
         }
-        if (fakeEvalFrom === ' ') {
-            fakeEvalFrom = this.state.from;
-        }
-        if (fakeEvalTo === 'z') {
-            fakeEvalTo = this.state.to;
-        }
-        // TODO: END
+
+        const evaluationRange = t('{{from}} to {{to}}', {
+            from: evalFrom,
+            to: evalTo,
+        });
 
         return (
             <div>
                 <table className={'table table-striped table-bordered'}>
                     <thead>
-                        <th scope="column">Model</th>
-                        <th scope="column">Type</th>
-                        <th scope="column">Ahead</th>
-                        <th scope="column">Bucket interval</th>
-                        <th scope="column">MSE min</th>
-                        <th scope="column">MSE max</th>
-                        <th scope="column">MAE min</th>
-                        <th scope="column">MAE max</th>
+                        <th scope="column">{t('Model')}</th>
+                        <th scope="column">{t('Type')}</th>
+                        <th scope="column">{t('Ahead')}</th>
+                        <th scope="column">{t('Bucket interval')}</th>
+                        <th scope="column">{t('MSE min')}</th>
+                        <th scope="column">{t('MSE max')}</th>
+                        <th scope="column">{t('MAE min')}</th>
+                        <th scope="column">{t('MAE max')}</th>
                     </thead>
                     <tbody>
                         {rows}
@@ -187,8 +203,8 @@ class PredictionsEvaluationTableMulti extends Component {
                 <table>
                     <tbody className={'table table-striped table-bordered'}>
                         <tr>
-                            <th scope="row">Evaluation Time Range:</th>
-                            <td>{`${fakeEvalFrom || evalFrom} to ${fakeEvalTo || evalTo}`}</td>
+                            <th scope="row">{t('Evaluation Time Range')}:</th>
+                            <td>{evaluationRange}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -271,16 +287,15 @@ class PredictionsGraph extends Component {
         };
 
         let models = await this.fetchData();
-        // TODO: Check all models share the same signal
-        // TODO: Get models' signal sets
+        let ahead = this.props.aheadValue;
 
         for (let i = 0; i < models.length; i++) {
             let model = await models[i];
             config.signalSets.push({
-                cid: model.outputConfig.future_set, // FIXME
+                cid: model.outputConfig.future_set,
                 signals: [
                     {
-                        label: model.name + "_futr", // TODO
+                        label: `${model.name}_futr`,
                         color: colorsAhead[i % colorsAhead.length],
                         cid: this.props.signalCid,
                         enabled: true,
@@ -289,11 +304,11 @@ class PredictionsGraph extends Component {
                 tsSigCid: 'ts',
             });
             config.signalSets.push({
-                cid: model.outputConfig.ahead_sets['1'], // FIXME
+                cid: model.outputConfig.ahead_sets[`${ahead}`],
                 signals: [
                     {
-                        label: model.name + "_hist", // TODO
-                        color: colorsFuture[i % colorsFuture.length], // TODO
+                        label: `${model.name}_hist`,
+                        color: colorsFuture[i % colorsFuture.length],
                         cid: this.props.signalCid,
                         enabled: true,
                     }
@@ -302,7 +317,6 @@ class PredictionsGraph extends Component {
             });
         }
 
-        // TODO: Get common first ts - for now hardcoded
         return config;
     }
 
@@ -311,7 +325,10 @@ class PredictionsGraph extends Component {
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.models !== prevProps.models) {
+        const modelsChanged = this.props.models !== prevProps.models;
+        const aheadChanged = this.props.aheadValue !== prevProps.aheadValue;
+
+        if (modelsChanged || aheadChanged) {
             this.getConfig().then(config => this.setState({ config: config }));
         }
     }
@@ -321,16 +338,101 @@ class PredictionsGraph extends Component {
 
         return (
             <div>
-                { config && <LineChart config={config} />}
+                {config && <LineChart
+                    // We want the key here so that the LineChart is recreated.
+                    // Otherwise, during the update, there is a small time window
+                    // when having the cursor inside the chart will crash the client.
+                    key={`${config.signalSets.length}_${this.props.aheadValue}`}
+                    config={config}
+                />
+                }
             </div>
         );
     }
 }
 
-function filterBySignal(element, index, signal) {
-    if (element[index] == signal)
-        return true;
-    return false;
+@withComponentMixins([
+    withTranslation,
+])
+class AheadSelector extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            isAheadLocked: true,  // ahead value the same for all models
+        };
+    }
+
+    generateAheadOptions(minAhead, maxAhead) {
+        const options = [];
+
+        for (let ahead = minAhead; ahead <= maxAhead; ahead++) {
+            options.push(<option id={ahead}>{ahead}</option>);
+        }
+
+        return options;
+    }
+
+    handleChange(event) {
+        const target = event.target;
+        const name = target.name;
+        const value = target.type === 'checkbox' ? target.checked : target.value;
+
+        if (target.type === 'select-one') {
+            this.props.handleAheadChange(value);
+        } else {
+
+            this.setState({
+                [name]: value,
+            });
+        }
+    }
+
+    render() {
+        const t = this.props.t;
+
+        const minAhead = 1;
+        const maxAhead = this.props.max;
+
+        // in case each model will set its own ahead value, we will disable
+        // the dropdown and not use it anymore
+        const dropdownDisabled = !this.state.isAheadLocked;
+
+        return (
+            <div>
+                {
+                    // It would make sense to allow the individual ahead values
+                    // for models change in the future, so this is left here
+                    // in preparation for that
+                    /*
+                    <div className="form-check">
+                        <input
+                            name="isAheadLocked"
+                            className="form-check-input"
+                            type="checkbox"
+                            value="isAheadLocked"
+                            onChange={this.handleChange.bind(this)} />
+                        <label>
+                            {t('Lock ahead for all models.')}
+                        </label>
+                    </div>
+                    */
+                }
+                <div className="form-group row">
+                    <label className="col-sm-2 col-form-label">
+                        {`${t('Steps ahead')}:`}
+                    </label>
+                    <select
+                        name="aheadValue"
+                        disabled={dropdownDisabled}
+                        onChange={this.handleChange.bind(this)}
+                    >
+                        {this.generateAheadOptions(minAhead, maxAhead)}
+                    </select>
+                </div>
+            </div>
+        );
+    }
 }
 
 @withComponentMixins([
@@ -347,6 +449,9 @@ export default class PredictionsCompare extends Component {
         this.state = {
             first: "1900-01-01", // initial time interval, will be replaced
             last: "2099-01-01",  // when we get more information about the time series
+            aheadValue: 1,
+            maxAhead: 1, // maximum ahead value available for all models
+            models: [],
         };
 
         this.initForm({
@@ -365,21 +470,54 @@ export default class PredictionsCompare extends Component {
         this.fetchBoundaries(this.props.signalSet.id);
     }
 
+    componentDidUpdate(prevProps, prevState) {
+        const prevLength = prevState.models ? prevState.models.length : 0;
+        const newLength = this.state.models ? this.state.models.length : 0;
+        const modelsChanged = prevLength !== newLength;
+
+        if (modelsChanged) {
+            this.findMaxAhead();
+        }
+    }
+
     onSignalChange(state, key, oldValue, newValue) {
         if (oldValue != newValue) {
-            //this.setState({ signal: newValue });
             state.signal = newValue;
         }
     }
 
     onModelsChange(state, key, oldValue, newValue) {
         if (oldValue != newValue) {
-            //this.setState({ models: newValue });
-            //console.log("state");
-            //console.log(this.state);
-            //console.log(`onModelsChange(${state}, ${key}, ${oldValue}, ${newValue})`);
             state.models = newValue;
         }
+    }
+
+    handleAllAheadChange(aheadValue) {
+        // ahead value for all models changes
+        this.setState({ aheadValue });
+    }
+
+    // handleSingleAheadChange(modelId, aheadValue) { // not yet implemented
+    //
+    // }
+
+    /** Find the largest ahead value available for every model
+     */
+    async findMaxAhead() {
+        let maxAhead = 1;
+        if (this.state.models.length > 0) {
+            const maxAheadValues = [];
+            for (let modelId of this.state.models) {
+                const prediction = (await axios.get(getUrl(`rest/predictions/${modelId}`))).data;
+
+                maxAheadValues.push(prediction.ahead_count);
+            }
+            maxAhead = Math.min(...maxAheadValues);
+        }
+
+        this.setState({
+            maxAhead
+        });
     }
 
     /** Fetch first and last timestamps of the source signal set so that we can
@@ -395,7 +533,7 @@ export default class PredictionsCompare extends Component {
 
         this.setState({
             first: x.first,
-            last: last.toISOString()
+            last: last.toISOString(),
         });
     }
 
@@ -407,29 +545,21 @@ export default class PredictionsCompare extends Component {
             { data: 1, title: t('Id') },
             { data: 2, title: t('Name') },
             { data: 3, title: t('Description') },
-            //{ data: 4, title: t('Type'), render: data => signalTypes[data] },
         ];
 
         const modelsColumns = [
             { data: 0, title: t('Model id') },
             { data: 2, title: t('Name') },
             { data: 3, title: t('Type') },
-            //{ data: 4, title: t('Predicted signal') },
-            //{ data: 4, title: t('Type'), render: data => signalTypes[data] },
         ];
+
         return (
             <Panel
                 title={t('Compare models')}
             >
                 {tableRestActionDialogRender(this)}
                 <Toolbar>
-                    {/*<LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/create-arima`} className="btn-primary"
-                        icon="plus"
-        label={t('Add ARIMA model')} />*/}
                 </Toolbar>
-
-                {/*<Table ref={node => this.table = node} withHeader
-                    dataUrl={`rest/signal-set-predictions-table/${sigSetId}`} columns={columns} />*/}
                 {/*
                   * 1. Select signal
                   * 2. Select models using this signal
@@ -462,7 +592,6 @@ export default class PredictionsCompare extends Component {
                         selectionLabelIndex={2}
                         selectionKeyIndex={0}
                         dataUrl={`rest/signal-set-predictions-table/${sigSetId}`}
-                        //dataFilter={x => x.filter(y => filterBySignal(y, 4, this.state.signal))}
                         columns={modelsColumns}
                     />}
 
@@ -472,17 +601,22 @@ export default class PredictionsCompare extends Component {
                     initialIntervalSpec={new IntervalSpec(this.state.first, this.state.last, null, moment.duration(1, 'd'))}
                 >
                     <TimeRangeSelector />
-                    {this.state.models && <PredictionsGraph
-                        //sigSetId={sigSetId}
+                    {this.state.models.length > 0 && <PredictionsGraph
                         key={this.state.models.length}
                         sigSetCid={sigSetCid}
                         tsCid="ts"
                         signalCid={this.state.signal}
                         models={this.state.models}
+                        aheadValue={this.state.aheadValue}
                     />
                     }
-                    {this.state.models && <PredictionsEvaluationTableMulti
-                        ahead={1}
+                    {this.state.models.length > 0 && <AheadSelector
+                        handleAheadChange={this.handleAllAheadChange.bind(this)}
+                        aheadValue={this.state.aheadValue}
+                        max={this.state.maxAhead}
+                    />}
+                    {this.state.models.length > 0 && <PredictionsEvaluationTableMulti
+                        ahead={this.state.aheadValue}
                         sigSetCid={sigSetCid}
                         tsCid="ts"
                         signalCid={this.state.signal}
