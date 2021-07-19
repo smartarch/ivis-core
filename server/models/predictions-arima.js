@@ -5,7 +5,6 @@ const { JobState } = require("../../shared/jobs");
 const { getBuiltinTask } = require("./builtin-tasks");
 const jobs = require('./jobs');
 const log = require('../lib/log');
-//const { createTx } = require('./signals');
 const { enforce } = require('../lib/helpers');
 const predictions = require('./signal-set-predictions');
 const { PredictionTypes, ArimaModelStates } = require('../../shared/predictions');
@@ -17,10 +16,6 @@ function _generateJobName(signalSetName, modelName, modelType, postfix = '') {
         return [signalSetName, modelName, modelType, postfix].join('_');
     else
         return [signalSetName, modelName, modelType].join('_');
-}
-
-async function _createArimaJob() {
-
 }
 
 async function createArimaModelTx(tx, context, sigSetId, params) {
@@ -115,6 +110,7 @@ async function createAndStart(context, sigSetId, params) {
 }
 
 async function arimaCleanupTx(tx, context, predictionId) {
+    // At the moment, no ARIMA specific cleanup on deletion is necessary.
 }
 
 /** Return a job state of a ARIMA job belonging to a given model instance
