@@ -521,7 +521,7 @@ const getStructure = t => {
                                                             ':action(edit|delete)': {
                                                                 title: t('Edit'),
                                                                 link: params => `/settings/signal-sets/${params.signalSetId}/predictions/arima/${params.modelId}/edit`, // edit CUD also takes care of the deletion
-                                                                visible: resolved => resolved.prediction.permissions.includes('edit'),
+                                                                visible: resolved => false && resolved.prediction.permissions.includes('edit'), // hide editing for now
                                                                 panelRender: props => <PredictionsArimaCUD
                                                                     signalSet={props.resolved.signalSet}
                                                                     prediction={props.resolved.prediction}
