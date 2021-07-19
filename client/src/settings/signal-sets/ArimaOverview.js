@@ -213,6 +213,9 @@ class ARIMAModelInfoTable extends Component {
     }
 }
 
+@withComponentMixins([
+    withTranslation,
+])
 class AheadSelector extends Component {
     constructor(props) {
         super(props);
@@ -234,11 +237,13 @@ class AheadSelector extends Component {
     }
 
     render() {
+        const t = this.props.t;
+
         const signals = this.props.signals;
         const aheadCount = this.props.aheadCount;
         return (
             <div className="input-group mb-3">
-                <label className="col-sm-2 col-form-label">Ahead:</label>
+                <label className="col-sm-2 col-form-label">{t('Ahead')}:</label>
                 <select className="custom-select" onChange={this.handleChange.bind(this)}>
                     {this.genOptions(aheadCount)}
                 </select>
@@ -273,7 +278,6 @@ class RMSETable extends Component {
             signalCid: this.props.signalCid,
         };
         let response = await axios.post(getUrl(`rest/predictions-rmse/`), requestBody);
-
         return response.data;
     }
 
@@ -284,17 +288,23 @@ class RMSETable extends Component {
         const from = abs.from.toISOString();
         const to = abs.to.toISOString();
 
-        const results = await this.getRMSE(from, to);
+        try {
+            const results = await this.getRMSE(from, to);
 
-        this.setState({
-            min: results.minMAE,
-            max: results.maxMAE,
-            minMSE: results.minMSE,
-            maxMSE: results.maxMSE,
-            interval: results.interval,
-            realFrom: from,
-            realTo: results.to,
-        });
+            this.setState({
+                min: results.minMAE,
+                max: results.maxMAE,
+                minMSE: results.minMSE,
+                maxMSE: results.maxMSE,
+                interval: results.interval,
+                realFrom: from,
+                realTo: results.to,
+            });
+        } catch (error) {
+            this.setState({
+                error: `Failed to fetch RMSE. Is the model not trained yet?`,
+            })
+        }
     }
 
     componentDidMount() {
@@ -315,13 +325,17 @@ class RMSETable extends Component {
 
         const ahead = this.props.ahead;
 
+        if (this.state.error) {
+            return <div>{this.state.error}</div>
+        }
+
         return (
             <div>
                 <table className={'table table-striped table-bordered'}>
                     <tbody>
                         <tr>
                             <th scope="row">{t('Target')}:</th>
-                            <td>{ahead} ahead</td>
+                            <td>{ahead} {t('ahead')}</td>
                         </tr>
                         <tr>
                             <th scope="row">{t('Evaluation range')}:</th>
