@@ -9,12 +9,8 @@ from typing import Tuple
 import ivis.ts as ts
 import ivis.ts.arima as ar
 import joblib
-import pendulum
 import pmdarima as pmd
 from ivis import ivis
-
-# pendulum formatting string, brackets are used for escaping
-DATEFORMAT = "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]"
 
 
 def ensure_date(timestamps):
@@ -181,20 +177,23 @@ class ModelWrapper:
                     f"Missing observation, expected {expected}, got {timestamp} instead.")
 
                 prediction = self.trained_model.predict(1)[0]
-                self.trained_model.append([prediction])
+                self._append1(prediction)
                 self.delta.set_latest(expected)
 
-        # FIXME
-        if isinstance(self.trained_model, ar.ArimaPredictor):
-            self.trained_model.append([observation])
-        else:
-            self.trained_model = self.trained_model.append([observation])
+        self._append1(observation)
 
         # We will now update timestamp estimator with real observation's
         # timestamp. This should help the real sensors and the model stay in
         # sync. Otherwise, even small timestamp errors would accumulate given
         # enough time.
         self.delta.set_latest(timestamp)
+
+    def _append1(self, observation):
+        """Append a single observation directly into the inner model."""
+        if isinstance(self.trained_model, ar.ArimaPredictor):
+            self.trained_model.append([observation])
+        else:  # statsmodels SARIMAX instead of our implementation
+            self.trained_model = self.trained_model.extend([observation])
 
     def append_predict(self, timestamps, observations):
         pred_ts = []
