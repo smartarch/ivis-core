@@ -138,7 +138,7 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
     // In case we were not given the aggregation interval, we have to select
     // it somehow.
     if (!interval && from < to) {
-        const maxInterval = await findMaxInterval(from, to);
+        const minInterval = await findMinInterval(from, to);
 
         // We now want to select the aggregation interval. There are two main things
         // to consider here. We want the aggregation to return less than 10000
@@ -155,7 +155,9 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
         // help us as they will have null value
         const predPeriod = await estimateSigSetPeriodByCid(context, sourceSetCid);
 
-        const selectedInterval = Math.min(maxInterval, predPeriod);
+        // We don't want to select interval shorter than minInterval
+        // as that would result in too many buckets.
+        const selectedInterval = Math.max(minInterval, predPeriod);
         interval = `${selectedInterval}ms`;
     }
 
@@ -204,11 +206,11 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
         interval
     };
 
-    /** Returns the maximum aggregation interval in ms for an specified count
+    /** Returns the minimum aggregation interval in ms for an specified count
      *  of buckets. (Approximate)
      *
      */
-    function findMaxInterval(from, to, maxSamples = 8000) {
+    function findMinInterval(from, to, maxSamples = 8000) {
         const timespan = moment.duration(moment(to).diff(moment(from)));
 
         return timespan.asMilliseconds() / maxSamples;
