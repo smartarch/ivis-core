@@ -15,7 +15,7 @@ from .ParamsClasses import PredictionParams
 
 def load_data(prediction_parameters):
     """
-    Generates the queries, runs them in Elasticsearch and parses the data.
+    Loads data for one step of the prediction. Generates the queries, runs them in Elasticsearch and parses the data.
 
     Parameters
     ----------
@@ -26,15 +26,15 @@ def load_data(prediction_parameters):
     pd.DataFrame
     """
     index = prediction_parameters.index
-    # TODO: handle data for multiple predictions at the same time
     input_width = prediction_parameters.input_width
+
     if prediction_parameters.aggregated:
         aggregation_interval = f"{prediction_parameters.interval}ms"
-        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=input_width)  # TODO: time interval
+        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=input_width)
         results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_histogram(prediction_parameters.input_signals, results)
     else:
-        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)  # TODO: time interval
+        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)
         results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_docs(prediction_parameters.input_signals, results)
 
@@ -148,8 +148,8 @@ def postprocess(prediction_parameters, data, last_ts):
     prediction_parameters : PredictionParams
     data : np.ndarray
         The shape of the array is [samples, time, signals]
-    last_ts : int
-        The UNIX timestamp of the last record in the first prediction window. This is used to compute the timestamp of the prediction as `last_ts + interval`.
+    last_ts : int[]
+        The UNIX timestamp of the last record in each prediction input window. This is used to compute the timestamp of the prediction as `last_ts + interval`.
 
     Returns
     -------
@@ -164,7 +164,7 @@ def postprocess(prediction_parameters, data, last_ts):
     processed = []
     for index, sample in enumerate(data):
         sample = _postprocess_sample(sample, signals, normalization_coefficients, column_indices)
-        start_ts = last_ts + (index + 1) * interval
+        start_ts = last_ts[index] + interval
         sample = _set_sample_ts(sample, start_ts, interval)
         processed.append(sample)
     return processed
@@ -237,13 +237,10 @@ def run_prediction(prediction_parameters, model, log_callback=print):
         log_callback(f"Loaded {dataframe.shape[0]} records.")
         log_callback("Processing data...")
         dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
-        # print(dataframe)  # TODO (MT): remove
-        last_ts = dataframe.index[-1]  # TODO (MT): rework when predicting multiple steps is added
+        last_ts = dataframe.index[prediction_parameters.input_width - 1:]
 
         dataset = get_windowed_dataset(prediction_parameters, dataframe)
         log_callback("Data successfully loaded and processed.")
-        for d in dataset.as_numpy_iterator():  # TODO (MT): remove
-            print(d)
 
     except es.NoDataError:
         log_callback("No data in the defined time range, can't continue.")
@@ -257,5 +254,5 @@ def run_prediction(prediction_parameters, model, log_callback=print):
 
     predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
 
-    log_callback("Saving data...")  # TODO (MT)
+    log_callback("Saving data...")
     return True, predicted_dataframes
