@@ -2,6 +2,7 @@
 Code for running the trained models for prediction.
 """
 import os
+import time
 from uuid import uuid4
 import numpy as np
 import pandas as pd
@@ -33,6 +34,75 @@ def load_data(prediction_parameters):
         query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=input_width)
         results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_histogram(prediction_parameters.input_signals, results)
+    else:
+        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)
+        results = ivis.elasticsearch.search(index=index, body=query)
+        return es.parse_docs(prediction_parameters.input_signals, results)
+
+
+# TODO (MT): see comment to `load_data_multiple`
+def _get_last_prediction_ts():
+    state = ivis.state
+    if "last_prediction_ts" in state:
+        return state["last_prediction_ts"]
+    else:
+        return None
+
+
+def _set_last_prediction_ts(ts):
+    state = ivis.state if ivis.state else dict()
+    state["last_prediction_ts"] = ts
+    ivis.store_state(state)
+
+
+def _intervals_since_last_prediction(interval):
+    last_prediction = _get_last_prediction_ts()
+    if last_prediction is None:
+        return 1  # first time predicting – we want to predict just one sample
+    now = int(time.time() * 1000)  # ts in ms
+    return (now - last_prediction) // interval
+
+
+def _get_time_interval(prediction_parameters):
+    last_prediction = _get_last_prediction_ts()
+    if last_prediction is not None:
+        start_ts = last_prediction - prediction_parameters.interval * (prediction_parameters.input_width - 1)
+        return {"start_exclusive": start_ts}
+
+
+class NotEnoughDataError(Exception):
+    def __str__(self):
+        return "Not enough data."
+
+
+# TODO (MT): this is currently unused. Think about whether it is useful.
+def load_data_multiple(prediction_parameters):
+    """
+    Generates the queries, runs them in Elasticsearch and parses the data.
+
+    Parameters
+    ----------
+    prediction_parameters : ivis.nn.PredictionParams
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    index = prediction_parameters.index
+    input_width = prediction_parameters.input_width
+
+    if prediction_parameters.aggregated:
+        intervals_since_last_prediction = _intervals_since_last_prediction(prediction_parameters.interval)
+        if intervals_since_last_prediction < 1:
+            raise NotEnoughDataError
+        size = intervals_since_last_prediction + input_width - 1
+        time_interval = _get_time_interval(prediction_parameters)
+        aggregation_interval = f"{prediction_parameters.interval}ms"
+
+        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=size, time_interval=time_interval)
+        results = ivis.elasticsearch.search(index=index, body=query)
+        return es.parse_histogram(prediction_parameters.input_signals, results)
+
     else:
         query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)
         results = ivis.elasticsearch.search(index=index, body=query)
@@ -245,6 +315,9 @@ def run_prediction(prediction_parameters, model, log_callback=print):
     except es.NoDataError:
         log_callback("No data in the defined time range, can't continue.")
         raise es.NoDataError from None
+    except NotEnoughDataError:  # TODO (MT): see comment to `load_data_multiple`
+        log_callback("Not enough new data since the last prediction, can't continue.")
+        raise NotEnoughDataError from None
 
     log_callback("Loading model...")
     model.summary(print_fn=log_callback)
