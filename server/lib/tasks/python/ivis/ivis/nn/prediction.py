@@ -14,13 +14,13 @@ from .preprocessing import get_column_names, preprocess_using_coefficients
 from .ParamsClasses import PredictionParams
 
 
-def load_data(prediction_parameters):
+def load_data_single(prediction_parameters):
     """
     Loads data for one step of the prediction. Generates the queries, runs them in Elasticsearch and parses the data.
 
     Parameters
     ----------
-    prediction_parameters : ivis.nn.PredictionParams
+    prediction_parameters : PredictionParams
 
     Returns
     -------
@@ -40,34 +40,20 @@ def load_data(prediction_parameters):
         return es.parse_docs(prediction_parameters.input_signals, results)
 
 
-# TODO (MT): see comment to `load_data_multiple`
 def _get_last_prediction_ts():
+    """Gets (from job state) the start of the last window used for prediction."""
     state = ivis.state
-    if "last_prediction_ts" in state:
-        return state["last_prediction_ts"]
+    if "last_window_start" in state:
+        return state["last_window_start"]
     else:
         return None
 
 
 def _set_last_prediction_ts(ts):
+    """Saves to job state the start of the last window used for prediction."""
     state = ivis.state if ivis.state else dict()
-    state["last_prediction_ts"] = ts
+    state["last_window_start"] = ts
     ivis.store_state(state)
-
-
-def _intervals_since_last_prediction(interval):
-    last_prediction = _get_last_prediction_ts()
-    if last_prediction is None:
-        return 1  # first time predicting – we want to predict just one sample
-    now = int(time.time() * 1000)  # ts in ms
-    return (now - last_prediction) // interval
-
-
-def _get_time_interval(prediction_parameters):
-    last_prediction = _get_last_prediction_ts()
-    if last_prediction is not None:
-        start_ts = last_prediction - prediction_parameters.interval * (prediction_parameters.input_width - 1)
-        return {"start_exclusive": start_ts}
 
 
 class NotEnoughDataError(Exception):
@@ -75,41 +61,59 @@ class NotEnoughDataError(Exception):
         return "Not enough data."
 
 
-# TODO (MT): this is currently unused. Think about whether it is useful.
-def load_data_multiple(prediction_parameters):
+def load_data_since(prediction_parameters, last_window_start):
     """
-    Generates the queries, runs them in Elasticsearch and parses the data.
+    Loads all data after a set timestamp. Generates the queries, runs them in Elasticsearch and parses the data.
 
     Parameters
     ----------
-    prediction_parameters : ivis.nn.PredictionParams
+    prediction_parameters : PredictionParams
+    last_window_start : int
+        The timestamp of the first record in the last window used for prediction. All data strictly after this timestamp are returned.
 
     Returns
     -------
     pd.DataFrame
     """
     index = prediction_parameters.index
-    input_width = prediction_parameters.input_width
+    time_interval = {"start_exclusive": last_window_start}
 
     if prediction_parameters.aggregated:
-        intervals_since_last_prediction = _intervals_since_last_prediction(prediction_parameters.interval)
-        if intervals_since_last_prediction < 1:
-            raise NotEnoughDataError
-        size = intervals_since_last_prediction + input_width - 1
-        time_interval = _get_time_interval(prediction_parameters)
         aggregation_interval = f"{prediction_parameters.interval}ms"
-
-        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=size, time_interval=time_interval)
+        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, time_interval=time_interval)
         results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_histogram(prediction_parameters.input_signals, results)
 
     else:
-        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)
+        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, time_interval=time_interval)
         results = ivis.elasticsearch.search(index=index, body=query)
         return es.parse_docs(prediction_parameters.input_signals, results)
 
 
+def load_data(prediction_parameters):
+    """
+    Loads the data for prediction..
+
+    Parameters
+    ----------
+    prediction_parameters : PredictionParams
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    last_window_start = _get_last_prediction_ts()
+
+    if last_window_start is not None:
+        return load_data_since(prediction_parameters, last_window_start)
+    else:
+        return load_data_single(prediction_parameters)
+
+
 def get_windowed_dataset(prediction_parameters, dataframe):
+    if dataframe.shape[0] < prediction_parameters.input_width:
+        raise NotEnoughDataError
+
     return tf.keras.preprocessing.timeseries_dataset_from_array(
         data=np.array(dataframe, dtype=np.float32),
         targets=None,
@@ -277,7 +281,7 @@ def load_model(log_callback=print):
 ##################
 
 
-def run_prediction(prediction_parameters, model, log_callback=print):
+def run_prediction(prediction_parameters, model, save_data, log_callback=print):
     """
     Predicts future values using the given model and new data.
 
@@ -288,15 +292,10 @@ def run_prediction(prediction_parameters, model, log_callback=print):
         signals and their types.
     model : tf.keras.Model
         The model to use for predictions.
+    save_data : (PredictionParams, List[pd.DataFrame]) -> None
+        Function to save the data.
     log_callback : callable
         Function to print to Job log.
-
-    Returns
-    -------
-    bool
-        Whether the model was updated and should be uploaded to IVIS server. TODO (MT): this is probably unnecessary as we can simply save the model back to the file from which it was loaded
-    any
-        New predictions to be inserted into the signal set in Elasticsearch.
     """
 
     log_callback("Initializing...")
@@ -315,7 +314,7 @@ def run_prediction(prediction_parameters, model, log_callback=print):
     except es.NoDataError:
         log_callback("No data in the defined time range, can't continue.")
         raise es.NoDataError from None
-    except NotEnoughDataError:  # TODO (MT): see comment to `load_data_multiple`
+    except NotEnoughDataError:
         log_callback("Not enough new data since the last prediction, can't continue.")
         raise NotEnoughDataError from None
 
@@ -328,4 +327,9 @@ def run_prediction(prediction_parameters, model, log_callback=print):
     predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
 
     log_callback("Saving data...")
-    return True, predicted_dataframes
+    save_data(prediction_parameters, predicted_dataframes)
+
+    last_window_start = dataframe.index[-prediction_parameters.input_width]
+    _set_last_prediction_ts(last_window_start)
+
+    log_callback("All done.")

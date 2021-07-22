@@ -14,6 +14,8 @@ class ESMock:
             with open('histogram.json') as file:
                 return json.load(file)
 ivis.elasticsearch = ESMock()
+ivis.state = {"last_window_start": 1620518400000}
+ivis.store_state = lambda x: print("Saving state:", x)
 
 from ivis.nn.ParamsClasses.PredictionParams import PredictionParams
 from ivis.nn import run_prediction
@@ -42,8 +44,4 @@ if __name__ == "__main__":
             params = PredictionParams().from_json(params_file.read())
         model_path = 'example_docs/model.h5'
         model = tf.keras.models.load_model(model_path)
-    _, predictions = run_prediction(params, model)
-    print(predictions)
-    print()
-
-    save_data(params, predictions)
+    run_prediction(params, model, save_data)
