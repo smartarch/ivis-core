@@ -22,7 +22,7 @@ def load_data_single(prediction_parameters):
 def _get_last_prediction_ts():
     """Gets (from job state) the start of the last window used for prediction."""
     state = ivis.state
-    if "last_window_start" in state:
+    if state is not None and "last_window_start" in state:
         return state["last_window_start"]
     else:
         return None
@@ -213,35 +213,35 @@ def postprocess(prediction_parameters, data, last_ts):
     return processed
 
 
-def load_model(log_callback=print):
+def load_model():
     training_job = ivis.params["training_job"]
     model_file = ivis.params["model_file"]
     params_file = ivis.params["prediction_parameters_file"]
     tmp_folder = str(uuid4())
 
     # download the model from IVIS server
-    log_callback("Downloading model...")
+    print("Downloading model...")
     model_path = tmp_folder + "/model.h5"
     os.makedirs(tmp_folder)
     with open(model_path, "wb") as file:
         model_response = ivis.get_job_file(training_job, model_file)
         file.write(model_response.content)
 
-    log_callback("Loading TensorFlow model...")
+    print("Loading TensorFlow model...")
     model = tf.keras.models.load_model(model_path)
 
-    log_callback("Cleaning temporary files...")
+    print("Cleaning temporary files...")
     try:
         os.remove(model_path)
         os.rmdir(tmp_folder)
     except OSError as e:
         print("Error while cleaning up temporary files:\n  %s - %s." % (e.filename, e.strerror))
 
-    log_callback("Downloading prediction parameters...")
+    print("Downloading prediction parameters...")
     params_response = ivis.get_job_file(training_job, params_file)
     prediction_parameters = PredictionParams().from_json(params_response.text)
 
-    log_callback("Model loaded.")
+    print("Model loaded.")
     return prediction_parameters, model
 
 
@@ -250,7 +250,7 @@ def load_model(log_callback=print):
 ##################
 
 
-def run_prediction(prediction_parameters, model, save_data, log_callback=print):
+def run_prediction(prediction_parameters, model, save_data):
     """
     Predicts future values using the given model and new data.
 
@@ -263,42 +263,41 @@ def run_prediction(prediction_parameters, model, save_data, log_callback=print):
         The model to use for predictions.
     save_data : (PredictionParams, List[pd.DataFrame]) -> None
         Function to save the data.
-    log_callback : callable
-        Function to print to Job log.
     """
 
-    log_callback("Initializing...")
+    print("Initializing...")
+    print(f"Using TensorFlow (version {tf.__version__}).")
 
     try:
-        log_callback("Loading data...")
+        print("Loading data...")
         dataframe = load_data_prediction(prediction_parameters)
-        log_callback(f"Loaded {dataframe.shape[0]} records.")
-        log_callback("Processing data...")
+        print(f"Loaded {dataframe.shape[0]} records.")
+        print("Processing data...")
         dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
         last_ts = dataframe.index[prediction_parameters.input_width - 1:]
 
         dataset = get_windowed_dataset(prediction_parameters, dataframe)
-        log_callback("Data successfully loaded and processed.")
+        print("Data successfully loaded and processed.")
 
     except es.NoDataError:
-        log_callback("No data in the defined time range, can't continue.")
+        print("No data in the defined time range, can't continue.")
         raise es.NoDataError from None
     except NotEnoughDataError:
-        log_callback("Not enough new data since the last prediction, can't continue.")
+        print("Not enough new data since the last prediction, can't continue.")
         raise NotEnoughDataError from None
 
-    log_callback("Loading model...")
-    model.summary(print_fn=log_callback)
+    print("Loading model...")
+    model.summary()
 
-    log_callback("Computing predictions...")
+    print("Computing predictions...")
     predicted = model.predict(dataset)
 
     predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
 
-    log_callback("Saving data...")
+    print("Saving data...")
     save_data(prediction_parameters, predicted_dataframes)
 
-    last_window_start = dataframe.index[-prediction_parameters.input_width]
+    last_window_start = int(dataframe.index[-prediction_parameters.input_width])
     _set_last_prediction_ts(last_window_start)
 
-    log_callback("All done.")
+    print("All done.")
