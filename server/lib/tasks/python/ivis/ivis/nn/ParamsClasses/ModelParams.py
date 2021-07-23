@@ -14,6 +14,8 @@ class ModelParams(Params):
         self.normalization_coefficients = dict()  #: Normalization coefficients for the signals
         self.input_width = 0  # Number of time steps used for prediction.
         self.target_width = 0  # Number of predicted time steps.
+        self.index = str()  # the ES index (signal set)
+        self.ts_field = str()  # the ts field in the ES index
 
         if isinstance(copy_from, ModelParams):
             self.architecture = copy_from.architecture
@@ -24,6 +26,8 @@ class ModelParams(Params):
             self.normalization_coefficients = copy_from.normalization_coefficients
             self.input_width = copy_from.input_width
             self.target_width = copy_from.target_width
+            self.index = copy_from.index
+            self.ts_field = copy_from.ts_field
 
     def __str__(self):
         return "ModelParams: " + str(self.__dict__)

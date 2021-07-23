@@ -19,7 +19,7 @@ ivis.store_state = lambda x: print("Saving state:", x)
 
 from ivis.nn.ParamsClasses.PredictionParams import PredictionParams
 from ivis.nn import run_prediction
-from ivis.nn.save import records_future, records_k_ahead
+from ivis.nn.save_data import records_future, records_k_ahead
 
 
 def save_data(prediction_parameters, dataframes):

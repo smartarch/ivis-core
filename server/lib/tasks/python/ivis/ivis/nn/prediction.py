@@ -2,42 +2,21 @@
 Code for running the trained models for prediction.
 """
 import os
-import time
 from uuid import uuid4
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from ivis import ivis
+from . import load_data_elasticsearch as es
 from .common import get_aggregated_field
-from . import elasticsearch as es
+from .load_data import load_data
 from .preprocessing import get_column_names, preprocess_using_coefficients
 from .ParamsClasses import PredictionParams
 
 
 def load_data_single(prediction_parameters):
-    """
-    Loads data for one step of the prediction. Generates the queries, runs them in Elasticsearch and parses the data.
-
-    Parameters
-    ----------
-    prediction_parameters : PredictionParams
-
-    Returns
-    -------
-    pd.DataFrame
-    """
-    index = prediction_parameters.index
-    input_width = prediction_parameters.input_width
-
-    if prediction_parameters.aggregated:
-        aggregation_interval = f"{prediction_parameters.interval}ms"
-        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, size=input_width)
-        results = ivis.elasticsearch.search(index=index, body=query)
-        return es.parse_histogram(prediction_parameters.input_signals, results)
-    else:
-        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, size=input_width)
-        results = ivis.elasticsearch.search(index=index, body=query)
-        return es.parse_docs(prediction_parameters.input_signals, results)
+    """Loads data for one step of the prediction."""
+    return load_data(prediction_parameters, single=True)
 
 
 def _get_last_prediction_ts():
@@ -63,7 +42,7 @@ class NotEnoughDataError(Exception):
 
 def load_data_since(prediction_parameters, last_window_start):
     """
-    Loads all data after a set timestamp. Generates the queries, runs them in Elasticsearch and parses the data.
+    Loads all data after a set timestamp.
 
     Parameters
     ----------
@@ -75,24 +54,14 @@ def load_data_since(prediction_parameters, last_window_start):
     -------
     pd.DataFrame
     """
-    index = prediction_parameters.index
     time_interval = {"start_exclusive": last_window_start}
 
-    if prediction_parameters.aggregated:
-        aggregation_interval = f"{prediction_parameters.interval}ms"
-        query = es.get_histogram_query(prediction_parameters.input_signals, prediction_parameters.ts_field, aggregation_interval, time_interval=time_interval)
-        results = ivis.elasticsearch.search(index=index, body=query)
-        return es.parse_histogram(prediction_parameters.input_signals, results)
-
-    else:
-        query = es.get_docs_query(prediction_parameters.input_signals, prediction_parameters.ts_field, time_interval=time_interval)
-        results = ivis.elasticsearch.search(index=index, body=query)
-        return es.parse_docs(prediction_parameters.input_signals, results)
+    return load_data(prediction_parameters, time_interval)
 
 
-def load_data(prediction_parameters):
+def load_data_prediction(prediction_parameters):
     """
-    Loads the data for prediction..
+    Loads the data for prediction.
 
     Parameters
     ----------
@@ -302,7 +271,7 @@ def run_prediction(prediction_parameters, model, save_data, log_callback=print):
 
     try:
         log_callback("Loading data...")
-        dataframe = load_data(prediction_parameters)
+        dataframe = load_data_prediction(prediction_parameters)
         log_callback(f"Loaded {dataframe.shape[0]} records.")
         log_callback("Processing data...")
         dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)

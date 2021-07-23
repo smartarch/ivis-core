@@ -4,7 +4,8 @@ Code for hyperparameter optimizer.
 import os
 from uuid import uuid4
 from ivis import ivis
-from . import elasticsearch as es, preprocessing as pre
+from . import load_data_elasticsearch as es, preprocessing as pre
+from .load_data import load_data
 from .ParamsClasses import TrainingParams, PredictionParams
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals
 
@@ -64,6 +65,7 @@ def get_default_training_params(parameters, training_params_class=TrainingParams
     prepare_signal_parameters(parameters["target_signals"], entities_signals, aggregated)
 
     training_params.index = get_els_index(parameters)
+    training_params.ts_field = get_ts_field(parameters)
     training_params.input_signals = parameters["input_signals"]
     training_params.target_signals = parameters["target_signals"]
     training_params.input_width = parameters["input_width"]
@@ -77,34 +79,8 @@ def get_default_training_params(parameters, training_params_class=TrainingParams
     return training_params
 
 
-def get_query_and_index(parameters):
-    index = get_els_index(parameters)
-
-    aggregated = is_aggregated(parameters)
-    signals = parameters["input_signals"] + parameters["target_signals"]
-    time_interval = parameters["time_interval"]
-    size = parameters["size"] if "size" in parameters else 10000
-    ts_field = get_ts_field(parameters)
-
-    if aggregated:
-        aggregation_interval = parameters["aggregation"]
-        return es.get_histogram_query(signals, ts_field, aggregation_interval, time_interval, size), index
-    else:
-        return es.get_docs_query(signals, ts_field, time_interval, size), index
-
-
-def parse_data(parameters, data):
-    signals = parameters["input_signals"] + parameters["target_signals"]
-    if is_aggregated(parameters):
-        return es.parse_histogram(signals, data)
-    else:
-        return es.parse_docs(signals, data)
-
-
-def load_data(parameters):
-    query, index = get_query_and_index(parameters)
-    data = ivis.elasticsearch.search(index=index, body=query)
-    return parse_data(parameters, data)
+def load_data_training(training_params, time_interval):
+    return load_data(training_params, time_interval=time_interval, include_targets=True)
 
 
 def prepare_data(training_parameters, dataframe):
@@ -181,7 +157,7 @@ def run_optimizer(parameters, run_training_callback, log_callback=print):
     # load the data
     try:
         log_callback("Loading data...")
-        data = load_data(parameters)
+        data = load_data_training(training_params, parameters["time_interval"])
         log_callback(f"Loaded {data.shape[0]} records.")
         log_callback("Processing data...")
         dataframes = prepare_data(training_params, data)
