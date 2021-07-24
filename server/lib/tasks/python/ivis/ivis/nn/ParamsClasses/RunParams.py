@@ -1,7 +1,7 @@
 from .Params import Params
 
 
-class ModelParams(Params):
+class RunParams(Params):
     """Base class for TrainingParams and PredictionParams."""
 
     def __init__(self, copy_from=None):
@@ -17,7 +17,7 @@ class ModelParams(Params):
         self.index = str()  # the ES index (signal set)
         self.ts_field = str()  # the ts field in the ES index
 
-        if isinstance(copy_from, ModelParams):
+        if isinstance(copy_from, RunParams):
             self.architecture = copy_from.architecture
             self.input_signals = copy_from.input_signals
             self.target_signals = copy_from.target_signals
@@ -30,4 +30,4 @@ class ModelParams(Params):
             self.ts_field = copy_from.ts_field
 
     def __str__(self):
-        return "ModelParams: " + str(self.__dict__)
+        return "RunParams: " + str(self.__dict__)

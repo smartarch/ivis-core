@@ -1,7 +1,7 @@
-from .ModelParams import ModelParams
+from .RunParams import RunParams
 
 
-class TrainingParams(ModelParams):
+class TrainingParams(RunParams):
     """Class representing the parameters for `run_training` function."""
 
     def __init__(self):

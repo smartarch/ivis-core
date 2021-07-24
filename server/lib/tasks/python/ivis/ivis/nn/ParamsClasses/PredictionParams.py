@@ -1,13 +1,13 @@
-from .ModelParams import ModelParams
+from .RunParams import RunParams
 
 
-class PredictionParams(ModelParams):
+class PredictionParams(RunParams):
     """Class representing the parameters for `run_prediction` function."""
 
     def __init__(self, copy_from=None):
         """
         Parameters
         ----------
-        copy_from : ivis.nn.ModelParams
+        copy_from : RunParams
         """
         super().__init__(copy_from)
