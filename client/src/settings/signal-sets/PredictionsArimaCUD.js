@@ -8,6 +8,7 @@ import { withComponentMixins } from "../../lib/decorator-helpers";
 import { withTranslation } from "../../lib/i18n";
 import { getSignalTypes } from "../signal-sets/signals/signal-types.js";
 import { withErrorHandling } from "../../lib/error-handling";
+import { isValidEsInterval } from "../../../../shared/validators";
 import {
     Button,
     ButtonRow,
@@ -108,6 +109,7 @@ export default class CUD extends Component {
         const isAutoarima = state.getIn(['autoarima', 'value']);
         const isSeasonal = state.getIn(['isSeasonal', 'value']);
         const isOverride_d = state.getIn(['override_d', 'value']);
+        const isAggregated = state.getIn(['useAggregation', 'value']);
 
         function checkPositiveInteger(formKey, min = 0) {
             const str = state.getIn([formKey, 'value']);
@@ -160,6 +162,17 @@ export default class CUD extends Component {
 
         checkFloat('trainingPortion', 0.0, 1.0);
         checkPositiveInteger('futurePredictions', 1);
+
+        if (isAggregated) {
+            const interval = state.getIn(['bucketSize', 'value']);
+            if (!interval) {
+                state.setIn(['bucketSize', 'error'], t('Interval must not be empty'));
+            } else if (!isValidEsInterval(interval)) {
+                state.setIn(['bucketSize', 'error'], t('Not a valid interval'));
+            } else {
+                state.setIn(['bucketSize', 'error'], null);
+            }
+        }
     }
 
     render() {
