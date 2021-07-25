@@ -10,6 +10,7 @@ from . import load_data_elasticsearch as es, preprocessing as pre
 from .load_data import load_data
 from .ParamsClasses import TrainingParams, PredictionParams
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals
+from .models.ModelFactory import ModelFactory
 
 
 ######################
@@ -173,7 +174,7 @@ def save_model(parameters, model, training_parameters):
 ##############################
 
 
-def run_training(training_parameters, train, val, test):
+def run_training(training_parameters, model_factory, train, val, test):
     """
     Run the training of neural network with specified parameters and data.
 
@@ -181,6 +182,7 @@ def run_training(training_parameters, train, val, test):
     ----------
     training_parameters : ivis.nn.TrainingParams
         The parameters passed from Optimizer.
+    model_factory : ModelFactory
     train : tf.data.Dataset
     val : tf.data.Dataset
     test : tf.data.Dataset
@@ -195,20 +197,10 @@ def run_training(training_parameters, train, val, test):
 
     print("Creating model...")
 
-    input_column_names = pre.get_column_names(training_parameters.normalization_coefficients,
-                                              training_parameters.input_signals)
-    target_column_names = pre.get_column_names(training_parameters.normalization_coefficients,
-                                               training_parameters.target_signals)
-
-    input_shape = (training_parameters.input_width, len(input_column_names))
-    target_shape = (training_parameters.target_width, len(target_column_names))
-
     # sample neural network model
-    model = nn_model.get_model(training_parameters, input_shape, target_shape)
-
-    # add residual connection - predict the difference
-    targets_to_inputs_mapping = nn_model.get_targets_to_inputs_mapping(input_column_names, target_column_names)
-    model = nn_model.wrap_with_residual_connection(model, targets_to_inputs_mapping)
+    model_params_class = model_factory.get_params_class()
+    model_params = model_params_class(None, training_parameters)
+    model = model_factory.create_model(model_params)
 
     model.compile(
         optimizer=nn_model.get_optimizer(training_parameters),
@@ -231,7 +223,7 @@ def run_training(training_parameters, train, val, test):
     }, model
 
 
-def run_optimizer(parameters):
+def run_optimizer(parameters, model_factory=None):
     """
     Runs the optimizer to try to find the best possible model for the data.
 
@@ -240,6 +232,8 @@ def run_optimizer(parameters):
     parameters : dict
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types in the `entities` value.
+    model_factory : ModelFactory
+        Factory for creating the NN models.
     """
 
     print("Initializing...")
@@ -251,6 +245,9 @@ def run_optimizer(parameters):
 
     training_parameters.architecture = "feedforward"  # TODO (MT)
     training_parameters.split = {"train": 0.7, "val": 0, "test": 0.3}
+
+    if model_factory is None:
+        model_factory = nn_model.get_model_factory(training_parameters)
 
     # load the data
     try:
@@ -272,7 +269,7 @@ def run_optimizer(parameters):
         # do some magic...
 
         print(f"\nStarting iteration {i}.")
-        training_result, model = run_training(training_parameters, train, val, test)
+        training_result, model = run_training(training_parameters, model_factory, train, val, test)
         print(f"Result: {training_result['test_loss']}.")
 
         # decide whether the new model is better and should be saved

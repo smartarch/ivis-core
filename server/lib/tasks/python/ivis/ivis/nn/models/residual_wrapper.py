@@ -1,4 +1,5 @@
 import tensorflow as tf
+from .ModelFactory import ModelFactory, ModelParams
 
 
 def get_targets_to_inputs_mapping(input_column_names, target_column_names):
@@ -22,7 +23,7 @@ def get_targets_to_inputs_mapping(input_column_names, target_column_names):
     return mapping
 
 
-def wrap_with_residual_connection(model, targets_to_inputs_mapping):
+def wrap_model_with_residual_connection(model, targets_to_inputs_mapping):
     """
     Alters the `model`'s `call` method to compute the output by adding the model's output to the input.
     By doing that, the layers of the model don't compute the absolute values of the output but rather the
@@ -54,3 +55,27 @@ def wrap_with_residual_connection(model, targets_to_inputs_mapping):
 
     model.call = new_call
     return model
+
+
+def with_residual_connection(model_factory_class):
+    """
+    Decorator to add residual connection to a ModelFactory class.
+
+    Parameters
+    ----------
+    model_factory_class : type[ModelFactory]
+
+    Returns
+    -------
+
+    """
+    orig_create = model_factory_class.create_model
+
+    def new_create(model_params: ModelParams):
+        model = orig_create(model_params)
+        targets_to_inputs_mapping = get_targets_to_inputs_mapping(model_params.input_column_names,
+                                                                  model_params.target_column_names)
+        return wrap_model_with_residual_connection(model, targets_to_inputs_mapping)
+
+    model_factory_class.create_model = new_create
+    return model_factory_class

@@ -1,32 +1,41 @@
+"""
+Simple feedforward model.
+"""
 import tensorflow as tf
+from .ModelFactory import ModelFactory, ModelParams
+from .residual_wrapper import with_residual_connection
 
 
-def feedforward_model(training_parameters, input_shape, target_shape):
-    """
-    Feedforward neural network.
+class FeedforwardParams(ModelParams):
 
-    Parameters
-    ----------
-    training_parameters : ivis.nn.FeedforwardTrainingParams
-    input_shape : tuple
-    target_shape : tuple
+    def __init__(self, hyperparameters, training_parameters):
+        super().__init__(hyperparameters, training_parameters)
+        self.hidden_layers = []
 
-    Returns
-    -------
-    tf.keras.Model
-    """
-    hidden_layers = []
-    if hasattr(training_parameters, "hidden_layers"):
-        hidden_layers = training_parameters.hidden_layers
 
-    inputs = tf.keras.layers.Input(shape=input_shape)
-    layer = tf.keras.layers.Flatten()(inputs)
+class FeedforwardFactory(ModelFactory):
 
-    for size in hidden_layers:
-        layer = tf.keras.layers.Dense(size)(layer)
-        layer = tf.keras.layers.ReLU()(layer)
+    @staticmethod
+    def get_params_class():
+        return FeedforwardParams
 
-    outputs = tf.keras.layers.Dense(tf.math.reduce_prod(target_shape))(layer)
-    outputs = tf.keras.layers.Reshape(target_shape)(outputs)
+    @staticmethod
+    def create_model(model_params: FeedforwardParams):
+        hidden_layers = model_params.hidden_layers
 
-    return tf.keras.Model(inputs=inputs, outputs=outputs)
+        inputs = tf.keras.layers.Input(shape=model_params.input_shape)
+        layer = tf.keras.layers.Flatten()(inputs)
+
+        for size in hidden_layers:
+            layer = tf.keras.layers.Dense(size)(layer)
+            layer = tf.keras.layers.ReLU()(layer)
+
+        outputs = tf.keras.layers.Dense(tf.math.reduce_prod(model_params.target_shape))(layer)
+        outputs = tf.keras.layers.Reshape(model_params.target_shape)(outputs)
+
+        return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+
+@with_residual_connection
+class FeedforwardWithResidualFactory(FeedforwardFactory):
+    pass

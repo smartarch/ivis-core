@@ -2,9 +2,8 @@
 Functions for creating NN models.
 """
 import tensorflow as tf
-from .ParamsClasses import FeedforwardTrainingParams
-from .models.feedforward import feedforward_model
-from .models.residual_wrapper import *
+from .ParamsClasses import TrainingParams
+from .models.feedforward import FeedforwardFactory, FeedforwardWithResidualFactory
 
 
 #################################################
@@ -12,22 +11,22 @@ from .models.residual_wrapper import *
 #################################################
 
 
-def get_model(training_parameters, input_shape, target_shape):
+def get_model_factory(training_parameters):
     """
-    Create new TensorFlow network model based on `training_parameters`.
+    Create model factory based on `training_parameters`.
 
     Parameters
     ----------
-    training_parameters : ivis.nn.TrainingParams
-    input_shape : tuple
-    target_shape : tuple
+    training_parameters : TrainingParams
 
     Returns
     -------
     tf.keras.Model
     """
     if training_parameters.architecture == "feedforward":
-        return feedforward_model(FeedforwardTrainingParams(training_parameters), input_shape, target_shape)
+        return FeedforwardFactory
+    elif training_parameters.architecture == "feedforward_residual":
+        return FeedforwardWithResidualFactory
     else:
         raise ValueError(f"Unknown network architecture: '{training_parameters.architecture}'")
 
