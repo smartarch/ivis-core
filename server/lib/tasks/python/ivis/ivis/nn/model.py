@@ -36,9 +36,5 @@ def get_model_factory(training_parameters):
 ################################################################
 
 
-def get_optimizer(training_parameters):
-    adam_params = {}
-    if hasattr(training_parameters, "learning_rate") and isinstance(training_parameters.learning_rate, float):
-        adam_params["learning_rate"] = training_parameters.learning_rate
-
-    return tf.keras.optimizers.Adam(**adam_params)
+def get_optimizer(learning_rate):
+    return tf.keras.optimizers.Adam(learning_rate)

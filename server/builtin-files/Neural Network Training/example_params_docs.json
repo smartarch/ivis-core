@@ -41,5 +41,21 @@
     }
   ],
   "input_width": 3,
-  "target_width": 1
+  "target_width": 1,
+  "learning_rate": {
+    "optimizable_type": "float",
+    "min": 0.00001,
+    "max": 0.1,
+    "sampling": "log"
+  },
+  "architecture": "feedforward",
+  "architecture_params": {
+    "hidden_layers": {
+      "optimizable_type": "list_int",
+      "min_count": 0,
+      "max_count": 2,
+      "min": 8,
+      "max": 16
+    }
+  }
 }

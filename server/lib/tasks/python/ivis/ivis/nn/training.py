@@ -3,13 +3,15 @@ Code for Neural Network training.
 """
 import os
 import tensorflow as tf
+import kerastuner as kt
 from . import model as nn_model
 from uuid import uuid4
 from ivis import ivis
 from . import load_data_elasticsearch as es, preprocessing as pre
 from .load_data import load_data
 from .ParamsClasses import TrainingParams, PredictionParams
-from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals
+from .hyperparameters import Hyperparameters
+from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
 from .models.ModelFactory import ModelFactory
 
 
@@ -174,55 +176,6 @@ def save_model(parameters, model, training_parameters):
 ##############################
 
 
-def run_training(training_parameters, model_factory, train, val, test):
-    """
-    Run the training of neural network with specified parameters and data.
-
-    Parameters
-    ----------
-    training_parameters : ivis.nn.TrainingParams
-        The parameters passed from Optimizer.
-    model_factory : ModelFactory
-    train : tf.data.Dataset
-    val : tf.data.Dataset
-    test : tf.data.Dataset
-
-    Returns
-    -------
-    dict
-        The computed losses, etc. for Optimizer.
-    tf.keras.Model
-        The neural network model (which can then be saved into IVIS).
-    """
-
-    print("Creating model...")
-
-    # sample neural network model
-    model_params_class = model_factory.get_params_class()
-    model_params = model_params_class(None, training_parameters)
-    model = model_factory.create_model(model_params)
-
-    model.compile(
-        optimizer=nn_model.get_optimizer(training_parameters),
-        loss=tf.losses.mse
-    )
-    model.summary()
-
-    print("Starting training...")
-
-    fit_params = {
-        "epochs": 3,  # TODO
-    }
-    metrics_history = model.fit(train, **fit_params, verbose=2)
-    print("Training done.")
-    print(metrics_history.history)
-
-    return {
-        "train_loss": 1.22,
-        "test_loss": 3.4,
-    }, model
-
-
 def run_optimizer(parameters, model_factory=None):
     """
     Runs the optimizer to try to find the best possible model for the data.
@@ -244,12 +197,13 @@ def run_optimizer(parameters, model_factory=None):
     time_interval = parameters["time_interval"]
 
     training_parameters.architecture = "feedforward"  # TODO (MT)
-    training_parameters.split = {"train": 0.7, "val": 0, "test": 0.3}
+    training_parameters.split = {"train": 0.7, "val": 0.2, "test": 0.1}
 
     if model_factory is None:
         model_factory = nn_model.get_model_factory(training_parameters)
 
     # load the data
+    print_divider()
     try:
         data = load_data_training(training_parameters, time_interval)
         dataframes = prepare_data(training_parameters, data)
@@ -262,18 +216,56 @@ def run_optimizer(parameters, model_factory=None):
     if training_parameters.interval is None:
         training_parameters.interval = _infer_interval_from_data(data)
 
-    # print(training_parameters)
+    def build_model(hp: kt.HyperParameters):
+        """Function for creating a model in each iteration of hyperparameter optimization using Keras Tuner"""
+        hyperparameters = Hyperparameters(parameters, hp)
+        architecture_hyperparameters = Hyperparameters(parameters["architecture_params"], hp)
 
-    for i in range(1):
+        model_params_class = model_factory.get_params_class()
+        model_params = model_params_class(architecture_hyperparameters, training_parameters)
+        model = model_factory.create_model(model_params)
 
-        # do some magic...
+        learning_rate = hyperparameters["learning_rate"]
 
-        print(f"\nStarting iteration {i}.")
-        training_result, model = run_training(training_parameters, model_factory, train, val, test)
-        print(f"Result: {training_result['test_loss']}.")
+        model.compile(
+            optimizer=nn_model.get_optimizer(learning_rate),
+            loss=tf.losses.mse
+        )
 
-        # decide whether the new model is better and should be saved
-        should_save = True
+        return model
 
-        if should_save:
-            save_model(parameters, model, training_parameters)
+    print_divider()
+    print("Preparing hyperparameters optimizer...", end="")
+    working_directory = str(uuid4())
+    optimizer = kt.BayesianOptimization(
+        build_model,
+        objective="val_loss",
+        max_trials=3,  # TODO(MT)
+        executions_per_trial=2,  # TODO(MT)
+        overwrite=True,
+        directory=working_directory,
+        project_name="ivis"
+    )
+    print("Done.")
+    print_divider()
+    optimizer.search_space_summary()
+
+    print_divider()
+    print("Starting model search.\n")
+    fit_params = {
+        "epochs": 3,  # TODO(MT) https://github.com/keras-team/keras-tuner/issues/122
+    }
+    optimizer.search(train, **fit_params, validation_data=val, verbose=2)
+
+    print_divider()
+    print("Search finished.\n")
+    optimizer.results_summary(num_trials=1)
+
+    print_divider()
+    print("Best model:\n")
+    best_model = optimizer.get_best_models()[0]
+    best_model.summary()
+    # TODO(MT) evaluate model on test set
+
+    print_divider()
+    save_model(parameters, best_model, training_parameters)

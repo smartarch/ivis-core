@@ -10,7 +10,7 @@ class FeedforwardParams(ModelParams):
 
     def __init__(self, hyperparameters, training_parameters):
         super().__init__(hyperparameters, training_parameters)
-        self.hidden_layers = []
+        self.hidden_layers = hyperparameters["hidden_layers"]
 
 
 class FeedforwardFactory(ModelFactory):

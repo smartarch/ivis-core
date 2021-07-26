@@ -37,3 +37,9 @@ def interval_string_to_milliseconds(interval: str):
         return int(interval[:-1]) * 24 * 60 * 60 * 1000
     else:
         raise ValueError("Invalid interval unit")
+
+
+def print_divider(length=10):
+    print()
+    print("#" * length)
+    print()
