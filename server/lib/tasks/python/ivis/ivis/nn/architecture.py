@@ -3,12 +3,8 @@ Functions for creating NN models.
 """
 import tensorflow as tf
 from .ParamsClasses import TrainingParams
-from .models.feedforward import FeedforwardFactory, FeedforwardWithResidualFactory
-
-
-#################################################
-# Create tf.keras.Model based on TrainingParams #
-#################################################
+from .architectures.ModelFactory import ModelFactory
+from .architectures.feedforward import FeedforwardFactory, FeedforwardWithResidualFactory
 
 
 def get_model_factory(training_parameters):
@@ -21,7 +17,7 @@ def get_model_factory(training_parameters):
 
     Returns
     -------
-    tf.keras.Model
+    ModelFactory
     """
     if training_parameters.architecture == "feedforward":
         return FeedforwardFactory
@@ -31,10 +27,16 @@ def get_model_factory(training_parameters):
         raise ValueError(f"Unknown network architecture: '{training_parameters.architecture}'")
 
 
-################################################################
-# Create tf.keras.optimizers.Optimizer based on TrainingParams #
-################################################################
-
-
 def get_optimizer(learning_rate):
+    """
+    Get an optimizer (tf.keras.optimizers.Optimizer) for the neural network.
+
+    Parameters
+    ----------
+    learning_rate
+
+    Returns
+    -------
+    tf.keras.optimizers.Optimizer
+    """
     return tf.keras.optimizers.Adam(learning_rate)

@@ -4,15 +4,14 @@ Code for Neural Network training.
 import os
 import tensorflow as tf
 import kerastuner as kt
-from . import model as nn_model
 from uuid import uuid4
 from ivis import ivis
-from . import load_data_elasticsearch as es, preprocessing as pre
+from . import load_data_elasticsearch as es, preprocessing as pre, architecture
 from .load_data import load_data
 from .ParamsClasses import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
-from .models.ModelFactory import ModelFactory
+from .architectures.ModelFactory import ModelFactory
 
 
 ######################
@@ -138,7 +137,7 @@ def _infer_interval_from_data(dataframe):
 ##############
 
 
-def save_model(parameters, model, training_parameters):
+def save_model(model, training_parameters):
     save_folder = str(uuid4())
 
     # temporarily save to the file system
@@ -147,8 +146,6 @@ def save_model(parameters, model, training_parameters):
 
     # save the prediction parameters
     prediction_parameters = PredictionParams(training_parameters)
-    prediction_parameters.index = get_els_index(parameters)
-    prediction_parameters.ts_field = get_ts_field(parameters)
 
     with open(save_folder + "/prediction_parameters.json", 'w') as file:
         print(prediction_parameters.to_json(), file=file)
@@ -171,14 +168,14 @@ def save_model(parameters, model, training_parameters):
     print("Model saved.")
 
 
-##############################
-# Run optimizer and training #
-##############################
+##########################
+# Run tuner and training #
+##########################
 
 
-def run_optimizer(parameters, model_factory=None):
+def run_training(parameters, model_factory=None):
     """
-    Runs the optimizer to try to find the best possible model for the data.
+    Runs the hyperparameter tuner to try to find the best possible model for the data.
 
     Parameters
     ----------
@@ -200,7 +197,7 @@ def run_optimizer(parameters, model_factory=None):
     training_parameters.split = {"train": 0.7, "val": 0.2, "test": 0.1}
 
     if model_factory is None:
-        model_factory = nn_model.get_model_factory(training_parameters)
+        model_factory = architecture.get_model_factory(training_parameters)
 
     # load the data
     print_divider()
@@ -228,16 +225,16 @@ def run_optimizer(parameters, model_factory=None):
         learning_rate = hyperparameters["learning_rate"]
 
         model.compile(
-            optimizer=nn_model.get_optimizer(learning_rate),
+            optimizer=architecture.get_optimizer(learning_rate),
             loss=tf.losses.mse
         )
 
         return model
 
     print_divider()
-    print("Preparing hyperparameters optimizer...", end="")
+    print("Preparing hyperparameters tuner...", end="")
     working_directory = str(uuid4())
-    optimizer = kt.BayesianOptimization(
+    tuner = kt.BayesianOptimization(
         build_model,
         objective="val_loss",
         max_trials=3,  # TODO(MT)
@@ -248,24 +245,24 @@ def run_optimizer(parameters, model_factory=None):
     )
     print("Done.")
     print_divider()
-    optimizer.search_space_summary()
+    tuner.search_space_summary()
 
     print_divider()
     print("Starting model search.\n")
     fit_params = {
         "epochs": 3,  # TODO(MT) https://github.com/keras-team/keras-tuner/issues/122
     }
-    optimizer.search(train, **fit_params, validation_data=val, verbose=2)
+    tuner.search(train, **fit_params, validation_data=val, verbose=2)
 
     print_divider()
     print("Search finished.\n")
-    optimizer.results_summary(num_trials=1)
+    tuner.results_summary(num_trials=1)
 
     print_divider()
     print("Best model:\n")
-    best_model = optimizer.get_best_models()[0]
+    best_model = tuner.get_best_models()[0]
     best_model.summary()
     # TODO(MT) evaluate model on test set
 
     print_divider()
-    save_model(parameters, best_model, training_parameters)
+    save_model(best_model, training_parameters)

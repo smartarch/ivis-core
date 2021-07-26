@@ -229,6 +229,7 @@ def load_model():
 
     print("Loading TensorFlow model...")
     model = tf.keras.models.load_model(model_path)
+    # TODO(MT) update the model using ModelFactory
 
     print("Cleaning temporary files...")
     try:

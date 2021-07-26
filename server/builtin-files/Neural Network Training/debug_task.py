@@ -17,7 +17,7 @@ class ESMock:
 ivis.elasticsearch = ESMock()
 ivis.upload_file = lambda f: print(f"Mocking upload of '{f.name}'")
 
-from ivis.nn import run_optimizer
+from ivis.nn import run_training
 
 
 if __name__ == "__main__":
@@ -28,4 +28,4 @@ if __name__ == "__main__":
         with open('example_params_docs.json') as params_file:
             params = json.load(params_file)
 
-    run_optimizer(params)
+    run_training(params)
