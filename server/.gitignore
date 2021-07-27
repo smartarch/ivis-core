@@ -3,3 +3,4 @@
 /config/development.yaml
 /config/production.yaml
 /lib/tasks/python/build/
+/builtin-files/Neural Network Training/training_logs/

@@ -240,8 +240,8 @@ def run_training(parameters, model_factory=None):
         max_trials=3,  # TODO(MT)
         executions_per_trial=2,  # TODO(MT)
         overwrite=True,
-        directory=working_directory,
-        project_name="ivis"
+        directory="training_logs",
+        project_name=working_directory
     )
     print("Done.")
     print_divider()
@@ -249,8 +249,10 @@ def run_training(parameters, model_factory=None):
 
     print_divider()
     print("Starting model search.\n")
+    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)  # TODO(MT): patience
     fit_params = {
-        "epochs": 3,  # TODO(MT) https://github.com/keras-team/keras-tuner/issues/122
+        "epochs": 50,  # TODO(MT)
+        "callbacks": [early_stopping_callback]
     }
     tuner.search(train, **fit_params, validation_data=val, verbose=2)
 
