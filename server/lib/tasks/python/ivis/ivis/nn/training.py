@@ -5,6 +5,7 @@ import os
 import tensorflow as tf
 import kerastuner as kt
 from uuid import uuid4
+from pathlib import Path
 from ivis import ivis
 from . import load_data_elasticsearch as es, preprocessing as pre, architecture
 from .load_data import load_data
@@ -136,35 +137,37 @@ def _infer_interval_from_data(dataframe):
 # Save model #
 ##############
 
+TRAINING_LOGS = "training_logs"
 
-def save_model(model, training_parameters):
-    save_folder = str(uuid4())
+
+def get_working_directory():
+    training_logs_dir = Path(TRAINING_LOGS)
+    while True:
+        working_directory = str(uuid4().hex)[:8]
+        if not (training_logs_dir / working_directory).exists():
+            return working_directory
+
+
+def save_model(model, training_parameters, working_directory):
+    save_folder = Path(TRAINING_LOGS) / working_directory
 
     # temporarily save to the file system
     print("Saving model...")
-    model.save(save_folder + "/model.h5")
+    model.save(save_folder / "model.h5")
 
     # save the prediction parameters
     prediction_parameters = PredictionParams(training_parameters)
 
-    with open(save_folder + "/prediction_parameters.json", 'w') as file:
+    with open(save_folder / "prediction_parameters.json", 'w') as file:
         print(prediction_parameters.to_json(), file=file)
 
     # upload the files to IVIS server
     print("Uploading to IVIS...")
-    with open(save_folder + "/model.h5", 'rb') as file:
+    with open(save_folder / "model.h5", 'rb') as file:
         ivis.upload_file(file)
-    with open(save_folder + "/prediction_parameters.json", 'r') as file:
+    with open(save_folder / "prediction_parameters.json", 'r') as file:
         ivis.upload_file(file)
 
-    # delete the temporary files
-    print("Cleaning up...")
-    try:
-        os.remove(save_folder + "/model.h5")
-        os.remove(save_folder + "/prediction_parameters.json")
-        os.rmdir(save_folder)
-    except OSError as e:
-        print("Error while cleaning up temporary files:\n  %s - %s." % (e.filename, e.strerror))
     print("Model saved.")
 
 
@@ -233,14 +236,14 @@ def run_training(parameters, model_factory=None):
 
     print_divider()
     print("Preparing hyperparameters tuner...", end="")
-    working_directory = str(uuid4())
+    working_directory = get_working_directory()
     tuner = kt.BayesianOptimization(
         build_model,
         objective="val_loss",
         max_trials=3,  # TODO(MT)
         executions_per_trial=2,  # TODO(MT)
         overwrite=True,
-        directory="training_logs",
+        directory=TRAINING_LOGS,
         project_name=working_directory
     )
     print("Done.")
@@ -267,4 +270,4 @@ def run_training(parameters, model_factory=None):
     # TODO(MT) evaluate model on test set
 
     print_divider()
-    save_model(best_model, training_parameters)
+    save_model(best_model, training_parameters, working_directory)
