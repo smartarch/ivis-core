@@ -51,11 +51,16 @@
   "architecture": "feedforward",
   "architecture_params": {
     "hidden_layers": {
-      "optimizable_type": "list_int",
-      "min_count": 0,
-      "max_count": 2,
-      "min": 8,
-      "max": 16
+      "optimizable_type": "list",
+      "count": 2,
+      "items": [
+        12,
+        {
+          "optimizable_type": "int",
+          "min": 4,
+          "max": 8
+        }
+      ]
     }
   }
 }
