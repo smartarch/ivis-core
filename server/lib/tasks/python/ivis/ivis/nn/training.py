@@ -1,7 +1,7 @@
 """
 Code for Neural Network training.
 """
-import os
+import shutil
 import tensorflow as tf
 import kerastuner as kt
 from uuid import uuid4
@@ -171,6 +171,13 @@ def save_model(model, training_parameters, working_directory):
     print("Model saved.")
 
 
+def cleanup(working_directory):
+    print("Cleaning up...", end="")
+    folder = Path(TRAINING_LOGS) / working_directory
+    shutil.rmtree(folder)
+    print("Done.")
+
+
 ##########################
 # Run tuner and training #
 ##########################
@@ -271,3 +278,6 @@ def run_training(parameters, model_factory=None):
 
     print_divider()
     save_model(best_model, training_parameters, working_directory)
+
+    if "cleanup" in parameters and parameters["cleanup"]:
+        cleanup(working_directory)
