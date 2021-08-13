@@ -19,7 +19,7 @@ import {
     InputField,
     withForm
 } from "../../../lib/form";
-import ParamTypes from "../../ParamTypes";
+import ParamTypesTunable from "../../ParamTypesTunable";
 import {SignalType} from "../../../../../shared/signals";
 import {isSignalSetAggregationIntervalValid} from "../../../../../shared/validators";
 import moment from "moment";
@@ -41,7 +41,7 @@ const signalsConfigSpec = (id, label, help, sigSet, aggregated) => ({
     "label": label,
     "help": help,
     "type": "fieldset",
-    "cardinality": "1..n",
+    "cardinality": "0..n", //TODO (MT): For debug, then revert to 1..n
     "children": [{
         "id": "cid",
         "label": "Signal",
@@ -117,7 +117,6 @@ export default class CUD extends Component {
             this.ts_configSpec,
             this.input_signals_configSpec(),
             this.target_signals_configSpec(),
-            this.getArchitectureParamsSpec(),
         );
 
         this.initForm({
@@ -125,7 +124,7 @@ export default class CUD extends Component {
                 architecture: ::this.onArchitectureChange,
             }
         });
-        this.paramTypes = new ParamTypes(props.t);
+        this.paramTypes = new ParamTypesTunable(props.t);
         this.rendered_architecture = null;
     }
 
@@ -206,6 +205,8 @@ export default class CUD extends Component {
 
     submitFormValuesMutator(data) {
         const paramData = this.paramTypes.getParams(this.configSpec(), data);
+        const architectureData = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
+        console.log(architectureData);
 
         data.name = data.name.trim();
         data.aggregation = data.aggregation.trim();
@@ -222,6 +223,7 @@ export default class CUD extends Component {
         return {
             ...data,
             ...paramData,
+            architecture_params: architectureData,
         }
     }
 
@@ -259,6 +261,7 @@ export default class CUD extends Component {
         }
         // validate params
         this.paramTypes.localValidate(this.configSpec(), state);
+        this.paramTypes.localValidate(this.getArchitectureParamsSpec(), state);
 
         // aggregation interval
         const aggregationStr = state.getIn(['aggregation', 'value']).trim();
