@@ -39,12 +39,28 @@ export default class ParamTypesTunable extends ParamTypes {
             }
         }
 
-        // ---------------------------------------------------------------------
-        // Parameter Type Handlers
+        const numberRenderFunction = getTunableRenderFunction(
+            (self, prefix, spec, disabled) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                return <InputField key={spec.id} id={formId} label={"Value"}/>
+            },
+            (self, prefix, spec, disabled) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                return <>
+                    <InputField key={spec.id + "_min"} id={formId + "_min"} label={"Min"}/>
+                    <InputField key={spec.id + "_max"} id={formId + "_max"} label={"Max"}/>
+                    <InputField key={spec.id + "_default"} id={formId + "_default"} label={"Default"}/>
+                    <Dropdown key={spec.id + "_sampling"} id={formId + "_sampling"} label={"Sampling"} options={[
+                        { key: "linear", label: "Linear" },
+                        { key:"log", label: "Logarithmic" },
+                        { key:"reverse_log", label: "Reverse logarithmic" },
+                    ]} />
+                </>
+            },
+        )
 
-        this.paramTypes.tunable_integer = {
-            adopt: this.paramTypes.integer.adopt,
-            setFields: (prefix, spec, param, data) => {
+        const setFieldsNumber = (paramTypeSpec) => {
+            return (prefix, spec, param, data) => {
                 const formId = this.getParamFormId(prefix, spec.id);
 
                 if (typeof(param) === "object") {
@@ -59,13 +75,16 @@ export default class ParamTypesTunable extends ParamTypes {
                         data[formId + "_default"] = String(param.default);
                 } else {
                     data[formId + "_tune"] = "fixed";
-                    this.paramTypes.integer.setFields(prefix, spec, String(param), data);
+                    paramTypeSpec.setFields(prefix, spec, String(param), data);
                 }
-            },
-            getParams: (prefix, spec, data) => {
+            }
+        }
+
+        const getParamsNumber = (paramTypeSpec) => {
+            return (prefix, spec, data) => {
                 const formId = this.getParamFormId(prefix, spec.id);
                 if (data[formId + "_tune"] === "fixed")
-                    return Number(this.paramTypes.integer.getParams(prefix, spec, data));
+                    return Number(paramTypeSpec.getParams(prefix, spec, data));
                 else {
                     const param = {
                         optimizable_type: "int",
@@ -80,8 +99,11 @@ export default class ParamTypesTunable extends ParamTypes {
 
                     return param;
                 }
-            },
-            validate: (prefix, spec, state) => {
+            }
+        }
+        
+        const validateNumber = (singleNumberValidator, errorMessage) => {
+            return (prefix, spec, state) => {
                 const formId = this.getParamFormId(prefix, spec.id);
                 const fixed = state.getIn([formId + "_tune", 'value']) === "fixed";
 
@@ -90,41 +112,59 @@ export default class ParamTypesTunable extends ParamTypes {
                     this.paramTypes.integer.validate(prefix, spec, state);
                 } else {
                     const val_min = state.getIn([formId + "_min", 'value']) || "";
-                    if (val_min.trim() === '' || !Number.isInteger(Number(val_min))) {
-                        state.setIn([formId + "_min", 'error'], t('Please enter an integer'));
+                    if (val_min.trim() === '' || !singleNumberValidator(val_min)) {
+                        state.setIn([formId + "_min", 'error'], errorMessage);
                     }
 
                     const val_max = state.getIn([formId + "_max", 'value']) || "";
-                    if (val_max.trim() === '' || !Number.isInteger(Number(val_max))) {
-                        state.setIn([formId + "_max", 'error'], t('Please enter an integer'));
+                    if (val_max.trim() === '' || !singleNumberValidator(val_max)) {
+                        state.setIn([formId + "_max", 'error'], errorMessage);
                     }
 
                     const val_default = state.getIn([formId + "_default", 'value']) || "";
-                    if (!Number.isInteger(Number(val_default))) {
-                        state.setIn([formId + "_default", 'error'], t('Please enter an integer'));
+                    if (!singleNumberValidator(val_default)) {
+                        state.setIn([formId + "_default", 'error'], errorMessage);
+                    }
+
+                    if (singleNumberValidator(val_min) && singleNumberValidator(val_max)) {
+                        if (Number(val_min) > Number(val_max)) {
+                            state.setIn([formId + "_min", 'error'], t('Min must be smaller than max'));
+                            state.setIn([formId + "_max", 'error'], t('Min must be smaller than max'));
+                        }
+
+                        if (val_default.trim() !== '' && singleNumberValidator(val_default)) {
+                            if (Number(val_default) < Number(val_min)) {
+                                state.setIn([formId + "_default", 'error'], t('Default must be bigger than min'));
+                            }
+
+                            if (Number(val_default) > Number(val_max)) {
+                                state.setIn([formId + "_default", 'error'], t('Default must be smaller than max'));
+                            }
+                        }
                     }
                 }
-            },
-            render: getTunableRenderFunction(
-                (self, prefix, spec, disabled) => {
-                    const formId = this.getParamFormId(prefix, spec.id);
-                    return <InputField key={spec.id} id={formId} label={"Value"}/>
-                },
-                (self, prefix, spec, disabled) => {
-                    const formId = this.getParamFormId(prefix, spec.id);
-                    return <>
-                        <InputField key={spec.id + "_min"} id={formId + "_min"} label={"Min"}/>
-                        <InputField key={spec.id + "_max"} id={formId + "_max"} label={"Max"}/>
-                        <InputField key={spec.id + "_default"} id={formId + "_default"} label={"Default"}/>
-                        <Dropdown key={spec.id + "_sampling"} id={formId + "_sampling"} label={"Sampling"} options={[
-                            { key: "linear", label: "Linear" },
-                            { key:"log", label: "Logarithmic" },
-                            { key:"reverse_log", label: "Reverse logarithmic" },
-                        ]} />
-                    </>
-                },
-            ),
-            upcast: (spec, value) => Number.parseInt(value)
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Parameter Type Handlers
+
+        this.paramTypes.tunable_integer = {
+            adopt: this.paramTypes.integer.adopt,
+            setFields: setFieldsNumber(this.paramTypes.integer),
+            getParams: getParamsNumber(this.paramTypes.integer),
+            validate: validateNumber(n => Number.isInteger(Number(n)), t('Please enter an integer')),
+            render: numberRenderFunction,
+            upcast: (spec, value) => value
+        };
+
+        this.paramTypes.tunable_float = {
+            adopt: this.paramTypes.float.adopt,
+            setFields: setFieldsNumber(this.paramTypes.float),
+            getParams: getParamsNumber(this.paramTypes.float),
+            validate: validateNumber(n => !isNaN(n), t('Please enter an number')),
+            render: numberRenderFunction,
+            upcast: (spec, value) => value
         };
     }
 }

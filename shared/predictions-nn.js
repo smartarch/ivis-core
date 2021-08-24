@@ -19,6 +19,10 @@ const NeuralNetworkArchitecturesSpecs = {
             "label": "Test 2",
             "type": "tunable_integer",
         },{
+            "id": "test3",
+            "label": "Test 3",
+            "type": "tunable_float",
+        },{
             "id": "hidden_layers",
             "label": "Hidden layers",
             "type": "fieldset",
@@ -38,6 +42,7 @@ const NeuralNetworkArchitecturesSpecs = {
                 default: 8,
             },
             test2: 12,
+            test3: 1,
         }
     },
     [NeuralNetworkArchitectures.TEST]: {

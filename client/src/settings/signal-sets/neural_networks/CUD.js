@@ -206,6 +206,7 @@ export default class CUD extends Component {
     submitFormValuesMutator(data) {
         const paramData = this.paramTypes.getParams(this.configSpec(), data);
         const architectureData = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
+        // TODO (MT): should we also 'upcast' the params?
         console.log(architectureData);
 
         data.name = data.name.trim();
