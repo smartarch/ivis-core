@@ -11,38 +11,27 @@ const NeuralNetworkArchitecturesSpecs = {
     [NeuralNetworkArchitectures.FEEDFORWARD]: {
         label: "Feedforward",
         params: [{
-            "id": "test",
-            "label": "Test",
-            "type": "tunable_integer",
-        },{
-            "id": "test2",
-            "label": "Test 2",
-            "type": "tunable_integer",
-        },{
-            "id": "test3",
-            "label": "Test 3",
-            "type": "tunable_float",
-        },{
             "id": "hidden_layers",
             "label": "Hidden layers",
-            "type": "fieldset",
-            "cardinality": "0..n",
-            "children": [{
+            "itemLabel": "Layer",
+            "type": "tunable_list",
+            "child": {
                 "id": "units",
                 "label": "Neurons",
-                "type": "integer",
-            }],
+                "type": "tunable_integer",
+            },
         }],
         defaultParams: {
-            hidden_layers: [],
-            test: {
-                min: 8,
-                max: 16,
-                sampling: "log",
-                default: 8,
+            hidden_layers: {
+                min_count: 1,
+                max_count: 2,
+                items: [{
+                    min: 8,
+                    max: 16,
+                    sampling: "linear",
+                    default: 8,
+                }, 8]
             },
-            test2: 12,
-            test3: 1,
         }
     },
     [NeuralNetworkArchitectures.TEST]: {
