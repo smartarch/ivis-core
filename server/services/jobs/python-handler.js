@@ -32,7 +32,7 @@ const taskSubtypeSpecs = {
     },
     [PythonSubtypes.NEURAL_NETWORK]: {
         cmdsBefore: ['pip install --upgrade pip'],
-        libs: [...defaultPythonLibs, 'numpy', 'pandas', 'tensorflow>=2.4']
+        libs: [...defaultPythonLibs, 'numpy', 'pandas', 'tensorflow>=2.4', 'keras-tuner==1.0.2']
     },
     [PythonSubtypes.ARIMA]: {
         libs: [...defaultPythonLibs, 'numpy', 'statsmodels', 'pmdarima', 'pendulum']
@@ -282,7 +282,7 @@ async function init(config, onSuccess, onFail) {
                         await fs.copyAsync(devDir, destDir, {overwrite: true});
                     }
                     await fs.moveAsync(envBuildDir, envDir, {overwrite: true});
-                    await onSuccess(null);
+                    await onSuccess([`Output of the init (not really a warning):\n${output}`]);
                 } else {
                     await onFail(null, [`Init ended with code ${code} and the following error:\n${output}`]);
                 }

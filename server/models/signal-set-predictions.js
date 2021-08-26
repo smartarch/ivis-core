@@ -64,13 +64,13 @@ async function registerPredictionModelTx(tx, context, prediction) {
         throw new Error("A prediction model has to have output signals!");
     }
 
+    // noinspection UnnecessaryLocalVariableJS
     const filteredSignals = {
         'main': outSignals ? outSignals : [],
         'extra': extraSignals ? extraSignals : [],
     };
 
-    // stringify because we want to store it in the database
-    prediction.signals = JSON.stringify(filteredSignals);
+    prediction.signals = filteredSignals;
 
     const predId = await _createPredictionTx(tx, context, prediction);
     prediction.id = predId;
@@ -249,7 +249,11 @@ async function _createPredictionTx(tx, context, prediction) {
     await _validate(context, tx, prediction);
 
     const filteredEntity = filterObject(prediction, allowedKeys);
-    const id = await tx('predictions').insert(filteredEntity);
+    filteredEntity.settings = JSON.stringify(filteredEntity.settings);
+    filteredEntity.signals = JSON.stringify(filteredEntity.signals);
+
+    const inserted_ids = await tx('predictions').insert(filteredEntity);
+    const id = inserted_ids[0];
 
     await shares.rebuildPermissionsTx(tx, {
         entityTypeId: 'prediction',
