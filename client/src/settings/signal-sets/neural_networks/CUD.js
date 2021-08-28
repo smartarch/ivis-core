@@ -24,6 +24,7 @@ import {SignalType} from "../../../../../shared/signals";
 import {isSignalSetAggregationIntervalValid} from "../../../../../shared/validators";
 import moment from "moment";
 import paramTypesStyles from "../../ParamTypes.scss";
+import styles from "./CUD.scss";
 import * as dateMath from "../../../lib/datemath";
 import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
 
@@ -313,6 +314,14 @@ export default class CUD extends Component {
             return [];
     }
 
+    getArchitectureDescription() {
+        const architecture = this.getFormValue('architecture');
+        if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture))
+            return NeuralNetworkArchitecturesSpecs[architecture].description;
+        else
+            return null;
+    }
+
     renderTotalPredictionTime() {
         const targetWidth = this.getFormValue('target_width').trim();
         const aggregation = this.getFormValue('aggregation').trim();
@@ -328,7 +337,7 @@ export default class CUD extends Component {
             if (!total.isValid())
                 return null;
 
-            return (<div className={"form-group"}>
+            return (<div className={"form-group text-muted"}>
                 The model will predict about {total.humanize()} into the future in {targetWidth} time steps.
             </div>);
         }
@@ -392,15 +401,17 @@ export default class CUD extends Component {
 
                     {this.renderObservationsRecommendation()}
 
-                    <h4>Neural Network architecture</h4>
-
-                    <Dropdown id={"architecture"} label={"Architecture"} options={this.getArchitectureDropdownOptions()} />
-
                     <h4>Signals</h4>
 
                     {renderParam(this.input_signals_configSpec())}
 
                     {renderParam(this.target_signals_configSpec())}
+
+                    <h4>Neural Network architecture</h4>
+
+                    <Dropdown id={"architecture"} label={"Architecture"} options={this.getArchitectureDropdownOptions()} />
+
+                    {this.getArchitectureDescription()}
 
                     <h4>Neural Network parameters</h4>
 
@@ -424,10 +435,12 @@ export default class CUD extends Component {
                         />
                     </Fieldset>
 
-                    <InputField id="learning_rate" label="Learning rate"/>
-
                     <CheckBox id={"start_training"} label={"Start training immediately"} help={"Start the training immediately when the model is created (recommended)."}/>
                     <CheckBox id={"automatic_predictions"} label={"Enable automatic predictions"} help={"New predictions are computed when new data are added to the signal set (recommended)."}/>
+
+                    <h5>Advanced training parameters</h5>
+
+                    <InputField id="learning_rate" label="Learning rate"/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler()}/>

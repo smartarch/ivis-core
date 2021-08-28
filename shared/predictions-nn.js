@@ -1,4 +1,5 @@
 'use strict';
+const React = require("react");
 
 const NeuralNetworkArchitectures = {
     FEEDFORWARD: "feedforward",
@@ -9,7 +10,10 @@ const NeuralNetworkArchitecturesList = Object.values(NeuralNetworkArchitectures)
 
 const NeuralNetworkArchitecturesSpecs = {
     [NeuralNetworkArchitectures.FEEDFORWARD]: {
-        label: "Feedforward",
+        label: "Fully connected (multilayer perceptron)",
+        description: <div>
+            The <i>multilayer perceptron</i> (also known as fully connected) neural network architecture is a feed-forward architecture which consists of a several layers of neurons. The neurons in successive layers are connected in a fully-connected manner meaning that each neuron in a layers is connected to all the outputs of neurons in the previous layer. There are no connections between the neurons in the same layer, and there are also no connections between layers which are not immediately successive.
+        </div>,
         params: [{
             "id": "hidden_layers",
             "label": "Hidden layers",
@@ -35,22 +39,19 @@ const NeuralNetworkArchitecturesSpecs = {
         }
     },
     [NeuralNetworkArchitectures.TEST]: {
-        label: "Test",
+        label: "TODO",
+        description: <div>
+            <i>TODO</i><br/>
+            Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Integer rutrum, orci vestibulum ullamcorper ultricies, lacus quam ultricies odio, vitae placerat pede sem sit amet enim. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
+        </div>,
         params: [{
-            "id": "test_field",
-            "label": "Test field",
-            "type": "fieldset",
-            "cardinality": "0..n",
-            "children": [{
-                "id": "units",
-                "label": "Test string",
-                "type": "string",
-            }],
-        },{
-            "id": "second_test",
-            "label": "Second test",
-            "type": "string",
+            "id": "blocks",
+            "label": "Number of blocks",
+            "type": "tunable_integer",
         }],
+        defaultParams: {
+            blocks: 1,
+        }
     }
 };
 
