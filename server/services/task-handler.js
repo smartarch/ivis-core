@@ -13,9 +13,6 @@ const {resolveAbs, getFieldsetPrefix} = require('../../shared/param-types-helper
 const {getSignalEntitySpec} = require('../lib/signal-helpers')
 const {getSignalSetEntitySpec} = require('../lib/signal-set-helpers')
 const {createRunManager} = require('./jobs/run-manager');
-const {getRestrictedAccessToken, getAccessToken} = require('../models/users');
-const contextHelpers = require('../lib/context-helpers');
-
 
 const es = require('../lib/elasticsearch');
 const {TYPE_JOBS, INDEX_JOBS, STATE_FIELD} = require('../lib/task-handler').esConstants
@@ -66,6 +63,7 @@ function emitToCoreSystem(eventType, data) {
 
 /**
  * The incoming messages logistic.
+ * @param {{type: number, spec: Object}} msg
  */
 async function handleMsg(msg) {
     if (msg) {
