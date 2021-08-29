@@ -64,4 +64,16 @@ router.postAsync('/task-reinitialize/:taskId', passport.loggedIn, async (req, re
     return res.json(params);
 });
 
+
+router.getAsync('/task-vcs/:taskId', passport.loggedIn, async (req, res) => {
+    const logs = await tasks.getVcsLogs(req.context, castToInteger(req.params.taskId));
+    return res.json(logs);
+});
+
+router.postAsync('/task-vcs/:taskId/checkout/:hash', passport.loggedIn, async (req, res) => {
+    const logs = await tasks.checkout(req.context, castToInteger(req.params.taskId), req.params.hash);
+    //return res.json(logs);
+    return;
+});
+
 module.exports = router;

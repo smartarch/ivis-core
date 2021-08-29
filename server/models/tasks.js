@@ -8,7 +8,7 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {BuildState, TaskSource, TaskType, subtypesByType} = require('../../shared/tasks');
+const {BuildState, TaskSource, TaskType, subtypesByType, Permission} = require('../../shared/tasks');
 const {JobState} = require('../../shared/jobs');
 const fs = require('fs-extra-promise');
 const taskHandler = require('../lib/task-handler');
@@ -16,6 +16,8 @@ const files = require('./files');
 const dependencyHelpers = require('../lib/dependency-helpers');
 const {getWizard} = require("../lib/wizards");
 const {isBuiltinSource} = require("../../shared/tasks");
+const simpleGit = require("simple-git");
+const path = require("path");
 
 const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);
@@ -44,7 +46,7 @@ async function getById(context, id) {
     return await knex.transaction(async tx => {
         const task = await tx('tasks').where('id', id).first();
         if (!task || !isBuiltinSource(task.source)) {
-            await shares.enforceEntityPermissionTx(tx, context, 'task', id, 'view');
+            await shares.enforceEntityPermissionTx(tx, context, 'task', id, Permission.VIEW);
         }
         task.settings = JSON.parse(task.settings);
         task.build_output = JSON.parse(task.build_output);
@@ -55,7 +57,7 @@ async function getById(context, id) {
 
 
 async function listSystemDTAjaxWithoutPerms(context, params) {
-    shares.enforceGlobalPermission(context, 'viewSystemTasks');
+    shares.enforceGlobalPermission(context, Permission.VIEW_SYSTEM_TASKS);
     return await dtHelpers.ajaxList(
         params,
         getQueryFun(TaskSource.SYSTEM),
@@ -79,7 +81,7 @@ async function listBuiltinDTAjaxWithoutPerms(params) {
 async function listDTAjax(context, params) {
     return await dtHelpers.ajaxListWithPermissions(
         context,
-        [{entityTypeId: 'task', requiredOperations: ['view']}],
+        [{entityTypeId: 'task', requiredOperations: [Permission.VIEW]}],
         params,
         getQueryFun(TaskSource.USER),
         columns
@@ -153,7 +155,7 @@ async function invalidateJobs(tx, taskId) {
 async function updateWithConsistencyCheck(context, task) {
     let uninitialized = false;
     await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'task', task.id, 'edit');
+        await shares.enforceEntityPermissionTx(tx, context, 'task', task.id, Permission.EDIT);
 
         const existing = await tx('tasks').where('id', task.id).first();
         if (!existing) {
@@ -194,7 +196,7 @@ async function updateWithConsistencyCheck(context, task) {
  */
 async function remove(context, id) {
     await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'task', id, 'delete');
+        await shares.enforceEntityPermissionTx(tx, context, 'task', id, Permission.DELETE);
 
         await dependencyHelpers.ensureNoDependencies(tx, context, id, [
             {entityTypeId: 'job', column: 'task'}
@@ -222,7 +224,7 @@ async function remove(context, id) {
  */
 async function getParamsById(context, id) {
     return await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'task', id, 'view');
+        await shares.enforceEntityPermissionTx(tx, context, 'task', id, Permission.VIEW);
         const entity = await tx('tasks').select(['settings']).where('id', id).first();
         const settings = JSON.parse(entity.settings);
         return settings.params;
@@ -261,7 +263,7 @@ async function compile(context, id, forceInit = false) {
     let task;
     let uninitialized = true;
     await knex.transaction(async tx => {
-        await shares.enforceEntityPermissionTx(tx, context, 'task', id, 'edit');
+        await shares.enforceEntityPermissionTx(tx, context, 'task', id, Permission.EDIT);
 
         task = await tx('tasks').where('id', id).first();
         if (!task) {
@@ -289,6 +291,40 @@ async function compileAll() {
     }
 }
 
+async function getVcsLogs(context, id) {
+    await shares.enforceEntityPermission(context, 'task', id, Permission.VIEW);
+    const dir = path.join(taskHandler.getTaskDir(id), "dist")
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+
+    const logs = await git.log({
+        format: {
+            hash: "%H",
+            msg: "%B",
+            date: "%aI"
+        }
+    });
+
+    return logs.all;
+}
+
+async function checkout(context, id, hash) {
+    await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
+    const dir = path.join(taskHandler.getTaskDir(id), "dist")
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+
+    const result = await git.checkout(hash);
+    console.log(result);
+
+}
+
+module.exports.checkout = checkout;
+module.exports.getVcsLogs = getVcsLogs;
 module.exports.hash = hash;
 module.exports.getById = getById;
 module.exports.listDTAjax = listDTAjax;
