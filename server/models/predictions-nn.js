@@ -38,6 +38,8 @@ async function createNNModelTx(tx, context, sigSetId, params) {
         }
     };
 
+    // return { trainingJobId: 0, predictionJobId: 0 }; // TODO (MT): remove
+
     // target signals – signals of the created prediction signal sets
     const aggregated = params.aggregation !== '';
     const targetSignals = [];
@@ -110,7 +112,7 @@ async function createTrainingJobTx(tx, context, signalSet, prediction, jobParams
 
     const job = {
         name: jobName,
-        description: `Neural Network Optimizer for '${signalSet.cid}', '${modelName}'`,
+        description: `Neural Network Training for '${signalSet.cid}', '${modelName}'`,
         namespace: signalSet.namespace,
         task: task.id,
         state: JobState.ENABLED,
@@ -121,7 +123,7 @@ async function createTrainingJobTx(tx, context, signalSet, prediction, jobParams
         delay: null,
     }
 
-    const jobId = await jobs.createTx(tx, context, job);
+    const jobId = await jobs.createTx(tx, context, job, true);
     await predictions.registerPredictionModelJobTx(tx, context, prediction.id, jobId);
 
     return jobId;
@@ -150,7 +152,7 @@ async function createPredictionJobTx(tx, context, signalSet, prediction, trainin
         delay: null,
     }
 
-    const jobId = await jobs.createTx(tx, context, job);
+    const jobId = await jobs.createTx(tx, context, job, true);
     await predictions.registerPredictionModelJobTx(tx, context, prediction.id, jobId);
 
     return jobId;

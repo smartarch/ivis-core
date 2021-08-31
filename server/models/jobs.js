@@ -222,6 +222,7 @@ async function create(context, job, isSystemJobAllowed = false) {
  * Creates job.
  * @param context
  * @param job the job we want to create
+ * @param {boolean} isSystemJobAllowed whether creation from system task is allowed on call
  * @returns {Promise<any>} id of the created job
  */
 async function createTx(tx, context, job, isSystemJobAllowed) {

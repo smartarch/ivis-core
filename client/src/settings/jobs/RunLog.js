@@ -24,6 +24,7 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {checkPermissions} from "../../lib/permissions";
 import {HTTPMethod} from "../../lib/axios";
+import {TaskSource} from "../../../../shared/tasks";
 
 const {getVirtualNamespaceId} = require("../../../../shared/namespaces");
 
@@ -64,7 +65,7 @@ export default class Log extends Component {
     render() {
         const t = this.props.t;
         const job = this.props.entity;
-        const canDelete = this.state.deletePermitted && job.namespace !== getVirtualNamespaceId();
+        const canDelete = this.state.deletePermitted && this.props.entity.taskSource !== TaskSource.SYSTEM;
 
         const columns = [
             {data: 2, title: t('Started at'), render: data => moment(data).format('DD.MM.YYYY hh:mm:ss')},
@@ -81,7 +82,7 @@ export default class Log extends Component {
                         link: `/settings/jobs/${data[1]}/log/${data[0]}`
                     });
 
-                    if (job.namespace !== getVirtualNamespaceId()) {
+                    if (this.props.entity.taskSource !== TaskSource.SYSTEM) {
                         tableAddDeleteButton(actions, this, null, `rest/jobs/${job.id}/run/${data[0]}`, data[0], t('Deleting run ...'), t('Run deleted'));
                     }
                     return {undefined, actions};
