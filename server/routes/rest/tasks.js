@@ -71,9 +71,14 @@ router.getAsync('/task-vcs/:taskId', passport.loggedIn, async (req, res) => {
 });
 
 router.postAsync('/task-vcs/:taskId/checkout/:hash', passport.loggedIn, async (req, res) => {
-    const logs = await tasks.checkout(req.context, castToInteger(req.params.taskId), req.params.hash);
-    //return res.json(logs);
-    return;
+    await tasks.checkout(req.context, castToInteger(req.params.taskId), req.params.hash);
+    return res.json();
 });
+
+router.postAsync('/task-vcs/:taskId/commit', passport.loggedIn, async (req, res) => {
+    await tasks.commit(req.context, castToInteger(req.params.taskId));
+    return res.json();
+});
+
 
 module.exports = router;

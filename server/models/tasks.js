@@ -382,6 +382,21 @@ async function checkout(context, id, commitHash) {
     const result = await git.checkout(commitHash);
 }
 
+
+async function commit(context, id) {
+    await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
+
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+    await git.add(dir)
+    await git.commit('Building')
+}
+
+
+module.exports.commit = commit;
 module.exports.checkout = checkout;
 module.exports.getVcsLogs = getVcsLogs;
 module.exports.hash = hash;

@@ -2,7 +2,7 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {Button, Form, TableSelect, withForm} from "../../lib/form";
+import {AlignedRow, Button, ButtonRow, Form, TableSelect, withForm} from "../../lib/form";
 import {Table} from "../../lib/table";
 import {requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
 import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
@@ -14,6 +14,7 @@ import {Panel} from "../../lib/panel";
 import {ModalDialog} from "../../lib/bootstrap-components";
 import {Icon} from "../../lib/bootstrap-components";
 import moment from "moment";
+import styles from "./Versioning.scss";
 
 @withComponentMixins([
     withTranslation,
@@ -26,48 +27,52 @@ export default class Versioning extends Component {
         super(props);
 
         this.state = {
-            data: []
-
+            data: [],
+            commitHash: null
         };
 
-        const t = props.t;
     }
 
     static propTypes = {
-        title: PropTypes.string,
-        help: PropTypes.string,
         entity: PropTypes.object.isRequired,
-        entityTypeId: PropTypes.string.isRequired,
-        entitySubTypeId: PropTypes.string.isRequired,
     }
 
-    /*
-    async performCommit() {
+    async commit() {
         const t = this.props.t;
         try {
-            this.setFlashMessage('info', t('deletingFile'));
-            await axios.delete(getUrl(`rest/files/${this.props.entityTypeId}/${this.props.entitySubTypeId}/${fileToDeleteId}`));
-            this.filesTable.refresh();
-            this.setFlashMessage('info', t('fileDeleted'));
+            this.setFlashMessage('info', t('Committing...'));
+            await axios.post(getUrl(`rest/task-vcs/${this.props.entity.id}/commit`));
+            this.setFlashMessage('success', t('Commit finished'));
+            this.fetch()
         } catch (err) {
-            this.filesTable.refresh();
-            this.setFlashMessage('danger', t('deleteFileFailed') + ' ' + err.message);
+            this.setFlashMessage('danger', t('Commit failed') + ' ' + err.message);
         }
     }
 
-     */
+    componentDidMount() {
+        this.fetch();
+    }
 
-    //@withAsyncErrorHandler()
+    @withAsyncErrorHandler
     async fetch() {
         const url = `/rest/task-vcs/${this.props.entity.id}`;
         const res = await axios.get(url);
-        const data = res.data.map(d => [d.hash, d.msg, d.date]);
+        const data = res.data.map(d => [d.hash, d.msg, d.date]).sort((a,b) => b[2] >  a[2]);
         this.setState({data: data});
     }
 
-    async checkout(hash){
-        const result = await axios.post(getUrl(`rest/task-vcs/${this.props.entity.id}/checkout/${hash}`));
+    @withAsyncErrorHandler
+    async checkout() {
+        const result = await axios.post(getUrl(`rest/task-vcs/${this.props.entity.id}/checkout/${this.state.commitHash}`));
+        await this.unselectCommit();
+    }
 
+    async selectCommit(hash) {
+        this.setState({commitHash: hash})
+    }
+
+    async unselectCommit() {
+        this.setState({commitHash: null})
     }
 
     render() {
@@ -83,7 +88,7 @@ export default class Versioning extends Component {
 
                     actions.push({
                         label: <Icon icon="code-branch" title={t('Checkout')}/>,
-                        action: (table) => this.checkout(data[0])
+                        action: (table) => this.selectCommit(data[0])
                     });
 
                     return actions;
@@ -92,23 +97,24 @@ export default class Versioning extends Component {
         ];
 
         return (
-            <Panel title={this.props.title}>
-                {/*
+            <Panel>
                 <ModalDialog
-                    hidden={this.state.fileToDeleteId === null}
-                    title={t('confirmFileDeletion')}
-                    onCloseAsync={::this.hideDeleteFile}
+                    hidden={this.state.commitHash === null}
+                    title={t('confirm checkout')}
+                    onCloseAsync={::this.unselectCommit}
                     buttons={[
-                        { label: t('no'), className: 'btn-primary', onClickAsync: ::this.hideDeleteFile },
-                        { label: t('yes'), className: 'btn-danger', onClickAsync: ::this.performDeleteFile }
+                        {label: t('no'), className: 'btn-primary', onClickAsync: ::this.unselectCommit},
+                        {label: t('yes'), className: 'btn-success', onClickAsync: ::this.checkout}
                     ]}>
-                    {t('filesareYouSureToDeleteFile', {name: this.state.fileToDeleteName})}
+                    {t('Are you sure you want to checkout?', {name: this.state.commitHash})}
                 </ModalDialog>
-                */}
 
-                <Button onClickAsync={::this.fetch} label="yayaya"/>
+                <div className={styles.buttonRow}>
+                    <Button className="btn-primary" onClickAsync={::this.fetch} label="Load commits"/>
+                    <Button className="btn-primary" onClickAsync={::this.commit} label="Commit"/>
+                </div>
 
-                <Table withHeader ref={node => this.logTable = node} data={[...this.state.data]} columns={columns}/>
+                <Table withHeader ref={node => this.logTable = node} data={this.state.data} columns={columns}/>
             </Panel>
         );
     }
