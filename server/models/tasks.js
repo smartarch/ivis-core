@@ -1,6 +1,5 @@
 'use strict';
 
-
 const knex = require('../lib/knex');
 const hasher = require('node-object-hash')();
 const {enforce, filterObject} = require('../lib/helpers');
@@ -8,7 +7,14 @@ const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
 const namespaceHelpers = require('../lib/namespace-helpers');
 const shares = require('./shares');
-const {BuildState, TaskSource, TaskType, subtypesByType, Permission} = require('../../shared/tasks');
+const {
+    BuildState,
+    TaskSource,
+    TaskType,
+    subtypesByType,
+    Permission,
+    PYTHON_JOB_FILE_NAME
+} = require('../../shared/tasks');
 const {JobState} = require('../../shared/jobs');
 const fs = require('fs-extra-promise');
 const taskHandler = require('../lib/task-handler');
@@ -17,7 +23,7 @@ const dependencyHelpers = require('../lib/dependency-helpers');
 const {getWizard} = require("../lib/wizards");
 const {isBuiltinSource} = require("../../shared/tasks");
 const simpleGit = require("simple-git");
-const path = require("path");
+const path = require("path")
 
 const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);
@@ -35,6 +41,66 @@ function getQueryFun(source) {
         .innerJoin('namespaces', 'namespaces.id', 'tasks.namespace')
 }
 
+function getCodePath(taskId) {
+    return path.join(taskHandler.getTaskDevelopmentDir(taskId), PYTHON_JOB_FILE_NAME);
+}
+
+async function getCodeForTask(taskId) {
+    const codeFile = getCodePath(taskId);
+    const hasCode = await fs.existsAsync(codeFile);
+    if (hasCode) {
+        return await fs.readFileAsync(codeFile, 'utf-8')
+    }
+    return '';
+}
+
+async function saveCodeForTask(taskId, code = '') {
+    const codeFile = getCodePath(taskId);
+    await fs.writeFileAsync(codeFile, code);
+}
+
+async function _insertTask(tx, task) {
+    const dbTask = {
+        ...task,
+        settings: {...task.settings}
+    };
+
+    const code = dbTask.settings.code;
+    delete dbTask.settings.code;
+    dbTask.settings = JSON.stringify(dbTask.settings);
+    const [id] = await tx('tasks').insert(dbTask);
+    await saveCodeForTask(id, code);
+
+    return id;
+}
+
+async function _updateTask(tx, taskId, task) {
+    const dbTask = {
+        ...task,
+        settings: {...task.settings}
+    };
+
+    const code = dbTask.settings.code;
+    delete dbTask.settings.code;
+    dbTask.settings = JSON.stringify(dbTask.settings);
+    await tx('tasks').where('id', taskId).update(dbTask);
+    if (code) {
+        await saveCodeForTask(taskId, code);
+    }
+}
+
+async function _getTask(tx, id) {
+    const taskCodePromise = getCodeForTask(id);
+    const taskDbPromise = tx('tasks').where('id', id).first();
+    const [task, code] = await Promise.all([taskDbPromise, taskCodePromise]);
+    if (task) {
+        task.settings = JSON.parse(task.settings);
+        task.build_output = JSON.parse(task.build_output);
+        task.settings.code = code;
+    }
+    return task;
+}
+
 
 /**
  * Returns task.
@@ -43,13 +109,11 @@ function getQueryFun(source) {
  * @returns {Promise<any>}
  */
 async function getById(context, id) {
-    return await knex.transaction(async tx => {
-        const task = await tx('tasks').where('id', id).first();
+    return knex.transaction(async tx => {
+        const task = await _getTask(tx, id);
         if (!task || !isBuiltinSource(task.source)) {
             await shares.enforceEntityPermissionTx(tx, context, 'task', id, Permission.VIEW);
         }
-        task.settings = JSON.parse(task.settings);
-        task.build_output = JSON.parse(task.build_output);
         task.permissions = await shares.getPermissionsTx(tx, context, 'task', id);
         return task;
     });
@@ -110,7 +174,7 @@ async function create(context, task) {
         if (wizard != null) {
             wizard(task);
         } else {
-            // We might throw error here instead, might be confusing from UX perspective
+            // TODO: We might throw error here instead, might be confusing from UX perspective
             task.settings = {
                 ...(task.settings || {}),
                 params: [],
@@ -119,12 +183,10 @@ async function create(context, task) {
         }
 
         const filteredEntity = filterObject(task, allowedKeysCreate);
-        filteredEntity.settings = JSON.stringify(filteredEntity.settings);
         filteredEntity.build_state = BuildState.SCHEDULED;
         filteredEntity.source = TaskSource.USER;
 
-        const ids = await tx('tasks').insert(filteredEntity);
-        const id = ids[0];
+        const id = _insertTask(tx, filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, {entityTypeId: 'task', entityId: id});
 
@@ -157,14 +219,13 @@ async function updateWithConsistencyCheck(context, task) {
     await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'task', task.id, Permission.EDIT);
 
-        const existing = await tx('tasks').where('id', task.id).first();
+        const existing = await _getTask(tx, task.id);
         if (!existing) {
             throw new interoperableErrors.NotFoundError();
         }
 
         uninitialized = (existing.build_state === BuildState.UNINITIALIZED);
 
-        existing.settings = JSON.parse(existing.settings);
         const existingHash = hash(existing);
         if (existingHash !== task.originalHash) {
             throw new interoperableErrors.ChangedError();
@@ -173,14 +234,12 @@ async function updateWithConsistencyCheck(context, task) {
         await namespaceHelpers.validateEntity(tx, task);
         await namespaceHelpers.validateMove(context, task, existing, 'task', 'createTask', 'delete');
 
-        const filteredEntity = filterObject(task, allowedKeysUpdate);
-        filteredEntity.settings = JSON.stringify(filteredEntity.settings);
+
+        await _updateTask(tx, task.id, filterObject(task, allowedKeysUpdate));
 
         if (hasher.hash(task.settings.params) !== hasher.hash(existing.settings.params)) {
             await invalidateJobs(tx, task.id);
         }
-
-        await tx('tasks').where('id', task.id).update(filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, {entityTypeId: 'task', entityId: task.id});
     });
@@ -257,6 +316,7 @@ function scheduleInit(id, settings) {
  * Prepare task for use.
  * @param context
  * @param id the primary key of the task
+ * @param forceInit Task is initialized even if not necessary
  * @returns {Promise<void>}
  */
 async function compile(context, id, forceInit = false) {
@@ -265,7 +325,7 @@ async function compile(context, id, forceInit = false) {
     await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'task', id, Permission.EDIT);
 
-        task = await tx('tasks').where('id', id).first();
+        task = await _getTask(tx, id);
         if (!task) {
             throw new Error(`Task not found`);
         }
@@ -276,8 +336,7 @@ async function compile(context, id, forceInit = false) {
         await tx('tasks').where('id', id).update({build_state: BuildState.SCHEDULED});
     });
 
-    const settings = JSON.parse(task.settings);
-    scheduleBuildOrInit(uninitialized, id, settings);
+    scheduleBuildOrInit(uninitialized, id, task.settings);
 }
 
 async function compileAll() {
@@ -285,6 +344,8 @@ async function compileAll() {
 
     for (const task of tasks) {
         const settings = JSON.parse(task.settings);
+        settings.code = await getCodeForTask(task.id);
+
         const uninitialized = (task.build_state === BuildState.UNINITIALIZED);
         await knex('tasks').update({build_state: BuildState.SCHEDULED}).where('id', task.id);
         scheduleBuildOrInit(uninitialized, task.id, settings);
@@ -293,7 +354,7 @@ async function compileAll() {
 
 async function getVcsLogs(context, id) {
     await shares.enforceEntityPermission(context, 'task', id, Permission.VIEW);
-    const dir = path.join(taskHandler.getTaskDir(id), "dist")
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
     const git = simpleGit({
         baseDir: dir,
         binary: 'git',
@@ -310,17 +371,15 @@ async function getVcsLogs(context, id) {
     return logs.all;
 }
 
-async function checkout(context, id, hash) {
+async function checkout(context, id, commitHash) {
     await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
-    const dir = path.join(taskHandler.getTaskDir(id), "dist")
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
     const git = simpleGit({
         baseDir: dir,
         binary: 'git',
     });
 
-    const result = await git.checkout(hash);
-    console.log(result);
-
+    const result = await git.checkout(commitHash);
 }
 
 module.exports.checkout = checkout;

@@ -440,3 +440,4 @@ module.exports.scheduleInit = scheduleInit;
 module.exports.esConstants = {INDEX_JOBS, TYPE_JOBS, STATE_FIELD};
 module.exports.getTaskDir = getTaskDir;
 module.exports.getTaskBuildOutputDir = getTaskBuildOutputDir;
+module.exports.getTaskDevelopmentDir= getTaskDevelopmentDir;
