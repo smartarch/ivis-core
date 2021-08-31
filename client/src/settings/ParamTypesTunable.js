@@ -203,7 +203,7 @@ export default class ParamTypesTunable extends ParamTypes {
                     data[formId + "_count"] = param.length;
                     const items = param.map(p => ({[spec.child.id]: String(p)}));
                     this.paramTypes.fieldset.setFields(prefix, getFieldsetSpec(spec), items, data);
-                } else {
+                } else if (param) {
                     data[formId + "_tune"] = "tuned";
                     if (param.hasOwnProperty("min_count"))
                         data[formId + "_min_count"] = String(param.min_count);
@@ -212,8 +212,11 @@ export default class ParamTypesTunable extends ParamTypes {
 
                     const items = param.items.map(p => ({[spec.child.id]: p}));
                     this.paramTypes.fieldset.setFields(prefix, getFieldsetSpec(spec), items, data);
+                } else {
+                    data[formId + "_tune"] = "fixed";
+                    data[formId + "_count"] = 0;
+                    this.paramTypes.fieldset.setFields(prefix, getFieldsetSpec(spec), [], data);
                 }
-
             },
             getParams: (prefix, spec, data) => {
                 const formId = this.getParamFormId(prefix, spec.id);

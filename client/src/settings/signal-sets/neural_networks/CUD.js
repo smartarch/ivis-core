@@ -127,9 +127,17 @@ export default class CUD extends Component {
         });
         this.paramTypes = new ParamTypesTunable(props.t);
         this.rendered_architecture = null;
+        this.loadedFrom = null;
     }
 
     componentDidMount() {
+        if (this.props.cloneFromTrainingJob)
+            this.loadValuesFromOtherModel(this.props.cloneFromPrediction, this.props.cloneFromTrainingJob.params);
+        else
+            this.loadDefaultValues();
+    }
+
+    loadDefaultValues() {
         // prepare default values
         const defaultValues = {
             input_signals: [],
@@ -159,6 +167,34 @@ export default class CUD extends Component {
         this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
     }
 
+    loadValuesFromOtherModel(prediction, trainingJobParams) {
+        const otherValues = {
+            input_signals: trainingJobParams.input_signals,
+            target_signals: trainingJobParams.target_signals,
+            ts: trainingJobParams.ts,
+        };
+        // populate default values to the form inputs rendered using the ParamTypes
+        const formValues = {};
+        this.paramTypes.setFields(this.configSpec(), otherValues, formValues);
+
+        this.populateFormValues({
+            loaded: true, // for determining whether the default values were already loaded
+            name: '',
+            aggregation: trainingJobParams.aggregation,
+            target_width: String(trainingJobParams.target_width),
+            input_width: String(trainingJobParams.input_width),
+            time_interval_start: trainingJobParams.time_interval.start,
+            time_interval_end: trainingJobParams.time_interval.end,
+            architecture: trainingJobParams.architecture,
+            learning_rate: String(trainingJobParams.learning_rate),
+            start_training: trainingJobParams.start_training,
+            automatic_predictions: trainingJobParams.automatic_predictions,
+            ...formValues,
+        });
+        this.loadArchitectureParams(trainingJobParams.architecture_params, trainingJobParams.architecture);
+        this.loadedFrom = trainingJobParams.name;
+    }
+
     onArchitectureChange(state, key, oldVal, newVal) {
         if (oldVal !== newVal)
             this.rendered_architecture = null;
@@ -169,15 +205,21 @@ export default class CUD extends Component {
             this.loadDefaultArchitectureParams();
     }
 
-    loadDefaultArchitectureParams(architecture = null) {
+    loadArchitectureParams(params, architecture = null) {
         if (!architecture)
             architecture = this.getFormValue("architecture");
         if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture)) {
             const formValues = {};
-            const defaultValues = NeuralNetworkArchitecturesSpecs[architecture].defaultParams || {};
-            this.paramTypes.setFields(this.getArchitectureParamsSpec(architecture), defaultValues, formValues);
+            this.paramTypes.setFields(this.getArchitectureParamsSpec(architecture), params, formValues);
             this.populateFormValues(formValues);
             this.rendered_architecture = architecture;
+        }
+    }
+
+    loadDefaultArchitectureParams(architecture = null) {
+        if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture)) {
+            const defaultParams = NeuralNetworkArchitecturesSpecs[architecture].defaultParams || {};
+            this.loadArchitectureParams(defaultParams, architecture);
         }
     }
 
@@ -185,7 +227,7 @@ export default class CUD extends Component {
         const t = this.props.t;
         const sendMethod = FormSendMethod.POST;
         const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/neural_network`;
-        //const url = "intentionally_wrong_url"; // for debug purposes
+        //const url = "intentionally_wrong_url"; // TODO (MT): for debug purposes
 
         try {
             //this.disableForm(); // TODO (MT)
@@ -208,7 +250,6 @@ export default class CUD extends Component {
         const paramData = this.paramTypes.getParams(this.configSpec(), data);
         const architectureData = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
         // TODO (MT): should we also 'upcast' the params?
-        console.log(architectureData);
 
         data.name = data.name.trim();
         data.aggregation = data.aggregation.trim();
@@ -264,6 +305,14 @@ export default class CUD extends Component {
         // validate params
         this.paramTypes.localValidate(this.configSpec(), state);
         this.paramTypes.localValidate(this.getArchitectureParamsSpec(), state);
+
+        // name
+        const nameStr = state.getIn(['name', 'value']).trim();
+        if (nameStr === '') {
+            state.setIn(['name', 'error'], t("Please specify model name."));
+        } else {
+            state.setIn(['name', 'error'], null);
+        }
 
         // aggregation interval
         const aggregationStr = state.getIn(['aggregation', 'value']).trim();
@@ -377,6 +426,10 @@ export default class CUD extends Component {
         return (
             <Panel title="Add Neural Network model">
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
+                    {this.loadedFrom && <div className={"form-group alert alert-success alert-dismissible"} role={"alert"}>
+                        Settings loaded from model '{this.loadedFrom}'.
+                    </div>}
+
                     <InputField id="name" label={t('Model name')} help={t('Has to be unique among models belonging to this signal set.')} />
 
                     {renderParam(this.ts_configSpec)}
