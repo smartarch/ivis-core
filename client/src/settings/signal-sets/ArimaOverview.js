@@ -4,7 +4,6 @@ import React, { Component } from "react";
 import { withComponentMixins } from "../../lib/decorator-helpers";
 import { withTranslation } from "../../lib/i18n";
 import { Panel } from "../../lib/panel";
-import { Table } from "../../lib/table";
 import { Toolbar, LinkButton, requiresAuthenticatedUser } from "../../lib/page";
 import axios from '../../lib/axios';
 import { getUrl } from "../../lib/urls";
@@ -34,12 +33,6 @@ class PredicionsLineChart extends Component {
     async getOutputConfig(modelId) {
         let outputCofig = await axios.get(getUrl(`rest/predictions-output-config/${modelId}`));
         return await outputCofig.data;
-    }
-
-    async getPredictionInfo(modelId) {
-        const prediction = (await axios.get(getUrl(`rest/predictions/${modelId}`))).data;
-        const outputConfig = (await axios.get(getUrl(`rest/predictions-output-config/${modelId}`))).data;
-        const signalSet = (await axios.get(getUrl(`rest/signal-sets/${prediction.set}`))).data;
     }
 
     async getChartConfig(modelId) {
@@ -122,23 +115,6 @@ class PredicionsLineChart extends Component {
                         key={config.signalSets[0].cid} config={config}
                     />
                 }
-            </div>
-        );
-    }
-}
-
-class SignalSelector extends Component {
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        return (
-            <div className="input-group mb-3">
-                <label className="col-sm-2 col-form-label">Signal:</label>
-                <select className="custom-select">
-                    <option value="1">Main signal</option>
-                </select>
             </div>
         );
     }
@@ -237,6 +213,9 @@ class ARIMAModelInfoTable extends Component {
     }
 }
 
+@withComponentMixins([
+    withTranslation,
+])
 class AheadSelector extends Component {
     constructor(props) {
         super(props);
@@ -258,11 +237,13 @@ class AheadSelector extends Component {
     }
 
     render() {
+        const t = this.props.t;
+
         const signals = this.props.signals;
         const aheadCount = this.props.aheadCount;
         return (
             <div className="input-group mb-3">
-                <label className="col-sm-2 col-form-label">Ahead:</label>
+                <label className="col-sm-2 col-form-label">{t('Ahead')}:</label>
                 <select className="custom-select" onChange={this.handleChange.bind(this)}>
                     {this.genOptions(aheadCount)}
                 </select>
@@ -289,16 +270,15 @@ class RMSETable extends Component {
     }
 
     async getRMSE(from, to) {
-        let testBody = {
+        let requestBody = {
             from: from,
             to: to,
             sourceSetCid: this.props.sourceSetCid,
             predSetCid: this.props.predSetCid,
             signalCid: this.props.signalCid,
         };
-        let test = await axios.post(getUrl(`rest/predictions-rmse/`), testBody);
-
-        return test.data;
+        let response = await axios.post(getUrl(`rest/predictions-rmse/`), requestBody);
+        return response.data;
     }
 
     @withAsyncErrorHandler
@@ -308,18 +288,23 @@ class RMSETable extends Component {
         const from = abs.from.toISOString();
         const to = abs.to.toISOString();
 
-        const results = await this.getRMSE(from, to);
+        try {
+            const results = await this.getRMSE(from, to);
 
-        const rmseResult = '';
-        this.setState({
-            min: results.minMAE,
-            max: results.maxMAE,
-            minMSE: results.minMSE,
-            maxMSE: results.maxMSE,
-            interval: results.interval,
-            realFrom: from,
-            realTo: results.to,
-        });
+            this.setState({
+                min: results.minMAE,
+                max: results.maxMAE,
+                minMSE: results.minMSE,
+                maxMSE: results.maxMSE,
+                interval: results.interval,
+                realFrom: from,
+                realTo: results.to,
+            });
+        } catch (error) {
+            this.setState({
+                error: `Failed to fetch RMSE. Is the model not trained yet?`,
+            })
+        }
     }
 
     componentDidMount() {
@@ -340,13 +325,17 @@ class RMSETable extends Component {
 
         const ahead = this.props.ahead;
 
+        if (this.state.error) {
+            return <div>{this.state.error}</div>
+        }
+
         return (
             <div>
                 <table className={'table table-striped table-bordered'}>
                     <tbody>
                         <tr>
                             <th scope="row">{t('Target')}:</th>
-                            <td>{ahead} ahead</td>
+                            <td>{ahead} {t('ahead')}</td>
                         </tr>
                         <tr>
                             <th scope="row">{t('Evaluation range')}:</th>
@@ -382,7 +371,6 @@ class RMSETable extends Component {
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
-    //withPageHelpers,
     requiresAuthenticatedUser
 ])
 export default class ArimaOverview extends Component {
@@ -436,6 +424,7 @@ export default class ArimaOverview extends Component {
     async fetchBoundaries(signalSetId) {
         const x = (await axios.get(getUrl(`rest/predictions-set-boundaries/${signalSetId}`))).data;
 
+        // leave some space on the right side of the graph
         let offset = moment(x.last).diff(moment(x.first)) / 5;
         let last = moment(x.last).add(offset);
 
@@ -482,7 +471,6 @@ export default class ArimaOverview extends Component {
                         prediction={prediction}
                         ahead={this.state.ahead}
                     />
-                    {/*<SignalSelector />*/}
                     <AheadSelector
                         aheadCount={prediction.ahead_count}
                         onAheadChange={this.onAheadChange.bind(this)}

@@ -13,7 +13,6 @@ import {ButtonDropdown} from "../../lib/bootstrap-components";
 @withComponentMixins([
     withTranslation,
     withErrorHandling,
-    //withPageHelpers,
     requiresAuthenticatedUser
 ])
 export default class PredictionsList extends Component {
@@ -38,7 +37,6 @@ export default class PredictionsList extends Component {
                     const label = data[2]; // Model name
                     const type = data[3]; // Model type
 
-                    // TODO: check permissions (see signal-sets/List.js)
                     return [
                         {
                             label,
@@ -57,45 +55,14 @@ export default class PredictionsList extends Component {
                     return actions;
                 }
             }
-            /*{ data: 1, title: t('sigSetId(debug)'), render: data => `${data}` },
-            {
-                data: 2,
-                title: t('Name'),
-                //render: data => `${data}`
-                actions: data => {
-                    const modelId = data[0];
-                    const sigSetId = data[1];
-                    const label = data[2]; // Model name
-                    const type = data[3]; // Model type
-
-                    // TODO: check permissions (see signal-sets/List.js)
-                    return [
-                        {
-                            label,
-                            link: `/settings/signal-sets/${sigSetId}/predictions/${type}/${modelId}`
-                        }
-                    ];
-                }
-            },
-            { data: 3, title: t('type(debug)'), render: data => `${data}` },
-            { data: 4, title: t('Predicted Signal'), render: data => `${data}` },
-            {
-                actions: data => {
-                    const actions = [];
-
-                    // TODO: check delete permissions and other error handling
-                    // TODO: Delete button
-                    // tableAddDeleteButton(actions, this, perms)
-
-                    return actions;
-            }}*/
         ]
         return (
             <Panel title={t('Predictions')}>
                 {tableRestActionDialogRender(this)}
                 <Toolbar>
-                    <LinkButton to={`/settings/signal-sets/${sigSetId}/predictions/compare`} className="btn-primary"
-                        //icon="plus"
+                    <LinkButton
+                        to={`/settings/signal-sets/${sigSetId}/predictions/compare`}
+                        className="btn-primary"
                         label={t('Compare models')} />
                     <ButtonDropdown id={"add_model"} label={t('Add model')} buttonClassName={"btn-primary"} menuClassName={"dropdown-menu-right"} icon={"plus"}>
                         <DropdownLink to={`/settings/signal-sets/${sigSetId}/predictions/arima/create`}>{t('ARIMA')}</DropdownLink>
@@ -103,8 +70,10 @@ export default class PredictionsList extends Component {
                     </ButtonDropdown>
                 </Toolbar>
 
-                <Table ref={node => this.table = node} withHeader
-                    dataUrl={`rest/signal-set-predictions-table/${sigSetId}`} columns={columns} />
+                <Table ref={node => this.table = node}
+                    withHeader
+                    dataUrl={`rest/signal-set-predictions-table/${sigSetId}`}
+                    columns={columns} />
             </Panel>
         )
     }

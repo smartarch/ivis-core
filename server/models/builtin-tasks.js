@@ -43,71 +43,6 @@ const aggregationTask = {
     },
 };
 
-const rmseTask = {
-    name: 'RMSE',
-    description: '',
-    type: TaskType.PYTHON,
-    settings: {
-        params: [
-            {
-                "id": "obs_index",
-                "type": "signalSet",
-                "label": "Observations Signal Set",
-                "help": "",
-                "includeSignals": true
-            },
-            {
-                "id": "ts_field",
-                "type": "signal",
-                "signalSetRef": "obs_index",
-                "label": "Timestamp signal",
-                "help": ""
-            },
-            {
-                "id": "value_field",
-                "type": "signal",
-                "signalSetRef": "obs_index",
-                "label": "Value signal",
-                "help": ""
-            },
-            {
-                "id": "pred_index",
-                "type": "signalSet",
-                "label": "Predictions Signal Set",
-                "help": "",
-                "includeSignals": true
-            },
-        ],
-        code: `
-from ivis import ivis
-import ivis_ts as ts
-
-es = ivis.elasticsearch
-state = ivis.state
-cfg = ivis.params
-entities= ivis.entities
-
-#cfg['ts_field'] = 'ts'
-#cfg['value_field'] = 's1'
-
-cfg['ts_start'] = '2017-01-01'
-cfg['ts_end'] = '2018-01-01'
-
-# obs reader
-obs_reader = ts.TsReader(cfg['obs_index'], cfg['ts_field'], cfg['value_field'], from_ts=cfg['ts_start'], to_ts=['ts_end'])
-obs_reader = ts.DummyReader(obs_reader.read())
-# pred reader
-pred_reader = ts.TsReader(cfg['pred_index'], 'ts', 'predicted_value', from_ts=cfg['ts_start'], to_ts=['ts_end'])
-pred_reader = ts.DummyReader(pred_reader.read())
-
-# RMSE
-rmse = ts.RMSE(obs_reader, pred_reader)
-value = rmse.calculate()
-
-print(value)
-`,
-    }
-}
 
 const flattenTask = {
     name: BuiltinTaskNames.FLATTEN,
@@ -208,7 +143,6 @@ const builtinTasks = [
     aggregationTask,
     flattenTask,
     arimaTask,
-    rmseTask,
     ...neural_networks.tasks,
 ];
 

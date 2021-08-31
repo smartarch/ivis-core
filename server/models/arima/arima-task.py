@@ -1,31 +1,21 @@
 #!/usr/bin/env python3
 
-from datetime import time
-from ivis import ivis
-import ivis.ts as ts
-import ivis.ts.arima as ar
-import pmdarima as pmd
-import pendulum
-import joblib
-import io
 import base64
-import logging
+import io
 import json
-from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper
+import logging
 from typing import Tuple
 
-# pendulum formatting string, brackets are used for escaping
-DATEFORMAT = "YYYY-MM-DD[T]HH:mm:ss.SSS[Z]"
-
-
-def _string2date(s: str):
-    # convert timestamps to pendulum.DateTime
-    return pendulum.from_format(s, DATEFORMAT)
+import ivis.ts as ts
+import ivis.ts.arima as ar
+import joblib
+import pmdarima as pmd
+from ivis import ivis
 
 
 def ensure_date(timestamps):
     if timestamps and isinstance(timestamps[0], str):
-        timestamps = [_string2date(x) for x in timestamps]
+        timestamps = [ts.parse_date(x) for x in timestamps]
     return timestamps
 
 
@@ -145,10 +135,6 @@ print(f"ivis.entities: {json.dumps(ivis.entities, indent=4)}")
 print(f"output_config: {json.dumps(output_config, indent=4)}")
 
 
-def _date2string(date: pendulum.DateTime):
-    return date.format(DATEFORMAT)
-
-
 class ModelWrapper:
     """Wraps around our ARIMA model and adds handling of timestamps."""
 
@@ -169,7 +155,7 @@ class ModelWrapper:
         """Add a single new observation."""
 
         if isinstance(timestamp, str):
-            timestamp = _string2date(timestamp)
+            timestamp = ts.parse_date(timestamp)
 
         # check whether the new timestamp is approximately at the expected
         # datetime, e.g. that there was not a skipped observation
@@ -191,20 +177,23 @@ class ModelWrapper:
                     f"Missing observation, expected {expected}, got {timestamp} instead.")
 
                 prediction = self.trained_model.predict(1)[0]
-                self.trained_model.append([prediction])
+                self._append1(prediction)
                 self.delta.set_latest(expected)
 
-        # FIXME
-        if isinstance(self.trained_model, ar.ArimaPredictor):
-            self.trained_model.append([observation])
-        else:
-            self.trained_model = self.trained_model.append([observation])
+        self._append1(observation)
 
         # We will now update timestamp estimator with real observation's
         # timestamp. This should help the real sensors and the model stay in
         # sync. Otherwise, even small timestamp errors would accumulate given
         # enough time.
         self.delta.set_latest(timestamp)
+
+    def _append1(self, observation):
+        """Append a single observation directly into the inner model."""
+        if isinstance(self.trained_model, ar.ArimaPredictor):
+            self.trained_model.append([observation])
+        else:  # statsmodels SARIMAX instead of our implementation
+            self.trained_model = self.trained_model.extend([observation])
 
     def append_predict(self, timestamps, observations):
         pred_ts = []
@@ -257,14 +246,14 @@ def create_data_reader(params):
 
     if not params.is_aggregated:
         reader = ts.UniTsReader(index_name, ts_field,
-                             value_field, end_ts=split_ts)
+                                value_field, end_ts=split_ts)
         logging.info(
             f"Created a normal reader index={index_name}; split_ts={split_ts}")
     else:
         # ex.
         interval = params.aggregation_interval
         reader = ts.UniTsAggReader(index_name, ts_field,
-                                value_field, interval)  # FIXME: use to_ts
+                                   value_field, interval, end_ts=split_ts)
         logging.info(
             f"Created an aggregated reader index={index_name}; interval={interval}; split_ts={split_ts}")
 
@@ -305,7 +294,14 @@ def train_model(params) -> ModelWrapper:
     if autoarima:
         logging.info(f"Training model with pmdarima.auto_arima")
         m = params.seasonal_m if params.is_seasonal else 1  # 1 means non-seasonal
-        model = pmd.auto_arima(val_train, m=m)
+
+        # For higher seasonality, we use our imlementation of auto_arima, that
+        # is slower, but does not crash when some of the models that are tried
+        # to fit takes too much memory
+        if m > 12:
+            model = ar.auto_arima(val_train, m=m)
+        else:
+            model = pmd.auto_arima(val_train, m=m)
     else:
         order = params.arima_order
         seasonal_order = params.seasonal_order
@@ -347,7 +343,7 @@ def train_model(params) -> ModelWrapper:
     # Remove the boundary from the reader and reuse it to read the following
     # values
     reader_future = reader_train
-    reader_future.to_ts = ''
+    reader_future.end_ts = ''
 
     return wrapped_model, reader_future
 
