@@ -224,7 +224,6 @@ export default class List extends Component {
                                             this.setState({tab: TaskSource.USER})
                                         }}>{t('User')}</ActionLink>
                         </li>
-                        {ivisConfig.globalPermissions.viewSystemJobs &&
                         <li key={TaskSource.SYSTEM} className={this.state.tab === TaskSource.SYSTEM ? 'active' : ''}>
                             <ActionLink
                                 className={'nav-link' + (this.state.tab === TaskSource.SYSTEM ? ' active' : '')}
@@ -232,8 +231,6 @@ export default class List extends Component {
                                     this.setState({tab: TaskSource.SYSTEM})
                                 }}>{t('System')}</ActionLink>
                         </li>
-                        }
-
                     </ul>
                     {this.state.createPermitted &&
                     <LinkButton to="/settings/jobs/create" className="btn-primary" icon="plus"

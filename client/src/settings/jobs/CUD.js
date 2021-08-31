@@ -325,7 +325,7 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
-        const isSystemJob = isEdit && this.props.entity.namespace === getVirtualNamespaceId();
+        const isSystemJob = isEdit && this.props.entity.taskSource === TaskSource.SYSTEM;
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         let stateOptions = CUD.getStateOptions(t);

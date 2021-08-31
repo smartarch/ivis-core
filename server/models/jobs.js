@@ -13,6 +13,7 @@ const {TaskSource} = require('../../shared/tasks');
 const jobHandler = require('../lib/task-handler');
 const signalSets = require('./signal-sets');
 const allowedKeys = new Set(['name', 'description', 'task', 'params', 'state', 'trigger', 'min_gap', 'delay', 'namespace']);
+const allowedKeysUpdate = new Set(['name', 'description', 'params', 'state', 'trigger', 'min_gap', 'delay', 'namespace']);
 const {getVirtualNamespaceId} = require('../../shared/namespaces');
 
 const columns = ['jobs.id', 'jobs.name', 'jobs.description', 'jobs.task', 'jobs.created', 'jobs.state', 'jobs.trigger', 'jobs.min_gap', 'jobs.delay', 'namespaces.name', 'tasks.name', 'tasks.source'];
@@ -36,7 +37,8 @@ function getQueryFun(taskSource) {
 /**
  * Return job with given id.
  * @param context the calling user's context
- * @param id the primary key of the job
+ * @param {number} id the primary key of the job
+ * @param {boolean} includePermissions
  * @returns {Promise<Object>}
  */
 async function getById(context, id, includePermissions = true) {
@@ -120,8 +122,9 @@ async function listByTaskDTAjax(context, taskId, params) {
 }
 
 async function listSystemDTAjax(context, params) {
-    shares.enforceGlobalPermission(context, 'viewSystemJobs');
-    return await dtHelpers.ajaxList(
+    return await dtHelpers.ajaxListWithPermissions(
+        context,
+        [{entityTypeId: 'job', requiredOperations: ['view']}],
         params,
         getQueryFun(TaskSource.SYSTEM),
         columns
@@ -151,23 +154,16 @@ async function listRunsDTAjax(context, id, params) {
                 .where({'jobs.id': id})
                 .orderBy('job_runs.id', 'desc');
 
-        if (job.namespace !== getVirtualNamespaceId()) {
-            await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
+        await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'view');
 
-            return await dtHelpers.ajaxListWithPermissionsTx(
-                tx,
-                context,
-                [{entityTypeId: 'job', requiredOperations: ['delete']}],
-                params,
-                queryFun,
-                columns
-            );
-        } else {
-            return await dtHelpers.ajaxListTx(tx,
-                params,
-                queryFun,
-                columns);
-        }
+        return await dtHelpers.ajaxListWithPermissionsTx(
+            tx,
+            context,
+            [{entityTypeId: 'job', requiredOperations: ['delete']}],
+            params,
+            queryFun,
+            columns
+        );
     });
 }
 
@@ -213,11 +209,12 @@ async function listRunningDTAjax(context, params) {
  * Creates job.
  * @param context
  * @param job the job we want to create
- * @returns {Promise<any>} id of the created job
+ * @param {boolean} isSystemJobAllowed whether creation from system task is allowed on call
+ * @returns {Promise<number>} id of the created job
  */
-async function create(context, job) {
+async function create(context, job, isSystemJobAllowed = false) {
     return await knex.transaction(async tx => {
-        return await createTx(tx, context, job);
+        return await createTx(tx, context, job, isSystemJobAllowed);
     });
 }
 
@@ -227,12 +224,12 @@ async function create(context, job) {
  * @param job the job we want to create
  * @returns {Promise<any>} id of the created job
  */
-async function createTx(tx, context, job) {
+async function createTx(tx, context, job, isSystemJobAllowed) {
     await shares.enforceEntityPermissionTx(tx, context, 'namespace', job.namespace, 'createJob');
     await namespaceHelpers.validateEntity(tx, job);
 
-    const exists = await tx('tasks').where({id: job.task}).first();
-    enforce(exists != null && exists.source !== TaskSource.SYSTEM, 'Task doesn\'t exists');
+    const task = await tx('tasks').where({id: job.task}).first();
+    enforce(task != null && (isSystemJobAllowed || task.source !== TaskSource.SYSTEM), 'Task doesn\'t exists');
 
     const filteredEntity = filterObject(job, allowedKeys);
     filteredEntity.params = JSON.stringify(filteredEntity.params);
@@ -267,7 +264,7 @@ function parseTriggerStr(triggerStr) {
 /**
  * Changes set triggers to specified ones.
  * @param tx
- * @param id the primary key of the job
+ * @param {number} id the primary key of the job
  * @param sets the array of the primary keys of sets to trigger on
  * @returns {Promise<void>}
  */
@@ -309,7 +306,7 @@ async function updateWithConsistencyCheck(context, job) {
         await namespaceHelpers.validateMove(context, job, existing, 'job', 'createJob', 'delete');
 
 
-        const filteredEntity = filterObject(job, allowedKeys);
+        const filteredEntity = filterObject(job, allowedKeysUpdate);
         filteredEntity.params = JSON.stringify(filteredEntity.params);
         filteredEntity.delay = parseTriggerStr(filteredEntity.delay);
         filteredEntity.min_gap = parseTriggerStr(filteredEntity.min_gap);
@@ -374,15 +371,15 @@ async function removeAllRuns(context, jobId) {
  * Run job.
  * @param context
  * @param id the primary key of the job
- * @returns {Promise<*>} the primary key of the run
+ * @returns {Promise<number>} the primary key of the run
  */
 async function run(context, id) {
     let runIds;
     let job;
     await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'job', id, 'execute');
-        runIds = await tx('job_runs').insert({job: id, status: RunStatus.INITIALIZATION, started_at: new Date()});
         job = await tx('jobs').select('task').where({id: id}).first();
+        runIds = await tx('job_runs').insert({job: id, status: RunStatus.INITIALIZATION, started_at: new Date()});
     });
 
     const runId = runIds[0];

@@ -20,7 +20,6 @@ const {
     PYTHON_JOB_FILE_NAME
 } = require('../../shared/tasks');
 const {storeBuiltinTasks, list} = require('../models/builtin-tasks');
-const {storeSystemJobs, list: listSystemJobs} = require('../models/system-jobs');
 const users = require('../models/users');
 const contextHelpers = require('../lib/context-helpers');
 
@@ -259,7 +258,6 @@ async function initIndices() {
 
 async function initBuiltinAndSystemTasks() {
     await initBuiltinTasks();
-    await storeSystemJobs();
 }
 
 /**

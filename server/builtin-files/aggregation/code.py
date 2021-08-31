@@ -4,7 +4,7 @@ es = ivis.elasticsearch
 state = ivis.state
 params= ivis.params
 entities= ivis.entities
-#owned= ivis.owned
+owned= ivis.owned
 
 sig_set_cid = params['signalSet']
 sig_set = entities['signalSets'][sig_set_cid]
@@ -16,7 +16,7 @@ agg_set_cid =  f"aggregation_{interval}_{sig_set_cid}"
 
 numeric_signals = { cid: signal for (cid,signal) in entities['signals'][sig_set_cid].items() if (signal['type'] in ['integer','long','float','double']) }
 
-if state is None or state.get(agg_set_cid) is None:
+if owned['signalSets'].get(agg_set_cid) is None:
   ns = sig_set['namespace']
 
   signals= []
@@ -52,7 +52,7 @@ if state is None or state.get(agg_set_cid) is None:
       "settings": ts['settings']
   })
 
-  state = ivis.create_signal_set(
+  ivis.create_signal_set(
     agg_set_cid,
     ns,
     agg_set_cid,
@@ -60,6 +60,7 @@ if state is None or state.get(agg_set_cid) is None:
     None,
     signals)
 
+  state = {}
   state['last'] = None
   ivis.store_state(state)
 
@@ -73,15 +74,17 @@ if state is not None and state.get('last') is not None:
     }
   }
 
-  es.delete_by_query(index=state[agg_set_cid]['index'], body={
+  # Last calculated aggregation has to be redone, because new data points may have been added to it
+  es.delete_by_query(index=entities['signalSets'][agg_set_cid]['index'], body={
     "query": {
       "match": {
-        state[agg_set_cid]['fields']['ts']: last
+        entities['signals'][agg_set_cid]['ts']['field']: last
       }
     }
   })
 
 else:
+  state = {}
   if offset is not None:
     filter = {
       "range": {
@@ -129,14 +132,14 @@ for hit in res['aggregations']['sig_set_aggs']['buckets']:
   last = hit['key_as_string']
   doc = {}
   for cid in numeric_signals.keys():
-    doc[state[agg_set_cid]['fields'][f"_{cid}_min"]]= hit[cid]['min']
-    doc[state[agg_set_cid]['fields'][cid]]= hit[cid]['avg']
-    doc[state[agg_set_cid]['fields'][f"_{cid}_max"]]= hit[cid]['max']
-    doc[state[agg_set_cid]['fields'][f"_{cid}_count"]]= hit[cid]['count']
-    doc[state[agg_set_cid]['fields'][f"_{cid}_sum"]]= hit[cid]['sum']
+    doc[entities['signals'][agg_set_cid][f"_{cid}_min"]['field']]= hit[cid]['min']
+    doc[entities['signals'][agg_set_cid][cid]['field']]= hit[cid]['avg']
+    doc[entities['signals'][agg_set_cid][f"_{cid}_max"]['field']]= hit[cid]['max']
+    doc[entities['signals'][agg_set_cid][f"_{cid}_count"]['field']]= hit[cid]['count']
+    doc[entities['signals'][agg_set_cid][f"_{cid}_sum"]['field']]= hit[cid]['sum']
 
-  doc[state[agg_set_cid]['fields'][ts['cid']]] = last
-  res = es.index(index=state[agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
+  doc[entities['signals'][agg_set_cid][ts['cid']]['field']] = last
+  res = es.index(index=entities['signalSets'][agg_set_cid]['index'], id=last, doc_type='_doc', body=doc)
 
 
 state['last'] = last

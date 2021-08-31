@@ -779,12 +779,6 @@ async function handleRunFail(jobId, runId, runData, errMsg) {
 }
 
 
-/**
- * @typedef {Object} IndexInfo
- * @property {string} index - Created index name.
- * @property {Object[]} fields - map of signal cid to his field name in created index
- */
-
 // TODO - we would need something similar for signals
 
 
@@ -839,7 +833,7 @@ async function handleRun(workEntry) {
                 params: spec.params || {},
                 entities: spec.entities,
                 owned: spec.owned,
-                accessToken: spec.accessToken,
+                accessToken: spec.accessToken || null,
                 es: {
                     host: `${config.elasticsearch.host}`,
                     port: `${config.elasticsearch.port}`

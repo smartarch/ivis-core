@@ -2,6 +2,8 @@
 
 const {JobState} = require("../../shared/jobs");
 const {getBuiltinTask} = require("./builtin-tasks");
+const {BuiltinTaskNames} = require("../../shared/tasks");
+
 
 const log = require('../lib/log');
 const knex = require('../lib/knex');
@@ -88,7 +90,7 @@ async function createTx(tx, context, sigSetId, params) {
     const signalSet = await tx('signal_sets').where('id', sigSetId).first();
     enforce(signalSet, `Signal set ${sigSetId} not found`);
 
-    const task = await getBuiltinTask('aggregation');
+    const task = await getBuiltinTask(BuiltinTaskNames.AGGREGATION);
     enforce(task, `Aggregation task not found`);
 
     const tsExists = tx('signals').where({set: sigSetId, cid: ts}).first();
@@ -128,7 +130,7 @@ async function createTx(tx, context, sigSetId, params) {
         min_gap: null,
         delay: null
     };
-    const jobId = await jobs.create(context, job);
+    const jobId = await jobs.create(context, job, true);
 
     await tx('aggregation_jobs').insert({job: jobId, set: signalSet.id, offset: params.offset, interval: intervalms});
 

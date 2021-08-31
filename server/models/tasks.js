@@ -63,6 +63,11 @@ async function listSystemDTAjaxWithoutPerms(context, params) {
     );
 }
 
+/**
+ * Builtin tasks are visible to everybody
+ * @param params
+ * @returns {Promise<*>}
+ */
 async function listBuiltinDTAjaxWithoutPerms(params) {
     return await dtHelpers.ajaxList(
         params,
