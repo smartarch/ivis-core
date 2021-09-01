@@ -129,7 +129,7 @@ def _postprocess_sample(sample, signals, normalization_coefficients, column_indi
         dataframe[column] = data[column] * (max_val - min_val) + min_val
 
     def one_hot_decoding(column, values):
-        values += ["unknown"]
+        values = values + ["unknown"]
         value_indices = [column_indices[f"{column}_{val}"] for val in values]
 
         data = []

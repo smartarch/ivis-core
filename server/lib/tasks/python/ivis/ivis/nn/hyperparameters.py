@@ -92,3 +92,38 @@ class Hyperparameters:
             item = self._get_item(key + "_" + str(i), item_spec)
             result.append(item)
         return result
+
+
+def get_tuned_parameters(parameters, hp):
+    """
+    Creates a (shallow) copy of the parameters with all tunable values replaced with the found best value.
+
+    Parameters
+    ----------
+    parameters : dict
+        Original job parameters.
+    hp : kt.HyperParameters
+        Best found hyperparameters.
+
+    Returns
+    -------
+    dict
+        Parameters with the best found tunable values.
+    """
+    hyperparameters = Hyperparameters(parameters, hp)
+    architecture_hyperparameters = Hyperparameters(parameters["architecture_params"], hp)
+
+    tuned_params = _get_tuned_object(parameters, hyperparameters)
+    tuned_params["architecture_params"] = _get_tuned_object(parameters["architecture_params"], architecture_hyperparameters)
+
+    return tuned_params
+
+
+def _get_tuned_object(original: dict, hyperparameters: Hyperparameters) -> dict:
+    result = {}
+    for key in original:
+        value = original[key]
+        if type(value) is dict and "optimizable_type" in value:
+            value = hyperparameters[key]
+        result[key] = value
+    return result

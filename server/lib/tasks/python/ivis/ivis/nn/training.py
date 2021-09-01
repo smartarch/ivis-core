@@ -1,6 +1,7 @@
 """
 Code for Neural Network training.
 """
+import json
 import shutil
 import tensorflow as tf
 import kerastuner as kt
@@ -10,7 +11,7 @@ from ivis import ivis
 from . import load_data_elasticsearch as es, preprocessing as pre, architecture
 from .load_data import load_data
 from .ParamsClasses import TrainingParams, PredictionParams
-from .hyperparameters import Hyperparameters
+from .hyperparameters import Hyperparameters, get_tuned_parameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
 from .architectures.ModelFactory import ModelFactory
 
@@ -171,6 +172,28 @@ def save_model(model, training_parameters, working_directory):
     print("Model saved.")
 
 
+def save_training_results(parameters, best_hp, working_directory):
+    save_folder = Path(TRAINING_LOGS) / working_directory
+    tuned_parameters = get_tuned_parameters(parameters, best_hp)
+
+    # temporarily save to the file system
+    print("Saving training results...")
+
+    training_results = {
+        "tuned_parameters": tuned_parameters
+    }
+
+    with open(save_folder / "training_results.json", 'w') as file:
+        print(json.dumps(training_results, indent=2), file=file)
+
+    # upload the files to IVIS server
+    print("Uploading to IVIS...")
+    with open(save_folder / "training_results.json", 'r') as file:
+        ivis.upload_file(file)
+
+    print("Training results saved.")
+
+
 def cleanup(working_directory):
     print("Cleaning up...", end="")
     folder = Path(TRAINING_LOGS) / working_directory
@@ -274,10 +297,12 @@ def run_training(parameters, model_factory=None):
     print("Best model:\n")
     best_model = tuner.get_best_models()[0]
     best_model.summary()
+    best_hyperparameters = tuner.get_best_hyperparameters()[0]
     # TODO(MT) evaluate model on test set
 
     print_divider()
     save_model(best_model, training_parameters, working_directory)
+    save_training_results(parameters, best_hyperparameters, working_directory)
 
     if "cleanup" in parameters and parameters["cleanup"]:
         cleanup(working_directory)

@@ -13,7 +13,8 @@ import {withComponentMixins} from "./decorator-helpers";
 export class DismissibleAlert extends Component {
     static propTypes = {
         severity: PropTypes.string.isRequired,
-        onCloseAsync: PropTypes.func
+        onCloseAsync: PropTypes.func,
+        className: PropTypes.string,
     }
 
     @withAsyncErrorHandler
@@ -27,7 +28,7 @@ export class DismissibleAlert extends Component {
         const t = this.props.t;
 
         return (
-            <div className={`alert alert-${this.props.severity} alert-dismissible`} role="alert">
+            <div className={`alert alert-${this.props.severity} alert-dismissible ${this.props.className || ''}`} role="alert">
                 <button type="button" className="close" aria-label={t('close')} onClick={::this.onClose}><span aria-hidden="true">&times;</span></button>
                 {this.props.children}
             </div>

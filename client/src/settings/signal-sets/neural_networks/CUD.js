@@ -27,6 +27,7 @@ import paramTypesStyles from "../../ParamTypes.scss";
 import styles from "./CUD.scss";
 import * as dateMath from "../../../lib/datemath";
 import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
+import {DismissibleAlert} from "../../../lib/bootstrap-components";
 
 const parseDate = (str, end) => {
     const date = dateMath.parse(str, end);
@@ -102,7 +103,9 @@ export default class CUD extends Component {
     constructor(props) {
         super(props);
 
-        this.state = { };
+        this.state = {
+            loadedFrom: null,
+        };
 
         // for rendering in ParamTypes, the configSpec of each rendered param must be an array
         this.ts_configSpec = [{
@@ -127,12 +130,21 @@ export default class CUD extends Component {
         });
         this.paramTypes = new ParamTypesTunable(props.t);
         this.rendered_architecture = null;
-        this.loadedFrom = null;
     }
 
     componentDidMount() {
-        if (this.props.cloneFromTrainingJob)
+        if (this.props.cloneFromTuned) {
+            const trainingResults = this.props.cloneFromTuned;
+            this.loadValuesFromOtherModel(this.props.cloneFromPrediction, trainingResults.tuned_parameters);
+            this.setState({
+                loadedFrom: `Settings cloned from tuned model '${trainingResults.tuned_parameters.name}'`,
+            });
+        } else if (this.props.cloneFromTrainingJob) {
             this.loadValuesFromOtherModel(this.props.cloneFromPrediction, this.props.cloneFromTrainingJob.params);
+            this.setState({
+                loadedFrom: `Settings cloned from model '${this.props.cloneFromTrainingJob.params.name}'`
+            });
+        }
         else
             this.loadDefaultValues();
     }
@@ -192,7 +204,6 @@ export default class CUD extends Component {
             ...formValues,
         });
         this.loadArchitectureParams(trainingJobParams.architecture_params, trainingJobParams.architecture);
-        this.loadedFrom = trainingJobParams.name;
     }
 
     onArchitectureChange(state, key, oldVal, newVal) {
@@ -426,9 +437,12 @@ export default class CUD extends Component {
         return (
             <Panel title="Add Neural Network model">
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
-                    {this.loadedFrom && <div className={"form-group alert alert-success alert-dismissible"} role={"alert"}>
-                        Settings loaded from model '{this.loadedFrom}'.
-                    </div>}
+                    {this.state.loadedFrom && <DismissibleAlert
+                        severity={"success"}
+                        className={"form-group"}
+                        onCloseAsync={async () => this.setState({loadedFrom: null})} >
+                        {this.state.loadedFrom}
+                    </DismissibleAlert>}
 
                     <InputField id="name" label={t('Model name')} help={t('Has to be unique among models belonging to this signal set.')} />
 
@@ -466,7 +480,7 @@ export default class CUD extends Component {
 
                     {this.getArchitectureDescription()}
 
-                    <h4>Neural Network parameters</h4>
+                    <h4>Neural Network hyperparameters</h4>
 
                     { this.rendered_architecture !== null
                         ? renderParam(this.getArchitectureParamsSpec())

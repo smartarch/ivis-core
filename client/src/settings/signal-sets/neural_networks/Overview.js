@@ -11,6 +11,7 @@ import axios from "../../../lib/axios";
 import RunConsole from "../../jobs/RunConsole";
 import {Button, ModalDialog} from "../../../lib/bootstrap-components";
 import {JobState} from "../../../../../shared/jobs";
+import {NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
 
 @withComponentMixins([
     withTranslation,
@@ -28,6 +29,7 @@ export default class NNOverview extends Component {
             predictionJob: null,
             enablePredictionButtonDisabled: false,
             prediction: props.prediction,
+            trainingResults: null,
         }
     }
 
@@ -44,8 +46,8 @@ export default class NNOverview extends Component {
     @withAsyncErrorHandler
     async fetchData() {
         const trainingJobId = this.props.jobs.training;
-        const lastRunResult = await axios.get(getUrl(`rest/jobs/${trainingJobId}/last-run`))
-        const lastRun = lastRunResult.data;
+        const lastRunResponse = await axios.get(getUrl(`rest/jobs/${trainingJobId}/last-run`))
+        const lastRun = lastRunResponse.data;
 
         let timeout = null;
         if (this.state.timeout && lastRun.finished_at) { // last run finished
@@ -56,18 +58,29 @@ export default class NNOverview extends Component {
         }
 
         const predictionJobId = this.props.jobs.prediction;
-        const predictionJobResult = await axios.get(getUrl(`rest/jobs/${predictionJobId}`))
-        const predictionJob = predictionJobResult.data;
+        const predictionJobResponse = await axios.get(getUrl(`rest/jobs/${predictionJobId}`))
+        const predictionJob = predictionJobResponse.data;
 
         const predictionId = this.state.prediction.id;
-        const predictionResult = await axios.get(getUrl(`rest/predictions/${predictionId}`))
-        const prediction = predictionResult.data;
+        const predictionResponse = await axios.get(getUrl(`rest/predictions/${predictionId}`))
+        const prediction = predictionResponse.data;
+
+        let trainingResults = null;
+        if (prediction.settings && prediction.settings.training_completed) {
+            try {
+                const trainingResultsResponse = await axios.get(getUrl(`files/job/file/${trainingJobId}/training_results.json`));
+                trainingResults = trainingResultsResponse.data;
+            } catch (error) {
+                console.log("Training results not available.");
+            }
+        }
 
         this.setState({
             lastRun,
             timeout,
             predictionJob,
-            prediction
+            prediction,
+            trainingResults,
         });
     }
 
@@ -119,6 +132,30 @@ export default class NNOverview extends Component {
         await this.setPredictionJobState(false);
     }
 
+    printTrainingResults() {
+        const architectureParams = this.state.trainingResults.tuned_parameters.architecture_params;
+        const architecture = this.state.trainingResults.tuned_parameters.architecture;
+        const architectureSpec = NeuralNetworkArchitecturesSpecs[architecture];
+
+        const rows = architectureSpec.params.map(spec => <tr key={spec.id}>
+            <td>{spec.label}</td>
+            <td>{JSON.stringify(architectureParams[spec.id], null, 2)}</td>
+        </tr>);
+
+        return (<>
+            <h3>Training results</h3>
+            <table className={"table col-4"}>
+                <thead><tr>
+                    <th>Hyperparameter</th>
+                    <th>Best found value</th>
+                </tr></thead>
+                <tbody>
+                    {rows}
+                </tbody>
+            </table>
+        </>);
+    }
+
     render() {
         const t = this.props.t;
         const prediction = this.state.prediction;
@@ -140,7 +177,10 @@ export default class NNOverview extends Component {
                     <Button onClickAsync={::this.showRunTrainingModal} label={"Re-run training"} className="btn-danger" icon={"retweet"} />
                     {enablePredictionButton}
                     <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}`} label={"New model with same settings"} className="btn-primary" icon={"clone"} />
+                    {this.state.prediction.settings && this.state.prediction.settings.training_completed && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}/tuned`} label={"New model from tuned parameters"} className="btn-primary" icon={"clone"} />}
                 </Toolbar>
+
+                {this.state.trainingResults && this.printTrainingResults()}
 
                 <ModalDialog hidden={!this.state.runTrainingModalVisible} title={"Re-run training"} onCloseAsync={::this.hideRunTrainingModal} buttons={[
                     { label: t('no'), className: 'btn-primary', onClickAsync: ::this.hideRunTrainingModal },

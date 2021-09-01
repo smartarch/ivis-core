@@ -566,7 +566,7 @@ const getStructure = t => {
                                             'neural_network': {
                                                 title: t('Neural Network models'),
                                                 children: {
-                                                    'create/:cloneFromModelId([0-9]+)?': {
+                                                    'create/:cloneFromModelId([0-9]+)?/:tuned(tuned)?': {
                                                         title: t('Add Neural Network model'),
                                                         link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/create`,
                                                         resolve: {
@@ -576,12 +576,17 @@ const getStructure = t => {
                                                                 dependencies: ["cloneFromJobs"],
                                                                 url: (params, resolved) => resolved.cloneFromJobs && `rest/jobs/${resolved.cloneFromJobs.training}`,
                                                             },
+                                                            cloneFromTuned: {
+                                                                dependencies: ["cloneFromJobs"],
+                                                                url: (params, resolved) => params.tuned && resolved.cloneFromJobs && `files/job/file/${resolved.cloneFromJobs.training}/training_results.json`,
+                                                            },
                                                         },
                                                         panelRender: props => <PredictionsNNCUD
                                                             signalSet={props.resolved.signalSet}
                                                             action="create"
                                                             cloneFromPrediction={props.resolved.cloneFromPrediction}
-                                                            cloneFromTrainingJob={props.resolved.cloneFromTrainingJob} />,
+                                                            cloneFromTrainingJob={props.resolved.cloneFromTrainingJob}
+                                                            cloneFromTuned={props.resolved.cloneFromTuned} />,
                                                     },
                                                     ':modelId([0-9]+)': {
                                                         title: t('Neural Network model overview'),

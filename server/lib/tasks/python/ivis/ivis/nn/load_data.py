@@ -13,7 +13,7 @@ def get_query_and_index(run_parameters, time_interval, include_targets, single):
     size = run_parameters.input_width if single else 10000
     signals = run_parameters.input_signals
     if include_targets:
-        signals += run_parameters.target_signals
+        signals = signals + run_parameters.target_signals
 
     if run_parameters.aggregated:
         return _get_query_aggregated(run_parameters, signals, time_interval, size), index
@@ -37,7 +37,7 @@ def _get_query_original(run_parameters, signals, time_interval, size):
 def parse_data(run_parameters, data, include_targets=False):
     signals = run_parameters.input_signals
     if include_targets:
-        signals += run_parameters.target_signals
+        signals = signals + run_parameters.target_signals
 
     if run_parameters.aggregated:
         return es.parse_histogram(signals, data)
