@@ -27,7 +27,7 @@ import paramTypesStyles from "../../ParamTypes.scss";
 import styles from "./CUD.scss";
 import * as dateMath from "../../../lib/datemath";
 import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
-import {DismissibleAlert} from "../../../lib/bootstrap-components";
+import {ActionLink, DismissibleAlert} from "../../../lib/bootstrap-components";
 
 const parseDate = (str, end) => {
     const date = dateMath.parse(str, end);
@@ -105,6 +105,11 @@ export default class CUD extends Component {
 
         this.state = {
             loadedFrom: null,
+            collapsePrediction: false,
+            collapseSignals: false,
+            collapseHyperparameters: false,
+            collapseTraining: false,
+            collapseAdvancedTraining: true,
         };
 
         // for rendering in ParamTypes, the configSpec of each rendered param must be an array
@@ -115,10 +120,16 @@ export default class CUD extends Component {
             "signalType": SignalType.DATE_TIME,
             "signalSet": props.signalSet.cid,
         }];
+        this.learning_rate_configSpec = [{
+            "id": "learning_rate",
+            "label": "Learning rate",
+            "type": "tunable_float",
+        }];
         this.input_signals_configSpec = () => [signalsConfigSpec("input_signals", "Input Signals", "Signals to use for prediction.", props.signalSet.cid, this.isAggregated())]
         this.target_signals_configSpec = () => [signalsConfigSpec("target_signals", "Target Signals", "Signals to predict.", props.signalSet.cid,  this.isAggregated())]
         this.configSpec = () => [].concat(
             this.ts_configSpec,
+            this.learning_rate_configSpec,
             this.input_signals_configSpec(),
             this.target_signals_configSpec(),
         );
@@ -154,6 +165,12 @@ export default class CUD extends Component {
         const defaultValues = {
             input_signals: [],
             target_signals: [],
+            learning_rate: {
+                min: 0.0001,
+                max: 0.1,
+                sampling: "log",
+                default: 0.001,
+            }
         };
         if (this.props.signalSet.settings.hasOwnProperty("ts"))
             defaultValues.ts = this.props.signalSet.settings.ts;
@@ -171,7 +188,6 @@ export default class CUD extends Component {
             time_interval_start: '',
             time_interval_end: '',
             architecture: NeuralNetworkArchitecturesList[0],
-            learning_rate: "0.001",
             start_training: true,
             automatic_predictions: true,
             ...formValues,
@@ -198,7 +214,6 @@ export default class CUD extends Component {
             time_interval_start: trainingJobParams.time_interval.start,
             time_interval_end: trainingJobParams.time_interval.end,
             architecture: trainingJobParams.architecture,
-            learning_rate: String(trainingJobParams.learning_rate),
             start_training: trainingJobParams.start_training,
             automatic_predictions: trainingJobParams.automatic_predictions,
             ...formValues,
@@ -266,13 +281,12 @@ export default class CUD extends Component {
         data.aggregation = data.aggregation.trim();
         data.input_width = parseInt(data.input_width, 10);
         data.target_width = parseInt(data.target_width, 10);
-        data.learning_rate = parseFloat(data.learning_rate);
         data.time_interval = {
             start: data.time_interval_start !== "" ? moment(data.time_interval_start).toISOString() : "",
             end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
         }
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'learning_rate', 'start_training', 'automatic_predictions']);
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions']);
 
         return {
             ...data,
@@ -342,13 +356,14 @@ export default class CUD extends Component {
         this.validateDate(state, 'time_interval_start', false);
         this.validateDate(state, 'time_interval_end', true);
 
-        const learningRateStr = state.getIn(['learning_rate', 'value']).trim();
-        if (!learningRateStr || isNaN(learningRateStr)) {
-            state.setIn(['learning_rate', 'error'], t('Please enter a number'));
-        } else if (Number(learningRateStr) <= 0) {
-            state.setIn(['learning_rate', 'error'], t('Please enter a positive number'));
-        } else {
-            state.setIn(['learning_rate', 'error'], null);
+        // learning rate
+        const learningRateMinStr = state.getIn(['param_/learning_rate_min', 'value']);
+        if (learningRateMinStr && Number(learningRateMinStr) <= 0) {
+            state.setIn(['param_/learning_rate_min', 'error'], t('Please enter a positive number'));
+        }
+        const learningRateMaxStr = state.getIn(['param_/learning_rate_max', 'value']);
+        if (learningRateMaxStr && Number(learningRateMaxStr) <= 0) {
+            state.setIn(['param_/learning_rate_max', 'error'], t('Please enter a positive number'));
         }
     }
 
@@ -448,31 +463,42 @@ export default class CUD extends Component {
 
                     {renderParam(this.ts_configSpec)}
 
+
                     <h4>Prediction parameters</h4>
 
-                    <InputField id="aggregation"
-                                label={t('Aggregation Interval')}
-                                help={t('Resampling interval for the signals. Leave empty for no resampling. Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes).')}
-                                placeholder={t(`type interval or select from the hints`)}
-                                withHints={['', '1h', '12h', '1d', '30d']}
-                    />
-                    {!this.isAggregated() && <div className={"form-group alert alert-warning"} role={"alert"}>
-                        It is not recommended to leave the aggregation interval empty. {/* TODO (MT): better message */}
-                    </div>}
+                    <CollapsableSection stateOwner={this} controlVariable={"collapsePrediction"}>
 
-                    <InputField id="target_width" label="Future predictions" help={t('How many predictions into the future do we want to generate?')}/>
+                        <InputField id="aggregation"
+                                    label={t('Aggregation Interval')}
+                                    help={t('Resampling interval for the signals. Leave empty for no resampling. Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes).')}
+                                    placeholder={t(`type interval or select from the hints`)}
+                                    withHints={['', '1h', '12h', '1d', '30d']}
+                        />
+                        {!this.isAggregated() && <div className={"form-group alert alert-warning"} role={"alert"}>
+                            It is not recommended to leave the aggregation interval empty. {/* TODO (MT): better message */}
+                        </div>}
 
-                    {this.renderTotalPredictionTime()}
+                        <InputField id="target_width" label="Future predictions" help={t('How many predictions into the future do we want to generate?')}/>
 
-                    <InputField id="input_width" label="Observations" help={t('The number of time steps used for prediction.')}/>
+                        {this.renderTotalPredictionTime()}
 
-                    {this.renderObservationsRecommendation()}
+                        <InputField id="input_width" label="Observations" help={t('The number of time steps used for prediction.')}/>
+
+                        {this.renderObservationsRecommendation()}
+
+                    </CollapsableSection>
+
 
                     <h4>Signals</h4>
 
-                    {renderParam(this.input_signals_configSpec())}
+                    <CollapsableSection stateOwner={this} controlVariable={"collapseSignals"}>
 
-                    {renderParam(this.target_signals_configSpec())}
+                        {renderParam(this.input_signals_configSpec())}
+
+                        {renderParam(this.target_signals_configSpec())}
+
+                    </CollapsableSection>
+
 
                     <h4>Neural Network architecture</h4>
 
@@ -480,34 +506,48 @@ export default class CUD extends Component {
 
                     {this.getArchitectureDescription()}
 
+
                     <h4>Neural Network hyperparameters</h4>
 
                     { this.rendered_architecture !== null
-                        ? renderParam(this.getArchitectureParamsSpec())
+                        ? <CollapsableSection stateOwner={this} controlVariable={"collapseHyperparameters"}>
+                            {renderParam(this.getArchitectureParamsSpec())}
+                        </CollapsableSection>
                         : "Loading..."
                     }
 
+
                     <h4>Training parameters</h4>
 
-                    <Fieldset label="Time interval for training data" className={paramTypesStyles.params}>
-                        <DateTimePicker id="time_interval_start" label="Start"
-                                        formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 00:00:00'}
-                                        parseDate={str => parseDate(str, false)}
-                                        help={"Leave empty to use all the data."}
-                        />
-                        <DateTimePicker id="time_interval_end" label="End"
-                                        formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 23:59:59'}
-                                        parseDate={str => parseDate(str, true)}
-                                        help={"Leave empty to use all the data."}
-                        />
-                    </Fieldset>
+                    <CollapsableSection stateOwner={this} controlVariable={"collapseTraining"}>
 
-                    <CheckBox id={"start_training"} label={"Start training immediately"} help={"Start the training immediately when the model is created (recommended)."}/>
-                    <CheckBox id={"automatic_predictions"} label={"Enable automatic predictions"} help={"New predictions are computed when new data are added to the signal set (recommended)."}/>
+                        <Fieldset label="Time interval for training data" className={paramTypesStyles.params}>
+                            <DateTimePicker id="time_interval_start" label="Start"
+                                            formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 00:00:00'}
+                                            parseDate={str => parseDate(str, false)}
+                                            help={"Leave empty to use all the data."}
+                            />
+                            <DateTimePicker id="time_interval_end" label="End"
+                                            formatDate={date => moment.utc(date).format('YYYY-MM-DD') + ' 23:59:59'}
+                                            parseDate={str => parseDate(str, true)}
+                                            help={"Leave empty to use all the data."}
+                            />
+                        </Fieldset>
+
+                        <CheckBox id={"start_training"} label={"Start training immediately"} help={"Start the training immediately when the model is created (recommended)."}/>
+                        <CheckBox id={"automatic_predictions"} label={"Enable automatic predictions"} help={"New predictions are computed when new data are added to the signal set (recommended)."}/>
+
+                    </CollapsableSection>
+
 
                     <h5>Advanced training parameters</h5>
 
-                    <InputField id="learning_rate" label="Learning rate"/>
+                    <CollapsableSection stateOwner={this} controlVariable={"collapseAdvancedTraining"}>
+
+                        {renderParam(this.learning_rate_configSpec)}
+
+                    </CollapsableSection>
+
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')} onClickAsync={async () => await this.submitHandler()}/>
@@ -515,5 +555,36 @@ export default class CUD extends Component {
                 </Form>
             </Panel>
         );
+    }
+}
+
+class CollapsableSection extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    onClick() {
+        this.props.stateOwner.setState({
+            [this.props.controlVariable]: !this.props.stateOwner.state[this.props.controlVariable],
+        });
+    }
+
+    render() {
+        const controlVariable = this.props.controlVariable;
+        const collapsed = this.props.stateOwner.state[controlVariable];
+
+        if (collapsed)
+            return (<>
+                <ActionLink onClickAsync={::this.onClick} className={"text-muted"}>
+                    Expand section
+                </ActionLink>
+            </>);
+        else
+            return (<>
+                <ActionLink onClickAsync={::this.onClick} className={"text-muted d-inline-block mb-2"}>
+                    Collapse section
+                </ActionLink>
+                <section>{this.props.children}</section>
+            </>);
     }
 }

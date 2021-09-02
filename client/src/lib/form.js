@@ -559,6 +559,7 @@ class RadioGroup extends Component {
         help: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
         options: PropTypes.array,
         className: PropTypes.string,
+        optionClassName: PropTypes.string,
         format: PropTypes.string
     }
 
@@ -577,7 +578,7 @@ class RadioGroup extends Component {
             const optId = htmlId + '_' + option.key;
 
             let number = options.push(
-                <div key={option.key} className="form-group form-check my-2">
+                <div key={option.key} className={`form-group form-check my-2 ${props.optionClassName || ''}`}>
                     <input id={optId}
                            type="radio"
                            className={optClassName}

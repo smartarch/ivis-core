@@ -20,7 +20,7 @@ export default class ParamTypesTunable extends ParamTypes {
 
         const renderTuneRadio = (self, prefix, spec, disabled, label="Value") => {
             const formId = this.getParamFormId(prefix, spec.id) + "_tune";
-            return <RadioGroup id={formId} label={label}
+            return <RadioGroup id={formId} label={label} optionClassName={"form-check-inline"}
                                options={[{key: "fixed", label: "Fixed"}, {key: "tuned", label: "Tuned"}]}
             />
         }
