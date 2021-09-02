@@ -65,9 +65,9 @@
   },
   "cleanup": true,
   "batch_size": 32,
-  "max_trials":	"5",
-  "executions_per_trial":"2",
-  "epochs":"50",
-  "early_stopping":true,
-  "early_stopping_patience":"3"
+  "max_trials":	5,
+  "executions_per_trial": 2,
+  "epochs": 50,
+  "early_stopping": true,
+  "early_stopping_patience": 3
 }

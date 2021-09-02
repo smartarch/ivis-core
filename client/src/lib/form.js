@@ -1945,7 +1945,7 @@ const withForm = createComponentMixin({
             return this.state.formState.getIn(['data', name, 'value']);
         };
 
-        proto.getFormValues = function (name) {
+        proto.getFormValues = function () {
             if (!this.state || !this.state.formState) return undefined;
             return this.state.formState.get('data').map(attr => attr.get('value')).toJS();
         };

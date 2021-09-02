@@ -170,6 +170,7 @@ export default class CUD extends Component {
         });
         this.paramTypes = new ParamTypesTunable(props.t);
         this.rendered_architecture = null;
+        this.architectureParams = {};
     }
 
     componentDidMount() {
@@ -252,13 +253,23 @@ export default class CUD extends Component {
     }
 
     onArchitectureChange(state, key, oldVal, newVal) {
-        if (oldVal !== newVal)
+        if (oldVal !== newVal) {
+            if (oldVal) {  // save the parameters of the previous architecture
+                const data = this.getFormValues();
+                this.architectureParams[oldVal] = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
+            }
             this.rendered_architecture = null;
+        }
     }
 
     componentDidUpdate() {
-        if (this.getFormValue('architecture') !== this.rendered_architecture)
-            this.loadDefaultArchitectureParams();
+        const architecture = this.getFormValue('architecture')
+        if (architecture !== this.rendered_architecture) {
+            if (this.architectureParams.hasOwnProperty(architecture))
+                this.loadArchitectureParams(this.architectureParams[architecture], architecture);
+            else
+                this.loadDefaultArchitectureParams(architecture);
+        }
     }
 
     loadArchitectureParams(params, architecture = null) {
@@ -303,9 +314,10 @@ export default class CUD extends Component {
     }
 
     submitFormValuesMutator(data) {
-        const paramData = this.paramTypes.getParams(this.configSpec(), data);
+        const paramsData = this.paramTypes.getParams(this.configSpec(), data);
+        const params = this.paramTypes.upcast(this.configSpec(), paramsData);
         const architectureData = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
-        // TODO (MT): should we also 'upcast' the params?
+        const architecture_params = this.paramTypes.upcast(this.getArchitectureParamsSpec(), architectureData);
 
         data.name = data.name.trim();
         data.aggregation = data.aggregation.trim();
@@ -320,8 +332,8 @@ export default class CUD extends Component {
 
         return {
             ...data,
-            ...paramData,
-            architecture_params: architectureData,
+            ...params,
+            architecture_params,
         }
     }
 

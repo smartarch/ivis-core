@@ -63,6 +63,12 @@ export default class ParamTypesTunable extends ParamTypes {
             return (prefix, spec, param, data) => {
                 const formId = this.getParamFormId(prefix, spec.id);
 
+                // set the keys in the `data` object
+                data[formId + "_min"] = "";
+                data[formId + "_max"] = "";
+                data[formId + "_sampling"] = "";
+                data[formId + "_default"] = "";
+
                 if (typeof(param) === "object") {
                     data[formId] = "";
                     data[formId + "_tune"] = "tuned";
@@ -76,6 +82,8 @@ export default class ParamTypesTunable extends ParamTypes {
                         data[formId + "_default"] = String(param.default);
                 } else {
                     data[formId + "_tune"] = "fixed";
+                    if (param === undefined)
+                        param = "";
                     paramTypeSpec.setFields(prefix, spec, String(param), data);
                 }
             }
@@ -85,7 +93,7 @@ export default class ParamTypesTunable extends ParamTypes {
             return (prefix, spec, data) => {
                 const formId = this.getParamFormId(prefix, spec.id);
                 if (data[formId + "_tune"] === "fixed")
-                    return Number(paramTypeSpec.getParams(prefix, spec, data));
+                    return paramTypeSpec.getParams(prefix, spec, data);
                 else {
                     const param = {
                         optimizable_type: optimizableType,
@@ -154,6 +162,12 @@ export default class ParamTypesTunable extends ParamTypes {
                 const formId = this.getParamFormId(prefix, spec.id);
                 state.setIn([formId + "_tune", 'value'], "fixed");
                 paramTypeSpec.adopt(prefix, spec, state);
+
+                // set the keys in the `state` object
+                state.setIn([formId + "_min", 'value'], "");
+                state.setIn([formId + "_max", 'value'], "");
+                state.setIn([formId + "_default", 'value'], "");
+                state.setIn([formId + "_sampling", 'value'], "");
             }
         }
 
@@ -164,18 +178,18 @@ export default class ParamTypesTunable extends ParamTypes {
             adopt: adoptNumber(this.paramTypes.integer),
             setFields: setFieldsNumber(this.paramTypes.integer),
             getParams: getParamsNumber(this.paramTypes.integer, "int"),
-            validate: validateNumber(n => Number.isInteger(Number(n)), t('Please enter an integer')),
+            validate: validateNumber(n => Number.isInteger(Number(n)), t('Please enter an integer.')),
             render: numberRenderFunction,
-            upcast: (spec, value) => value,
+            upcast: (spec, value) => typeof value === 'object' ? value : Number.parseInt(value),
         };
 
         this.paramTypes.tunable_float = {
             adopt: adoptNumber(this.paramTypes.float),
             setFields: setFieldsNumber(this.paramTypes.float),
             getParams: getParamsNumber(this.paramTypes.float, "float"),
-            validate: validateNumber(n => !isNaN(n), t('Please enter an number')),
+            validate: validateNumber(n => !isNaN(n), t('Please enter a number.')),
             render: numberRenderFunction,
-            upcast: (spec, value) => value,
+            upcast: (spec, value) => typeof value === 'object' ? value : Number(value),
         };
 
         // TODO (MT): possibly add later (when needed)
@@ -192,23 +206,35 @@ export default class ParamTypesTunable extends ParamTypes {
             adopt: (prefix, spec, state) => {
                 const formId = this.getParamFormId(prefix, spec.id);
                 state.setIn([formId + "_tune", 'value'], "fixed");
-                state.setIn([formId + "_count", 'value'], 0);
+                state.setIn([formId + "_count", 'value'], "");
+                state.setIn([formId + "_min_count", 'value'], "");
+                state.setIn([formId + "_max_count", 'value'], "");
                 this.paramTypes.fieldset.adopt(prefix, getFieldsetSpec(spec), state);
             },
             setFields: (prefix, spec, param, data) => {
                 const formId = this.getParamFormId(prefix, spec.id);
 
+                // set the keys in the `data` object
+                data[formId + "_count"] = "";
+                data[formId + "_min_count"] = "";
+                data[formId + "_max_count"] = "";
+
                 if (Array.isArray(param)) {
                     data[formId + "_tune"] = "fixed";
-                    data[formId + "_count"] = param.length;
+                    data[formId + "_count"] = String(param.length);
                     const items = param.map(p => ({[spec.child.id]: String(p)}));
                     this.paramTypes.fieldset.setFields(prefix, getFieldsetSpec(spec), items, data);
                 } else if (param) {
-                    data[formId + "_tune"] = "tuned";
-                    if (param.hasOwnProperty("min_count"))
-                        data[formId + "_min_count"] = String(param.min_count);
-                    if (param.hasOwnProperty("max_count"))
-                        data[formId + "_max_count"] = String(param.max_count);
+                    if (param.hasOwnProperty("count")) {
+                        data[formId + "_tune"] = "fixed";
+                        data[formId + "_count"] = String(param.count);
+                    } else {
+                        data[formId + "_tune"] = "tuned";
+                        if (param.hasOwnProperty("min_count"))
+                            data[formId + "_min_count"] = String(param.min_count);
+                        if (param.hasOwnProperty("max_count"))
+                            data[formId + "_max_count"] = String(param.max_count);
+                    }
 
                     const items = param.items.map(p => ({[spec.child.id]: p}));
                     this.paramTypes.fieldset.setFields(prefix, getFieldsetSpec(spec), items, data);
@@ -225,8 +251,7 @@ export default class ParamTypesTunable extends ParamTypes {
                 }
 
                 const items = this.paramTypes.fieldset.getParams(prefix, getFieldsetSpec(spec), data);
-                const upcast = this.getSanitizedParamType(spec.child.type).upcast;
-                result.items = items.map(i => upcast(spec.child, i[spec.child.id]));
+                result.items = items.map(i => i[spec.child.id]);
 
                 if (data[formId + "_tune"] === "fixed")
                     if (data[formId + "_count"] !== "")
@@ -270,7 +295,11 @@ export default class ParamTypesTunable extends ParamTypes {
 
                 this.paramTypes.fieldset.validate(prefix, getFieldsetSpec(spec), state)
             },
-            upcast: (spec, value) => value,
+            upcast: (spec, value) => {
+                const upcastItem = this.getSanitizedParamType(spec.child.type).upcast;
+                value.items = value.items.map(i => upcastItem(spec.child, i));
+                return value;
+            },
             render: (self, prefix, spec, disabled) => {
                 const formId = this.getParamFormId(prefix, spec.id);
                 const tune = self.getFormValue(formId + "_tune") === "tuned";
