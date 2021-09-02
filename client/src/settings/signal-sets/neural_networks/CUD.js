@@ -28,6 +28,7 @@ import styles from "./CUD.scss";
 import * as dateMath from "../../../lib/datemath";
 import {NeuralNetworkArchitecturesList, NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
 import {ActionLink, DismissibleAlert} from "../../../lib/bootstrap-components";
+import _ from "lodash";
 
 const parseDate = (str, end) => {
     const date = dateMath.parse(str, end);
@@ -109,6 +110,7 @@ export default class CUD extends Component {
             collapseSignals: false,
             collapseHyperparameters: false,
             collapseTraining: false,
+            collapseAdvancedTuning: true,
             collapseAdvancedTraining: true,
         };
 
@@ -120,16 +122,43 @@ export default class CUD extends Component {
             "signalType": SignalType.DATE_TIME,
             "signalSet": props.signalSet.cid,
         }];
-        this.learning_rate_configSpec = [{
+        this.tuning_configSpec = [{
+            "id": "max_trials",
+            "label": "Max tuning trials",
+            "help": "The number of hyperparameter configurations tested. The higher this number, the longer the training process.",
+            "type": "integer",
+        },{
+            "id": "executions_per_trial",
+            "label": "Executions per trial",
+            "help": "The number of neural networks tested for each hyperparameter configuration.The higher this number, the longer the training process.",
+            "type": "integer",
+        },];
+        this.training_configSpec = [{
             "id": "learning_rate",
             "label": "Learning rate",
             "type": "tunable_float",
+        },{
+            "id": "epochs",
+            "label": "Training epochs",
+            "help": "Stop training after this number of training epochs.",
+            "type": "integer",
+        },{
+            "id": "early_stopping",
+            "label": "Early stopping",
+            "help": "Stop training before the specified number of training epochs if the validation loss stops improving.",
+            "type": "boolean",
+        },{
+            "id": "early_stopping_patience",
+            "label": "Early stopping patience",
+            "help": "The number of epochs for with the validation loss has to stop improving in order to stop the training.",
+            "type": "integer",
         }];
         this.input_signals_configSpec = () => [signalsConfigSpec("input_signals", "Input Signals", "Signals to use for prediction.", props.signalSet.cid, this.isAggregated())]
         this.target_signals_configSpec = () => [signalsConfigSpec("target_signals", "Target Signals", "Signals to predict.", props.signalSet.cid,  this.isAggregated())]
         this.configSpec = () => [].concat(
             this.ts_configSpec,
-            this.learning_rate_configSpec,
+            this.tuning_configSpec,
+            this.training_configSpec,
             this.input_signals_configSpec(),
             this.target_signals_configSpec(),
         );
@@ -170,7 +199,12 @@ export default class CUD extends Component {
                 max: 0.1,
                 sampling: "log",
                 default: 0.001,
-            }
+            },
+            max_trials: "5", // TODO (MT) reasonable defaults, also change in training.py
+            executions_per_trial: "2",
+            epochs: "50",
+            early_stopping: true,
+            early_stopping_patience: "3",
         };
         if (this.props.signalSet.settings.hasOwnProperty("ts"))
             defaultValues.ts = this.props.signalSet.settings.ts;
@@ -196,11 +230,7 @@ export default class CUD extends Component {
     }
 
     loadValuesFromOtherModel(prediction, trainingJobParams) {
-        const otherValues = {
-            input_signals: trainingJobParams.input_signals,
-            target_signals: trainingJobParams.target_signals,
-            ts: trainingJobParams.ts,
-        };
+        const otherValues = _.pick(trainingJobParams, ["input_signals", "target_signals", "ts", "max_trials", "executions_per_trial", "epochs", "early_stopping", "early_stopping_patience"]);
         // populate default values to the form inputs rendered using the ParamTypes
         const formValues = {};
         this.paramTypes.setFields(this.configSpec(), otherValues, formValues);
@@ -253,7 +283,7 @@ export default class CUD extends Component {
         const t = this.props.t;
         const sendMethod = FormSendMethod.POST;
         const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/neural_network`;
-        //const url = "intentionally_wrong_url"; // TODO (MT): for debug purposes
+        // const url = "intentionally_wrong_url"; // TODO (MT): for debug purposes
 
         try {
             //this.disableForm(); // TODO (MT)
@@ -540,11 +570,22 @@ export default class CUD extends Component {
                     </CollapsableSection>
 
 
+                    <h5>Advanced tuning parameters</h5>
+                    <p>The parameters for the hyperparameters tuner.</p>
+
+                    <CollapsableSection stateOwner={this} controlVariable={"collapseAdvancedTuning"}>
+
+                        {renderParam(this.tuning_configSpec)}
+
+                    </CollapsableSection>
+
+
                     <h5>Advanced training parameters</h5>
+                    <p>The parameters for the training of each neural network.</p>
 
                     <CollapsableSection stateOwner={this} controlVariable={"collapseAdvancedTraining"}>
 
-                        {renderParam(this.learning_rate_configSpec)}
+                        {renderParam(this.training_configSpec)}
 
                     </CollapsableSection>
 

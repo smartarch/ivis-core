@@ -77,6 +77,8 @@ def get_default_training_parameters(parameters, training_parameters_class=Traini
     training_parameters.target_signals = parameters["target_signals"]
     training_parameters.input_width = parameters["input_width"]
     training_parameters.target_width = parameters["target_width"]
+    # if we want to tune the batch size: https://github.com/keras-team/keras-tuner/issues/122
+    training_parameters.batch_size = parameters["batch_size"]
 
     training_parameters.aggregated = aggregated
     if aggregated:
@@ -123,6 +125,7 @@ def prepare_datasets(training_parameters, dataframes):
         "interval": training_parameters.interval,
         "input_column_names": input_column_names,
         "target_column_names": target_column_names,
+        "batch_size": training_parameters.batch_size,
     }
     train, val, test = pre.make_datasets(train_df, val_df, test_df, window_generator_params)
 
@@ -270,8 +273,8 @@ def run_training(parameters, model_factory=None):
     tuner = kt.BayesianOptimization(
         build_model,
         objective="val_loss",
-        max_trials=3,  # TODO(MT)
-        executions_per_trial=2,  # TODO(MT)
+        max_trials=int(parameters.get("max_trials", 5)),
+        executions_per_trial=int(parameters.get("executions_per_trial", 2)),
         overwrite=True,
         directory=TRAINING_LOGS,
         project_name=working_directory
@@ -282,11 +285,18 @@ def run_training(parameters, model_factory=None):
 
     print_divider()
     print("Starting model search.\n")
-    early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)  # TODO(MT): patience
+
+    callbacks = []
+    if "early_stopping" in parameters and parameters["early_stopping"]:
+        early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
+                                                                   patience=int(parameters.get("early_stopping_patience", 3)))
+        callbacks.append(early_stopping_callback)
+
     fit_params = {
-        "epochs": 50,  # TODO(MT)
-        "callbacks": [early_stopping_callback]
+        "epochs": int(parameters.get("epochs", 50)),
+        "callbacks": callbacks
     }
+
     tuner.search(train, **fit_params, validation_data=val, verbose=2)
 
     print_divider()
