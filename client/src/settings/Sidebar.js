@@ -47,6 +47,9 @@ export default class Sidebar extends Component {
 
         if (ivisConfig.globalPermissions.showAdminSignalSets)
             settings.push(<NavLink key='signalSets' to="/settings/signal-sets" icon="chart-line">{!em.get('settings.signalSetsAsSensors', false) ? t('Signal Sets') : t('Sensors')}</NavLink>);
+
+        // TODO: permissions
+        settings.push(<NavLink key='cloud' to="/settings/cloud" icon="cloud">{t('Cloud Access')}</NavLink>);
         
         em.invoke('client.settings.installSettings', settings, t);
 

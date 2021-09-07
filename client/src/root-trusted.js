@@ -24,6 +24,8 @@ import UserShares from './shares/UserShares';
 import NamespacesList from './settings/namespaces/List';
 import NamespacesCUD from './settings/namespaces/CUD';
 
+import CloudServiceList from './settings/cloud/List'
+
 import TemplatesList from './settings/templates/List';
 import TemplatesCUD from './settings/templates/CUD';
 import TemplatesDevelop from './settings/templates/Develop';
@@ -660,7 +662,29 @@ const getStructure = t => {
                                 panelRender: props => <NamespacesCUD action="create"/>
                             },
                         }
-                    }
+                    },
+                    cloud: {
+                        title: t('Cloud Access'),
+                        link: '/settings/cloud',
+                        panelComponent: CloudServiceList,
+                        children: {
+                            ':cloud_serviceId([0-9]+)': {
+                                title: resolved => t('Service "{{name}}"', {name: resolved.cloud_service.name}),
+                                resolve: {
+                                    user: params => `rest/cloud/${params.serviceId}`
+                                },
+                                link: params => `/settings/cloud/${params.serviceId}/edit`,
+                                navs: {
+                                    ':action(edit)': {
+                                        title: t('Edit'),
+                                        link: params => `/settings/cloud/${params.serviceId}/edit`,
+                                        panelRender: props => ( //TODO
+                                            <UsersCUD action={props.match.params.action} entity={props.resolved.service}/>)
+                                    },
+                                }
+                            },
+                        }
+                    },
                 }
             }
         }
