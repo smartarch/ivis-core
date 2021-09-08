@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from ivis import ivis
-from . import load_data_elasticsearch as es
-from .common import get_aggregated_field
+from . import load_data_elasticsearch as es, architecture
+from .common import get_aggregated_field, print_divider
 from .load_data import load_data
 from .preprocessing import get_column_names, preprocess_using_coefficients
 from .ParamsClasses import PredictionParams
@@ -30,7 +30,7 @@ def _get_last_prediction_ts():
 
 def _set_last_prediction_ts(ts):
     """Saves to job state the start of the last window used for prediction."""
-    state = ivis.state if ivis.state else dict()
+    state = ivis.state or dict()
     state["last_window_start"] = ts
     ivis.store_state(state)
 
@@ -213,7 +213,7 @@ def postprocess(prediction_parameters, data, last_ts):
     return processed
 
 
-def load_model():
+def load_model(model_factory=None):
     training_job = ivis.params["training_job"]
     model_file = ivis.params["model_file"]
     params_file = ivis.params["prediction_parameters_file"]
@@ -229,7 +229,6 @@ def load_model():
 
     print("Loading TensorFlow model...")
     model = tf.keras.models.load_model(model_path)
-    # TODO(MT) update the model using ModelFactory
 
     print("Cleaning temporary files...")
     try:
@@ -242,7 +241,12 @@ def load_model():
     params_response = ivis.get_job_file(training_job, params_file)
     prediction_parameters = PredictionParams().from_json(params_response.text)
 
+    if model_factory is None:
+        model_factory = architecture.get_model_factory(prediction_parameters)
+    model = model_factory.update_loaded_model(model, prediction_parameters)
+
     print("Model loaded.")
+    print_divider()
     return prediction_parameters, model
 
 
@@ -269,6 +273,7 @@ def run_prediction(prediction_parameters, model, save_data):
     print("Initializing...")
     print(f"Using TensorFlow (version {tf.__version__}).")
 
+    print_divider()
     try:
         print("Loading data...")
         dataframe = load_data_prediction(prediction_parameters)
@@ -287,14 +292,16 @@ def run_prediction(prediction_parameters, model, save_data):
         print("Not enough new data since the last prediction, can't continue.")
         raise NotEnoughDataError from None
 
-    print("Loading model...")
+    print_divider()
     model.summary()
 
+    print_divider()
     print("Computing predictions...")
     predicted = model.predict(dataset)
 
     predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
 
+    print_divider()
     print("Saving data...")
     save_data(prediction_parameters, predicted_dataframes)
 

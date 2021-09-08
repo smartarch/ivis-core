@@ -15,6 +15,7 @@ class Hyperparameters:
             Allowed "optimizable_type" values are:
                 - "float": then "min", "max" are required, "default" and "sampling" are optional
                 - "int": then "min", "max" are required, "default" and "sampling" are optional
+                - "bool": then default" is optional
                 - "enum": then "values" array is required, "default" value is optional
                 - "list" then either "count" (fixed) or "min_count" and "max_count" are required. The items
                          specifications are taken from the "items" array and should be in the same format. If
@@ -51,10 +52,14 @@ class Hyperparameters:
             return self._get_float(key, param)
         elif optimizable_type == "int":
             return self._get_int(key, param)
+        elif optimizable_type == "bool":
+            return self._get_bool(key, param)
         elif optimizable_type == "enum":
             return self._get_enum(key, param)
         elif optimizable_type == "list":
             return self._get_list(key, param)
+        else:
+            raise ValueError(f"Unknown optimizable type: '{optimizable_type}'")
 
     def _get_float(self, key, param):
         min_value = param["min"]
@@ -69,6 +74,10 @@ class Hyperparameters:
         default = param["default"] if "default" in param else None
         sampling = param["sampling"] if "sampling" in param else "linear"
         return self.hp.Int(key, min_value, max_value, default=default, sampling=sampling)
+
+    def _get_bool(self, key, param):
+        default = param["default"] if "default" in param else None
+        return self.hp.Boolean(key, default=default)
 
     def _get_enum(self, key, param):
         values = param["values"]

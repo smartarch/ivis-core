@@ -1,0 +1,94 @@
+{
+  "prediction_id": 1,
+  "signal_set": "top:weather_prague",
+  "ts": "ts",
+  "time_interval": {
+    "start": "2021-02-18",
+    "end": "2021-04-18"
+  },
+  "aggregation": "1d",
+  "input_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "min"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "avg"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "max"
+    },
+    {
+      "cid": "humidity",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "avg"
+    },
+    {
+      "cid": "status",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "avg"
+    }
+  ],
+  "target_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "min"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "avg"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "auto",
+      "min": "",
+      "max": "",
+      "aggregation": "max"
+    }
+  ],
+  "input_width": 3,
+  "target_width": 2,
+  "learning_rate": {
+    "optimizable_type": "float",
+    "min": 0.00001,
+    "max": 0.1,
+    "sampling": "log"
+  },
+  "architecture": "mlp",
+  "architecture_params": {
+    "hidden_layers": {
+      "optimizable_type": "list",
+      "count": 2,
+      "items": [16, 8]
+    },
+    "residual_connection": true
+  },
+  "cleanup": false,
+  "batch_size": 32,
+  "max_trials":	3,
+  "executions_per_trial": 1,
+  "epochs": 20,
+  "early_stopping": true,
+  "early_stopping_patience": 3
+}

@@ -1,11 +1,7 @@
 'use strict';
 
 import React from "react";
-import {
-    Dropdown,
-    Fieldset,
-    InputField, RadioGroup
-} from "../lib/form";
+import {CheckBox, Dropdown, Fieldset, InputField, RadioGroup} from "../lib/form";
 import ParamTypes from "./ParamTypes";
 
 /**
@@ -190,6 +186,52 @@ export default class ParamTypesTunable extends ParamTypes {
             validate: validateNumber(n => !isNaN(n), t('Please enter a number.')),
             render: numberRenderFunction,
             upcast: (spec, value) => typeof value === 'object' ? value : Number(value),
+        };
+
+        this.paramTypes.tunable_boolean = {
+            adopt:(prefix, spec, state) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                state.setIn([formId + "_tune", 'value'], "fixed");
+                state.setIn([formId + "_default", 'value'], false);
+                this.paramTypes.boolean.adopt(prefix, spec, state);
+            },
+            setFields: (prefix, spec, param, data) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+
+                if (typeof(param) === "object") {
+                    data[formId] = "";
+                    data[formId + "_tune"] = "tuned";
+                    data[formId + "_default"] = param.hasOwnProperty("default") ? param.default : false;
+                } else {
+                    data[formId + "_tune"] = "fixed";
+                    data[formId + "_default"] = false;
+                    this.paramTypes.boolean.setFields(prefix, spec, param, data);
+                }
+            },
+            getParams: (prefix, spec, data) => {
+                const formId = this.getParamFormId(prefix, spec.id);
+                if (data[formId + "_tune"] === "fixed")
+                    return this.paramTypes.boolean.getParams(prefix, spec, data);
+                else {
+                    return {
+                        optimizable_type: "bool",
+                        default: Boolean(data[formId + "_default"]),
+                    };
+                }
+            },
+            validate: () => {},
+            render: getTunableRenderFunction(
+                (self, prefix, spec, disabled) => {
+                    const formId = this.getParamFormId(prefix, spec.id);
+                    return <CheckBox key={spec.id} id={formId} label={"Value"}/>;
+                },
+                (self, prefix, spec, disabled) => {
+                    const formId = this.getParamFormId(prefix, spec.id);
+                    return <>
+                        <CheckBox key={spec.id + "_default"} id={formId + "_default"} label={"Default"}/>
+                    </>
+                }),
+            upcast: (spec, value) => value,
         };
 
         // TODO (MT): possibly add later (when needed)

@@ -4,7 +4,7 @@ Functions for creating NN models.
 import tensorflow as tf
 from .ParamsClasses import TrainingParams
 from .architectures.ModelFactory import ModelFactory
-from .architectures.feedforward import FeedforwardFactory, FeedforwardWithResidualFactory
+from .architectures.mlp import MLPFactory
 from .architectures.lstm import LSTMFactory
 
 
@@ -20,10 +20,8 @@ def get_model_factory(training_parameters):
     -------
     ModelFactory
     """
-    if training_parameters.architecture == "feedforward":
-        return FeedforwardFactory
-    elif training_parameters.architecture == "feedforward_residual":
-        return FeedforwardWithResidualFactory
+    if training_parameters.architecture == "mlp":
+        return MLPFactory
     elif training_parameters.architecture == "lstm":
         return LSTMFactory
     else:

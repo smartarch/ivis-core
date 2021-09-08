@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-import tensorflow as tf
 from .. import preprocessing as pre
 from ..hyperparameters import Hyperparameters
-from ..ParamsClasses import TrainingParams
+from ..ParamsClasses import TrainingParams, PredictionParams
 
 
 class ModelParams(ABC):
@@ -51,13 +50,14 @@ class ModelFactory(ABC):
         return
 
     @staticmethod
-    def update_loaded_model(model):
+    def update_loaded_model(model, prediction_parameters):
         """
         Can be used if the model needs to be altered after loading it from file in the prediction task.
 
         Parameters
         ----------
         model : tf.keras.Model
+        prediction_parameters : PredictionParams
 
         Returns
         -------

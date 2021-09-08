@@ -18,7 +18,7 @@ ivis.state = {"last_window_start": 1620518400000}
 ivis.store_state = lambda x: print("Saving state:", x)
 
 from ivis.nn.ParamsClasses.PredictionParams import PredictionParams
-from ivis.nn import run_prediction
+from ivis.nn import run_prediction, architecture
 from ivis.nn.save_data import records_future, records_k_ahead
 
 
@@ -44,4 +44,8 @@ if __name__ == "__main__":
             params = PredictionParams().from_json(params_file.read())
         model_path = 'example_docs/model.h5'
         model = tf.keras.models.load_model(model_path)
+
+    model_factory = architecture.get_model_factory(params)
+    model = model_factory.update_loaded_model(model, params)
+
     run_prediction(params, model, save_data)

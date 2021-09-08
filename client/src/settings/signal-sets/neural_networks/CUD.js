@@ -117,7 +117,7 @@ export default class CUD extends Component {
         // for rendering in ParamTypes, the configSpec of each rendered param must be an array
         this.ts_configSpec = [{
             "id": "ts",
-            "label": "Timestamp Signal",
+            "label": "Timestamp signal",
             "type": "signal",
             "signalType": SignalType.DATE_TIME,
             "signalSet": props.signalSet.cid,
@@ -511,7 +511,7 @@ export default class CUD extends Component {
                     <CollapsableSection stateOwner={this} controlVariable={"collapsePrediction"}>
 
                         <InputField id="aggregation"
-                                    label={t('Aggregation Interval')}
+                                    label={t('Aggregation interval')}
                                     help={t('Resampling interval for the signals. Leave empty for no resampling. Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes).')}
                                     placeholder={t(`type interval or select from the hints`)}
                                     withHints={['', '1h', '12h', '1d', '30d']}
