@@ -2,13 +2,42 @@
 const React = require("react");
 
 const NeuralNetworkArchitectures = {
+    LSTM: "lstm",
     FEEDFORWARD: "feedforward",
-    TEST: "none", // TODO (MT): remove
 }
 
 const NeuralNetworkArchitecturesList = Object.values(NeuralNetworkArchitectures);
 
 const NeuralNetworkArchitecturesSpecs = {
+    [NeuralNetworkArchitectures.LSTM]: {
+        label: "LSTM (Long Short-Term Memory)",
+        description: <div>
+            The <i>LSTM</i> is one of the most common recurrent neural network architectures. This is currently our recommended architecture for creating the predictions. More details can be found in our <a href={"https://github.com/smartarch/ivis-core/wiki/Neural-Networks-Architectures#long-short-term-memory-lstm"} target={"_blank"}>documentation</a>.
+        </div>,
+        params: [{
+            "id": "lstm_layers",
+            "label": "LSTM layers",
+            "itemLabel": "Layer",
+            "type": "tunable_list",
+            "child": {
+                "id": "units",
+                "label": "Units",
+                "type": "tunable_integer",
+            },
+        }],
+        defaultParams: {
+            lstm_layers: {
+                min_count: 1,
+                max_count: 2,
+                items: [{
+                    min: 32,
+                    max: 128,
+                    sampling: "linear",
+                    default: 32,
+                }]
+            },
+        }
+    },
     [NeuralNetworkArchitectures.FEEDFORWARD]: {
         label: "Fully connected (multilayer perceptron)",
         description: <div>
@@ -38,21 +67,6 @@ const NeuralNetworkArchitecturesSpecs = {
             },
         }
     },
-    [NeuralNetworkArchitectures.TEST]: {
-        label: "TODO",
-        description: <div>
-            <i>TODO</i><br/>
-            Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Integer rutrum, orci vestibulum ullamcorper ultricies, lacus quam ultricies odio, vitae placerat pede sem sit amet enim. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?
-        </div>,
-        params: [{
-            "id": "blocks",
-            "label": "Number of blocks",
-            "type": "tunable_integer",
-        }],
-        defaultParams: {
-            blocks: 1,
-        }
-    }
 };
 
 module.exports = {

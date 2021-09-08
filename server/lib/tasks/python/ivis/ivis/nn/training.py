@@ -80,6 +80,9 @@ def get_default_training_parameters(parameters, training_parameters_class=Traini
     # if we want to tune the batch size: https://github.com/keras-team/keras-tuner/issues/122
     training_parameters.batch_size = parameters["batch_size"]
 
+    training_parameters.architecture = parameters["architecture"]
+    training_parameters.split = {"train": 0.7, "val": 0.2, "test": 0.1}
+
     training_parameters.aggregated = aggregated
     if aggregated:
         aggregation_interval = parameters["aggregation"]
@@ -152,7 +155,7 @@ def get_working_directory():
             return working_directory
 
 
-def save_model(model, training_parameters, working_directory):
+def save_model(model, training_parameters, tuned_parameters, working_directory):
     save_folder = Path(TRAINING_LOGS) / working_directory
 
     # temporarily save to the file system
@@ -160,7 +163,7 @@ def save_model(model, training_parameters, working_directory):
     model.save(save_folder / "model.h5")
 
     # save the prediction parameters
-    prediction_parameters = PredictionParams(training_parameters)
+    prediction_parameters = PredictionParams(training_parameters, tuned_parameters["architecture_params"])
 
     with open(save_folder / "prediction_parameters.json", 'w') as file:
         print(prediction_parameters.to_json(), file=file)
@@ -175,9 +178,8 @@ def save_model(model, training_parameters, working_directory):
     print("Model saved.")
 
 
-def save_training_results(parameters, best_hp, working_directory):
+def save_training_results(parameters, tuned_parameters, working_directory):
     save_folder = Path(TRAINING_LOGS) / working_directory
-    tuned_parameters = get_tuned_parameters(parameters, best_hp)
 
     # temporarily save to the file system
     print("Saving training results...")
@@ -228,9 +230,6 @@ def run_training(parameters, model_factory=None):
     # prepare the parameters
     training_parameters = get_default_training_parameters(parameters)
     time_interval = parameters["time_interval"]
-
-    training_parameters.architecture = "feedforward"  # TODO (MT)
-    training_parameters.split = {"train": 0.7, "val": 0.2, "test": 0.1}
 
     if model_factory is None:
         model_factory = architecture.get_model_factory(training_parameters)
@@ -311,8 +310,9 @@ def run_training(parameters, model_factory=None):
     # TODO(MT) evaluate model on test set
 
     print_divider()
-    save_model(best_model, training_parameters, working_directory)
-    save_training_results(parameters, best_hyperparameters, working_directory)
+    tuned_parameters = get_tuned_parameters(parameters, best_hyperparameters)
+    save_model(best_model, training_parameters, tuned_parameters, working_directory)
+    save_training_results(parameters, tuned_parameters, working_directory)
 
     if "cleanup" in parameters and parameters["cleanup"]:
         cleanup(working_directory)

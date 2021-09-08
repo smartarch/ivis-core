@@ -7,5 +7,5 @@ class TrainingParams(RunParams):
     def __init__(self):
         super().__init__(None)
 
-        self.split = dict()          # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
+        self.split = {}              # Fractions of the dataset to use as training, validation and test datasets. Should sum up to 1.
         self.batch_size = 32         # Training batch size.

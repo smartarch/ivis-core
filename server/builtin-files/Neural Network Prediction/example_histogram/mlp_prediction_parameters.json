@@ -1,5 +1,5 @@
 {
-  "architecture": "lstm",
+  "architecture": "feedforward",
   "input_signals": [
     {
       "cid": "temperature",
@@ -91,11 +91,5 @@
   "input_width": 3,
   "target_width": 2,
   "index": "signal_set_2",
-  "ts_field": "s8",
-  "architecture_params": {
-    "lstm_layers": [
-      11,
-      14
-    ]
-  }
+  "ts_field": "s8"
 }

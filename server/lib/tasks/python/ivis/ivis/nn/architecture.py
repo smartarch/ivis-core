@@ -5,6 +5,7 @@ import tensorflow as tf
 from .ParamsClasses import TrainingParams
 from .architectures.ModelFactory import ModelFactory
 from .architectures.feedforward import FeedforwardFactory, FeedforwardWithResidualFactory
+from .architectures.lstm import LSTMFactory
 
 
 def get_model_factory(training_parameters):
@@ -23,6 +24,8 @@ def get_model_factory(training_parameters):
         return FeedforwardFactory
     elif training_parameters.architecture == "feedforward_residual":
         return FeedforwardWithResidualFactory
+    elif training_parameters.architecture == "lstm":
+        return LSTMFactory
     else:
         raise ValueError(f"Unknown network architecture: '{training_parameters.architecture}'")
 

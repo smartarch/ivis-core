@@ -121,8 +121,7 @@ def get_tuned_parameters(parameters, hp):
 
 def _get_tuned_object(original: dict, hyperparameters: Hyperparameters) -> dict:
     result = {}
-    for key in original:
-        value = original[key]
+    for key, value in original.items():
         if type(value) is dict and "optimizable_type" in value:
             value = hyperparameters[key]
         result[key] = value

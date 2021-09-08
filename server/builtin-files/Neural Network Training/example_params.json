@@ -75,11 +75,11 @@
     "max": 0.1,
     "sampling": "log"
   },
-  "architecture": "feedforward",
+  "architecture": "lstm",
   "architecture_params": {
-    "hidden_layers": {
+    "lstm_layers": {
       "optimizable_type": "list",
-      "min_count": 0,
+      "min_count": 1,
       "max_count": 2,
       "items": [
         {
@@ -90,11 +90,11 @@
       ]
     }
   },
-  "cleanup": true,
+  "cleanup": false,
   "batch_size": 32,
-  "max_trials":	5,
-  "executions_per_trial": 2,
-  "epochs": 50,
+  "max_trials":	3,
+  "executions_per_trial": 1,
+  "epochs": 20,
   "early_stopping": true,
   "early_stopping_patience": 3
 }
