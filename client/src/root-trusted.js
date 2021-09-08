@@ -668,10 +668,10 @@ const getStructure = t => {
                         link: '/settings/cloud',
                         panelComponent: CloudServiceList,
                         children: {
-                            ':cloud_serviceId([0-9]+)': {
-                                title: resolved => t('Service "{{name}}"', {name: resolved.cloud_service.name}),
+                            ':serviceId([0-9]+)': {
+                                title: resolved => t('Service "{{name}}"', {name: resolved.service.name}),
                                 resolve: {
-                                    user: params => `rest/cloud/${params.serviceId}`
+                                    service: params => `rest/cloud/${params.serviceId}`
                                 },
                                 link: params => `/settings/cloud/${params.serviceId}/edit`,
                                 navs: {
@@ -679,7 +679,7 @@ const getStructure = t => {
                                         title: t('Edit'),
                                         link: params => `/settings/cloud/${params.serviceId}/edit`,
                                         panelRender: props => ( //TODO
-                                            <UsersCUD action={props.match.params.action} entity={props.resolved.service}/>)
+                                                <p>Hello, Cloud!</p>)
                                     },
                                 }
                             },
