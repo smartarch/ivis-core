@@ -225,6 +225,7 @@ export default class CUD extends Component {
             architecture: NeuralNetworkArchitecturesList[0],
             start_training: true,
             automatic_predictions: true,
+            cleanup: true,
             ...formValues,
         });
         this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
@@ -247,6 +248,7 @@ export default class CUD extends Component {
             architecture: trainingJobParams.architecture,
             start_training: trainingJobParams.start_training,
             automatic_predictions: trainingJobParams.automatic_predictions,
+            cleanup: trainingJobParams.cleanup,
             ...formValues,
         });
         this.loadArchitectureParams(trainingJobParams.architecture_params, trainingJobParams.architecture);
@@ -328,7 +330,7 @@ export default class CUD extends Component {
             end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
         }
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions']);
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions', 'cleanup']);
 
         return {
             ...data,
@@ -588,6 +590,8 @@ export default class CUD extends Component {
                     <CollapsableSection stateOwner={this} controlVariable={"collapseAdvancedTuning"}>
 
                         {renderParam(this.tuning_configSpec)}
+
+                        <CheckBox id={"cleanup"} label={"Clean temporary files when finished"} help={"Uncheck only for debug purposes if the generated files need to be inspected."}/>
 
                     </CollapsableSection>
 
