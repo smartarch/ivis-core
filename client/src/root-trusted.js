@@ -25,6 +25,7 @@ import NamespacesList from './settings/namespaces/List';
 import NamespacesCUD from './settings/namespaces/CUD';
 
 import CloudServiceList from './settings/cloud/List'
+import CloudCUD from './settings/cloud/CUD';
 
 import TemplatesList from './settings/templates/List';
 import TemplatesCUD from './settings/templates/CUD';
@@ -678,8 +679,9 @@ const getStructure = t => {
                                     ':action(edit)': {
                                         title: t('Edit'),
                                         link: params => `/settings/cloud/${params.serviceId}/edit`,
-                                        panelRender: props => ( //TODO
-                                                <p>Hello, Cloud!</p>)
+                                        panelRender: props => (
+                                            <CloudCUD entity={props.resolved.service} />
+                                               )
                                     },
                                 }
                             },

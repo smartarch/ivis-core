@@ -13,8 +13,20 @@ router.postAsync('/cloud_services-table', passport.loggedIn, async (req, res) =>
 
 router.getAsync('/cloud/:serviceId', passport.loggedIn, async (req, res) => {
     const service = await cloud_services.getById(req.context, castToInteger(req.params.serviceId));
-    //service.hash = cloud_services.hash(service); ??? TODO
+    service.hash = cloud_services.hash(service); // required by auto consistency check
     return res.json(service);
+});
+
+router.putAsync('/cloud/:serviceId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    const service = req.body;
+    service.id = castToInteger(req.params.serviceId);
+
+    await cloud_services.updateWithConsistencyCheck(req.context, service);
+    return res.json();
+});
+
+router.postAsync('/cloud_services-validate', passport.loggedIn, async (req, res) => {
+    return res.json(await cloud_services.serverValidate(req.context, req.body));
 });
 
 module.exports = router;
