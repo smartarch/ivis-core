@@ -44,12 +44,12 @@ def prepare_signal_parameters(signals, entities_signals, aggregated):
         signal["field"] = entity["field"]
 
         if "min" in signal:
-            if signal["min"] != "":
+            if signal["min"] is not None:
                 signal["min"] = float(signal["min"])
             else:
                 del signal["min"]
         if "max" in signal:
-            if signal["max"] != "":
+            if signal["max"] is not None:
                 signal["max"] = float(signal["max"])
             else:
                 del signal["max"]

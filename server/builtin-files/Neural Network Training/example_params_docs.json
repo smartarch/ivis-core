@@ -12,22 +12,22 @@
     {
       "cid": "temperature",
       "data_type": "auto",
-      "min": "",
-      "max": "",
+      "min": null,
+      "max": null,
       "aggregation": "avg"
     },
     {
       "cid": "humidity",
       "data_type": "auto",
-      "min": "",
-      "max": "",
+      "min": null,
+      "max": null,
       "aggregation": "avg"
     },
     {
       "cid": "status",
       "data_type": "auto",
-      "min": "",
-      "max": "",
+      "min": null,
+      "max": null,
       "aggregation": "avg"
     }
   ],
@@ -35,8 +35,8 @@
     {
       "cid": "temperature",
       "data_type": "auto",
-      "min": "",
-      "max": "",
+      "min": null,
+      "max": null,
       "aggregation": "avg"
     }
   ],

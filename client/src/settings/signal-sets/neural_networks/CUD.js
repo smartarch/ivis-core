@@ -138,6 +138,11 @@ export default class CUD extends Component {
             "label": "Learning rate",
             "type": "tunable_float",
         },{
+            "id": "batch_size",
+            "label": "Batch size",
+            "help": "The number of training examples used for one iteration of the training algorithm. Recommended values are 32 or 64.",
+            "type": "integer",
+        },{
             "id": "epochs",
             "label": "Training epochs",
             "help": "Stop training after this number of training epochs.",
@@ -203,6 +208,7 @@ export default class CUD extends Component {
             },
             max_trials: "5", // TODO (MT) reasonable defaults, also change in training.py
             executions_per_trial: "2",
+            batch_size: "32",
             epochs: "50",
             early_stopping: true,
             early_stopping_patience: "3",
@@ -232,7 +238,7 @@ export default class CUD extends Component {
     }
 
     loadValuesFromOtherModel(prediction, trainingJobParams) {
-        const otherValues = _.pick(trainingJobParams, ["input_signals", "target_signals", "ts", "max_trials", "executions_per_trial", "epochs", "early_stopping", "early_stopping_patience"]);
+        const otherValues = _.pick(trainingJobParams, ["input_signals", "target_signals", "ts", "max_trials", "executions_per_trial", "batch_size", "epochs", "early_stopping", "early_stopping_patience"]);
         // populate default values to the form inputs rendered using the ParamTypes
         const formValues = {};
         this.paramTypes.setFields(this.configSpec(), otherValues, formValues);
