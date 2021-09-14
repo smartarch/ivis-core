@@ -6,16 +6,18 @@ const shares = require('./shares');
 const interoperableErrors = require('../../shared/interoperable-errors');
 
 const dtHelpers = require('../lib/dt-helpers');
-const hashKeys = new Set(['id', 'name', 'created', 'credentials_description']);
+const hashKeys = new Set(['id', 'name', 'created', 'service_type', 'credential_values']);
 const hasher = require('node-object-hash')();
 const { filterObject } = require('../lib/helpers');
+
+const { getCredDescByType } = require('./cloud_config/service');
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, hashKeys));
 }
 
 async function _getByTx(tx, context, key, value, extraColumns = []) {
-    const columns = ['id', 'name', 'created', 'credentials_description', ...extraColumns];
+    const columns = ['id', 'name', 'created', 'service_type', 'credential_values', ...extraColumns];
 
     const service = await tx('cloud_services').select(columns).where(key, value).first();
 
@@ -23,10 +25,9 @@ async function _getByTx(tx, context, key, value, extraColumns = []) {
 }
 
 async function serverValidate(context, data) {
-    console.log(data);
     const result = {};
 
-    const credentialDescription = JSON.parse((await getById(context, data.id)).credentials_description);
+    const credentialDescription = getCredDescByType((await getById(context, data.id)).service_type);
 
     for (const fieldDescription of credentialDescription.fields) {
         if(data[fieldDescription.name] && data[fieldDescription.name].toString().length != 0)
@@ -56,10 +57,14 @@ async function getById(context, id) {
     return await _getBy(context, 'id', id);
 }
 
+async function getCredDescById(context, id) {
+    return getCredDescByType((await getById(context, id)).service_type);
+}
+
 async function _getFieldDescsById(context, id)
 {
     const service = await _getBy(context, 'id', id);
-    return JSON.parse(service.credentials_description).fields.map(fieldDesc => { return {name: fieldDesc.name, type: fieldDesc.type}; } );
+    return getCredDescByType(service.service_type).fields.map(fieldDesc => { return {name: fieldDesc.name, type: fieldDesc.type}; } );
 }
 
 async function updateWithConsistencyCheck(context, service) {
@@ -82,17 +87,18 @@ async function updateWithConsistencyCheck(context, service) {
         await shares.enforceEntityPermissionTx(tx, context, 'namespace', service.namespace, 'manageCloud');
 */
         await _validateAndPreprocess(tx, service);
-
-        const credentialsDescription = JSON.parse((await getById(tx, service.id)).credentials_description);
+        const result = JSON.parse((await getById(tx, service.id)).credential_values);
+        const credentialsDescription = await getCredDescById(tx, service.id);
         // actual modification of the credentials_description column's value
         for (let i = 0; i < credentialsDescription.fields.length; i++) {
             // if received data modify a field 'X',
                 // write changes to the value of field 'X' using the received data
-            if(service[credentialsDescription.fields[i].name])
-                credentialsDescription.fields[i].value = service[credentialsDescription.fields[i].name];
+            let fieldName = credentialsDescription.fields[i].name;
+            if(service[fieldName])
+                result[fieldName] = service[fieldName];
         }
 
-        await tx('cloud_services').where('id', service.id).update({credentials_description: JSON.stringify(credentialsDescription)});
+        await tx('cloud_services').where('id', service.id).update({credential_values: JSON.stringify(result)});
     });
 }
 
@@ -115,3 +121,4 @@ module.exports.getById = getById;
 module.exports.serverValidate = serverValidate;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.hash = hash;
+module.exports.getCredDescById = getCredDescById;

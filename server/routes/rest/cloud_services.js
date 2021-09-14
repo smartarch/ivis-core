@@ -17,6 +17,11 @@ router.getAsync('/cloud/:serviceId', passport.loggedIn, async (req, res) => {
     return res.json(service);
 });
 
+router.getAsync('/cloud/:serviceId/credDesc', passport.loggedIn, async (req, res) => {
+    const credentialDescription = await cloud_services.getCredDescById(req.context, castToInteger(req.params.serviceId));
+    return res.json(credentialDescription);
+});
+
 router.putAsync('/cloud/:serviceId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     const service = req.body;
     service.id = castToInteger(req.params.serviceId);

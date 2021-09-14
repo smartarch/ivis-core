@@ -63,8 +63,8 @@ export default class CredentialsForm extends Component {
                 hash: this.props.entityHash // for server-side consistency check
             };
             // inserting `field name: field value` pairs to be recognised as a form element
-            this.props.description.fields.forEach(fieldDesc => values[fieldDesc.name] = fieldDesc.value)
-
+            this.props.description.fields.forEach(fieldDesc =>
+                values[fieldDesc.name] = this.props.values[fieldDesc.name])
             this.getFormValuesFromEntity(values);
         } else {
             console.log("Malformed credential description:");

@@ -32,6 +32,7 @@ import CredentialsForm from './CredentialsForm'
  * Required props:
  *
  * entity: entity as received from rest api
+ * credDesc: credential description in the pre-defined format
  */
 @withComponentMixins([
     withTranslation,
@@ -47,14 +48,14 @@ export default class CUD extends Component {
 
     render() {
         const t = this.props.t;
-        const credentialDesc = JSON.parse(this.props.entity.credentials_description);
+        const credentialDesc = this.props.credDesc;
 
         credentialDesc['serviceId'] = this.props.entity.id;
 
         return (
             <Panel title={"Service \"" + this.props.entity.name + "\""}>
                 <>
-                    <CredentialsForm description={credentialDesc} entityHash={this.props.entity.hash}/>
+                    <CredentialsForm description={credentialDesc} values={JSON.parse(this.props.entity.credential_values)} entityHash={this.props.entity.hash}/>
                     {/* TODO: preset table */ }
                     <p>Preset Table goes here...</p>
                     <p>And here...</p>

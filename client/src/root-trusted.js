@@ -672,7 +672,8 @@ const getStructure = t => {
                             ':serviceId([0-9]+)': {
                                 title: resolved => t('Service "{{name}}"', {name: resolved.service.name}),
                                 resolve: {
-                                    service: params => `rest/cloud/${params.serviceId}`
+                                    service: params => `rest/cloud/${params.serviceId}`,
+                                    credentialDescription: params => `rest/cloud/${params.serviceId}/credDesc`
                                 },
                                 link: params => `/settings/cloud/${params.serviceId}/edit`,
                                 navs: {
@@ -680,7 +681,7 @@ const getStructure = t => {
                                         title: t('Edit'),
                                         link: params => `/settings/cloud/${params.serviceId}/edit`,
                                         panelRender: props => (
-                                            <CloudCUD entity={props.resolved.service} />
+                                            <CloudCUD entity={props.resolved.service} credDesc={props.resolved.credentialDescription} />
                                                )
                                     },
                                 }
