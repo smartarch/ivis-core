@@ -2,6 +2,7 @@
 Code for running the trained models for prediction.
 """
 import os
+from pathlib import Path
 from uuid import uuid4
 import numpy as np
 import pandas as pd
@@ -221,7 +222,7 @@ def load_model(model_factory=None):
 
     # download the model from IVIS server
     print("Downloading model...")
-    model_path = tmp_folder + "/model.h5"
+    model_path = Path(tmp_folder) / "model.h5"
     os.makedirs(tmp_folder)
     with open(model_path, "wb") as file:
         model_response = ivis.get_job_file(training_job, model_file)

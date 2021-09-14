@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import json
 import sys
+from pathlib import Path
+
 import tensorflow as tf
 from ivis import ivis
 # mock IVIS
@@ -37,12 +39,12 @@ if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] != "docs":
         with open('example_histogram/prediction_parameters.json') as params_file:
             params = PredictionParams().from_json(params_file.read())
-        model_path = 'example_histogram/model.h5'
+        model_path = Path('example_histogram') / 'model.h5'
         model = tf.keras.models.load_model(model_path)
     else:
         with open('example_docs/prediction_parameters.json') as params_file:
             params = PredictionParams().from_json(params_file.read())
-        model_path = 'example_docs/model.h5'
+        model_path = Path('example_docs') / 'model.h5'
         model = tf.keras.models.load_model(model_path)
 
     model_factory = architecture.get_model_factory(params)
