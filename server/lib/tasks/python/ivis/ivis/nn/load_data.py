@@ -8,9 +8,10 @@ from . import load_data_elasticsearch as es
 from .ParamsClasses import RunParams
 
 
-def get_query_and_index(run_parameters, time_interval, include_targets, single):
+def get_query_and_index(run_parameters, time_interval, include_targets, size):
     index = run_parameters.index
-    size = run_parameters.input_width if single else 10000
+    if size is None:
+        size = 10000
     signals = run_parameters.input_signals
     if include_targets:
         signals = signals + run_parameters.target_signals
@@ -23,15 +24,18 @@ def get_query_and_index(run_parameters, time_interval, include_targets, single):
 
 def _get_query_aggregated(run_parameters, signals, time_interval, size):
     aggregation_interval = f"{run_parameters.interval}ms"
-    query = es.get_histogram_query(signals, run_parameters.ts_field,
-                                   aggregation_interval, time_interval=time_interval, size=size)
-    return query
+    return es.get_histogram_query(
+        signals,
+        run_parameters.ts_field,
+        aggregation_interval,
+        time_interval=time_interval,
+        size=size,
+    )
 
 
 def _get_query_original(run_parameters, signals, time_interval, size):
-    query = es.get_docs_query(signals, run_parameters.ts_field,
-                              time_interval=time_interval, size=size)
-    return query
+    return es.get_docs_query(signals, run_parameters.ts_field,
+                             time_interval=time_interval, size=size)
 
 
 def parse_data(run_parameters, data, include_targets=False):
@@ -45,7 +49,7 @@ def parse_data(run_parameters, data, include_targets=False):
         return es.parse_docs(signals, data)
 
 
-def load_data(run_parameters, time_interval=None, include_targets=False, single=False):
+def load_data(run_parameters, time_interval=None, include_targets=False, size=None):
     """
     Loads the data.
 
@@ -56,16 +60,16 @@ def load_data(run_parameters, time_interval=None, include_targets=False, single=
         Time interval to filter the queries. Allowed keys are "start", "start_exclusive", "end".
     include_targets : bool
         If true, load both input and target signals; if false, load only the input signals.
-    single : bool
-        Load data for a single prediction (`run_parameters.input_width` records)
+    size : int
+        The number of records to load.
 
     Returns
     -------
     pd.DataFrame
     """
     if time_interval is None:
-        time_interval = dict()
+        time_interval = {}
 
-    query, index = get_query_and_index(run_parameters, time_interval, include_targets, single)
+    query, index = get_query_and_index(run_parameters, time_interval, include_targets, size)
     data = ivis.elasticsearch.search(index=index, body=query)
     return parse_data(run_parameters, data, include_targets)

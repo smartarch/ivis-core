@@ -268,10 +268,7 @@ class WindowGenerator:
                 shuffle=self.shuffle,
                 batch_size=self.batch_size, )
             ds = ds.unbatch()
-            if dataset is None:
-                dataset = ds
-            else:
-                dataset = dataset.concatenate(ds)
+            dataset = ds if dataset is None else dataset.concatenate(ds)
 
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.map(self.split_window)

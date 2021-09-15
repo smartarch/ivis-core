@@ -15,9 +15,16 @@ from .preprocessing import get_column_names, preprocess_using_coefficients
 from .ParamsClasses import PredictionParams
 
 
-def load_data_single(prediction_parameters):
-    """Loads data for one step of the prediction."""
-    return load_data(prediction_parameters, single=True)
+def load_data_first(prediction_parameters):
+    """
+    Loads data for the first prediction.
+
+    This loads the `prediction_parameters.input_width` latest records to create the latest prediction plus
+    `prediction_parameters.target_width - 1` in order to seamlessly continue the predictions created by the
+    training task.
+    """
+    size = prediction_parameters.input_width + prediction_parameters.target_width - 1
+    return load_data(prediction_parameters, size=size)
 
 
 def _get_last_prediction_ts():
@@ -77,7 +84,7 @@ def load_data_prediction(prediction_parameters):
     if last_window_start is not None:
         return load_data_since(prediction_parameters, last_window_start)
     else:
-        return load_data_single(prediction_parameters)
+        return load_data_first(prediction_parameters)
 
 
 def get_windowed_dataset(prediction_parameters, dataframe):

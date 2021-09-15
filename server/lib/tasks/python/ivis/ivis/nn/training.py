@@ -14,6 +14,7 @@ from .ParamsClasses import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters, get_tuned_parameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
 from .architectures.ModelFactory import ModelFactory
+from .prediction import postprocess
 
 
 ######################
@@ -140,6 +141,35 @@ def _infer_interval_from_data(dataframe):
     return int(dataframe.index[-1] - dataframe.index[-2])  # difference between the last two records
 
 
+######################
+# Evaluate the model #
+######################
+
+
+def evaluate(model, test_dataset):
+    print("Evaluating model...")
+    test_loss = model.evaluate(test_dataset, verbose=0)
+    print(f"Test loss: {test_loss}")
+    return test_loss
+
+
+################################
+# Save predictions on test set #
+################################
+
+
+def predict_and_save(model, test_dataset, test_dataframe, prediction_parameters, save_data):
+    """Makes predictions for the test set and saves them to IVIS"""
+    print("Computing predictions on test set...")
+    predicted = model.predict(test_dataset)
+
+    last_ts = test_dataframe.index[prediction_parameters.input_width - 1:]
+    predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
+
+    print("Saving data...")
+    save_data(prediction_parameters, predicted_dataframes)
+
+
 ##############
 # Save model #
 ##############
@@ -178,14 +208,15 @@ def save_model(model, training_parameters, tuned_parameters, working_directory):
     print("Model saved.")
 
 
-def save_training_results(parameters, tuned_parameters, working_directory):
+def save_training_results(parameters, tuned_parameters, working_directory, test_loss):
     save_folder = Path(TRAINING_LOGS) / working_directory
 
     # temporarily save to the file system
     print("Saving training results...")
 
     training_results = {
-        "tuned_parameters": tuned_parameters
+        "tuned_parameters": tuned_parameters,
+        "test_loss": test_loss,
     }
 
     with open(save_folder / "training_results.json", 'w') as file:
@@ -211,7 +242,7 @@ def cleanup(working_directory):
 ##########################
 
 
-def run_training(parameters, model_factory=None):
+def run_training(parameters, model_factory=None, save_data=lambda: None):
     """
     Runs the hyperparameter tuner to try to find the best possible model for the data.
 
@@ -220,6 +251,8 @@ def run_training(parameters, model_factory=None):
     parameters : dict
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types in the `entities` value.
+    save_data : (TrainingParams, List[pd.DataFrame]) -> None
+        Function to save predicted data for .
     model_factory : ModelFactory
         Factory for creating the NN models.
     """
@@ -307,12 +340,17 @@ def run_training(parameters, model_factory=None):
     best_model = tuner.get_best_models()[0]
     best_model.summary()
     best_hyperparameters = tuner.get_best_hyperparameters()[0]
-    # TODO(MT) evaluate model on test set
+
+    print_divider()
+    test_loss = evaluate(best_model, test)
+
+    print_divider()
+    predict_and_save(best_model, test, dataframes[2], training_parameters, save_data)
 
     print_divider()
     tuned_parameters = get_tuned_parameters(parameters, best_hyperparameters)
     save_model(best_model, training_parameters, tuned_parameters, working_directory)
-    save_training_results(parameters, tuned_parameters, working_directory)
+    save_training_results(parameters, tuned_parameters, working_directory, test_loss)
 
     if "cleanup" in parameters and parameters["cleanup"]:
         cleanup(working_directory)
