@@ -127,11 +127,13 @@ export default class CUD extends Component {
             "label": "Max tuning trials",
             "help": "The number of hyperparameter configurations tested. The higher this number, the longer the training process.",
             "type": "integer",
+            "isRequired": true,
         },{
             "id": "executions_per_trial",
             "label": "Executions per trial",
             "help": "The number of neural networks tested for each hyperparameter configuration.The higher this number, the longer the training process.",
             "type": "integer",
+            "isRequired": true,
         },];
         this.training_configSpec = [{
             "id": "learning_rate",
@@ -142,11 +144,13 @@ export default class CUD extends Component {
             "label": "Batch size",
             "help": "The number of training examples used for one iteration of the training algorithm. Recommended values are 32 or 64.",
             "type": "integer",
+            "isRequired": true,
         },{
             "id": "epochs",
             "label": "Training epochs",
             "help": "Stop training after this number of training epochs.",
             "type": "integer",
+            "isRequired": true,
         },{
             "id": "early_stopping",
             "label": "Early stopping",
@@ -157,6 +161,7 @@ export default class CUD extends Component {
             "label": "Early stopping patience",
             "help": "The number of epochs for with the validation loss has to stop improving in order to stop the training.",
             "type": "integer",
+            "isRequired": true,
         }];
         this.input_signals_configSpec = () => [signalsConfigSpec("input_signals", "Input Signals", "Signals to use for prediction.", props.signalSet.cid, this.isAggregated())]
         this.target_signals_configSpec = () => [signalsConfigSpec("target_signals", "Target Signals", "Signals to predict.", props.signalSet.cid,  this.isAggregated())]
@@ -238,8 +243,12 @@ export default class CUD extends Component {
     }
 
     loadValuesFromOtherModel(prediction, trainingJobParams) {
-        const otherValues = _.pick(trainingJobParams, ["input_signals", "target_signals", "ts", "max_trials", "executions_per_trial", "batch_size", "epochs", "early_stopping", "early_stopping_patience"]);
         // populate default values to the form inputs rendered using the ParamTypes
+        const keysToString =  ["max_trials", "executions_per_trial", "batch_size", "epochs", "early_stopping_patience"]
+        const keys = ["input_signals", "target_signals", "ts", "learning_rate", "early_stopping", ...keysToString]
+        const otherValues = _.pick(trainingJobParams, keys);
+        for (const key of keysToString)
+            otherValues[key] = String(otherValues[key]) // the setFields method expects numbers saved as strings
         const formValues = {};
         this.paramTypes.setFields(this.configSpec(), otherValues, formValues);
 
