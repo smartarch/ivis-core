@@ -14,14 +14,19 @@ const contextHelpers = require('../../lib/context-helpers');
 const base64url = require('base64-url');
 const router = require('../../lib/router-async').create();
 const { castToInteger } = require('../../lib/helpers');
-const { getSigSetBoundaries, calculateRMSE } = require('../../lib/predictions-helpers');
+const { getSigSetBoundaries, calculateRMSE, getModelAggregationInterval} = require('../../lib/predictions-helpers');
 
 router.postAsync('/predictions-rmse/', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     const body = (await req).body;
     if (!body.sourceSetCid) { // ignore invalid request (signal set not specified)
         return res.json();
     }
-    const response = await calculateRMSE(req.context, body.from, body.to, body.sourceSetCid, body.predSetCid, body.signalCid);
+
+    let interval = null;
+    if (body.predictionId)
+        interval = await getModelAggregationInterval(req.context, body.predictionId);
+
+    const response = await calculateRMSE(req.context, body.from, body.to, body.sourceSetCid, body.predSetCid, body.signalCid, interval);
     return res.json(response);
 });
 

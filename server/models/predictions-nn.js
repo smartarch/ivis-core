@@ -9,6 +9,7 @@ const jobs = require('./jobs');
 const {NN_TRAINING_TASK_NAME, NN_PREDICTION_TASK_NAME} = require("./neural_networks/neural-networks-tasks");
 const { PredictionTypes} = require('../../shared/predictions');
 const { enforceEntityPermission } = require('./shares');
+const {intervalToDuration} = require("../lib/predictions-helpers");
 
 async function createNNModelTx(tx, context, sigSetId, params) {
 
@@ -25,6 +26,8 @@ async function createNNModelTx(tx, context, sigSetId, params) {
 
     await enforceTasks();
 
+    const aggregated = params.aggregation !== '';
+
     let prediction = {
         name: params.name || '',
         type: PredictionTypes.NN,
@@ -35,13 +38,13 @@ async function createNNModelTx(tx, context, sigSetId, params) {
         settings: {
             training_completed: false,
             automatic_predictions: params.automatic_predictions || false,
+            interval: aggregated ? intervalToDuration(params.aggregation).asMilliseconds() : null,
         }
     };
 
     // return { trainingJobId: 0, predictionJobId: 0 }; // TODO (MT): remove
 
     // target signals – signals of the created prediction signal sets
-    const aggregated = params.aggregation !== '';
     const targetSignals = [];
     for (const sig of params.target_signals) {
         const signal = await tx('signals').where('set', sigSetId).where('cid', sig.cid).first();

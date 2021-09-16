@@ -31,26 +31,27 @@ class PredictionsEvaluationTableMulti extends Component {
         super(props);
 
         this.state = {
-            modelInfos: [],  // information about the model including its perfomance
+            modelInfos: [],  // information about the model including its performance
             evalFrom: '',
             evalTo: '',
         };
     }
 
-    async fetchPredictionRMSE(signalCid, outputConfig, ahead, from, to) {
+    async fetchPredictionRMSE(signalCid, outputConfig, ahead, from, to, modelId) {
         const sourceSetCid = this.props.sigSetCid;
         const predSetCid = outputConfig.ahead_sets[ahead];
 
-        return await this.fetchSigSetRMSE(signalCid, sourceSetCid, predSetCid, from, to);
+        return await this.fetchSigSetRMSE(signalCid, sourceSetCid, predSetCid, from, to, modelId);
     }
 
-    async fetchSigSetRMSE(signalCid, sourceSetCid, predSetCid, from, to) {
+    async fetchSigSetRMSE(signalCid, sourceSetCid, predSetCid, from, to, modelId) {
         const request = {
             signalCid,
             from,
             to,
             sourceSetCid,
             predSetCid,
+            predictionId: modelId,
         };
 
         const rmse = (await axios.post(getUrl(`rest/predictions-rmse/`), request)).data;
@@ -62,7 +63,7 @@ class PredictionsEvaluationTableMulti extends Component {
         const prediction = await fetchPrediction(modelId);
         const outputConfig = await fetchPredictionOutputConfig(modelId);
 
-        const rmse = await this.fetchPredictionRMSE(this.props.signalCid, outputConfig, this.props.ahead, from, to);
+        const rmse = await this.fetchPredictionRMSE(this.props.signalCid, outputConfig, this.props.ahead, from, to, modelId);
         return {
             name: prediction.name,
             type: prediction.type,
@@ -79,7 +80,7 @@ class PredictionsEvaluationTableMulti extends Component {
 
     async fetchData() {
         // get the interval which to evaluate on
-        const absInterval = await this.getIntervalAbsolute(); // from IntevalAccessMixin
+        const absInterval = await this.getIntervalAbsolute(); // from IntervalAccessMixin
         const origFrom = absInterval.from.toISOString();
         const origTo = absInterval.to.toISOString();
 
@@ -141,7 +142,7 @@ class PredictionsEvaluationTableMulti extends Component {
         for (let modelId of this.props.models) {
             const modelInfo = this.state.modelInfos[modelId] || {};
             const row = (
-                <tr id={modelId}>
+                <tr id={modelId} key={modelId}>
                     <td id="1">{modelInfo.name || loading}</td>
                     <td id="2">{modelInfo.type || loading}</td>
                     <td id="3">{modelInfo.aheadCount || loading}</td>
@@ -186,14 +187,16 @@ class PredictionsEvaluationTableMulti extends Component {
             <div>
                 <table className={'table table-striped table-bordered'}>
                     <thead>
-                        <th scope="column">{t('Model')}</th>
-                        <th scope="column">{t('Type')}</th>
-                        <th scope="column">{t('Ahead')}</th>
-                        <th scope="column">{t('Bucket interval')}</th>
-                        <th scope="column">{t('MSE min')}</th>
-                        <th scope="column">{t('MSE max')}</th>
-                        <th scope="column">{t('MAE min')}</th>
-                        <th scope="column">{t('MAE max')}</th>
+                        <tr>
+                            <th scope="column">{t('Model')}</th>
+                            <th scope="column">{t('Type')}</th>
+                            <th scope="column">{t('Ahead')}</th>
+                            <th scope="column">{t('Bucket interval')}</th>
+                            <th scope="column">{t('MSE min')}</th>
+                            <th scope="column">{t('MSE max')}</th>
+                            <th scope="column">{t('MAE min')}</th>
+                            <th scope="column">{t('MAE max')}</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {rows}
@@ -233,8 +236,7 @@ class PredictionsGraph extends Component {
 
     async fetchData() {
         const models = await this.props.models.map(this.getModel.bind(this));
-
-        return await models;
+        return models;
     }
 
     async getConfig() {
@@ -366,7 +368,7 @@ class AheadSelector extends Component {
         const options = [];
 
         for (let ahead = minAhead; ahead <= maxAhead; ahead++) {
-            options.push(<option id={ahead}>{ahead}</option>);
+            options.push(<option id={ahead} key={ahead}>{ahead}</option>);
         }
 
         return options;

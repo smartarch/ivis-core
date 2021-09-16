@@ -5,6 +5,8 @@ const signalSets = require('../models/signal-sets');
 const es = require('./elasticsearch');
 const moment = require('moment');
 const shares = require('../models/shares');
+const predictions = require("../models/signal-set-predictions");
+const {PredictionTypes} = require("../../shared/predictions");
 
 function getSetIndexName(sigSetId) {
     return `signal_set_${sigSetId}`;
@@ -60,8 +62,8 @@ async function getSigSetBoundaries(signalSetId, tsField = 'ts') {
     }
 
     return {
-        first: first.hits.hits[0]['_source'][tsSigCid],
-        last: last.hits.hits[0]['_source'][tsSigCid]
+        first: moment(first.hits.hits[0]['_source'][tsSigCid]).toISOString(),
+        last: moment(last.hits.hits[0]['_source'][tsSigCid]).toISOString(),
     };
 }
 
@@ -146,10 +148,10 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
         // reasonable upper limit on computation time.
 
         // We also don't want the interval to be much lower than the period of the
-        // original timeseries, because that would make most of the buckets empty.
+        // original time series, because that would make most of the buckets empty.
 
         // we estimate the period of predictions signal set - that is because it will
-        // have either approximtely the same period as the source data or higher
+        // have either approximately the same period as the source data or higher
         // (when the model is trained on some aggregation). We generally want similarly
         // sized or bigger buckets compared to the period - smaller buckets will not
         // help us as they will have null value
@@ -324,5 +326,27 @@ async function calculateRMSE(context, from, to, sourceSetCid, predSetCid, valueF
     }
 }
 
+/** Converts interval strings ("1d", "10m", ...) to moment.duration */
+function intervalToDuration(intervalString) {
+    const firstLetter = /[a-z]/i.exec(intervalString).index;
+    const number = intervalString.substring(0, firstLetter);
+    const unit = intervalString.substring(firstLetter);
+    return moment.duration(number, unit);
+}
+
+async function getModelAggregationInterval(context, modelId) {
+    await shares.enforceEntityPermission(context, 'prediction', modelId, 'view');
+    const prediction = await predictions.getById(context, modelId);
+
+    if (prediction.type === PredictionTypes.NN) {
+        if (prediction.settings.interval)
+            return `${prediction.settings.interval}ms`;
+    }
+
+    return null
+}
+
 module.exports.getSigSetBoundaries = getSigSetBoundaries;
 module.exports.calculateRMSE = calculateRMSE;
+module.exports.intervalToDuration = intervalToDuration;
+module.exports.getModelAggregationInterval = getModelAggregationInterval;
