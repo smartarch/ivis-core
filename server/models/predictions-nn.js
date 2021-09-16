@@ -10,6 +10,7 @@ const {NN_TRAINING_TASK_NAME, NN_PREDICTION_TASK_NAME} = require("./neural_netwo
 const { PredictionTypes} = require('../../shared/predictions');
 const { enforceEntityPermission } = require('./shares');
 const {intervalToDuration} = require("../lib/predictions-helpers");
+const {isSignalSetAggregationIntervalValid} = require("../../shared/validators");
 
 async function createNNModelTx(tx, context, sigSetId, params) {
 
@@ -27,6 +28,8 @@ async function createNNModelTx(tx, context, sigSetId, params) {
     await enforceTasks();
 
     const aggregated = params.aggregation !== '';
+    if (aggregated)
+        enforce(isSignalSetAggregationIntervalValid(params.aggregation), "Invalid aggregation interval");
 
     let prediction = {
         name: params.name || '',
