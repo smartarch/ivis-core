@@ -242,7 +242,7 @@ def cleanup(working_directory):
 ##########################
 
 
-def run_training(parameters, model_factory=None, save_data=lambda: None):
+def run_training(parameters, model_factory=None, save_data=lambda _, _: None):
     """
     Runs the hyperparameter tuner to try to find the best possible model for the data.
 

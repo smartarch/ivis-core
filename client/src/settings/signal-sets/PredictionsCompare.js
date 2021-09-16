@@ -21,6 +21,8 @@ import moment from "moment";
 import axios from '../../lib/axios';
 import { fetchPrediction, fetchPredictionOutputConfig, fetchSignalSetBoundariesByCid } from "../../lib/predictions";
 import { getUrl } from "../../lib/urls";
+import {PredictionTypes} from "../../../../shared/predictions";
+import {NeuralNetworkArchitecturesSpecs} from "../../../../shared/predictions-nn";
 
 @withComponentMixins([
     withTranslation,
@@ -202,12 +204,135 @@ class PredictionsEvaluationTableMulti extends Component {
                         {rows}
                     </tbody>
                 </table>
-                <table>
-                    <tbody className={'table table-striped table-bordered'}>
+                <div>
+                    <b>{t('Evaluation Time Range')}:</b> {evaluationRange}
+                </div>
+            </div>
+        );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+])
+class PredictionsHyperparametersTable extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            trainingResults: [],
+        };
+    }
+
+    async fetchModelTrainingResults(modelId) {
+        const prediction = await fetchPrediction(modelId);
+
+        if (prediction.type === PredictionTypes.NN) {
+            if (prediction.settings && prediction.settings.training_completed) {
+                try {
+                    const jobsResponse = await axios.get(getUrl(`rest/predictions-nn-jobs/${modelId}`));
+                    const trainingJobId = jobsResponse.data.training;
+                    const trainingResultResponse = await axios.get(getUrl(`files/job/file/${trainingJobId}/training_results.json`));
+                    const trainingResult = trainingResultResponse.data;
+                    trainingResult.model = prediction;
+                    return trainingResult;
+                } catch (error) {
+                    console.log(`Training results not available for model '${prediction.name}'.`);
+                }
+            }
+        }
+
+        return {};
+    }
+
+    async fetchData() {
+        const requests = this.props.models.map(m => this.fetchModelTrainingResults(m));
+        const results = await Promise.all(requests);
+
+        this.setState({
+            trainingResults: results
+        });
+    }
+
+    componentDidMount() {
+        // noinspection JSIgnoredPromiseFromCall
+        this.fetchData();
+    }
+
+    componentDidUpdate(prevProps) {
+        const modelsChanged = this.props.models !== prevProps.models;
+        if (modelsChanged) {
+            // noinspection JSIgnoredPromiseFromCall
+            this.fetchData();
+        }
+    }
+
+    render() {
+        const t = this.props.t;
+        const rows = [];
+
+        const loading = t('Loading...');
+
+        //return <pre>{JSON.stringify(this.state.trainingResults, null, 2)}</pre>;
+
+        // get a set of all hyperparameters for all models
+        const hyperparameters = new Map();
+        for (const trainingResult of this.state.trainingResults) {
+            if (trainingResult.model.type !== PredictionTypes.NN)
+                continue;
+
+            const architecture = trainingResult.tuned_parameters.architecture;
+            const architectureSpec = NeuralNetworkArchitecturesSpecs[architecture];
+            for (const hyperparameter of architectureSpec.params)
+                hyperparameters.set(hyperparameter.id, hyperparameter);
+        }
+
+        // render the header
+        const header = []
+        for (const [id, hyperparameter] of hyperparameters) {
+            header.push(<th key={id}>{hyperparameter.label}</th>);
+        }
+
+        // render the hyperparameters
+        for (const trainingResult of this.state.trainingResults) {
+            if (trainingResult.model.type !== PredictionTypes.NN)
+                continue;
+
+            const architectureParams = trainingResult.tuned_parameters.architecture_params;
+
+            const columns = [];
+            for (const [id, _]  of hyperparameters) {
+                if (architectureParams.hasOwnProperty(id)) {
+                    const value = architectureParams[id];
+                    columns.push(<td key={id}>{JSON.stringify(value, null, 2)}</td>);
+                } else {
+                    columns.push(<td key={id}/>);
+                }
+            }
+
+            const architecture = trainingResult.tuned_parameters.architecture;
+            const architectureSpec = NeuralNetworkArchitecturesSpecs[architecture];
+
+            rows.push(<tr key={trainingResult.model.id}>
+                <td key={"name"}>{trainingResult.model.name || loading}</td>
+                <td key={"architecture"}>{architectureSpec.label || loading}</td>
+                {columns}
+            </tr>);
+        }
+
+        return (
+            <div>
+                <h4>Hyperparameters</h4>
+                <table className={'table table-striped table-bordered'}>
+                    <thead>
                         <tr>
-                            <th scope="row">{t('Evaluation Time Range')}:</th>
-                            <td>{evaluationRange}</td>
+                            <th scope="column">{t('Model')}</th>
+                            <th scope="column">{t('Architecture')}</th>
+                            {header}
                         </tr>
+                    </thead>
+                    <tbody>
+                        {rows}
                     </tbody>
                 </table>
             </div>
@@ -616,14 +741,18 @@ export default class PredictionsCompare extends Component {
                         aheadValue={this.state.aheadValue}
                         max={this.state.maxAhead}
                     />}
-                    {this.state.models.length > 0 && <PredictionsEvaluationTableMulti
-                        ahead={this.state.aheadValue}
-                        sigSetCid={sigSetCid}
-                        tsCid="ts"
-                        signalCid={this.state.signal}
-                        models={this.state.models}
-                    />
-                    }
+                    {this.state.models.length > 0 && <>
+                        <PredictionsEvaluationTableMulti
+                            ahead={this.state.aheadValue}
+                            sigSetCid={sigSetCid}
+                            tsCid="ts"
+                            signalCid={this.state.signal}
+                            models={this.state.models}
+                        />
+                        <PredictionsHyperparametersTable
+                            models={this.state.models}
+                        />
+                    </>}
                 </TimeContext>
             </Panel>
         );
