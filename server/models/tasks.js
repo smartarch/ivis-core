@@ -410,6 +410,12 @@ async function addRemote(context, id, body = {}) {
     } catch (e) {
         await git.remote(['set-url', 'origin', remoteUrl]);
     }
+
+    try {
+        await git.branch(['--set-upstream-to', 'origin/master']);
+    } catch (e) {
+        throw new Error("the remote must have 'master' branch")
+    }
 }
 
 async function listRemotes(context, id) {
@@ -447,7 +453,7 @@ async function remotePush(context, id, body = {}) {
         binary: 'git',
     });
 
-    await git.push(['-u', 'origin', 'master'])
+    await git.push(['origin', 'master'])
 }
 
 module.exports.listRemotes = listRemotes;
