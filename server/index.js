@@ -14,6 +14,7 @@ const templates = require('./models/templates');
 const tasks = require('./models/tasks');
 const builder = require('./lib/builder');
 const taskHandler = require('./lib/task-handler');
+const alertsHandler = require('./lib/alerts-event-handler')
 const indexer = require('./lib/indexers/' + config.indexer);
 const appBuilder = require('./app-builder');
 const { AppType } = require('../shared/app');
@@ -69,6 +70,7 @@ async function initAndStart() {
     await builder.init();
     await indexer.init();
     await taskHandler.init();
+    await alertsHandler.init();
     await templates.compileAll();
     await tasks.compileAll();
 

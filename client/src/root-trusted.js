@@ -44,6 +44,10 @@ import TasksOutput from './settings/tasks/Output';
 import WorkspacesList from './settings/workspaces/List';
 import WorkspacesCUD from './settings/workspaces/CUD';
 
+import AlertsList from './settings/alerts/List';
+import AlertsCUD from './settings/alerts/CUD';
+import AlertsLog from './settings/alerts/Log';
+
 import PanelsList from './settings/workspaces/panels/List';
 import PanelsCUD from './settings/workspaces/panels/CUD';
 
@@ -292,6 +296,44 @@ const getStructure = t => {
                                 title: t('Create'),
                                 panelRender: props => <WorkspacesCUD action="create"
                                                                      workspacesVisible={props.resolved.workspacesVisible}/>
+                            }
+                        }
+                    },
+                    alerts: {
+                        title: t('Alerts'),
+                        link: '/settings/alerts',
+                        panelComponent: AlertsList,
+                        children: {
+                            ':alertId([0-9]+)': {
+                                title: resolved => t('Alert "{{name}}"', {name: resolved.alert.name}),
+                                resolve: {
+                                    alert: params => `rest/alerts/${params.alertId}`
+                                },
+                                link: params => `/settings/alerts/${params.alertId}/edit`,
+                                navs: {
+                                    ':action(edit|delete)': {
+                                        title: t('Settings'),
+                                        link: params => `/settings/alerts/${params.alertId}/edit`,
+                                        visible: resolved => resolved.alert.permissions.includes('edit'),
+                                        panelRender: props => <AlertsCUD action={props.match.params.action} entity={props.resolved.alert} />
+                                    },
+                                    log: {
+                                        title: t('Log'),
+                                        link: params => `/settings/alerts/${params.alertId}/log`,
+                                        visible: resolved => resolved.alert.permissions.includes('view'),
+                                        panelRender: props => <AlertsLog alertId={props.resolved.alert.id} />
+                                    },
+                                    share: {
+                                        title: t('Share'),
+                                        link: params => `/settings/alerts/${params.alertId}/share`,
+                                        visible: resolved => resolved.alert.permissions.includes('share'),
+                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.alert} entityTypeId="alert" />
+                                    }
+                                }
+                            },
+                            create: {
+                                title: t('Create'),
+                                panelRender: props => <AlertsCUD action="create" />
                             }
                         }
                     },
