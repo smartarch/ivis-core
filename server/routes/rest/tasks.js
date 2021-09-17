@@ -76,7 +76,28 @@ router.postAsync('/task-vcs/:taskId/checkout/:hash', passport.loggedIn, async (r
 });
 
 router.postAsync('/task-vcs/:taskId/commit', passport.loggedIn, async (req, res) => {
-    await tasks.commit(req.context, castToInteger(req.params.taskId));
+    await tasks.commit(req.context, castToInteger(req.params.taskId), req.body);
+    return res.json();
+});
+
+
+router.getAsync('/task-vcs/:taskId/remote', passport.loggedIn, async (req, res) => {
+    const remotes = await tasks.listRemotes(req.context, castToInteger(req.params.taskId), req.body);
+    return res.json(remotes);
+});
+
+router.postAsync('/task-vcs/:taskId/remote', passport.loggedIn, async (req, res) => {
+    await tasks.addRemote(req.context, castToInteger(req.params.taskId), req.body);
+    return res.json();
+});
+
+router.postAsync('/task-vcs/:taskId/pull', passport.loggedIn, async (req, res) => {
+    await tasks.remotePull(req.context, castToInteger(req.params.taskId));
+    return res.json();
+});
+
+router.postAsync('/task-vcs/:taskId/push', passport.loggedIn, async (req, res) => {
+    await tasks.remotePush(req.context, castToInteger(req.params.taskId));
     return res.json();
 });
 

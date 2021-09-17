@@ -23,7 +23,7 @@ const dependencyHelpers = require('../lib/dependency-helpers');
 const {getWizard} = require("../lib/wizards");
 const {isBuiltinSource} = require("../../shared/tasks");
 const simpleGit = require("simple-git");
-const path = require("path")
+const path = require("path");
 
 const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);
@@ -383,7 +383,8 @@ async function checkout(context, id, commitHash) {
 }
 
 
-async function commit(context, id) {
+async function commit(context, id, body = {}) {
+    const {commitMessage = ''} = body;
     await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
 
     const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
@@ -392,10 +393,67 @@ async function commit(context, id) {
         binary: 'git',
     });
     await git.add(dir)
-    await git.commit('Building')
+    await git.commit(commitMessage)
+}
+
+async function addRemote(context, id, body = {}) {
+    const {remoteUrl} = body;
+    await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
+
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+    try {
+        await git.addRemote('origin', remoteUrl)
+    } catch (e) {
+        await git.remote(['set-url', 'origin', remoteUrl]);
+    }
+}
+
+async function listRemotes(context, id) {
+    await shares.enforceEntityPermission(context, 'task', id, Permission.VIEW);
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+
+    const remotes = await git.getRemotes(true);
+
+    return remotes;
 }
 
 
+async function remotePull(context, id, body = {}) {
+    await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
+
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+    await git.pull(['--allow-unrelated-histories'])
+}
+
+
+async function remotePush(context, id, body = {}) {
+    await shares.enforceEntityPermission(context, 'task', id, Permission.EDIT);
+
+    const dir = path.join(taskHandler.getTaskDevelopmentDir(id))
+    const git = simpleGit({
+        baseDir: dir,
+        binary: 'git',
+    });
+
+    await git.push(['-u', 'origin', 'master'])
+}
+
+module.exports.listRemotes = listRemotes;
+module.exports.remotePull = remotePull;
+module.exports.remotePush = remotePush;
+module.exports.addRemote = addRemote;
 module.exports.commit = commit;
 module.exports.checkout = checkout;
 module.exports.getVcsLogs = getVcsLogs;
