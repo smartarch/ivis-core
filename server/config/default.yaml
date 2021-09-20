@@ -19,6 +19,26 @@ elasticsearch:
   # This limits deep pagination
   maxResultsWindow: 10000
 
+alerts:
+  maxResultsWindow: 1000
+  maxEmailRecipients: 3
+  maxSMSRecipients: 1
+
+# FILL IN BEFORE USE !!! or leave empty, if you do not want to use it
+# Tested configuration is - host: "smtp.seznam.cz", port: 465, account: "yourname@seznam.cz", password: "yourpassword"
+email:
+  host:
+  port:
+  account:
+  password:
+
+# FILL IN BEFORE USE !!! or leave empty, if you do not want to use it
+# according to AWS SNS
+SMS:
+  keyID:
+  secretKey:
+  region:
+
 mysql:
   host: localhost
   user: ivis
@@ -118,15 +138,16 @@ roles:
       - showAdminSignalSets
       - showAdminUsers
       - showAdminNamespaces
+      - showAdminAlerts
       rootNamespaceRole: master
 
   namespace:
     master:
       name: "Master"
       description: "All permissions"
-      permissions: ["view", "edit", "delete", "share", "createNamespace", "createTemplate", "createJob", "createTask", "createWorkspace", "createPanel", "createSignal", "createSignalSet", "manageUsers"]
+      permissions: ["view", "edit", "delete", "share", "createNamespace", "createTemplate", "createJob", "createTask", "createWorkspace", "createPanel", "createSignal", "createSignalSet", "manageUsers", "createAlert"]
       children:
-        namespace: ["view", "edit", "delete", "share", "createNamespace", "createTemplate", "createJob", "createTask", "createWorkspace", "createPanel", "createSignal", "createSignalSet", "manageUsers"]
+        namespace: ["view", "edit", "delete", "share", "createNamespace", "createTemplate", "createJob", "createTask", "createWorkspace", "createPanel", "createSignal", "createSignalSet", "manageUsers", "createAlert"]
         template: ["view", "edit", "delete", "share", "execute", "viewFiles", "manageFiles"]
         job: ["view", "edit", "delete", "share", "execute", "viewFiles", "manageFiles"]
         task: ["view", "edit", "delete", "share", "execute", "viewFiles", "manageFiles"]
@@ -134,6 +155,7 @@ roles:
         panel: ["view", "edit", "delete", "share"]
         signal: ["view", "edit", "delete", "query", "share"]
         signalSet: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts"]
+        alert: ["view", "edit", "delete", "share", "trigger"]
 
   template:
     master:
@@ -177,3 +199,9 @@ roles:
       description: "All permissions"
       # Note that the ability to "manageScripts" means that one circumvent the "query" permission on a signal because a script has always access to all signals in the signal set.
       permissions: ["view", "edit", "delete", "insertRecord", "editRecord", "deleteRecord", "query", "share", "reindex", "createSignal", "manageScripts"]
+
+  alert:
+    master:
+      name: "Master"
+      description: "All permissions"
+      permissions: ["view", "edit", "delete", "share", "trigger"]
