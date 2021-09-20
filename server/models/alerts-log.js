@@ -46,10 +46,10 @@ async function addEntry(context, entity) {
                 const addresses = alert.emails.split(/\r?\n/).slice(0, config.alerts.maxEmailRecipients);
                 const subject = `Alert ${alert.name} was manually tested`;
                 const text = `Alert ${alert.name} was manually tested.\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${alert.description}\nCondition:\n${alert.condition}`;
-                await sendEmail(senderName, addresses, subject, text);
+                try { await sendEmail(senderName, addresses, subject, text); } catch {}
 
                 const phones = alert.phones.split(/\r?\n/).slice(0, config.alerts.maxSMSRecipients);
-                for (let i = 0; i < phones.length; i++) await sendSMS(phones[i], senderName + '\n' + subject + '.');
+                for (let i = 0; i < phones.length; i++) try { await sendSMS(phones[i], senderName + '\n' + subject + '.'); } catch {}
             }
         }
 

@@ -10,14 +10,10 @@ const config = require('./config');
  * @type {SNSClient}
  */
 const client = function() {
-    try {
-        process.env.AWS_ACCESS_KEY_ID = config.SMS.keyID;
-        process.env.AWS_SECRET_ACCESS_KEY = config.SMS.secretKey;
-        return new SNSClient({region: config.SMS.region});
-    }
-    catch (error) {
-        return error;
-    }
+    if (!config.SMS.keyID) return;
+    process.env.AWS_ACCESS_KEY_ID = config.SMS.keyID;
+    process.env.AWS_SECRET_ACCESS_KEY = config.SMS.secretKey;
+    return new SNSClient({region: config.SMS.region});
 }();
 
 /**
@@ -27,13 +23,9 @@ const client = function() {
  * @returns {Promise<*>} Status of the operation.
  */
 async function sendSMS(phoneNumber, text) {
-    try {
-        const params = {PhoneNumber: phoneNumber, Message: text};
-        return await client.send(new PublishCommand(params));
-    }
-    catch (error) {
-        return error;
-    }
+    if (!client) return;
+    const params = {PhoneNumber: phoneNumber, Message: text};
+    return await client.send(new PublishCommand(params));
 }
 
 module.exports.sendSMS = sendSMS;

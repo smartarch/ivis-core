@@ -228,10 +228,10 @@ class Alert{
     async sendNotification(emailSubject, emailText, SMSText) {
         const senderName = 'IVIS Alert';
         const addresses = this.fields.emails.split(/\r?\n/).slice(0, config.alerts.maxEmailRecipients);
-        await sendEmail(senderName, addresses, emailSubject, emailText);
+        try { await sendEmail(senderName, addresses, emailSubject, emailText); } catch {}
         if (SMSText) {
             const phones = this.fields.phones.split(/\r?\n/).slice(0, config.alerts.maxSMSRecipients);
-            for (let i = 0; i < phones.length; i++) await sendSMS(phones[i], senderName + '\n' + SMSText);
+            for (let i = 0; i < phones.length; i++) try { await sendSMS(phones[i], senderName + '\n' + SMSText); } catch {}
         }
     }
 }
