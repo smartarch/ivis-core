@@ -7,6 +7,13 @@ const { sendEmail } = require('./mailer');
 const { sendSMS } = require('./SMS-sender');
 const config = require('./config');
 
+const States = Object.freeze({
+    GOOD: 'good',
+    WORSE: 'worse',
+    BAD: 'bad',
+    BETTER: 'better'
+});
+
 /**
  * Instances of this class represent the alerts in the memory.
  */
@@ -26,13 +33,13 @@ class Alert{
     async init() {
         await this.addLogEntry('init');
         if (!this.fields.enabled) return;
-        if (this.fields.repeat !== 0 && (this.fields.state === 'bad' || this.fields.state === 'better')) await this.repeatNotification();
+        if (this.fields.repeat !== 0 && (this.fields.state === States.BAD || this.fields.state === States.BETTER)) await this.repeatNotification();
         const elapsed = moment().diff(this.fields.state_changed);
-        if (this.fields.state === 'worse') {
+        if (this.fields.state === States.WORSE) {
             if (elapsed >= this.fields.duration * 60 * 1000) await this.trigger();
             else this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), (this.fields.duration * 60 * 1000) - elapsed);
         }
-        else if (this.fields.state === 'better') {
+        else if (this.fields.state === States.BETTER) {
             if (elapsed >= this.fields.delay * 60 * 1000) await this.revoke();
             else this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), (this.fields.delay * 60 * 1000) - elapsed);
         }
@@ -53,17 +60,17 @@ class Alert{
         let ns = '';
         if (!newFields.enabled) {
             this.terminate();
-            ns = 'good';
+            ns = States.GOOD;
         }
         else if (this.fields.sigset !== newFields.sigset || this.fields.duration !== newFields.duration || this.fields.instant_revoke !== newFields.instant_revoke ||
             this.fields.delay !== newFields.delay || this.fields.condition !== newFields.condition) {
             clearTimeout(this.conditionClock);
             clearTimeout(this.repeatClock);
-            ns = 'good';
+            ns = States.GOOD;
         }
         else if (this.fields.repeat !== newFields.repeat) {
             clearTimeout(this.repeatClock);
-            if (newFields.repeat !== 0 && (this.fields.state === 'bad' || this.fields.state === 'better')) this.repeatClock = setTimeout(this.repeatNotification.bind(this), newFields.repeat * 60 * 1000);
+            if (newFields.repeat !== 0 && (this.fields.state === States.BAD || this.fields.state === States.BETTER)) this.repeatClock = setTimeout(this.repeatNotification.bind(this), newFields.repeat * 60 * 1000);
         }
 
         let sit = false;
@@ -109,56 +116,56 @@ class Alert{
      */
     async changeState(result){
         if (result) {
-            if (this.fields.state === 'good') {
+            if (this.fields.state === States.GOOD) {
                 if (this.fields.duration === 0) {
                     await this.trigger();
                 }
                 else {
-                    await this.writeState('worse');
+                    await this.writeState(States.WORSE);
                     this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), this.fields.duration * 60 * 1000);
                 }
             }
-            else if (this.fields.state === 'better') {
+            else if (this.fields.state === States.BETTER) {
                 clearTimeout(this.conditionClock);
-                await this.writeState('bad');
+                await this.writeState(States.BAD);
             }
         }
         else {
-            if (this.fields.state === 'bad') {
+            if (this.fields.state === States.BAD) {
                 if (this.fields.delay === 0) {
                     await this.revoke();
                 }
                 else {
-                    await this.writeState('better');
+                    await this.writeState(States.BETTER);
                     this.conditionClock = setTimeout(this.conditionClockHandler.bind(this), this.fields.delay * 60 * 1000);
                 }
             }
-            else if (this.fields.state === 'worse') {
+            else if (this.fields.state === States.WORSE) {
                 clearTimeout(this.conditionClock);
-                await this.writeState('good');
+                await this.writeState(States.GOOD);
             }
         }
     }
 
     async conditionClockHandler(){
-        if (this.fields.state === 'worse') {
+        if (this.fields.state === States.WORSE) {
             await this.trigger();
         }
-        else if (this.fields.state === 'better') {
+        else if (this.fields.state === States.BETTER) {
             await this.revoke();
         }
     }
 
     async trigger(){
         if (this.fields.instant_revoke) {
-            await this.writeState('good');
+            await this.writeState(States.GOOD);
             await this.addLogEntry('triggerAndRevoke');
             const subject = `Alert ${this.fields.name} was triggered and revoked!`;
             const text = `Alert ${this.fields.name} was triggered and revoked!\nTime: ${moment().format('YYYY-MM-DD HH:mm:ss')}\nDescription:\n${this.fields.description}\nCondition:\n${this.fields.condition}`;
             await this.sendNotification(subject, text, subject);
         }
         else {
-            await this.writeState('bad');
+            await this.writeState(States.BAD);
             await this.addLogEntry('trigger');
             if (this.fields.repeat !== 0) this.repeatClock = setTimeout(this.repeatNotification.bind(this), this.fields.repeat * 60 * 1000);
             const subject = `Alert ${this.fields.name} was triggered!`;
@@ -169,7 +176,7 @@ class Alert{
 
     async revoke(){
         clearTimeout(this.repeatClock);
-        await this.writeState('good');
+        await this.writeState(States.GOOD);
         await this.addLogEntry('revoke');
         if (this.fields.finalnotification) {
             const subject = `Alert ${this.fields.name} was revoked`;

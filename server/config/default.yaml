@@ -24,7 +24,7 @@ alerts:
   maxEmailRecipients: 3
   maxSMSRecipients: 1
 
-# FILL IN BEFORE USE !!!
+# FILL IN BEFORE USE !!! or leave empty, if you do not want to use it
 # Tested configuration is - host: "smtp.seznam.cz", port: 465, account: "yourname@seznam.cz", password: "yourpassword"
 email:
   host:
@@ -32,7 +32,7 @@ email:
   account:
   password:
 
-# FILL IN BEFORE USE !!!
+# FILL IN BEFORE USE !!! or leave empty, if you do not want to use it
 # according to AWS SNS
 SMS:
   keyID:

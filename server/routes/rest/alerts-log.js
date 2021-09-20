@@ -6,7 +6,7 @@ const router = require('../../lib/router-async').create();
 const { castToInteger } = require('../../lib/helpers');
 
 router.postAsync('/alerts-log', passport.loggedIn, passport.csrfProtection, async (req, res) => {
-    if (req.body.type !== 'test') return; //just for security
+    if (req.body.type !== 'test') return;
     return res.json(await alertsLog.addEntry(req.context, req.body));
 });
 

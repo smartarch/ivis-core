@@ -32,7 +32,7 @@ import {RelativeTime} from "../../lib/bootstrap-components";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import testTrigger from "../../lib/alerts-trigger-tester";
-import checkCondition from "../../lib/alerts-condition-checker";
+import { checkCondition, ConditionState } from "../../lib/alerts-condition-checker";
 
 @withComponentMixins([
     withTranslation,
@@ -120,10 +120,14 @@ export default class CUD extends Component {
 
         if (state.getIn(['concheck', 'value'])) {
             const conTest = checkCondition(state.getIn(['condition', 'value']), state.getIn(['sigset', 'value']));
-            if (conTest !== 'ok') {
-                state.setIn(['condition', 'error'], conTest);
-            } else {
+            if (conTest === ConditionState.NOSIGSET) {
+                state.setIn(['condition', 'error'], t('You should fill in a signal set first!'));
+            } else if (conTest === ConditionState.NOTBOOL) {
+                state.setIn(['condition', 'error'], t('The expression does not return a boolean value!'));
+            } else if (conTest === ConditionState.VALID) {
                 state.setIn(['condition', 'error'], null);
+            } else {
+                state.setIn(['condition', 'error'], conTest);
             }
         }
         else state.setIn(['condition', 'error'], null);

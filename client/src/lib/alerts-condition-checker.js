@@ -6,6 +6,15 @@ import { getUrl } from "./urls";
 import { SignalType } from "../../../shared/signals";
 import stats from "../../../shared/alerts-stats";
 
+const ConditionState = Object.freeze({
+    NOSIGSET: 0,
+    NOTBOOL: 1,
+    VALID: 2
+});
+
+let sigSet;
+let scope;
+
 /**
  * Checks the syntax of the condition with the related signal set. Used in form validation.
  * Needs to update the scope for evaluator when the signal set is changed. Call twice in this case.
@@ -14,10 +23,10 @@ import stats from "../../../shared/alerts-stats";
  * @returns {string} The result of the check, "ok" if correct, an error message if wrong.
  */
 function checkCondition(condition, sigSetId){
-    if (!sigSetId) return "You should fill in a signal set first!";
+    if (!sigSetId) return ConditionState.NOSIGSET;
 
     if (sigSet !== sigSetId) setupFakeScope(sigSetId);
-    if (!scope) return "ok";
+    if (!scope) return ConditionState.VALID;
 
     let evaluated;
     try {
@@ -26,13 +35,10 @@ function checkCondition(condition, sigSetId){
     catch(error){
         return error.message;
     }
-    if (typeof evaluated === 'boolean') return "ok";
-    else if (evaluated && evaluated.entries && evaluated.entries.length !== 0 && typeof evaluated.entries[evaluated.entries.length - 1] === 'boolean') return "ok";
-    else return "The expression does not return a boolean value!"
+    if (typeof evaluated === 'boolean') return ConditionState.VALID;
+    else if (evaluated && evaluated.entries && evaluated.entries.length !== 0 && typeof evaluated.entries[evaluated.entries.length - 1] === 'boolean') return ConditionState.VALID;
+    else return ConditionState.NOTBOOL;
 }
-
-let sigSet;
-let scope;
 
 /**
  * Fills the two variables in this file with data.
@@ -69,4 +75,4 @@ function getValueOfType(type){
     return 1;
 }
 
-export default checkCondition;
+export { checkCondition, ConditionState };
