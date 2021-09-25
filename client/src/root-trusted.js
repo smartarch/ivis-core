@@ -26,6 +26,8 @@ import NamespacesCUD from './settings/namespaces/CUD';
 
 import CloudServiceList from './settings/cloud/List'
 import CloudCUD from './settings/cloud/CUD';
+import PresetList from './settings/cloud/PresetList';
+import PresetCUD from './settings/cloud/PresetCUD';
 
 import TemplatesList from './settings/templates/List';
 import TemplatesCUD from './settings/templates/CUD';
@@ -673,7 +675,7 @@ const getStructure = t => {
                                 title: resolved => t('Service "{{name}}"', {name: resolved.service.name}),
                                 resolve: {
                                     service: params => `rest/cloud/${params.serviceId}`,
-                                    credentialDescription: params => `rest/cloud/${params.serviceId}/credDesc`
+                                    credentialDescription: params => `rest/cloud/${params.serviceId}/description`
                                 },
                                 link: params => `/settings/cloud/${params.serviceId}/edit`,
                                 navs: {
@@ -682,8 +684,44 @@ const getStructure = t => {
                                         link: params => `/settings/cloud/${params.serviceId}/edit`,
                                         panelRender: props => (
                                             <CloudCUD entity={props.resolved.service} credDesc={props.resolved.credentialDescription} />
-                                               )
+                                               ),
                                     },
+                                },
+                                children: {
+                                    preset: {
+                                        title: t('Presets'),
+                                        link: params => `/settings/cloud/${params.serviceId}/preset`,
+                                        panelRender: props => {
+                                            return (<PresetList serviceId={parseInt(props.match.params.serviceId, 10)}/>)
+                                        },
+                                        children: {
+                                            ':presetId([0-9]+)' : {
+                                                title: resolved => t('{{name}}', {name: resolved.preset.name}),
+                                                resolve: {
+                                                    preset: params => `rest/cloud/${params.serviceId}/preset/${params.presetId}`,
+                                                    presetDescriptions: params => `rest/cloud/${params.serviceId}/preset-descriptions`
+                                                },
+                                                link: params => `/settings/cloud/${params.serviceId}/preset/${params.presetId}/edit`,
+                                                navs: {
+                                                    ':action(edit|delete)': {
+                                                        title: t('Edit'),
+                                                        link: params => `/settings/cloud/${params.serviceId}/preset/${params.presetId}/edit`,
+                                                        panelRender: props => ( <PresetCUD action={props.match.params.action}
+                                                                                           entity={props.resolved.preset}
+                                                                                           serviceId={Number(props.match.params.serviceId)}
+                                                                                           descriptions={props.resolved.presetDescriptions}/> )
+                                                    }
+                                                }
+                                            },
+                                            create: {
+                                                title: t('Create'),
+                                                resolve: {
+                                                    presetDescriptions: params => `rest/cloud/${params.serviceId}/preset-descriptions`
+                                                },
+                                                panelRender: props => (<PresetCUD action="create" serviceId={Number(props.match.params.serviceId)} descriptions={props.resolved.presetDescriptions}/>)
+                                            }
+                                        }
+                                    }
                                 }
                             },
                         }

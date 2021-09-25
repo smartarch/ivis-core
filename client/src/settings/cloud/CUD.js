@@ -25,7 +25,8 @@ import {DeleteModalDialog} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 
-import CredentialsForm from './CredentialsForm'
+import CredentialsForm from './CredentialsForm';
+import PresetList from './PresetList';
 
 
 /**
@@ -56,9 +57,7 @@ export default class CUD extends Component {
             <Panel title={"Service \"" + this.props.entity.name + "\""}>
                 <>
                     <CredentialsForm description={credentialDesc} values={JSON.parse(this.props.entity.credential_values)} entityHash={this.props.entity.hash}/>
-                    {/* TODO: preset table */ }
-                    <p>Preset Table goes here...</p>
-                    <p>And here...</p>
+                    <PresetList serviceId={this.props.entity.id}/>
                 </>
             </Panel>
         );

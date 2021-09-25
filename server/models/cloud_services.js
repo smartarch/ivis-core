@@ -10,10 +10,20 @@ const hashKeys = new Set(['id', 'name', 'created', 'service_type', 'credential_v
 const hasher = require('node-object-hash')();
 const { filterObject } = require('../lib/helpers');
 
-const { getCredDescByType } = require('./cloud_config/service');
+const { getCredDescByType, getPresetDescsByType, getProxyByType } = require('./cloud_config/service');
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, hashKeys));
+}
+
+async function listTypesDTAjax(context, serviceId) {
+    const presetDescriptions = await getPresetDescsById(context, serviceId);
+    const keys = Object.keys(presetDescriptions);
+    return {
+        recordsTotal: keys.length,
+        recordsFiltered: keys.length,
+        data:  keys.map(key => [key, presetDescriptions[key].description])
+    };
 }
 
 async function _getByTx(tx, context, key, value, extraColumns = []) {
@@ -116,9 +126,34 @@ async function _validateAndPreprocess(tx, entity) {
     }
 }
 
+async function getPresetDescsById(context, id) {
+    return getPresetDescsByType((await getById(context, id)).service_type);
+}
+
+async function getCredentialsById(context, id) {
+    return JSON.parse((await getById(context, id)).credential_values);
+}
+
+async function _getProxyById(context, id) {
+    return getProxyByType((await getById(context, id)).service_type);
+}
+
+async function getByProxy(context, id, operation, body) {
+    const proxy = await _getProxyById(context, id);
+
+    if(!proxy[operation] || !proxy[operation] instanceof Function)
+        return null;
+
+    return await proxy[operation](await getCredentialsById(context, id), body);
+}
+
 module.exports.listDTAjax = listDTAjax;
 module.exports.getById = getById;
 module.exports.serverValidate = serverValidate;
 module.exports.updateWithConsistencyCheck = updateWithConsistencyCheck;
 module.exports.hash = hash;
 module.exports.getCredDescById = getCredDescById;
+module.exports.listTypesDTAjax = listTypesDTAjax;
+module.exports.getPresetDescsById = getPresetDescsById;
+module.exports.getCredentialsById = getCredentialsById;
+module.exports.getByProxy = getByProxy;
