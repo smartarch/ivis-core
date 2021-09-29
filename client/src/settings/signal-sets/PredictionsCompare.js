@@ -24,6 +24,35 @@ import { getUrl } from "../../lib/urls";
 import {PredictionTypes} from "../../../../shared/predictions";
 import {NeuralNetworkArchitecturesSpecs} from "../../../../shared/predictions-nn";
 
+/* Colors are adapted from matplotlib's and seaborn's tab20 scheme
+    (see: https://seaborn.pydata.org/tutorial/color_palettes.html)
+   Generally speaking, for a given index i, the future color is a less saturated variant of the ahead color.
+   Colors will be reused and cycled if more than 10 models are plotted. */
+const colorsFuture = [
+    'rgb(31,119,180)',
+    'rgb(255,127,14)',
+    'rgb(44,160,44)',
+    'rgb(214,39,40)',
+    'rgb(148,103,189)',
+    'rgb(140,86,75)',
+    'rgb(227,119,194)',
+    'rgb(127,127,127)',
+    'rgb(188,189,34)',
+    'rgb(23,190,207)'
+];
+const colorsAhead = [
+    'rgb(174,199,232)',
+    'rgb(255,187,120)',
+    'rgb(152,223,138)',
+    'rgb(255,152,150)',
+    'rgb(197,176,213)',
+    'rgb(196,156,148)',
+    'rgb(247,182,210)',
+    'rgb(199,199,199)',
+    'rgb(219,219,141)',
+    'rgb(158,218,229)'
+];
+
 @withComponentMixins([
     withTranslation,
     intervalAccessMixin()
@@ -141,10 +170,11 @@ class PredictionsEvaluationTableMulti extends Component {
 
         const loading = t('Loading...');
 
-        for (let modelId of this.props.models) {
+        for (let [idx, modelId] of this.props.models.entries()) {
             const modelInfo = this.state.modelInfos[modelId] || {};
             const row = (
                 <tr id={modelId} key={modelId}>
+                    <td style={{backgroundColor: colorsFuture[idx % 10], width: 0}}/>
                     <td id="1">{modelInfo.name || loading}</td>
                     <td id="2">{modelInfo.type || loading}</td>
                     <td id="3">{modelInfo.aheadCount || loading}</td>
@@ -190,6 +220,7 @@ class PredictionsEvaluationTableMulti extends Component {
                 <table className={'table table-striped table-bordered'}>
                     <thead>
                         <tr>
+                            <th scope="column"/>
                             <th scope="column">{t('Model')}</th>
                             <th scope="column">{t('Type')}</th>
                             <th scope="column">{t('Ahead')}</th>
@@ -278,7 +309,7 @@ class PredictionsHyperparametersTable extends Component {
         // get a set of all hyperparameters for all models
         const hyperparameters = new Map();
         for (const trainingResult of this.state.trainingResults) {
-            if (trainingResult.model.type !== PredictionTypes.NN)
+            if (!trainingResult.model || trainingResult.model.type !== PredictionTypes.NN)
                 continue;
 
             const architecture = trainingResult.tuned_parameters.architecture;
@@ -294,8 +325,8 @@ class PredictionsHyperparametersTable extends Component {
         }
 
         // render the hyperparameters
-        for (const trainingResult of this.state.trainingResults) {
-            if (trainingResult.model.type !== PredictionTypes.NN)
+        for (const [idx, trainingResult] of this.state.trainingResults.entries()) {
+            if (!trainingResult.model || trainingResult.model.type !== PredictionTypes.NN)
                 continue;
 
             const architectureParams = trainingResult.tuned_parameters.architecture_params;
@@ -314,6 +345,7 @@ class PredictionsHyperparametersTable extends Component {
             const architectureSpec = NeuralNetworkArchitecturesSpecs[architecture];
 
             rows.push(<tr key={trainingResult.model.id}>
+                <td style={{backgroundColor: colorsFuture[idx % 10], width: 0}}/>
                 <td key={"name"}>{trainingResult.model.name || loading}</td>
                 <td key={"architecture"}>{architectureSpec.label || loading}</td>
                 {columns}
@@ -326,6 +358,7 @@ class PredictionsHyperparametersTable extends Component {
                 <table className={'table table-striped table-bordered'}>
                     <thead>
                         <tr>
+                            <th scope="column"/>
                             <th scope="column">{t('Model')}</th>
                             <th scope="column">{t('Architecture')}</th>
                             {header}
@@ -365,36 +398,6 @@ class PredictionsGraph extends Component {
     }
 
     async getConfig() {
-        // colors are adapted from matplotlib's and seaborn's tab20 scheme
-        // see: https://seaborn.pydata.org/tutorial/color_palettes.html
-        // generally speaking, for a given index i, the future color is a less
-        // saturated variant of the ahead color.
-        const colorsFuture = [
-            'rgb(31,119,180)',
-            'rgb(255,127,14)',
-            'rgb(44,160,44)',
-            'rgb(214,39,40)',
-            'rgb(148,103,189)',
-            'rgb(140,86,75)',
-            'rgb(227,119,194)',
-            'rgb(127,127,127)',
-            'rgb(188,189,34)',
-            'rgb(23,190,207)'
-        ];
-        const colorsAhead = [
-            'rgb(174,199,232)',
-            'rgb(255,187,120)',
-            'rgb(152,223,138)',
-            'rgb(255,152,150)',
-            'rgb(197,176,213)',
-            'rgb(196,156,148)',
-            'rgb(247,182,210)',
-            'rgb(199,199,199)',
-            'rgb(219,219,141)',
-            'rgb(158,218,229)'
-        ];
-        // colors will be reused and cycled if more than 10 models are plotted
-
         let config = {
             signalSets: [
                 {
