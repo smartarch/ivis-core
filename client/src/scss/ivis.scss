@@ -162,6 +162,10 @@ body.ivis {
       }
     }
   }
+
+  table.dataTable tr.selected {
+    background-color: #20a8d833;
+  }
 }
 
 @media print {
