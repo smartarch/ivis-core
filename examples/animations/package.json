@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Environment for examples.",
   "directories": {
-    "example": "examples"
+    "example": ".."
   },
   "author": "Tomas Bures",
   "license": "MIT",
