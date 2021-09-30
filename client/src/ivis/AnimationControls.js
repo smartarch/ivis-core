@@ -205,7 +205,8 @@ class ChangeSpeedDropdown extends Component {
     static defaultProps = {
         classNames: {},
         steps: defaultPlaybackSpeedSteps,
-        factorFormat: (f) => format("~s")(f),
+        // TODO nicer format this is seconds
+        factorFormat: (f) => moment.duration(f, 'seconds').humanize(),
     }
 
     constructor(props) {

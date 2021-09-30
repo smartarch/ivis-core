@@ -325,6 +325,7 @@ class CPU extends Component {
                     config={config}
                     height={300}
                     withBrush={false}
+                    withZoom={false}
                 />
             </Frame>
         );

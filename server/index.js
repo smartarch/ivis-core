@@ -21,9 +21,12 @@ const { AppType } = require('../shared/app');
 const bluebird = require('bluebird');
 const savePdf = require('./lib/pdf-export');
 
+
 const serverMonitorAnimation = require('../examples/animations/server-monitor').create();
 
-emCommonDefaults.setDefaults(em);
+const {seed} = require("./knex/seeds/italy_covid_data");
+
+    emCommonDefaults.setDefaults(em);
 em.set('animation.monitor', serverMonitorAnimation);
 
 async function initAndStart() {
