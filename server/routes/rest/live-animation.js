@@ -3,7 +3,7 @@
 const router = require('../../lib/router-async').create();
 const log = require('../../lib/log');
 const em = require('../../lib/extension-manager');
-const {passport} = require("../../lib/passport");
+const passport = require('../../lib/passport');
 
 router.use('/animation/:animationId', passport.loggedIn, (req, res, next) => {
     const service = em.get('animation.' + req.params.animationId, null);
