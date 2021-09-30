@@ -21,7 +21,10 @@ const { AppType } = require('../shared/app');
 const bluebird = require('bluebird');
 const savePdf = require('./lib/pdf-export');
 
+const serverMonitorAnimation = require('../examples/animations/server-monitor').create();
+
 emCommonDefaults.setDefaults(em);
+em.set('animation.monitor', serverMonitorAnimation);
 
 async function initAndStart() {
     function createServer(appType, appName, host, port, isHttps, certsConfig, callback) {
@@ -48,7 +51,7 @@ async function initAndStart() {
 
         server.on('listening', () => {
             const addr = server.address();
-            log.info('Express', `WWW server [${appName}] listening on HTTPS port ${addr.port}`);
+            log.info('Express', `WWW server [${appName}] listening on ${isHttps ? "HTTPS" : "HTTP" } port ${addr.port}`);
         });
 
         em.invoke('server.setup', server, app, appType);

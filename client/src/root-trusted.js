@@ -185,7 +185,7 @@ const getStructure = t => {
                         title: t('Sample workspace 2'),
                         link: '/workspaces/sample2',
                         panelComponent: SamplePanel2,
-                    }
+                    },
                 }
             },
             "fullscreen-panel": {
