@@ -318,7 +318,7 @@ EOT
 
 function doForAllModules {
     # Install required node packages
-    for idx in client shared server test-embedd ivis-core/client ivis-core/server ivis-core/shared ivis-core/embedding ./; do
+    for idx in client shared server test-embedd ivis-core/client ivis-core/server ivis-core/shared ivis-core/embedding; do
         if [ -d $idx ]; then
             ($1 $idx)
         fi

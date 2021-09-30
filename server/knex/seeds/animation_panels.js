@@ -10,7 +10,7 @@ const exampleDirs = [
     'recorded_animation_svg_line_pie_charts',
     'live_animation_server_monitor'
 ].map(
-    dirName => path.join('..', '..', 'examples', 'templates', dirName)
+    dirName => path.join(__dirname, '..', '..', '..', 'examples', 'templates', dirName)
 );
 const templates = [
     {
