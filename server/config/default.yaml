@@ -24,6 +24,10 @@ alerts:
   maxEmailRecipients: 3
   maxSMSRecipients: 1
 
+examples:
+  # For server monitor template (installing packages might be required)
+  serverMonitorEnabled: false
+
 # FILL IN BEFORE USE !!! or leave empty, if you do not want to use it
 email:
   host:
@@ -40,9 +44,9 @@ SMS:
 
 mysql:
   host: localhost
-  user: ivis
+  user: ivis-core
   password: ivis
-  database: ivis
+  database: ivis-core
   port: 3306
   charset: utf8mb4
   timezone: local

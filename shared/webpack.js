@@ -6,6 +6,7 @@ const externalsLibs = [
     'moment',
     'prop-types',
     'd3-color',
+    'd3-zoom',
     'd3-format',
     'd3-selection',
     'd3-array',
