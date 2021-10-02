@@ -1,6 +1,5 @@
 'use strict';
 
-const config = require('../lib/config');
 const knex = require('../lib/knex');
 const shares = require('./shares');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -8,21 +7,24 @@ const interoperableErrors = require('../../shared/interoperable-errors');
 const dtHelpers = require('../lib/dt-helpers');
 const hashKeys = new Set(['id', 'name', 'created', 'service_type', 'credential_values']);
 const hasher = require('node-object-hash')();
-const { filterObject } = require('../lib/helpers');
+const {filterObject} = require('../lib/helpers');
 
-const { getCredDescByType, getPresetDescsByType, getProxyByType } = require('./cloud_config/service');
+const {getCredDescByType, getPresetDescsByType, getProxyByType} = require('./cloud_config/service');
 
 function hash(entity) {
     return hasher.hash(filterObject(entity, hashKeys));
 }
 
-async function listTypesDTAjax(context, serviceId) {
+async function listTypesDTAjax(context, params, serviceId) {
     const presetDescriptions = await getPresetDescsById(context, serviceId);
     const keys = Object.keys(presetDescriptions);
-    return {
+    const data = keys.map(key => [key, presetDescriptions[key].description]);
+
+    // this is to mock the original implementation (data in db)
+    return params.operation === "getBy" ? data : {
         recordsTotal: keys.length,
         recordsFiltered: keys.length,
-        data:  keys.map(key => [key, presetDescriptions[key].description])
+        data: data
     };
 }
 
@@ -40,7 +42,7 @@ async function serverValidate(context, data) {
     const credentialDescription = getCredDescByType((await getById(context, data.id)).service_type);
 
     for (const fieldDescription of credentialDescription.fields) {
-        if(data[fieldDescription.name] && data[fieldDescription.name].toString().length != 0)
+        if (data[fieldDescription.name] && data[fieldDescription.name].toString().length !== 0)
             result[fieldDescription.name] = {};
     }
 
@@ -71,16 +73,15 @@ async function getCredDescById(context, id) {
     return getCredDescByType((await getById(context, id)).service_type);
 }
 
-async function _getFieldDescsById(context, id)
-{
+async function _getFieldDescsById(context, id) {
     const service = await _getBy(context, 'id', id);
-    return getCredDescByType(service.service_type).fields.map(fieldDesc => { return {name: fieldDesc.name, type: fieldDesc.type}; } );
+    return getCredDescByType(service.service_type).fields.map(fieldDesc => ({name: fieldDesc.name, type: fieldDesc.type}));
 }
 
 async function updateWithConsistencyCheck(context, service) {
     // the `service` object DOES NOT correspond with the schema of cloud_services!
     // the `service` object merely contains modified values of FIELDS
-        // note: FIELDS are part of the credentials_description column value (stringified JSON)
+    // note: FIELDS are part of the credentials_description column value (stringified JSON)
     // thus only credentials_description will actually be modified
     await knex.transaction(async tx => {
         const existing = await tx('cloud_services').where('id', service.id).first();
@@ -92,19 +93,19 @@ async function updateWithConsistencyCheck(context, service) {
         if (existingHash !== service.originalHash) {
             throw new interoperableErrors.ChangedError();
         }
- // TODO: permissions
- /*
-        await shares.enforceEntityPermissionTx(tx, context, 'namespace', service.namespace, 'manageCloud');
-*/
+        // TODO: permissions
+        /*
+               await shares.enforceEntityPermissionTx(tx, context, 'namespace', service.namespace, 'manageCloud');
+        */
         await _validateAndPreprocess(tx, service);
         const result = JSON.parse((await getById(tx, service.id)).credential_values);
         const credentialsDescription = await getCredDescById(tx, service.id);
         // actual modification of the credentials_description column's value
         for (let i = 0; i < credentialsDescription.fields.length; i++) {
             // if received data modify a field 'X',
-                // write changes to the value of field 'X' using the received data
+            // write changes to the value of field 'X' using the received data
             let fieldName = credentialsDescription.fields[i].name;
-            if(service[fieldName])
+            if (service[fieldName])
                 result[fieldName] = service[fieldName];
         }
 
@@ -118,9 +119,8 @@ async function _validateAndPreprocess(tx, entity) {
 
     // TODO: specialize this more
     for (const {name, type} of fields) {
-        if(type === "text")
-        {
-            if(!entity[name] || entity[name].length === 0)
+        if (type === "text") {
+            if (!entity[name] || entity[name].length === 0)
                 throw new Error("No fields shall be empty!");
         }
     }
@@ -141,7 +141,7 @@ async function _getProxyById(context, id) {
 async function getByProxy(context, id, operation, body) {
     const proxy = await _getProxyById(context, id);
 
-    if(!proxy[operation] || !proxy[operation] instanceof Function)
+    if (!proxy[operation] || !proxy[operation] instanceof Function)
         return null;
 
     return await proxy[operation](await getCredentialsById(context, id), body);

@@ -709,7 +709,9 @@ const getStructure = t => {
                                                         panelRender: props => ( <PresetCUD action={props.match.params.action}
                                                                                            entity={props.resolved.preset}
                                                                                            serviceId={Number(props.match.params.serviceId)}
-                                                                                           descriptions={props.resolved.presetDescriptions}/> )
+                                                                                           descriptions={props.resolved.presetDescriptions}
+                                                                                           values={JSON.parse(props.resolved.preset.specification_values)}
+                                                        /> )
                                                     }
                                                 }
                                             },

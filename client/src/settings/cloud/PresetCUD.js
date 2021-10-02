@@ -12,21 +12,22 @@ import {
     FormSendMethod,
     InputField,
     TableSelect,
-    TextArea,
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
 import {withErrorHandling} from "../../lib/error-handling";
-import interoperableErrors from "../../../../shared/interoperable-errors";
-import passwordValidator from "../../../../shared/password-validator";
-import validators from "../../../../shared/validators";
-import {NamespaceSelect} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 
 import RenderSwitch from './presetFormFragment/renderSwitch';
 
+/**
+ * A default component handling the preset forms
+ * generates common fields (name, description, preset type) and
+ * then delegates the preset type in order to render preset-type-specific fields
+ * (using RenderSwitch component)
+ */
 @withComponentMixins([
     withTranslation,
     withForm,
@@ -37,31 +38,49 @@ import RenderSwitch from './presetFormFragment/renderSwitch';
 export default class CUD extends Component {
     constructor(props) {
         super(props);
+        // for preset type change detection
         this.state = {
-            prev_preset_type: undefined,
-            curr_preset_type: undefined,
+            currentPresetType: undefined,
+            values: this.props.values
         };
 
-        this.initForm({ });
-    }
-    componentDidUpdate(prevProps, prevState, snapshot) {
-        let new_value = this.getFormValue("preset_type") ? this.getFormValue("preset_type") : undefined;
-
-        if (new_value !== this.state.curr_preset_type) {
-            this.setState((currentState) => ({
-                prev_preset_type: currentState.curr_preset_type,
-                curr_preset_type: new_value
-            }));
-            this.repopulatePreset(new_value);
-        }
+        this.initForm({
+            serverValidation: {
+                url: `rest/cloud/${props.serviceId}/preset-validate`,
+                changed: ['name', 'description', 'preset_type'],
+                extra: ['service', 'preset_type']
+            }
+        });
     }
 
     static propTypes = {
         action: PropTypes.string.isRequired,
+        // the initial entity, used only to initialize the form
         entity: PropTypes.object,
         descriptions: PropTypes.object.isRequired,
+        // the initial values, used only to initialize state and the form
         values: PropTypes.object,
         serviceId: PropTypes.number.isRequired
+    };
+
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        let newPresetType = this.getFormValue("preset_type") ? this.getFormValue("preset_type") : undefined;
+
+        if (newPresetType !== this.state.currentPresetType) {
+            // reset any errors associated with the fields of the old preset type to be replaced
+            if (this.props.descriptions[this.state.currentPresetType]) {
+                this.props.descriptions[this.state.currentPresetType].fields.forEach(({name}) => {
+                    this.state.formState.getIn([name, "error"], null);
+                });
+            }
+
+            this.setState({
+                currentPresetType: newPresetType
+            });
+
+            this.repopulatePresetSpecificFields(newPresetType);
+        }
     }
 
     componentDidMount() {
@@ -70,9 +89,12 @@ export default class CUD extends Component {
                 id: this.props.entity.id,
                 hash: this.props.entity.hash, // for server-side consistency check
                 name: this.props.entity.name,
-                description: this.props.entity.description
+                description: this.props.entity.description,
+                service: this.props.serviceId,
+                preset_type: this.props.entity.preset_type,
             };
 
+            // inject the preset-specific fields
             this.props.descriptions[this.props.entity.preset_type].fields.forEach(fieldDesc =>
                 values[fieldDesc.name] = this.props.values[fieldDesc.name]);
 
@@ -80,44 +102,75 @@ export default class CUD extends Component {
         } else {
             let values = {
                 name: '',
-                description: ''
+                description: '',
+                service: this.props.serviceId
             };
 
-            // TODO: specialize for different types
-            // this.props.description.fields.forEach(fieldDesc => values[fieldDesc.name] = '');
-
             this.populateFormValues(values);
         }
     }
 
-    repopulatePreset(presetType) {
-        let values = {};
-        if(this.props.descriptions[presetType])
-        {
-            this.props.descriptions[presetType].fields.forEach(fieldDesc =>
-                values[fieldDesc.name] = this.state.formState.get("data").get(fieldDesc.name) ? this.state.formState.get("data").get(fieldDesc.name).get("value") : '');
+    repopulatePresetSpecificFields(presetType) {
+        if (this.props.descriptions[presetType]) {
+            let values = {};
+            this.props.descriptions[presetType].fields.forEach(fieldDesc => {
+                const fieldData = this.state.formState.get("data").get(fieldDesc.name);
+                values[fieldDesc.name] = fieldData ? fieldData.get("value") : '';
+            });
             this.populateFormValues(values);
         }
-    }
-
-    getFormValuesMutator(data) {
-        // maybe for mutating the vm_size data?
     }
 
     localValidateFormValues(state) {
         const t = this.props.t;
-        const isEdit = !!this.props.entity;
 
-        const name = state.getIn(['name', 'value']);
-        if(!name || name.trim().length === 0) {
-            state.setIn(['name', 'error'], t('Name must not be empty'));
+        const checkEmpty = ({id, label}) => {
+            const value = state.getIn([id, 'value']);
+            if (!value || value.trim().length === 0) {
+                state.setIn([id, 'error'], t(label + ' must not be empty'));
+            } else {
+                state.setIn([id, 'error'], null);
+            }
+        };
+
+        const toCheck = [{id: 'name', label: 'Name'}, {id: 'description', label: 'Description'}];
+
+        toCheck.forEach(field => checkEmpty(field));
+
+        const preset_type = state.getIn(['preset_type', 'value']);
+        if (!preset_type || preset_type.trim().length === 0) {
+            state.setIn(['preset_type', 'error'], t('Preset Type must be set'));
+            return; // return because the following code depends on the correctness of the preset_type
+        } else if (!this.props.descriptions[preset_type]) {
+            state.setIn(['preset_type', 'error'], t('Incorrect preset type is set'));
+            return;
+        } else {
+            state.setIn(['preset_type', 'error'], null);
+        }
+
+        for (const {name, label} of this.props.descriptions[preset_type].fields) {
+            const value = state.getIn([name, 'value']);
+            if (!value || value.trim().length === 0) {
+                state.setIn([name, 'error'], t(label + ' must be set'));
+            } else {
+                state.setIn([name, 'error'], null);
+            }
         }
     }
 
     submitFormValuesMutator(data) {
-        let fields = this.props.descriptions && this.state.curr_preset_type && this.props.descriptions[this.state.curr_preset_type] ? this.props.descriptions[this.state.curr_preset_type].fields : [];
-        let additional_data = fields.map(fieldDesc => fieldDesc.name);
-        return filterData(data, [...['name', 'description'], ...additional_data]);
+        const specValuesKey = "specification_values";
+        let fields = (this.props.descriptions && this.state.currentPresetType && this.props.descriptions[this.state.currentPresetType]) ? this.props.descriptions[this.state.currentPresetType].fields : [];
+        let additionalFields = fields.map(fieldDesc => fieldDesc.name);
+
+        data[specValuesKey] = {};
+        for (const fieldName of additionalFields) {
+            if (data[fieldName])
+                data[specValuesKey][fieldName] = data[fieldName];
+        }
+
+        data['service'] = this.props.serviceId;
+        return filterData(data, ['name', 'description', 'service', 'preset_type', specValuesKey]);
     }
 
     @withFormErrorHandlers
@@ -127,32 +180,34 @@ export default class CUD extends Component {
         let sendMethod, url;
         if (this.props.entity) {
             sendMethod = FormSendMethod.PUT;
-            url = `rest/users/${this.props.entity.id}`
+            url = `rest/cloud/${this.props.serviceId}/preset/${this.props.entity.id}`;
         } else {
             sendMethod = FormSendMethod.POST;
-            url = 'rest/users'
+            url = `rest/cloud/${this.props.serviceId}/preset`;
         }
 
         try {
             this.disableForm();
-            this.setFormStatusMessage('info', t('Saving user ...'));
+            this.setFormStatusMessage('info', t('Saving preset ...'));
 
             const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
             if (submitResult) {
+                // here a forced refresh is preferred since updating the overall structure might preset some
+                // issues in the future, however, present implementation makes a manual refresh required when only saving
                 if (this.props.entity) {
                     if (submitAndLeave) {
-                        this.navigateToWithFlashMessage('/settings/users', 'success', t('User udpated'));
+                        this.navigateToWithFlashMessage(`/settings/cloud/${this.props.serviceId}`, 'success', t('Preset udpated'));
                     } else {
-                        await this.getFormValuesFromURL(`rest/users/${this.props.entity.id}`);
-                        this.enableForm();
-                        this.setFormStatusMessage('success', t('User udpated'));
+                        // TODO: seems like some kind of caching issue I
+                        this.navigateToWithFlashMessage(`/settings/cloud/${this.props.serviceId}/preset/${this.props.entity.id}/edit`, 'success', t('Preset updated'));
                     }
                 } else {
                     if (submitAndLeave) {
-                        this.navigateToWithFlashMessage('/settings/users', 'success', t('User saved'));
+                        this.navigateToWithFlashMessage(`/settings/cloud/${this.props.serviceId}`, 'success', t('Preset saved'));
                     } else {
-                        this.navigateToWithFlashMessage(`/settings/users/${submitResult}/edit`, 'success', t('User saved'));
+                        // TODO: seems like some kind of caching issue II
+                        this.navigateToWithFlashMessage(`/settings/cloud/${this.props.serviceId}/preset/${submitResult}/edit`, 'success', t('Preset saved'));
                     }
                 }
             } else {
@@ -161,26 +216,6 @@ export default class CUD extends Component {
             }
         } catch (error) {
             this.enableForm();
-
-            if (error instanceof interoperableErrors.DuplicitNameError) {
-                this.setFormStatusMessage('danger',
-                    <span>
-                        <strong>{t('Your updates cannot be saved.')}</strong>{' '}
-                        {t('The username is already assigned to another user.')}
-                    </span>
-                );
-                return;
-            }
-
-            if (error instanceof interoperableErrors.DuplicitEmailError) {
-                this.setFormStatusMessage('danger',
-                    <span>
-                        <strong>{t('Your updates cannot be saved.')}</strong>{' '}
-                        {t('The email is already assigned to another user.')}
-                    </span>
-                );
-                return;
-            }
 
             throw error;
         }
@@ -197,33 +232,38 @@ export default class CUD extends Component {
             {data: 1, title: t('Description'), orderable: false}
         ];
 
+
         return (
             <Panel title={isEdit ? t('Edit Preset') : t('Create Preset')}>
                 {isEdit && canDelete &&
                 <DeleteModalDialog
                     stateOwner={this}
                     visible={this.props.action === 'delete'}
-                    // TODO
-                    deleteUrl={`rest/users/${this.props.entity.id}`}
-                    backUrl={`/settings/users/${this.props.entity.id}/edit`}
-                    successUrl="/settings/users"
-                    deletingMsg={t('Deleting user ...')}
-                    deletedMsg={t('User deleted')}/>
+                    deleteUrl={`rest/cloud/${this.props.serviceId}/preset/${this.props.entity.id}`}
+                    backUrl={`/settings/cloud/${this.props.serviceId}/edit`}
+                    successUrl={`/settings/cloud/${this.props.serviceId}`}
+                    deletingMsg={t('Deleting preset ...')}
+                    deletedMsg={t('Preset deleted')}/>
                 }
 
                 <Form stateOwner={this} onSubmitAsync={::this.submitHandler}>
-
+                    <InputField key="service" id="service" type="hidden" value={this.props.serviceId}/>
                     <InputField id="name" label={t('Name')}/>
                     <InputField id="description" label={t('Description')}/>
 
                     <TableSelect id="preset_type" label={t('Preset Type')} withHeader dropdown
-                                 dataUrl={`rest/cloud/${this.props.serviceId.toString()}/preset-types`} columns={presetTypesColumns}
+                                 dataUrl={`rest/cloud/${this.props.serviceId.toString()}/preset-types`}
+                                 columns={presetTypesColumns}
                                  selectionLabelIndex={1} selectionKeyIndex={0}/>
 
-                    <RenderSwitch formOwner={this} preset_type={this.state.curr_preset_type} presetEntity={this.props.entity} serviceId={this.props.serviceId} descriptions={this.props.descriptions} values={this.props.values}  />
+                    <RenderSwitch formOwner={this} preset_type={this.state.currentPresetType}
+                                  serviceId={this.props.serviceId} descriptions={this.props.descriptions}
+                                  values={this.state.values}/>
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
+                        <Button type="submit" className="btn-primary" icon="check" label={t('saveAndLeave')}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {isEdit && canDelete &&
                         <LinkButton className="btn-danger" icon="remove" label={t('Delete Preset')}
                                     to={`/settings/cloud/${this.props.entity.service.toString()}/preset/${this.props.entity.id}/delete`}/>}

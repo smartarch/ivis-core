@@ -9,19 +9,29 @@ function getServiceObj(type) {
     switch (type) {
         case 'azureDefault':
             return azureDefault;
-        default:
-            throw new Error("Unsupported service");
+        default: {
+            console.error("Unsupported service. service type:");
+            console.error(type);
+            return null;
+        }
     }
 }
 
 function _tryCall(type, funName) {
     let serviceObj = getServiceObj(type);
+    if(!serviceObj) {
+        return null;
+    }
 
-    if([getCredentialDescription, getPresetDescriptions, getProxy].indexOf(funName) === -1)
-        throw new Error("Unexpected function is required. ( " + funName + " )");
+    if([getCredentialDescription, getPresetDescriptions, getProxy].indexOf(funName) === -1) {
+        console.error("Unexpected function is required. ( " + funName + " )");
+        return null;
+    }
 
-    if(!serviceObj[funName])
-        throw new Error(funName + " function is not defined!");
+    if(!serviceObj[funName]) {
+        console.error(funName + " function is not defined!");
+        return null;
+    }
 
     return serviceObj[funName]()
 }
