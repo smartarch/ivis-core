@@ -226,5 +226,23 @@ class Ivis:
     def get_job_file(self, jobId, filename):
         return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/rest/file-by-name/job/file/{jobId}/{quote(filename)}")
 
+    def api_get(self, url, *args, **kwargs):
+        """
+        Makes a GET request to the API to the specified `url`.
+
+        See documentation of 'requests' package (https://docs.python-requests.org/en/latest/user/quickstart/) for more
+        details on how to pass request parameters (dictionary to the `data` argument), etc.
+        """
+        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/{url}", *args, **kwargs)
+
+    def api_post(self, url, *args, **kwargs):
+        """
+        Makes a POST request to the API to the specified `url`.
+
+        See documentation of 'requests' package (https://docs.python-requests.org/en/latest/user/quickstart/) for more
+        details on how to pass request parameters (dictionary to the `data` argument), etc.
+        """
+        return requests.post(f"{self._sandboxUrlBase}/{self._accessToken}/{url}", *args, **kwargs)
+
 
 ivis = Ivis()
