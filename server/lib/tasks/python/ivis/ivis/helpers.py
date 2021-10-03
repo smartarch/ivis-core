@@ -224,7 +224,7 @@ class Ivis:
         return requests.post(url, files={"files[]": file})
 
     def get_job_file(self, jobId, filename):
-        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/files/job/file/{jobId}/{quote(filename)}")
+        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/rest/file-by-name/job/file/{jobId}/{quote(filename)}")
 
 
 ivis = Ivis()

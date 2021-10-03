@@ -26,6 +26,12 @@ router.deleteAsync('/files/:type/:subType/:fileId', passport.loggedIn, async (re
     return res.json();
 });
 
+router.getAsync('/file-by-name/:type/:subType/:entityId/:fileName', passport.loggedIn, async (req, res) => {
+    const file = await files.getFileByOriginalName(req.context, req.params.type, req.params.subType, req.params.entityId, req.params.fileName);
+    res.type(file.mimetype);
+    return res.download(file.path, file.name);
+});
+
 fileHelpers.installUploadHandler(router, '/files/:type/:subType/:entityId');
 
 module.exports = router;

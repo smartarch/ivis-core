@@ -2,6 +2,8 @@
 Code for running the trained models for prediction.
 """
 import os
+import requests
+import sys
 from pathlib import Path
 from uuid import uuid4
 import numpy as np
@@ -235,6 +237,10 @@ def load_model(model_factory=None):
         model_response = ivis.get_job_file(training_job, model_file)
         file.write(model_response.content)
 
+        if model_response.status_code != requests.codes.ok:
+            print("Error: \n", model_response.text)
+            model_response.raise_for_status()
+
     print("Loading TensorFlow model...")
     model = tf.keras.models.load_model(model_path)
 
@@ -248,6 +254,10 @@ def load_model(model_factory=None):
     print("Downloading prediction parameters...")
     params_response = ivis.get_job_file(training_job, params_file)
     prediction_parameters = PredictionParams().from_json(params_response.text)
+
+    if params_response.status_code != requests.codes.ok:
+        print("Error: \n", params_response.text)
+        params_response.raise_for_status()
 
     if model_factory is None:
         model_factory = architecture.get_model_factory(prediction_parameters)
