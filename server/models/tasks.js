@@ -33,6 +33,66 @@ function getQueryFun(source) {
         .innerJoin('namespaces', 'namespaces.id', 'tasks.namespace')
 }
 
+function getCodePath(taskId) {
+    return path.join(taskHandler.getTaskDevelopmentDir(taskId), PYTHON_JOB_FILE_NAME);
+}
+
+async function getCodeForTask(taskId) {
+    const codeFile = getCodePath(taskId);
+    const hasCode = await fs.existsAsync(codeFile);
+    if (hasCode) {
+        return await fs.readFileAsync(codeFile, 'utf-8')
+    }
+    return '';
+}
+
+async function saveCodeForTask(taskId, code = '') {
+    const codeFile = getCodePath(taskId);
+    await fs.mkdirAsync(taskHandler.getTaskDevelopmentDir(taskId), { recursive: true });
+    await fs.writeFileAsync(codeFile, code);
+}
+
+async function _insertTask(tx, task) {
+    const dbTask = {
+        ...task,
+        settings: {...task.settings}
+    };
+
+    const code = dbTask.settings.code;
+    delete dbTask.settings.code;
+    dbTask.settings = JSON.stringify(dbTask.settings);
+    const [id] = await tx('tasks').insert(dbTask);
+    await saveCodeForTask(id, code);
+
+    return id;
+}
+
+async function _updateTask(tx, taskId, task) {
+    const dbTask = {
+        ...task,
+        settings: {...task.settings}
+    };
+
+    const code = dbTask.settings.code;
+    delete dbTask.settings.code;
+    dbTask.settings = JSON.stringify(dbTask.settings);
+    await tx('tasks').where('id', taskId).update(dbTask);
+    if (code) {
+        await saveCodeForTask(taskId, code);
+    }
+}
+
+async function _getTask(tx, id) {
+    const taskCodePromise = getCodeForTask(id);
+    const taskDbPromise = tx('tasks').where('id', id).first();
+    const [task, code] = await Promise.all([taskDbPromise, taskCodePromise]);
+    if (task) {
+        task.settings = JSON.parse(task.settings);
+        task.build_output = JSON.parse(task.build_output);
+        task.settings.code = code;
+    }
+    return task;
+}
 
 /**
  * Returns task.
@@ -121,8 +181,7 @@ async function create(context, task) {
         filteredEntity.build_state = BuildState.SCHEDULED;
         filteredEntity.source = TaskSource.USER;
 
-        const ids = await tx('tasks').insert(filteredEntity);
-        const id = ids[0];
+        const id = await _insertTask(tx, filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, {entityTypeId: 'task', entityId: id});
 
