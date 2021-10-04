@@ -56,6 +56,7 @@ async function getCodeForTask(taskId) {
 
 async function saveCodeForTask(taskId, code = '') {
     const codeFile = getCodePath(taskId);
+    await fs.mkdirAsync(taskHandler.getTaskDevelopmentDir(taskId), { recursive: true });
     await fs.writeFileAsync(codeFile, code);
 }
 
@@ -186,7 +187,7 @@ async function create(context, task) {
         filteredEntity.build_state = BuildState.SCHEDULED;
         filteredEntity.source = TaskSource.USER;
 
-        const id = _insertTask(tx, filteredEntity);
+        const id = await _insertTask(tx, filteredEntity);
 
         await shares.rebuildPermissionsTx(tx, {entityTypeId: 'task', entityId: id});
 
