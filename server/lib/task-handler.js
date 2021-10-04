@@ -106,11 +106,11 @@ async function init() {
         taskEmitter.emit(msg.type, msg.data)
     });
 
+
     taskEmitter.on(TaskEventTypes.ACCESS_TOKEN, async (data) => {
         const {
             jobId,
             runId,
-            accessToken
         } = data;
 
         const token = await getJobRestrictedAccessToken(jobId);
@@ -123,6 +123,27 @@ async function init() {
                 accessToken: token
             }
         });
+    });
+
+    taskEmitter.on(TaskEventTypes.ACCESS_TOKEN_REFRESH, async (data) => {
+        const {
+            jobId,
+            accessToken
+        } = data;
+
+        try {
+            const job = await knex('jobs').where('jobs.id', jobId).first();
+            // Just faking context here as the request for refresh comes from our system
+            await users.refreshRestrictedAccessToken(
+                {
+                    user: {
+                        id: job.owner,
+                    }
+                }
+                , accessToken);
+        } catch (e) {
+            log.error(e);
+        }
     });
 
     esEmitter
@@ -342,14 +363,12 @@ async function cleanBuilds() {
     }
 }
 
-
 async function getJobRestrictedAccessToken(jobId) {
     let token = null;
     try {
-
         const job = await knex('jobs').where('jobs.id', jobId).first();
         if (job.owner) {
-            token = users.getRestrictedAccessToken(contextHelpers.getAdminContext(), 'job', {jobId}, job.owner);
+            token = await users.getRestrictedAccessToken(contextHelpers.getAdminContext(), 'job', {jobId}, job.owner);
         }
     } catch (e) {
         log.error(e);

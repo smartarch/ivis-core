@@ -10,7 +10,8 @@ const EventTypes = {
     STOP: 'stop',
     FAIL: 'fail',
     SUCCESS: 'success',
-    ACCESS_TOKEN: 'access_token'
+    ACCESS_TOKEN: 'access_token',
+    ACCESS_TOKEN_REFRESH: 'access_token_refresh'
 }
 
 function getOutputEventType(runId) {
