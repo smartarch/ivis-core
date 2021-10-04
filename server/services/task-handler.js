@@ -879,6 +879,7 @@ async function handleRun(workEntry) {
         // TODO move interaction, as running and stopping, to run manager
         // there is a lot of overhead for running a job so it will serve as intermediate layer for handlers
         const runManager = createRunManager(jobId, runId, {
+            config: runConfig,
             onRunFail,
             onRunSuccess: () => {
                 inProcessMsgs.delete(runId);
