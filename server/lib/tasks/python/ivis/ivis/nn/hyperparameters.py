@@ -103,7 +103,7 @@ class Hyperparameters:
         return result
 
 
-def get_tuned_parameters(parameters, hp):
+def get_tuned_parameters(parameters, hp, optimized_only=False):
     """
     Creates a (shallow) copy of the parameters with all tunable values replaced with the found best value.
 
@@ -113,6 +113,8 @@ def get_tuned_parameters(parameters, hp):
         Original job parameters.
     hp : kt.HyperParameters
         Best found hyperparameters.
+    optimized_only : bool
+        Only return those parameters which are tunable (have "optimizable_type").
 
     Returns
     -------
@@ -122,16 +124,18 @@ def get_tuned_parameters(parameters, hp):
     hyperparameters = Hyperparameters(parameters, hp)
     architecture_hyperparameters = Hyperparameters(parameters["architecture_params"], hp)
 
-    tuned_params = _get_tuned_object(parameters, hyperparameters)
-    tuned_params["architecture_params"] = _get_tuned_object(parameters["architecture_params"], architecture_hyperparameters)
+    tuned_params = _get_tuned_object(parameters, hyperparameters, optimized_only)
+    tuned_params["architecture_params"] = _get_tuned_object(parameters["architecture_params"], architecture_hyperparameters, optimized_only)
 
     return tuned_params
 
 
-def _get_tuned_object(original: dict, hyperparameters: Hyperparameters) -> dict:
+def _get_tuned_object(original: dict, hyperparameters: Hyperparameters, optimized_only: bool) -> dict:
     result = {}
     for key, value in original.items():
         if type(value) is dict and "optimizable_type" in value:
             value = hyperparameters[key]
-        result[key] = value
+            result[key] = value
+        elif not optimized_only:
+            result[key] = value
     return result

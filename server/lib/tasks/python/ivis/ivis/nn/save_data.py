@@ -119,7 +119,7 @@ def _save_k_ahead(prediction_parameters, dataframes, k):
 
 
 def _save_future(prediction_parameters, dataframes):
-    set_cid = _get_sigset_cid(f"future")
+    set_cid = _get_sigset_cid("future")
     ivis.clear_records(set_cid)
     ivis.insert_records(set_cid, records_future(prediction_parameters, dataframes))
 
@@ -130,6 +130,6 @@ def save_data(prediction_parameters, dataframes, log_callback=print):
         _save_k_ahead(prediction_parameters, dataframes, k)
         log_callback("Done.")
 
-    log_callback(f"Saving 'future' signal set...", end='')
+    log_callback("Saving 'future' signal set...", end='')
     _save_future(prediction_parameters, dataframes)
     log_callback("Done.")

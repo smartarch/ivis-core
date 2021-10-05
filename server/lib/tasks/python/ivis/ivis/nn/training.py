@@ -185,8 +185,12 @@ def get_working_directory():
             return working_directory
 
 
-def save_model(model, training_parameters, tuned_parameters, working_directory):
+def save_model(parameters, training_parameters, tuner, working_directory):
     save_folder = Path(TRAINING_LOGS) / working_directory
+
+    model = tuner.get_best_models()[0]
+    best_hyperparameters = tuner.get_best_hyperparameters()[0]
+    tuned_parameters = get_tuned_parameters(parameters, best_hyperparameters)
 
     # temporarily save to the file system
     print("Saving model...")
@@ -208,8 +212,28 @@ def save_model(model, training_parameters, tuned_parameters, working_directory):
     print("Model saved.")
 
 
-def save_training_results(parameters, tuned_parameters, working_directory, test_loss):
+def save_training_results(parameters, tuner, test_loss, working_directory):
     save_folder = Path(TRAINING_LOGS) / working_directory
+
+    # save the best hyperparameters
+    best_hyperparameters = tuner.get_best_hyperparameters()[0]
+    tuned_parameters = get_tuned_parameters(parameters, best_hyperparameters)
+
+    # save results from all trials
+    trials = tuner.oracle.get_best_trials(int(parameters.get("max_trials", 5)))
+    trials_results = []
+
+    for t in trials:
+        # save only the tunable parameters (which have "optimizable_type") and all architecture parameters
+        trial_optimized_parameters = get_tuned_parameters(parameters, t.hyperparameters, optimized_only=True)
+        del trial_optimized_parameters["architecture_params"]
+        trial_architecture_parameters = get_tuned_parameters(parameters, t.hyperparameters)["architecture_params"]
+
+        trials_results.append({
+            "optimized_parameters": trial_optimized_parameters,
+            "architecture_params": trial_architecture_parameters,
+            "val_loss": t.score,
+        })
 
     # temporarily save to the file system
     print("Saving training results...")
@@ -217,6 +241,7 @@ def save_training_results(parameters, tuned_parameters, working_directory, test_
     training_results = {
         "tuned_parameters": tuned_parameters,
         "test_loss": test_loss,
+        "trials": trials_results,
     }
 
     with open(save_folder / "training_results.json", 'w') as file:
@@ -339,18 +364,16 @@ def run_training(parameters, model_factory=None, save_data=lambda _1, _2: None):
     print("Best model:\n")
     best_model = tuner.get_best_models()[0]
     best_model.summary()
-    best_hyperparameters = tuner.get_best_hyperparameters()[0]
 
     print_divider()
     test_loss = evaluate(best_model, test)
 
     print_divider()
-    predict_and_save(best_model, test, dataframes[2], training_parameters, save_data)
+    save_model(parameters, training_parameters, tuner, working_directory)
+    save_training_results(parameters, tuner, test_loss, working_directory)
 
     print_divider()
-    tuned_parameters = get_tuned_parameters(parameters, best_hyperparameters)
-    save_model(best_model, training_parameters, tuned_parameters, working_directory)
-    save_training_results(parameters, tuned_parameters, working_directory, test_loss)
+    predict_and_save(best_model, test, dataframes[2], training_parameters, save_data)
 
     if "cleanup" in parameters and parameters["cleanup"]:
         cleanup(working_directory)
