@@ -3,7 +3,6 @@ Code for running the trained models for prediction.
 """
 import os
 import requests
-import sys
 from pathlib import Path
 from uuid import uuid4
 import numpy as np
@@ -64,6 +63,7 @@ def load_data_since(prediction_parameters, last_window_start):
     -------
     pd.DataFrame
     """
+    print(f"(since {last_window_start})")
     time_interval = {"start_exclusive": last_window_start}
 
     return load_data(prediction_parameters, time_interval)
@@ -321,6 +321,7 @@ def run_prediction(prediction_parameters, model, save_data):
 
     print_divider()
     print("Saving data...")
+    print(f"({len(predicted_dataframes)} prediction window{'s' if len(predicted_dataframes) > 1 else ''})")
     save_data(prediction_parameters, predicted_dataframes)
 
     last_window_start = int(dataframe.index[-prediction_parameters.input_width])
