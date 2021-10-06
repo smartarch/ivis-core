@@ -12,6 +12,7 @@ import RunConsole from "../../jobs/RunConsole";
 import {Button, ModalDialog} from "../../../lib/bootstrap-components";
 import {JobState} from "../../../../../shared/jobs";
 import {NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
+import * as d3Format from "d3-format";
 
 @withComponentMixins([
     withTranslation,
@@ -133,6 +134,13 @@ export default class NNOverview extends Component {
     }
 
     printTrainingResults() {
+        if (!this.state.trainingResults) {
+            return (<>
+                <h3>Training results</h3>
+                {this.props.t('Training results are not available. When the training finishes, the results will appear here.')}
+            </>)
+        }
+
         const architectureParams = this.state.trainingResults.tuned_parameters.architecture_params;
         const architecture = this.state.trainingResults.tuned_parameters.architecture;
         const architectureSpec = NeuralNetworkArchitecturesSpecs[architecture];
@@ -144,6 +152,7 @@ export default class NNOverview extends Component {
 
         return (<>
             <h3>Training results</h3>
+            <h4>Best found hyperparameters</h4>
             <table className={"table col-4"}>
                 <thead><tr>
                     <th>Hyperparameter</th>
@@ -153,6 +162,8 @@ export default class NNOverview extends Component {
                     {rows}
                 </tbody>
             </table>
+            <h4>Trials</h4>
+            <TrialsHyperparametersTable trials={this.state.trainingResults.trials} architectureSpec={architectureSpec} />
         </>);
     }
 
@@ -180,7 +191,7 @@ export default class NNOverview extends Component {
                     {this.state.prediction.settings && this.state.prediction.settings.training_completed && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}/tuned`} label={"New model from tuned parameters"} className="btn-primary" icon={"clone"} />}
                 </Toolbar>
 
-                {this.state.trainingResults && this.printTrainingResults()}
+                {this.printTrainingResults()}
 
                 <ModalDialog hidden={!this.state.runTrainingModalVisible} title={"Re-run training"} onCloseAsync={::this.hideRunTrainingModal} buttons={[
                     { label: t('no'), className: 'btn-primary', onClickAsync: ::this.hideRunTrainingModal },
@@ -195,6 +206,54 @@ export default class NNOverview extends Component {
                     : "Not available."
                 }
             </Panel>
+        );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+])
+class TrialsHyperparametersTable extends Component {
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        const rows = [];
+
+        // render the header
+        const header = []
+        for (const spec of this.props.architectureSpec.params) {
+            header.push(<th key={spec.id}>{spec.label}</th>);
+        }
+        header.push(<th key={"val_loss"}>Validation loss</th>);
+
+        // render the hyperparameters
+        const formatLoss = d3Format.format(".4r")
+        for (const [idx, trial] of this.props.trials.entries()) {
+            const columns = []
+            for (const spec of this.props.architectureSpec.params) {
+                const trialParams = trial.architecture_params;
+                columns.push(<td>{JSON.stringify(trialParams[spec.id], null, 2)}</td>);
+            }
+            columns.push(<th key={"val_loss"}>{formatLoss(trial.val_loss)}</th>);
+
+            rows.push(<tr key={idx}>
+                {columns}
+            </tr>)
+        }
+
+        return (
+            <div>
+                <table className={'table table-striped table-bordered'}>
+                    <thead><tr>
+                        {header}
+                    </tr></thead>
+                    <tbody>
+                        {rows}
+                    </tbody>
+                </table>
+            </div>
         );
     }
 }
