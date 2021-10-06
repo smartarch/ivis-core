@@ -9,7 +9,7 @@ import { withAsyncErrorHandler, withErrorHandling } from '../../../lib/error-han
 import {getUrl} from "../../../lib/urls";
 import axios from "../../../lib/axios";
 import RunConsole from "../../jobs/RunConsole";
-import {Button, ModalDialog} from "../../../lib/bootstrap-components";
+import {ActionLink, Button, ModalDialog} from "../../../lib/bootstrap-components";
 import {JobState} from "../../../../../shared/jobs";
 import {NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
 import * as d3Format from "d3-format";
@@ -201,10 +201,7 @@ export default class NNOverview extends Component {
                 </ModalDialog>
 
                 <h3>Training log</h3>
-                {this.state.lastRun !== null
-                    ? <RunConsole jobId={trainingJobId} runId={this.state.lastRun.id} key={this.state.lastRun.id} />
-                    : "Not available."
-                }
+                <TrainingLog lastRun={this.state.lastRun} trainingJobId={trainingJobId} />
             </Panel>
         );
     }
@@ -255,5 +252,44 @@ class TrialsHyperparametersTable extends Component {
                 </table>
             </div>
         );
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+])
+class TrainingLog extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            collapsed: true,
+        }
+    }
+
+    onClick() {
+        this.setState({
+            collapsed: !this.state.collapsed,
+        });
+    }
+
+    render() {
+        if (!this.props.lastRun) {
+            return <p>{this.props.t("Not available")}</p>;
+        }
+
+        if (this.state.collapsed)
+            return (<>
+                <ActionLink onClickAsync={::this.onClick} className={"text-muted"}>
+                    Expand
+                </ActionLink>
+            </>);
+        else
+            return (<>
+                <ActionLink onClickAsync={::this.onClick} className={"text-muted d-inline-block mb-2"}>
+                    Collapse
+                </ActionLink>
+                <RunConsole jobId={this.props.trainingJobId} runId={this.props.lastRun.id} key={this.props.lastRun.id} />
+            </>);
     }
 }
