@@ -587,7 +587,8 @@ export default class PredictionsCompare extends Component {
             onChange: {
                 signal: this.onSignalChange.bind(this),
                 models: this.onModelsChange.bind(this),
-            }
+            },
+            leaveConfirmation: false,
         });
         tableRestActionDialogInit(this);
     }

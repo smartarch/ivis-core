@@ -1978,7 +1978,7 @@ const withForm = createComponentMixin({
                             return true;
                         }
                     }
-                } else if (data1 !== data2) {
+                } else if (!Object.is(data1, data2)) {
                     // console.log(prefix);
                     return true;
                 }
