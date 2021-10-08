@@ -162,7 +162,6 @@ export default class NNOverview extends Component {
                     {rows}
                 </tbody>
             </table>
-            <h4>Trials</h4>
             <TrialsHyperparametersTable trials={this.state.trainingResults.trials} architectureSpec={architectureSpec} />
         </>);
     }
@@ -216,6 +215,9 @@ class TrialsHyperparametersTable extends Component {
     }
 
     render() {
+        if (!this.props.trials)
+            return null;
+
         const rows = [];
 
         // render the header
@@ -231,7 +233,7 @@ class TrialsHyperparametersTable extends Component {
             const columns = []
             for (const spec of this.props.architectureSpec.params) {
                 const trialParams = trial.architecture_params;
-                columns.push(<td>{JSON.stringify(trialParams[spec.id], null, 2)}</td>);
+                columns.push(<td key={spec.id}>{JSON.stringify(trialParams[spec.id], null, 2)}</td>);
             }
             columns.push(<th key={"val_loss"}>{formatLoss(trial.val_loss)}</th>);
 
@@ -242,6 +244,7 @@ class TrialsHyperparametersTable extends Component {
 
         return (
             <div>
+                <h4>Trials</h4>
                 <table className={'table table-striped table-bordered'}>
                     <thead><tr>
                         {header}
