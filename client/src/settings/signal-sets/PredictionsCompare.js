@@ -23,6 +23,7 @@ import { fetchPrediction, fetchPredictionOutputConfig, fetchSignalSetBoundariesB
 import { getUrl } from "../../lib/urls";
 import {PredictionTypes} from "../../../../shared/predictions";
 import {NeuralNetworkArchitecturesSpecs, NeuralNetworksCommonParams} from "../../../../shared/predictions-nn";
+import * as d3Format from "d3-format";
 
 /* Colors are adapted from matplotlib's and seaborn's tab20 scheme
     (see: https://seaborn.pydata.org/tutorial/color_palettes.html)
@@ -172,7 +173,7 @@ class PredictionsEvaluationTableMulti extends Component {
 
         for (let [idx, modelId] of this.props.models.entries()) {
             const modelInfo = this.state.modelInfos[modelId] || {};
-            // TODO(MT): use d3Format to better format the numbers (d3Format.format(".4r"))
+            const numberFormat = n => n !== undefined ? d3Format.format(".4r")(n) : undefined;
             const row = (
                 <tr id={modelId} key={modelId}>
                     <td style={{backgroundColor: colorsFuture[idx % 10], width: 0}}/>
@@ -180,10 +181,10 @@ class PredictionsEvaluationTableMulti extends Component {
                     <td id="2">{modelInfo.type || loading}</td>
                     <td id="3">{modelInfo.aheadCount || loading}</td>
                     <td id="4">{modelInfo.period || loading}</td>
-                    <td id="5">{modelInfo.minMSE || loading}</td>
-                    <td id="6">{modelInfo.maxMSE || loading}</td>
-                    <td id="7">{modelInfo.minMAE || loading}</td>
-                    <td id="8">{modelInfo.maxMAE || loading}</td>
+                    <td id="5">{numberFormat(modelInfo.minMSE) || loading}</td>
+                    <td id="6">{numberFormat(modelInfo.maxMSE) || loading}</td>
+                    <td id="7">{numberFormat(modelInfo.minMAE) || loading}</td>
+                    <td id="8">{numberFormat(modelInfo.maxMAE) || loading}</td>
                 </tr>
             );
             rows.push(row);
@@ -487,6 +488,7 @@ class PredictionsGraph extends Component {
                     // when having the cursor inside the chart will crash the client.
                     key={`${config.signalSets.length}_${this.props.aheadValue}`}
                     config={config}
+                    keepAggregationInterval={true}
                 />
                 }
             </div>
