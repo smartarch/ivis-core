@@ -80,6 +80,7 @@ export class LineChart extends Component {
         withBrush: PropTypes.bool,
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        keepAggregationInterval: PropTypes.bool, // By default, the aggregation interval on the TimeContext resets when it is changed by zooming. This keeps the old aggregation interval.
         loadingOverlayColor: PropType_d3Color(),
         displayLoadingTextWhenUpdating: PropTypes.bool,
         tooltipContentComponent: PropTypes.func,
@@ -220,6 +221,7 @@ export class LineChart extends Component {
                 xAxisType={this.props.xAxisType}
                 withCursorContext={props.withCursorContext}
                 cursorContextName={props.cursorContextName}
+                keepAggregationInterval={props.keepAggregationInterval}
             />
         );
     }

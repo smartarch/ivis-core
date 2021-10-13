@@ -13,6 +13,11 @@ import {ActionLink, Button, ModalDialog} from "../../../lib/bootstrap-components
 import {JobState} from "../../../../../shared/jobs";
 import {NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
 import * as d3Format from "d3-format";
+import {Form, TableSelect, TableSelectMode, withForm} from "../../../lib/form";
+import {LineChart} from "../../../ivis/LineChart";
+import {IntervalSpec} from "../../../ivis/TimeInterval";
+import {TimeContext} from "../../../ivis/TimeContext";
+import moment from "moment";
 
 @withComponentMixins([
     withTranslation,
@@ -166,13 +171,17 @@ export default class NNOverview extends Component {
         </>);
     }
 
+    isTrainingCompleted() {
+        return this.state.prediction.settings && this.state.prediction.settings.training_completed;
+    }
+
     render() {
         const t = this.props.t;
         const prediction = this.state.prediction;
         const trainingJobId = this.props.jobs.training;
 
         let enablePredictionButton = null;
-        if (this.state.predictionJob && this.state.prediction.settings && this.state.prediction.settings.training_completed) {
+        if (this.state.predictionJob && this.isTrainingCompleted()) {
             if (this.state.predictionJob.state === JobState.DISABLED) {
                 enablePredictionButton = <Button onClickAsync={::this.enablePredictionJob} label={"Enable automatic predictions"} className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
             } else if (this.state.predictionJob.state === JobState.ENABLED) {
@@ -187,8 +196,10 @@ export default class NNOverview extends Component {
                     <Button onClickAsync={::this.showRunTrainingModal} label={"Re-run training"} className="btn-danger" icon={"retweet"} />
                     {enablePredictionButton}
                     <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}`} label={"New model with same settings"} className="btn-primary" icon={"clone"} />
-                    {this.state.prediction.settings && this.state.prediction.settings.training_completed && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}/tuned`} label={"New model from tuned parameters"} className="btn-primary" icon={"clone"} />}
+                    {this.isTrainingCompleted() && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}/tuned`} label={"New model from tuned parameters"} className="btn-primary" icon={"clone"} />}
                 </Toolbar>
+
+                {this.isTrainingCompleted() && <PredictionFutureLineChartsWithSelector prediction={this.props.prediction} signalSet={this.props.signalSet} />}
 
                 {this.printTrainingResults()}
 
@@ -294,5 +305,174 @@ class TrainingLog extends Component {
                 </ActionLink>
                 <RunConsole jobId={this.props.trainingJobId} runId={this.props.lastRun.id} key={this.props.lastRun.id} />
             </>);
+    }
+}
+
+@withComponentMixins([
+    withTranslation,
+    withForm,
+])
+export class PredictionFutureLineChartsWithSelector extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            futureSet: null,
+            signalCids: props.prediction.signals.main.map(s => s.cid),
+            signals: [],
+        }
+
+        this.initForm({
+            onChange: {
+                signals: ::this.onSignalsChange,
+            },
+            leaveConfirmation: false,
+        });
+    }
+
+    async fetchData() {
+        const predictionId = this.props.prediction.id;
+        const outputConfig = (await axios.get(getUrl(`rest/predictions-output-config/${predictionId}`))).data;
+        this.setState({
+            futureSet: outputConfig.future_set,
+        });
+    }
+
+    componentDidMount() {
+        this.populateFormValues({
+            signals: [],
+        });
+        // noinspection JSIgnoredPromiseFromCall
+        this.fetchData();
+    }
+
+    onSignalsChange(state, key, oldValue, newValue) {
+        if (oldValue !== newValue) {
+            state.signals = newValue;
+        }
+    }
+
+    groupSignalsByOriginalCid(signals) {
+        const groups = new Map();
+        for (const s of signals) {
+            let originalSignal = s;
+            /* If the signal ends with our aggregation mark and the signal without the mark also exists,
+               the original signal should not contain the mark as it is not present in the original signal set. */
+            if (originalSignal.endsWith("_min") || originalSignal.endsWith("_avg") || originalSignal.endsWith("_max")) {
+                const signalWithoutAgg = originalSignal.slice(0, -4);
+                if (this.state.signalCids.includes(signalWithoutAgg))
+                    originalSignal = signalWithoutAgg;
+            }
+
+            if (!groups.has(originalSignal))
+                groups.set(originalSignal, [])
+
+            groups.get(originalSignal).push(s);
+        }
+        return groups;
+    }
+
+    render() {
+        const t = this.props.t;
+        const columns = [
+            { data: 1, title: t('Id') },
+            { data: 2, title: t('Name') },
+            { data: 3, title: t('Description') },
+        ];
+
+        const signalGroups = this.groupSignalsByOriginalCid(this.state.signals);
+        const charts = [];
+        for (const [original, signals] of signalGroups.entries()) {
+            const getLabel = (sig) => {
+                if (sig === original)
+                    return 'future';
+                else
+                    return `future ${sig.slice(-3)}`;
+            }
+            const getColor = (sig) => {
+                if (sig === original)
+                    return '#9564BF';
+                else {
+                    switch (sig.slice(-3)) {
+                        case 'min':
+                            return '#1776B6';
+                        case 'max':
+                            return '#D8241F';
+                        case 'avg':
+                            return '#9564BF';
+                    }
+                }
+            }
+
+            const config = {
+                signalSets: [
+                    {
+                        cid: this.state.futureSet,
+                        signals: signals.map(s => ({
+                            label: getLabel(s),
+                            color: getColor(s),
+                            cid: s,
+                            enabled: true,
+                        })),
+                        tsSigCid: 'ts'
+                    },
+                    {
+                        cid: this.props.signalSet.cid,
+                        signals: [
+                            {
+                                label: 'original',
+                                color: '#000000',
+                                cid: original,
+                                enabled: true
+                            }
+                        ],
+                        tsSigCid: 'ts'
+                    }
+                ],
+                yAxes: [{
+                    visible: true,
+                    label: this.props.prediction.signals.main.find(s => s.cid === original).name || original,
+                }],
+            }
+
+            charts.push(<LineChart key={original}
+                                   config={config}
+                                   keepAggregationInterval={true}
+                                   height={350}
+            />);
+        }
+
+        let initialIntervalSpec;
+        if (this.props.prediction.settings.hasOwnProperty("interval")) {
+            const interval = this.props.prediction.settings.interval / 1000;
+            const aheadCount = this.props.prediction.ahead_count;
+            initialIntervalSpec = new IntervalSpec(`now-${interval * aheadCount}s`, `now+${interval * aheadCount}s`, moment.duration(interval, 's'), null);
+        } else {
+            initialIntervalSpec = new IntervalSpec('now-7d', 'now+7d', null, null);
+        }
+
+        return (
+            <>
+                <h3>Latest predictions</h3>
+                <Form stateOwner={this} >
+                    {this.state.futureSet && <TableSelect
+                        key="signals"
+                        id="signals"
+                        label={t("Signals")}
+                        withHeader
+                        dropdown
+                        selectMode={TableSelectMode.MULTI}
+                        selectionLabelIndex={2}
+                        selectionKeyIndex={1}
+                        dataUrl={`rest/signals-table-by-cid/${this.state.futureSet}`}
+                        columns={columns}
+                    />}
+                </Form>
+
+                <TimeContext initialIntervalSpec={initialIntervalSpec}>
+                    {charts}
+                </TimeContext>
+            </>
+        );
     }
 }

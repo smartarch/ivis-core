@@ -221,6 +221,7 @@ export class TimeBasedChartBase extends Component {
 
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
+        keepAggregationInterval: PropTypes.bool, // By default, the aggregation interval on the TimeContext resets when it is changed by zooming. This keeps the old aggregation interval.
         loadingOverlayColor: PropType_d3Color(),
         displayLoadingTextWhenUpdating: PropTypes.bool,
 
@@ -252,6 +253,7 @@ export class TimeBasedChartBase extends Component {
         drawBrushAreaBehindData: false,
         xAxisType: XAxisType.DATETIME,
         withCursorContext: true,
+        keepAggregationInterval: false,
     }
 
     updateTimeIntervalChartWidth() { // TODO: XAxisType.NUMBER – do we need to do anything?
@@ -559,7 +561,7 @@ export class TimeBasedChartBase extends Component {
             const spec = new IntervalSpec(
                 rounded.from,
                 rounded.to,
-                null
+                this.props.keepAggregationInterval ? undefined : null
             );
 
             intv.setSpec(spec);
