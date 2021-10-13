@@ -22,7 +22,7 @@ import axios from '../../lib/axios';
 import { fetchPrediction, fetchPredictionOutputConfig, fetchSignalSetBoundariesByCid } from "../../lib/predictions";
 import { getUrl } from "../../lib/urls";
 import {PredictionTypes} from "../../../../shared/predictions";
-import {NeuralNetworkArchitecturesSpecs} from "../../../../shared/predictions-nn";
+import {NeuralNetworkArchitecturesSpecs, NeuralNetworksCommonParams} from "../../../../shared/predictions-nn";
 
 /* Colors are adapted from matplotlib's and seaborn's tab20 scheme
     (see: https://seaborn.pydata.org/tutorial/color_palettes.html)
@@ -172,6 +172,7 @@ class PredictionsEvaluationTableMulti extends Component {
 
         for (let [idx, modelId] of this.props.models.entries()) {
             const modelInfo = this.state.modelInfos[modelId] || {};
+            // TODO(MT): use d3Format to better format the numbers (d3Format.format(".4r"))
             const row = (
                 <tr id={modelId} key={modelId}>
                     <td style={{backgroundColor: colorsFuture[idx % 10], width: 0}}/>
@@ -317,6 +318,8 @@ class PredictionsHyperparametersTable extends Component {
             for (const hyperparameter of architectureSpec.params)
                 hyperparameters.set(hyperparameter.id, hyperparameter);
         }
+        for (const commonParam of NeuralNetworksCommonParams)
+            hyperparameters.set(commonParam.id, commonParam);
 
         // render the header
         const header = []
@@ -329,13 +332,24 @@ class PredictionsHyperparametersTable extends Component {
             if (!trainingResult.model || trainingResult.model.type !== PredictionTypes.NN)
                 continue;
 
-            const architectureParams = trainingResult.tuned_parameters.architecture_params;
+            const tunedParameters = trainingResult.tuned_parameters;
+            const architectureParams = tunedParameters.architecture_params;
+
+            const render = (hyperparameter, value) => {
+                if (hyperparameter.hasOwnProperty("render"))
+                    return hyperparameter.render(value)
+                else
+                    return JSON.stringify(value, null, 2)
+            }
 
             const columns = [];
-            for (const [id, _]  of hyperparameters) {
+            for (const [id, hyperparameter]  of hyperparameters) {
                 if (architectureParams.hasOwnProperty(id)) {
                     const value = architectureParams[id];
-                    columns.push(<td key={id}>{JSON.stringify(value, null, 2)}</td>);
+                    columns.push(<td key={id}>{render(hyperparameter, value)}</td>);
+                } else if (tunedParameters.hasOwnProperty(id)) {
+                    const value = tunedParameters[id];
+                    columns.push(<td key={id}>{render(hyperparameter, value)}</td>);
                 } else {
                     columns.push(<td key={id}/>);
                 }

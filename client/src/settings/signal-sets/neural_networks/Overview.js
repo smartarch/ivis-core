@@ -11,7 +11,7 @@ import axios from "../../../lib/axios";
 import RunConsole from "../../jobs/RunConsole";
 import {ActionLink, Button, ModalDialog} from "../../../lib/bootstrap-components";
 import {JobState} from "../../../../../shared/jobs";
-import {NeuralNetworkArchitecturesSpecs} from "../../../../../shared/predictions-nn";
+import {NeuralNetworkArchitecturesSpecs, NeuralNetworksCommonParams} from "../../../../../shared/predictions-nn";
 import * as d3Format from "d3-format";
 import {Form, TableSelect, TableSelectMode, withForm} from "../../../lib/form";
 import {LineChart} from "../../../ivis/LineChart";
@@ -236,7 +236,17 @@ class TrialsHyperparametersTable extends Component {
         for (const spec of this.props.architectureSpec.params) {
             header.push(<th key={spec.id}>{spec.label}</th>);
         }
+        for (const spec of NeuralNetworksCommonParams)
+            header.push(<th key={spec.id}>{spec.label}</th>);
         header.push(<th key={"val_loss"}>Validation loss</th>);
+
+        // helper function for rendering
+        const render = (hyperparameter, value) => {
+            if (hyperparameter.hasOwnProperty("render"))
+                return hyperparameter.render(value)
+            else
+                return JSON.stringify(value, null, 2)
+        }
 
         // render the hyperparameters
         const formatLoss = d3Format.format(".4r")
@@ -244,7 +254,13 @@ class TrialsHyperparametersTable extends Component {
             const columns = []
             for (const spec of this.props.architectureSpec.params) {
                 const trialParams = trial.architecture_params;
-                columns.push(<td key={spec.id}>{JSON.stringify(trialParams[spec.id], null, 2)}</td>);
+                const value = trialParams[spec.id];
+                columns.push(<td key={spec.id}>{render(spec, value)}</td>);
+            }
+            for (const spec of NeuralNetworksCommonParams) {
+                const optimizedParams = trial.optimized_parameters;
+                const value = optimizedParams[spec.id];
+                columns.push(<td key={spec.id}>{render(spec, value)}</td>);
             }
             columns.push(<th key={"val_loss"}>{formatLoss(trial.val_loss)}</th>);
 

@@ -1,5 +1,6 @@
 'use strict';
 const React = require("react");
+const d3Format = require("d3-format");
 
 const NeuralNetworkArchitectures = {
     LSTM: "lstm",
@@ -77,8 +78,16 @@ const NeuralNetworkArchitecturesSpecs = {
     },
 };
 
+const NeuralNetworksCommonParams = [{
+    "id": "learning_rate",
+    "label": "Learning rate",
+    "render": x => d3Format.format(".4r")(x)
+}]
+// if we want to add more parameters here, consider that they are rendered in both PredictionsCompare.js and Overview.js. In overview, the data are fetched for the trials, so only the optimized_parameters (currently only learning rate) are available. For that reason, we might need to distinguish whether the parameter is optimized or not in order to render it properly in Overview.js.
+
 module.exports = {
     NeuralNetworkArchitectures,
     NeuralNetworkArchitecturesList,
     NeuralNetworkArchitecturesSpecs,
+    NeuralNetworksCommonParams,
 };
