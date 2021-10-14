@@ -234,8 +234,8 @@ export default class ParamTypesTunable extends ParamTypes {
             upcast: (spec, value) => value,
         };
 
-        // TODO (MT): possibly add later (when needed)
-        //this.paramTypes.tunable_enum =
+        // possibly add later (when needed)
+        // this.paramTypes.tunable_enum = ...
 
         const getFieldsetSpec = (spec) => ({
             ...spec,

@@ -36,7 +36,7 @@ async function createNNModelTx(tx, context, sigSetId, params) {
         type: PredictionTypes.NN,
         set: sigSetId,
         ahead_count: params.target_width,
-        future_count: 1, // TODO (MT): what is future_count?
+        future_count: params.target_width,
         namespace: namespace,
         settings: {
             training_completed: false,
@@ -44,8 +44,6 @@ async function createNNModelTx(tx, context, sigSetId, params) {
             interval: aggregated ? intervalToDuration(params.aggregation).asMilliseconds() : null,
         }
     };
-
-    // return { trainingJobId: 0, predictionJobId: 0 }; // TODO (MT): remove
 
     // target signals – signals of the created prediction signal sets
     const targetSignals = [];

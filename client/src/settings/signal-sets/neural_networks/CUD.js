@@ -44,7 +44,7 @@ const signalsConfigSpec = (id, label, help, sigSet, aggregated) => ({
     "label": label,
     "help": help,
     "type": "fieldset",
-    "cardinality": "0..n", //TODO (MT): For debug, then revert to 1..n
+    "cardinality": "1..n",
     "children": [{
         "id": "cid",
         "label": "Signal",
@@ -496,8 +496,6 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
 
-        // TODO (MT)
-
         const renderParam = (spec) => this.paramTypes.render(spec, this);
 
         if (!this.getFormValue('loaded')) {
@@ -534,7 +532,7 @@ export default class CUD extends Component {
                                     withHints={['', '1h', '12h', '1d', '30d']}
                         />
                         {!this.isAggregated() && <div className={"form-group alert alert-warning"} role={"alert"}>
-                            It is not recommended to leave the aggregation interval empty. {/* TODO (MT): better message */}
+                            It is not recommended to leave the aggregation interval empty.
                         </div>}
 
                         <InputField id="target_width" label="Future predictions" help={t('How many predictions into the future do we want to generate?')}/>
