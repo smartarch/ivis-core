@@ -15,6 +15,11 @@ const base64url = require('base64-url');
 const router = require('../../lib/router-async').create();
 const { castToInteger } = require('../../lib/helpers');
 const { getSigSetBoundaries, calculateRMSE, getModelAggregationInterval} = require('../../lib/predictions-helpers');
+const config = require('../../lib/config');
+
+router.getAsync('/available-predictions/', passport.loggedIn, async (req, res) => {
+    return res.json(config.predictions || {});
+});
 
 router.postAsync('/predictions-rmse/', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     const body = (await req).body;

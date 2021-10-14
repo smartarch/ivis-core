@@ -516,7 +516,10 @@ const getStructure = t => {
                                         title: t('Predictions'),
                                         link: params => `/settings/signal-sets/${params.signalSetId}/predictions`,
                                         visible: resolved => resolved.signalSet.permissions.includes('view') && resolved.signalSet.kind === SignalSetKind.TIME_SERIES,
-                                        panelRender: props => <SignalSetPredictions signalSet={props.resolved.signalSet} />, // TODO
+                                        resolve: {
+                                            availablePredictions: () => `rest/available-predictions`
+                                        },
+                                        panelRender: props => <SignalSetPredictions signalSet={props.resolved.signalSet} availablePredictions={props.resolved.availablePredictions} />,
                                         children: {
                                             'arima': {
                                                 title: t('ARIMA models'),

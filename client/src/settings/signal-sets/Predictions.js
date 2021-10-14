@@ -9,6 +9,7 @@ import { Panel } from "../../lib/panel";
 import { Table } from "../../lib/table";
 import {Toolbar, LinkButton, requiresAuthenticatedUser, DropdownLink} from "../../lib/page";
 import {ButtonDropdown} from "../../lib/bootstrap-components";
+import {PredictionTypes} from "../../../../shared/predictions";
 
 @withComponentMixins([
     withTranslation,
@@ -56,6 +57,17 @@ export default class PredictionsList extends Component {
                 }
             }
         ]
+
+        const addModelDropdowns = []
+        if (this.props.availablePredictions.hasOwnProperty(PredictionTypes.ARIMA))
+            addModelDropdowns.push(<DropdownLink key={PredictionTypes.ARIMA}
+                to={`/settings/signal-sets/${sigSetId}/predictions/arima/create`}>{t('ARIMA')}</DropdownLink>)
+        if (this.props.availablePredictions.hasOwnProperty(PredictionTypes.NN))
+            addModelDropdowns.push(<DropdownLink key={PredictionTypes.NN}
+                to={`/settings/signal-sets/${sigSetId}/predictions/neural_network/create`}>{t('Neural network')}</DropdownLink>)
+        if (addModelDropdowns.length === 0)
+            addModelDropdowns.push(<div className={"dropdown-item text-muted"}>No prediction models available. Enable them in the IVIS server config.</div>)
+
         return (
             <Panel title={t('Predictions')}>
                 {tableRestActionDialogRender(this)}
@@ -65,8 +77,7 @@ export default class PredictionsList extends Component {
                         className="btn-primary"
                         label={t('Compare models')} />
                     <ButtonDropdown id={"add_model"} label={t('Add model')} buttonClassName={"btn-primary"} menuClassName={"dropdown-menu-right"} icon={"plus"}>
-                        <DropdownLink to={`/settings/signal-sets/${sigSetId}/predictions/arima/create`}>{t('ARIMA')}</DropdownLink>
-                        <DropdownLink to={`/settings/signal-sets/${sigSetId}/predictions/neural_network/create`}>{t('Neural network')}</DropdownLink>
+                        {addModelDropdowns}
                     </ButtonDropdown>
                 </Toolbar>
 

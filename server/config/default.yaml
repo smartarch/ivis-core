@@ -98,6 +98,10 @@ tasks:
     venvCmd: "/usr/bin/python3 -m venv"
     subtypes:
 
+predictions:
+  arima: true
+  neural_network: false
+
 roles:
   global:
     master:
