@@ -99,7 +99,7 @@ async function enforceTasks() {
 
 async function createJobsTx(tx, context, signalSet, prediction, params) {
     const trainingJobId = await createTrainingJobTx(tx, context, signalSet, prediction, params);
-    const predictionJobId = await createPredictionJobTx(tx, context, signalSet, prediction, trainingJobId);
+    const predictionJobId = await createPredictionJobTx(tx, context, signalSet, prediction, trainingJobId, params);
 
     return { trainingJobId, predictionJobId };
 }
@@ -133,7 +133,7 @@ async function createTrainingJobTx(tx, context, signalSet, prediction, jobParams
     return jobId;
 }
 
-async function createPredictionJobTx(tx, context, signalSet, prediction, trainingJobId) {
+async function createPredictionJobTx(tx, context, signalSet, prediction, trainingJobId, params) {
     const modelName = prediction.name;
     const jobName = _generateJobName(signalSet, modelName,"prediction");
 
@@ -152,7 +152,7 @@ async function createPredictionJobTx(tx, context, signalSet, prediction, trainin
         },
         signal_sets_triggers: [signalSet.id],
         trigger: null,
-        min_gap: null,
+        min_gap: params.minimal_interval !== "" ? intervalToDuration(params.minimal_interval).asSeconds() : null,
         delay: null,
     }
 

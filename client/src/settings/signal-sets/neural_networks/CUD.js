@@ -176,6 +176,7 @@ export default class CUD extends Component {
         this.initForm({
             onChange: {
                 architecture: ::this.onArchitectureChange,
+                aggregation: ::this.onAggregationIntervalChange,
             }
         });
         this.paramTypes = new ParamTypesTunable(props.t);
@@ -236,6 +237,7 @@ export default class CUD extends Component {
             architecture: NeuralNetworkArchitecturesList[0],
             start_training: true,
             automatic_predictions: true,
+            minimal_interval: '',
             cleanup: true,
             ...formValues,
         });
@@ -263,6 +265,7 @@ export default class CUD extends Component {
             architecture: trainingJobParams.architecture,
             start_training: trainingJobParams.start_training,
             automatic_predictions: trainingJobParams.automatic_predictions,
+            minimal_interval: trainingJobParams.minimal_interval,
             cleanup: trainingJobParams.cleanup,
             ...formValues,
         });
@@ -276,6 +279,12 @@ export default class CUD extends Component {
                 this.architectureParams[oldVal] = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
             }
             this.rendered_architecture = null;
+        }
+    }
+
+    onAggregationIntervalChange(state, key, oldVal, newVal) {
+        if (oldVal !== newVal) {
+            state.formState = state.formState.setIn(['data', 'minimal_interval', 'value'], newVal);
         }
     }
 
@@ -343,8 +352,9 @@ export default class CUD extends Component {
             start: data.time_interval_start !== "" ? moment(data.time_interval_start).toISOString() : "",
             end: data.time_interval_end !== "" ? moment(data.time_interval_end).toISOString() : "",
         }
+        data.minimal_interval = data.minimal_interval.trim();
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions', 'cleanup']);
+        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions', 'minimal_interval', 'cleanup']);
 
         return {
             ...data,
@@ -430,6 +440,14 @@ export default class CUD extends Component {
             state.setIn(['aggregation', 'error'], t('Aggregation interval must be a positive integer and have a unit.'));
         } else {
             state.setIn(['aggregation', 'error'], null);
+        }
+
+        // minimal interval between predictions
+        const minimalIntervalStr = state.getIn(['minimal_interval', 'value']).trim();
+        if (minimalIntervalStr && !isSignalSetAggregationIntervalValid(minimalIntervalStr)) {
+            state.setIn(['minimal_interval', 'error'], t('Minimal interval must be a positive integer and have a unit.'));
+        } else {
+            state.setIn(['minimal_interval', 'error'], null);
         }
 
         // number of predictions
@@ -619,6 +637,13 @@ export default class CUD extends Component {
 
                         <CheckBox id={"start_training"} label={"Start training immediately"} help={"Start the training immediately when the model is created (recommended)."}/>
                         <CheckBox id={"automatic_predictions"} label={"Enable automatic predictions"} help={"New predictions are computed when new data are added to the signal set (recommended)."}/>
+
+                        <InputField id="minimal_interval"
+                                    label={t('Minimal interval between generating new predictions')}
+                                    help={t('Set this to limit how often new predictions are generated. This is recommended for signal sets with high frequency of records in order not to compute the predictions every time new record is added. Leave empty for no . Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes).')}
+                                    placeholder={t(`type interval or select from the hints`)}
+                                    withHints={['', '1h', '12h', '1d', '30d']}
+                        />
 
                     </CollapsableSection>
 
