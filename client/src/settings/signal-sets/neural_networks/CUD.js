@@ -311,10 +311,9 @@ export default class CUD extends Component {
         const t = this.props.t;
         const sendMethod = FormSendMethod.POST;
         const url = `rest/signal-sets/${this.props.signalSet.id}/predictions/neural_network`;
-        // const url = "intentionally_wrong_url"; // TODO (MT): for debug purposes
 
         try {
-            //this.disableForm(); // TODO (MT)
+            this.disableForm();
             this.setFormStatusMessage('info', t('Saving...'));
 
             const submitResult = await this.validateAndSendFormValuesToURL(sendMethod, url);
@@ -376,6 +375,29 @@ export default class CUD extends Component {
         }
     }
 
+    validateNoRepeatedSignals(state, spec, paramId) {
+        // for some reason, `state.map(attr => attr.get('value')).toJS()` deletes the entries from the map, so we need to do it by hand
+        const formValues = {};
+        state.forEach((value, key) => formValues[key] = state.getIn([key, 'value']));
+
+        const signals = this.paramTypes.getParams(spec, formValues)[spec[0].id];
+        const signalsAndAggs = new Map();
+
+        for (const s of signals) {
+            if (s.cid) {
+                if (!signalsAndAggs.has(s.cid))
+                    signalsAndAggs.set(s.cid, [])
+                const aggs = signalsAndAggs.get(s.cid);
+                if (aggs.includes(s.aggregation)) { // repeated signal and aggregation
+                    if (!state.getIn([paramId, 'error'])) {
+                        state.setIn([paramId, 'error'], `The signal '${s.cid}' with aggregation '${s.aggregation}' is repeated more than once. Please, remove the duplicates or set a different aggregation for one of them.`);
+                    }
+                }
+                aggs.push(s.aggregation);
+            }
+        }
+    }
+
     localValidateFormValues(state) {
         const t = this.props.t;
 
@@ -389,6 +411,10 @@ export default class CUD extends Component {
         // validate params
         this.paramTypes.localValidate(this.configSpec(), state);
         this.paramTypes.localValidate(this.getArchitectureParamsSpec(), state);
+
+        // validate signals
+        this.validateNoRepeatedSignals(state, this.input_signals_configSpec(), `${paramPrefix}input_signals`);
+        this.validateNoRepeatedSignals(state, this.target_signals_configSpec(), `${paramPrefix}target_signals`);
 
         // name
         const nameStr = state.getIn(['name', 'value']).trim();
