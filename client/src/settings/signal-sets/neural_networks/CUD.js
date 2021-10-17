@@ -202,8 +202,14 @@ export default class CUD extends Component {
     }
 
     loadDefaultValues() {
-        // prepare default values
-        const defaultValues = {
+        this.updateWithDefaultsAndPopulate({});
+        this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
+    }
+
+    /** replace missing properties with defaults and populate to form */
+    updateWithDefaultsAndPopulate(other) {
+        // prepare default values for params rendered using ParamTypes
+        const defaultValuesParamTypes = {
             input_signals: [],
             target_signals: [],
             learning_rate: {
@@ -220,13 +226,14 @@ export default class CUD extends Component {
             early_stopping_patience: "3",
         };
         if (this.props.signalSet.settings.hasOwnProperty("ts"))
-            defaultValues.ts = this.props.signalSet.settings.ts;
+            defaultValuesParamTypes.ts = this.props.signalSet.settings.ts;
 
         // populate default values to the form inputs rendered using the ParamTypes
-        const formValues = {};
-        this.paramTypes.setFields(this.configSpec(), defaultValues, formValues);
+        const formValuesParamTypes = {};
+        this.paramTypes.setFields(this.configSpec(), defaultValuesParamTypes, formValuesParamTypes);
 
-        this.populateFormValues({
+        // prepare default values for the rest of params
+        const defaultValues = {
             loaded: true, // for determining whether the default values were already loaded
             name: '',
             aggregation: '',
@@ -239,9 +246,20 @@ export default class CUD extends Component {
             automatic_predictions: true,
             minimal_interval: '',
             cleanup: true,
-            ...formValues,
-        });
-        this.loadDefaultArchitectureParams(NeuralNetworkArchitecturesList[0]);
+            ...formValuesParamTypes,
+        };
+
+        const formValues = {
+            ...defaultValues,
+            ...other, // replace the default values by fields in other
+        };
+
+        // the setFields method expects numbers saved as strings
+        const keysToStringify = ["target_width", "input_width"];
+        for (const key of keysToStringify)
+            formValues[key] = String(formValues[key]);
+
+        this.populateFormValues(formValues);
     }
 
     loadValuesFromOtherModel(prediction, trainingJobParams) {
@@ -251,23 +269,17 @@ export default class CUD extends Component {
         const otherValues = _.pick(trainingJobParams, keys);
         for (const key of keysToString)
             otherValues[key] = String(otherValues[key]) // the setFields method expects numbers saved as strings
-        const formValues = {};
-        this.paramTypes.setFields(this.configSpec(), otherValues, formValues);
+        const formValuesParamTypes = {};
+        this.paramTypes.setFields(this.configSpec(), otherValues, formValuesParamTypes);
 
-        this.populateFormValues({
-            loaded: true, // for determining whether the default values were already loaded
-            name: '',
-            aggregation: trainingJobParams.aggregation,
-            target_width: String(trainingJobParams.target_width),
-            input_width: String(trainingJobParams.input_width),
-            time_interval_start: trainingJobParams.time_interval.start,
-            time_interval_end: trainingJobParams.time_interval.end,
-            architecture: trainingJobParams.architecture,
-            start_training: trainingJobParams.start_training,
-            automatic_predictions: trainingJobParams.automatic_predictions,
-            minimal_interval: trainingJobParams.minimal_interval,
-            cleanup: trainingJobParams.cleanup,
+        const formValues = _.pick(trainingJobParams, ["aggregation", "target_width", "input_width", "architecture", "start_training", "automatic_predictions", "minimal_interval", "cleanup"]);
+        if (trainingJobParams.hasOwnProperty("time_interval")) {
+            formValues.time_interval_start = trainingJobParams.time_interval.start;
+            formValues.time_interval_end = trainingJobParams.time_interval.end;
+        }
+        this.updateWithDefaultsAndPopulate({
             ...formValues,
+            ...formValuesParamTypes,
         });
         this.loadArchitectureParams(trainingJobParams.architecture_params, trainingJobParams.architecture);
     }
@@ -303,6 +315,8 @@ export default class CUD extends Component {
             architecture = this.getFormValue("architecture");
         if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture)) {
             const formValues = {};
+            const defaultParams = NeuralNetworkArchitecturesSpecs[architecture].defaultParams || {};
+            const params = {...defaultParams, ...params}; // use default values for missing params
             this.paramTypes.setFields(this.getArchitectureParamsSpec(architecture), params, formValues);
             this.populateFormValues(formValues);
             this.rendered_architecture = architecture;
@@ -311,8 +325,7 @@ export default class CUD extends Component {
 
     loadDefaultArchitectureParams(architecture = null) {
         if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture)) {
-            const defaultParams = NeuralNetworkArchitecturesSpecs[architecture].defaultParams || {};
-            this.loadArchitectureParams(defaultParams, architecture);
+            this.loadArchitectureParams({}, architecture);
         }
     }
 
