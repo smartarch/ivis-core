@@ -14,7 +14,7 @@ from .ParamsClasses import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters, get_tuned_parameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
 from .architectures.ModelFactory import ModelFactory
-from .prediction import postprocess
+from .prediction import postprocess, get_windowed_dataset
 
 
 ######################
@@ -158,10 +158,14 @@ def evaluate(model, test_dataset):
 ################################
 
 
-def predict_and_save(model, test_dataset, test_dataframe, prediction_parameters, save_data):
+def predict_and_save(model, test_dataframe, prediction_parameters, save_data):
     """Makes predictions for the test set and saves them to IVIS"""
     print("Computing predictions on test set...")
-    predicted = model.predict(test_dataset)
+
+    # we can't use the test_dataset here as it also contains the target values, so the last records are not included as inputs there
+    dataset = get_windowed_dataset(prediction_parameters, test_dataframe)
+
+    predicted = model.predict(dataset)
 
     last_ts = test_dataframe.index[prediction_parameters.input_width - 1:]
     predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
@@ -373,7 +377,7 @@ def run_training(parameters, model_factory=None, save_data=lambda _1, _2: None):
     save_training_results(parameters, tuner, test_loss, working_directory)
 
     print_divider()
-    predict_and_save(best_model, test, dataframes[2], training_parameters, save_data)
+    predict_and_save(best_model, dataframes[2], training_parameters, save_data)
 
     if "cleanup" in parameters and parameters["cleanup"]:
         cleanup(working_directory)
