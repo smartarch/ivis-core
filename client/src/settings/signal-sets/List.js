@@ -15,7 +15,7 @@ import {tableAddDeleteButton, tableRestActionDialogInit, tableRestActionDialogRe
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {Link} from "react-router-dom";
-import {SignalSetType} from "../../../../shared/signal-sets";
+import {SignalSetKind, SignalSetType} from "../../../../shared/signal-sets";
 
 @withComponentMixins([
     withTranslation,
@@ -81,7 +81,7 @@ export default class List extends Component {
                 actions: data => {
                     const id = data[0];
                     const label = data[2];
-                    const perms = data[10];
+                    const perms = data[11];
 
                     if (perms.includes('query')) {
                         return [
@@ -116,7 +116,8 @@ export default class List extends Component {
             {
                 actions: data => {
                     const actions = [];
-                    const perms = data[10];
+                    const perms = data[11];
+                    const kind = data[10];
 
                     if (perms.includes('edit')) {
                         actions.push({
@@ -135,6 +136,13 @@ export default class List extends Component {
                         actions.push({
                             label: <Icon icon="database" title={t('Records')}/>,
                             link: `/settings/signal-sets/${data[0]}/records`
+                        });
+                    }
+
+                    if (kind === SignalSetKind.TIME_SERIES) {
+                        actions.push({
+                            label: <Icon icon="magic" /* icon="chart-line" */ title={t('Predictions')}/>,
+                            link: `/settings/signal-sets/${data[0]}/predictions`
                         });
                     }
 
