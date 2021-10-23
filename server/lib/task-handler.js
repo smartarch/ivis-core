@@ -168,7 +168,10 @@ function checkLogRetention(logRetention) {
         .del()
         .catch(err => log.error(LOG_ID, err));
 
-    setTimeout(checkLogRetention, logRetention * 24 * 60 * 60 * 1000, logRetention);
+    let timeout = logRetention * 24 * 60 * 60 * 1000;
+    if (logRetention > 7)
+        timeout = 7 * 24 * 60 * 60 * 1000; // the timeout must fit into a signed 32-bit integer
+    setTimeout(checkLogRetention, timeout, logRetention);
 }
 
 function onFilesUpload(type, subtype, entityId, files) {
