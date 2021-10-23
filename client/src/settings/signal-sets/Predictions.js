@@ -8,7 +8,7 @@ import { withAsyncErrorHandler, withErrorHandling } from "../../lib/error-handli
 import { Panel } from "../../lib/panel";
 import { Table } from "../../lib/table";
 import {Toolbar, LinkButton, requiresAuthenticatedUser, DropdownLink} from "../../lib/page";
-import {ButtonDropdown} from "../../lib/bootstrap-components";
+import {ButtonDropdown, Icon} from "../../lib/bootstrap-components";
 import {PredictionTypes} from "../../../../shared/predictions";
 
 @withComponentMixins([
@@ -46,11 +46,20 @@ export default class PredictionsList extends Component {
                     ];
                 }
             },
+            { data: 4, title: t('Description') },
             { data: 3, title: t('Type'), render: data => `${data}` },
             {
                 actions: data => {
                     const actions = [];
-                    const perms = null;
+                    const perms = data[5];
+
+                    if (perms.includes('edit')) {
+                        actions.push({
+                            label: <Icon icon="edit" title={t('Edit')}/>,
+                            link: `/settings/signal-sets/${this.props.signalSet.id}/predictions/${data[0]}/edit`
+                        });
+                    }
+
                     tableAddDeleteButton(actions, this, perms, `rest/signal-sets/${data[1]}/predictions/${data[0]}`, data[2], t('Deleting prediction model ...', t('Prediction model deleted')));
 
                     return actions;

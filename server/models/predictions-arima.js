@@ -59,6 +59,7 @@ async function createArimaModelTx(tx, context, sigSetId, params) {
 
     let prediction = {
         name: params.name,
+        description: params.description || null,
         type: PredictionTypes.ARIMA,
         set: sigSetId,
         ahead_count: ahead_count,  // generally, future should be equal to ahead but for

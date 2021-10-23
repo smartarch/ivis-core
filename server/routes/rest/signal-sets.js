@@ -142,6 +142,7 @@ router.getAsync('/signal-sets-by-cid/:signalSetCid', passport.loggedIn, async (r
 
 router.getAsync('/predictions/:modelId', passport.loggedIn, async (req, res) => {
     const predictionModel = await signalSetsPredictions.getById(req.context, req.params.modelId);
+    predictionModel.hash = signalSetsPredictions.hash(predictionModel);
     return res.json(predictionModel);
 });
 
@@ -234,6 +235,14 @@ router.postAsync('/signal-set-aggregations-table/:signalSetId', passport.loggedI
 
 router.deleteAsync('/signal-sets/:signalSetId/predictions/:predictionId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     await signalSetsPredictions.removeById(req.context, castToInteger(req.params.signalSetId), castToInteger(req.params.predictionId));
+    return res.json();
+});
+
+router.putAsync('/predictions/:predictionId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
+    const prediction = req.body;
+    prediction.id = castToInteger(req.params.predictionId);
+
+    await signalSetsPredictions.update(req.context, prediction, true);
     return res.json();
 });
 

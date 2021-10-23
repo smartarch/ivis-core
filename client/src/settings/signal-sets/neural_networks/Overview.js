@@ -199,6 +199,8 @@ export default class NNOverview extends Component {
                     {this.isTrainingCompleted() && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}/tuned`} label={"New model from tuned parameters"} className="btn-primary" icon={"clone"} />}
                 </Toolbar>
 
+                {prediction.description && <p><b>Description:</b> {prediction.description}</p>}
+
                 {this.isTrainingCompleted() && <PredictionFutureLineChartsWithSelector prediction={this.props.prediction} signalSet={this.props.signalSet} />}
 
                 {this.printTrainingResults()}

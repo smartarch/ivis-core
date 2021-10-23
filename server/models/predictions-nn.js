@@ -33,6 +33,7 @@ async function createNNModelTx(tx, context, sigSetId, params) {
 
     let prediction = {
         name: params.name || '',
+        description: params.description || null,
         type: PredictionTypes.NN,
         set: sigSetId,
         ahead_count: params.target_width,

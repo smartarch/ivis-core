@@ -696,6 +696,7 @@ export default class PredictionsCompare extends Component {
         const modelsColumns = [
             { data: 0, title: t('Model id') },
             { data: 2, title: t('Name') },
+            { data: 4, title: t('Description') },
             { data: 3, title: t('Type') },
         ];
 

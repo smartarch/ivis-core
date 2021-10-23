@@ -16,7 +16,7 @@ import {
     filterData,
     Form,
     FormSendMethod,
-    InputField,
+    InputField, TextArea,
     withForm
 } from "../../../lib/form";
 import ParamTypesTunable from "../../ParamTypesTunable";
@@ -241,6 +241,7 @@ export default class CUD extends Component {
         const defaultValues = {
             loaded: true, // for determining whether the default values were already loaded
             name: '',
+            description: '',
             aggregation: '',
             target_width: '1', // TODO (MT)
             input_width: '1', // TODO (MT)
@@ -363,6 +364,7 @@ export default class CUD extends Component {
         const architecture_params = this.paramTypes.upcast(this.getArchitectureParamsSpec(), architectureData);
 
         data.name = data.name.trim();
+        data.description = data.description.trim();
         data.aggregation = data.aggregation.trim();
         data.input_width = parseInt(data.input_width, 10);
         data.target_width = parseInt(data.target_width, 10);
@@ -372,7 +374,7 @@ export default class CUD extends Component {
         }
         data.minimal_interval = data.minimal_interval.trim();
 
-        data = filterData(data, ['name','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions', 'minimal_interval', 'cleanup']);
+        data = filterData(data, ['name','description','aggregation','target_width','input_width', 'time_interval', 'architecture', 'start_training', 'automatic_predictions', 'minimal_interval', 'cleanup']);
 
         return {
             ...data,
@@ -578,7 +580,9 @@ export default class CUD extends Component {
                         {this.state.loadedFrom}
                     </DismissibleAlert>}
 
-                    <InputField id="name" label={t('Model name')} help={t('Has to be unique among models belonging to this signal set.')} />
+                    <InputField id="name" label={t('Model name')} help={t('Note that the model name cannot be changed later! It has to be unique among models belonging to this signal set as it is used to distinguish the generated signal sets.')} />
+
+                    <TextArea id="description" label={t('Model description')} />
 
                     {renderParam(this.ts_configSpec)}
 

@@ -52,6 +52,7 @@ import SignalSetsCUD from './settings/signal-sets/CUD';
 import SignalSetAggregations from './settings/signal-sets/Aggregations';
 import AggregationsCUD from './settings/signal-sets/AggregationsCUD';
 import SignalSetPredictions from './settings/signal-sets/Predictions';
+import PredictionsCUD from './settings/signal-sets/PredictionsCUD';
 import PredictionsArimaCUD from './settings/signal-sets/PredictionsArimaCUD';
 import PredictionsNNCUD from './settings/signal-sets/neural_networks/CUD';
 import PredictionsCompare from './settings/signal-sets/PredictionsCompare';
@@ -612,6 +613,23 @@ const getStructure = t => {
                                                 link: params => `/settings/signal-sets/${params.signalSetId}/predictions/compare`,
                                                 panelRender: props => <PredictionsCompare signalSet={props.resolved.signalSet} />
                                             },
+                                            ':modelId([0-9]+)': {
+                                                title: resolved => t('Prediction "{{name}}"', {name: resolved.prediction.name}),
+                                                resolve: {
+                                                    prediction: params => `rest/predictions/${params.modelId}`
+                                                },
+                                                link: params => `/settings/signal-sets/${params.signalSetId}/predictions/${params.modelId}/edit`,
+                                                navs: {
+                                                    ':action(edit|delete)': {
+                                                        title: t('Edit'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/${params.modelId}/edit`,
+                                                        visible: resolved => resolved.prediction.permissions.includes('edit'),
+                                                        panelRender: props => <PredictionsCUD
+                                                            action={props.match.params.action}
+                                                            entity={props.resolved.prediction}/>
+                                                    },
+                                                }
+                                            }
                                         }
                                     },
                                     ':action(signals|reindex)': {

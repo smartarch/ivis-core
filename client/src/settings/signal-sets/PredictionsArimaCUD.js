@@ -19,7 +19,7 @@ import {
     FormSendMethod,
     InputField,
     TableSelect,
-    TableSelectMode,
+    TableSelectMode, TextArea,
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
@@ -44,6 +44,7 @@ export default class CUD extends Component {
     componentDidMount() {
         this.populateFormValues({
             name: '',
+            description: '',
             autoarima: true,
             isSeasonal: false,
             p: 0,
@@ -214,6 +215,8 @@ export default class CUD extends Component {
                     onSubmitAsync={this.submitHandler}
                 >
                     <InputField id="name" label={t('Model name')} />
+                    <TextArea id="description" label={t('Model description')} />
+
                     <TableSelect
                         key="ts"
                         id="ts"

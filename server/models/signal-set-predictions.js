@@ -16,9 +16,16 @@ const interoperableErrors = require('../../shared/interoperable-errors');
 const jobs = require('./jobs');
 const removeSigSetById = require('./signal-sets').removeById;
 const { arimaCleanupTx } = require('./predictions-arima');
+const hasher = require('node-object-hash')();
 
 
-const allowedKeys = new Set(['name', 'set', 'type', 'namespace', 'settings', 'ahead_count', 'future_count', 'signals']);
+const allowedKeys = new Set(['name', 'description', 'set', 'type', 'namespace', 'settings', 'ahead_count', 'future_count', 'signals']);
+const allowedKeysUpdateWithConsistency = new Set(['description']);
+
+
+function hash(entity) {
+    return hasher.hash(filterObject(entity, allowedKeysUpdateWithConsistency));
+}
 
 /** These type specific function are called during model deletion
  */
@@ -100,7 +107,7 @@ async function registerPredictionModelJobTx(tx, context, modelId, jobId) {
     await _rebuildOuputOwnership(tx, context, modelId);
 }
 
-async function update(context, prediction) {
+async function update(context, prediction, withConsistencyCheck = false) {
     await knex.transaction(async tx => {
         await shares.enforceEntityPermissionTx(tx, context, 'prediction', prediction.id, 'edit');
 
@@ -109,12 +116,22 @@ async function update(context, prediction) {
             throw new interoperableErrors.NotFoundError();
         }
 
-        const filtered = filterObject(prediction, allowedKeys);
-        filtered.signals = JSON.stringify(filtered.signals);
-        filtered.settings = JSON.stringify(filtered.settings);
+        if (withConsistencyCheck) {
+            const existingHash = hash(existing);
+            if (existingHash !== prediction.originalHash) {
+                throw new interoperableErrors.ChangedError();
+            }
+        }
+
+        const filtered = filterObject(prediction, withConsistencyCheck ? allowedKeysUpdateWithConsistency : allowedKeys);
+        if (filtered.hasOwnProperty('signals'))
+            filtered.signals = JSON.stringify(filtered.signals);
+        if (filtered.hasOwnProperty('settings'))
+            filtered.settings = JSON.stringify(filtered.settings);
+
         await tx('predictions').where('id', prediction.id).update(filtered);
 
-        await shares.rebuildPermissionsTx(tx);
+        await shares.rebuildPermissionsTx(tx, {entityTypeId: 'prediction', entityId: prediction.id});
     });
 }
 
@@ -170,13 +187,15 @@ async function getOutputConfig(context, predictionId) {
 }
 
 async function listDTAjax(context, sigSetId, params) {
-    return await dtHelpers.ajaxList(
+    return await dtHelpers.ajaxListWithPermissions(
+        context,
+        [{entityTypeId: 'prediction', requiredOperations: ['view']}],
         params,
         builder => builder
             .from('predictions')
             .where('set', sigSetId),
         //.join('predictions_signal_sets', 'set', '=', 'predictions_signal_sets.id'),
-        ['predictions.id', 'predictions.set', 'predictions.name', 'predictions.type'],
+        ['predictions.id', 'predictions.set', 'predictions.name', 'predictions.type', 'predictions.description'],
     );
 }
 
@@ -395,3 +414,4 @@ module.exports.update = update;
 module.exports.getOutputConfigTx = getOutputConfigTx;
 module.exports.getOutputConfig = getOutputConfig;
 module.exports.listDTAjax = listDTAjax;
+module.exports.hash = hash;
