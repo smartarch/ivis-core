@@ -167,7 +167,7 @@ export default class NNOverview extends Component {
                     {rows}
                 </tbody>
             </table>
-            <TrialsHyperparametersTable trials={this.state.trainingResults.trials} architectureSpec={architectureSpec} />
+            <TrialsHyperparametersTable trials={this.state.trainingResults.trials} architectureSpec={architectureSpec} tuned_parameters={this.state.trainingResults.tuned_parameters} />
         </>);
     }
 
@@ -211,7 +211,7 @@ export default class NNOverview extends Component {
                 </ModalDialog>
 
                 <h3>Training log</h3>
-                <TrainingLog lastRun={this.state.lastRun} trainingJobId={trainingJobId} />
+                <TrainingLog lastRun={this.state.lastRun} trainingJobId={trainingJobId} isTrainingCompleted={this.isTrainingCompleted()} />
             </Panel>
         );
     }
@@ -259,7 +259,9 @@ class TrialsHyperparametersTable extends Component {
             }
             for (const spec of NeuralNetworksCommonParams) {
                 const optimizedParams = trial.optimized_parameters;
-                const value = optimizedParams[spec.id];
+                const value = optimizedParams.hasOwnProperty(spec.id)
+                    ? optimizedParams[spec.id]
+                    : this.props.tuned_parameters[spec.id];
                 columns.push(<td key={spec.id}>{render(spec, value)}</td>);
             }
             columns.push(<th key={"val_loss"}>{formatLoss(trial.val_loss)}</th>);
@@ -305,7 +307,10 @@ class TrainingLog extends Component {
 
     render() {
         if (!this.props.lastRun) {
-            return <p>{this.props.t("Not available")}</p>;
+            if (this.props.isTrainingCompleted)
+                return <p>{this.props.t("The training job has finished. The log is no longer available.")}</p>;
+            else
+                return <p>{this.props.t("The training job hasn't started yet.")}</p>;
         }
 
         if (this.state.collapsed)
