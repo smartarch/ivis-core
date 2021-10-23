@@ -192,7 +192,7 @@ class ARIMAModelInfoTable extends Component {
                 <table className={'table table-striped table-bordered'}>
                     <thead>
                         <tr>
-                            <th colspan="2">{'Model info'}</th>
+                            <th colSpan="2">{'Model info'}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -262,10 +262,7 @@ class RMSETable extends Component {
         super(props);
 
         this.state = {
-            min: '0',
-            max: 'infinity',
-            realFrom: '0',
-            realTo: '1000000',
+            error: "Loading...",
         }
     }
 
@@ -289,17 +286,23 @@ class RMSETable extends Component {
         const to = abs.to.toISOString();
 
         try {
+            if (!this.props.sourceSetCid)
+                return;
+
             const results = await this.getRMSE(from, to);
 
-            this.setState({
-                min: results.minMAE,
-                max: results.maxMAE,
-                minMSE: results.minMSE,
-                maxMSE: results.maxMSE,
-                interval: results.interval,
-                realFrom: from,
-                realTo: results.to,
-            });
+            if (results) {
+                this.setState({
+                    min: results.minMAE,
+                    max: results.maxMAE,
+                    minMSE: results.minMSE,
+                    maxMSE: results.maxMSE,
+                    interval: results.interval,
+                    realFrom: from,
+                    realTo: results.to,
+                    error: null,
+                });
+            }
         } catch (error) {
             this.setState({
                 error: `Failed to fetch RMSE. Is the model not trained yet?`,
@@ -314,8 +317,9 @@ class RMSETable extends Component {
     componentDidUpdate(prevProps) {
         const intervalChanged = this.getIntervalAbsolute(prevProps) !== this.getIntervalAbsolute();
         const aheadChanged = prevProps.ahead !== this.props.ahead;
+        const sourceSetCidChanged = prevProps.sourceSetCid !== this.props.sourceSetCid;
 
-        if (intervalChanged || aheadChanged) {
+        if (intervalChanged || aheadChanged || sourceSetCidChanged) {
             this.fetchData();
         }
     }
