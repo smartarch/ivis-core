@@ -12,6 +12,7 @@ const arimaTask = {
     name: 'ARIMA',
     description: 'ARIMA task',
     type: TaskType.PYTHON,
+    source: TaskSource.SYSTEM,
     settings: {
         params: taskParams,
         code: taskCode,
