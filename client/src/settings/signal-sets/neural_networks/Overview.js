@@ -142,7 +142,7 @@ export default class NNOverview extends Component {
         if (!this.state.trainingResults) {
             return (<>
                 <h3>Training results</h3>
-                {this.props.t('Training results are not available. When the training finishes, the results will appear here.')}
+                <p>{this.props.t('Training results are not yet available. When the training finishes, the results will appear here.')}</p>
             </>)
         }
 

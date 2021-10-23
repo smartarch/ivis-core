@@ -187,7 +187,12 @@ export default class CUD extends Component {
     componentDidMount() {
         if (this.props.cloneFromTuned) {
             const trainingResults = this.props.cloneFromTuned;
-            this.loadValuesFromOtherModel(this.props.cloneFromPrediction, trainingResults.tuned_parameters);
+            const tuned_parameters = trainingResults.tuned_parameters;
+            // we use tuned parameters which means none of them are tunable anymore so we don't need to run multiple trials
+            tuned_parameters.max_trials = "1";
+            tuned_parameters.executions_per_trial = "1";
+
+            this.loadValuesFromOtherModel(this.props.cloneFromPrediction, tuned_parameters);
             this.setState({
                 loadedFrom: `Settings cloned from tuned model '${trainingResults.tuned_parameters.name}'`,
             });
@@ -316,8 +321,8 @@ export default class CUD extends Component {
         if (NeuralNetworkArchitecturesSpecs.hasOwnProperty(architecture)) {
             const formValues = {};
             const defaultParams = NeuralNetworkArchitecturesSpecs[architecture].defaultParams || {};
-            const params = {...defaultParams, ...params}; // use default values for missing params
-            this.paramTypes.setFields(this.getArchitectureParamsSpec(architecture), params, formValues);
+            const paramsFields = {...defaultParams, ...params}; // use default values for missing params
+            this.paramTypes.setFields(this.getArchitectureParamsSpec(architecture), paramsFields, formValues);
             this.populateFormValues(formValues);
             this.rendered_architecture = architecture;
         }
