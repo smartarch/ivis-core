@@ -477,9 +477,11 @@ export class SectionContent extends Component {
     }
 
     async closeFlashMessage() {
-        this.setState({
-            flashMessageText: ''
-        });
+        if (this.state.flashMessageText !== '') {
+            this.setState({
+                flashMessageText: ''
+            });
+        }
     }
 
     renderRoute(route) {

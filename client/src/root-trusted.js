@@ -568,7 +568,7 @@ const getStructure = t => {
                                                 }
                                             },
                                             'neural_network': {
-                                                title: t('Neural Network models'),
+                                                title: t('Neural Networks'),
                                                 children: {
                                                     'create/:cloneFromModelId([0-9]+)?/:tuned(tuned)?': {
                                                         title: t('Add Neural Network model'),
@@ -593,18 +593,31 @@ const getStructure = t => {
                                                             cloneFromTuned={props.resolved.cloneFromTuned} />,
                                                     },
                                                     ':modelId([0-9]+)': {
-                                                        title: t('Neural Network model overview'),
-                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/${params.modelId}`,
+                                                        title: resolved => t('Prediction "{{name}}"', {name: resolved.prediction.name}),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/${params.modelId}/overview`,
                                                         resolve: {
                                                             prediction: params => `rest/predictions/${params.modelId}`,
                                                             jobs: params => `rest/predictions-nn-jobs/${params.modelId}`,
                                                         },
-                                                        panelRender: props => <NNOverview
-                                                            signalSet={props.resolved.signalSet}
-                                                            predictionId={props.match.params.modelId}
-                                                            prediction={props.resolved.prediction}
-                                                            jobs={props.resolved.jobs}
-                                                            action="create" />,
+                                                        navs: {
+                                                            'overview': {
+                                                                title: t('Overview'),
+                                                                link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/${params.modelId}/overview`,
+                                                                visible: resolved => resolved.prediction.permissions.includes('view'),
+                                                                panelRender: props => <NNOverview
+                                                                    signalSet={props.resolved.signalSet}
+                                                                    predictionId={props.match.params.modelId}
+                                                                    prediction={props.resolved.prediction}
+                                                                    jobs={props.resolved.jobs}
+                                                                    action="create" />,
+                                                            },
+                                                            'share': {
+                                                                title: t('Share'),
+                                                                link: params => `/settings/signal-sets/${params.signalSetId}/predictions/neural_network/${params.modelId}/share`,
+                                                                visible: resolved => resolved.prediction.permissions.includes('share'),
+                                                                panelRender: props => <Share title={t('Share')} entity={props.resolved.prediction} entityTypeId="prediction" />
+                                                            }
+                                                        },
                                                     }
                                                 }
                                             },

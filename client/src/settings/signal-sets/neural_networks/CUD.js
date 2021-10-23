@@ -662,7 +662,7 @@ export default class CUD extends Component {
 
                         <InputField id="minimal_interval"
                                     label={t('Minimal interval between generating new predictions')}
-                                    help={t('Set this to limit how often new predictions are generated. This is recommended for signal sets with high frequency of records in order not to compute the predictions every time new record is added. Leave empty for no . Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes).')}
+                                    help={t('Set this to limit how often new predictions are generated. This is recommended for signal sets with high frequency of records in order not to compute the predictions every time new record is added. Leave empty for no limit (generate predictions as soon as new data arrive). Possible values are integer + unit (s, m, h, d), e.g. \"1d\" (1 day) or \"10m\" (10 minutes).')}
                                     placeholder={t(`type interval or select from the hints`)}
                                     withHints={['', '1h', '12h', '1d', '30d']}
                         />
