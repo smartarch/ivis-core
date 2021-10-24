@@ -18,6 +18,7 @@ import {LineChart} from "../../../ivis/LineChart";
 import {IntervalSpec} from "../../../ivis/TimeInterval";
 import {TimeContext} from "../../../ivis/TimeContext";
 import moment from "moment";
+import {TimeRangeSelector} from "../../../ivis/TimeRangeSelector";
 
 @withComponentMixins([
     withTranslation,
@@ -29,8 +30,10 @@ export default class NNOverview extends Component {
         super(props);
 
         this.state = {
-            lastRun: null,
+            lastTrainingRun: null,
+            lastPredictionRun: null,
             runTrainingModalVisible: false,
+            runPredictionModalVisible: false,
             timeout: null,
             predictionJob: null,
             enablePredictionButtonDisabled: false,
@@ -52,25 +55,32 @@ export default class NNOverview extends Component {
     @withAsyncErrorHandler
     async fetchData() {
         const trainingJobId = this.props.jobs.training;
-        const lastRunResponse = await axios.get(getUrl(`rest/jobs/${trainingJobId}/last-run`))
-        const lastRun = lastRunResponse.data;
-
-        let timeout = null;
-        if (this.state.timeout && lastRun.finished_at) { // last run finished
-            clearTimeout(this.state.timeout);
-        }
-        else if (lastRun && !lastRun.finished_at) {  // last run not finished and timeout not yet set
-            timeout = setTimeout(::this.fetchData, 1000);
-        }
-
         const predictionJobId = this.props.jobs.prediction;
-        const predictionJobResponse = await axios.get(getUrl(`rest/jobs/${predictionJobId}`))
+        const predictionId = this.state.prediction.id;
+
+        const lastTrainingRun = await this.fetchLastJobRun(trainingJobId);
+        const lastPredictionRun = await this.fetchLastJobRun(predictionJobId);
+        const timeout = await this.setFetchTimeout(lastTrainingRun, lastPredictionRun);
+
+        const predictionJobResponse = await axios.get(getUrl(`rest/jobs/${predictionJobId}`));
         const predictionJob = predictionJobResponse.data;
 
-        const predictionId = this.state.prediction.id;
         const predictionResponse = await axios.get(getUrl(`rest/predictions/${predictionId}`))
         const prediction = predictionResponse.data;
 
+        let trainingResults = await this.fetchTrainingResults(prediction, trainingJobId);
+
+        this.setState({
+            lastTrainingRun,
+            timeout,
+            predictionJob,
+            prediction,
+            trainingResults,
+            lastPredictionRun,
+        });
+    }
+
+    async fetchTrainingResults(prediction, trainingJobId) {
         let trainingResults = null;
         if (prediction.settings && prediction.settings.training_completed) {
             try {
@@ -80,20 +90,29 @@ export default class NNOverview extends Component {
                 console.log("Training results not available.");
             }
         }
+        return trainingResults;
+    }
+    
+    async fetchLastJobRun(jobId) {
+        const lastRunResponse = await axios.get(getUrl(`rest/jobs/${jobId}/last-run`))
+        return lastRunResponse.data;
+    }
 
-        this.setState({
-            lastRun,
-            timeout,
-            predictionJob,
-            prediction,
-            trainingResults,
-        });
+    async setFetchTimeout(...jobsToWaitFor) {
+        let timeout = null;
+        if (this.state.timeout) {
+            clearTimeout(this.state.timeout); // clear the last timeout (this is safe even if the timeout was already executed)
+        }
+        if (jobsToWaitFor.some(j => j && !j.finished_at)) { // there is a last run which is not yet finished
+            timeout = setTimeout(::this.fetchData, 1000);
+        }
+        return timeout;
     }
 
     @withAsyncErrorHandler
     async stopTraining() {
-        if (this.state.lastRun)
-            await axios.post(getUrl(`rest/job-stop/${this.state.lastRun.id}`));
+        if (this.state.lastTrainingRun)
+            await axios.post(getUrl(`rest/job-stop/${this.state.lastTrainingRun.id}`));
     }
 
     showRunTrainingModal() {
@@ -104,10 +123,26 @@ export default class NNOverview extends Component {
         this.setState({runTrainingModalVisible: false});
     }
 
+    showRunPredictionModal() {
+        this.setState({runPredictionModalVisible: true});
+    }
+
+    hideRunPredictionModal() {
+        this.setState({runPredictionModalVisible: false});
+    }
+
     @withAsyncErrorHandler
     async runTraining() {
         this.hideRunTrainingModal()
         await axios.post(getUrl(`rest/job-run/${this.props.jobs.training}`));
+        // noinspection ES6MissingAwait
+        this.fetchData();
+    }
+
+    @withAsyncErrorHandler
+    async runPrediction() {
+        this.hideRunPredictionModal()
+        await axios.post(getUrl(`rest/job-run/${this.props.jobs.prediction}`));
         // noinspection ES6MissingAwait
         this.fetchData();
     }
@@ -146,14 +181,28 @@ export default class NNOverview extends Component {
             </>)
         }
 
-        const architectureParams = this.state.trainingResults.tuned_parameters.architecture_params;
-        const architecture = this.state.trainingResults.tuned_parameters.architecture;
+        const tunedParams = this.state.trainingResults.tuned_parameters;
+        const architectureParams = tunedParams.architecture_params;
+        const architecture = tunedParams.architecture;
         const architectureSpec = NeuralNetworkArchitecturesSpecs[architecture];
+
+        // helper function for rendering
+        const render = (spec, value) => {
+            if (spec.hasOwnProperty("render"))
+                return spec.render(value)
+            else
+                return JSON.stringify(value, null, 2)
+        }
 
         const rows = architectureSpec.params.map(spec => <tr key={spec.id}>
             <td>{spec.label}</td>
-            <td>{JSON.stringify(architectureParams[spec.id], null, 2)}</td>
+            <td>{render(spec, architectureParams[spec.id])}</td>
         </tr>);
+        rows.push(...NeuralNetworksCommonParams.map(spec => <tr key={spec.id}>
+            <td>{spec.label}</td>
+            <td>{render(spec, tunedParams[spec.id])}</td>
+        </tr>));
+
 
         return (<>
             <h3>Training results</h3>
@@ -179,29 +228,39 @@ export default class NNOverview extends Component {
         const t = this.props.t;
         const prediction = this.state.prediction;
         const trainingJobId = this.props.jobs.training;
+        const predictionJobId = this.props.jobs.prediction;
 
         let enablePredictionButton = null;
         if (this.state.predictionJob && this.isTrainingCompleted()) {
             if (this.state.predictionJob.state === JobState.DISABLED) {
-                enablePredictionButton = <Button onClickAsync={::this.enablePredictionJob} label={"Enable automatic predictions"} className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
+                enablePredictionButton = <Button onClickAsync={::this.enablePredictionJob} label={"Enable automatic predictions"}
+                                                 className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
             } else if (this.state.predictionJob.state === JobState.ENABLED) {
-                enablePredictionButton = <Button onClickAsync={::this.disablePredictionJob} label={"Disable automatic predictions"} className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
+                enablePredictionButton = <Button onClickAsync={::this.disablePredictionJob} label={"Disable automatic predictions"}
+                                                 className="btn-primary" disabled={this.state.enablePredictionButtonDisabled}/>
             }
         }
 
         return (
             <Panel title={t('Neural network model overview') + ": " + prediction.name}>
                 <Toolbar className={"text-left"}>
-                    {this.state.lastRun && !this.state.lastRun.finished_at && <Button onClickAsync={::this.stopTraining} label={"Stop training"} className="btn-danger" icon={"stop"} />}
+                    {this.state.lastTrainingRun && !this.state.lastTrainingRun.finished_at &&
+                        <Button onClickAsync={::this.stopTraining} label={"Stop training"} className="btn-danger" icon={"stop"} />}
                     <Button onClickAsync={::this.showRunTrainingModal} label={"Re-run training"} className="btn-danger" icon={"retweet"} />
+
                     {enablePredictionButton}
+                    {this.state.predictionJob && this.isTrainingCompleted() &&
+                        <Button onClickAsync={::this.showRunPredictionModal} label={"Generate predictions"} className="btn-secondary" icon={"play"}
+                                disabled={this.state.lastPredictionRun && !this.state.lastPredictionRun.finished_at} />}
+
                     <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}`} label={"New model with same settings"} className="btn-primary" icon={"clone"} />
                     {this.isTrainingCompleted() && <LinkButton to={`/settings/signal-sets/${this.props.signalSet.id}/predictions/neural_network/create/${this.props.predictionId}/tuned`} label={"New model from tuned parameters"} className="btn-primary" icon={"clone"} />}
                 </Toolbar>
 
                 {prediction.description && <p><b>Description:</b> {prediction.description}</p>}
 
-                {this.isTrainingCompleted() && <PredictionFutureLineChartsWithSelector prediction={this.props.prediction} signalSet={this.props.signalSet} />}
+                {this.isTrainingCompleted() &&
+                    <PredictionFutureLineChartsWithSelector prediction={this.props.prediction} signalSet={this.props.signalSet} lastPredictionRun={this.state.lastPredictionRun} />}
 
                 {this.printTrainingResults()}
 
@@ -212,8 +271,23 @@ export default class NNOverview extends Component {
                     Are you sure? This will delete the previously trained model.
                 </ModalDialog>
 
+                <ModalDialog hidden={!this.state.runPredictionModalVisible} title={"Generate predictions"} onCloseAsync={::this.hideRunPredictionModal} buttons={[
+                    { label: t('no'), className: 'btn-primary', onClickAsync: ::this.hideRunPredictionModal },
+                    { label: t('yes'), className: 'btn-secondary', onClickAsync: ::this.runPrediction }
+                ]}>
+                    This will generate new predictions now. Are you sure? This is usually not necessary if you have automatic predictions enabled.
+                </ModalDialog>
+
                 <h3>Training log</h3>
-                <TrainingLog lastRun={this.state.lastRun} trainingJobId={trainingJobId} isTrainingCompleted={this.isTrainingCompleted()} />
+                <JobRunLog lastRun={this.state.lastTrainingRun} jobId={trainingJobId}
+                           errorMessage={this.isTrainingCompleted() ? t("The training job has finished. The log is no longer available.") : t("The training job hasn't started yet.")} />
+
+                {this.isTrainingCompleted() && <>
+                    <h3>Prediction log</h3>
+                    <JobRunLog lastRun={this.state.lastPredictionRun} jobId={predictionJobId}
+                               errorMessage={t("The log of the prediction job is not available. It is possible that the prediction job was not executed yet. " +
+                                   "It will be executed automatically if the automatic predictions are enabled.")} />
+                </>}
             </Panel>
         );
     }
@@ -292,7 +366,7 @@ class TrialsHyperparametersTable extends Component {
 @withComponentMixins([
     withTranslation,
 ])
-class TrainingLog extends Component {
+class JobRunLog extends Component {
     constructor(props) {
         super(props);
 
@@ -309,10 +383,7 @@ class TrainingLog extends Component {
 
     render() {
         if (!this.props.lastRun) {
-            if (this.props.isTrainingCompleted)
-                return <p>{this.props.t("The training job has finished. The log is no longer available.")}</p>;
-            else
-                return <p>{this.props.t("The training job hasn't started yet.")}</p>;
+            return <p>{this.props.errorMessage}</p>;
         }
 
         if (this.state.collapsed)
@@ -326,7 +397,7 @@ class TrainingLog extends Component {
                 <ActionLink onClickAsync={::this.onClick} className={"text-muted d-inline-block mb-2"}>
                     Collapse
                 </ActionLink>
-                <RunConsole jobId={this.props.trainingJobId} runId={this.props.lastRun.id} key={this.props.lastRun.id} />
+                <RunConsole jobId={this.props.jobId} runId={this.props.lastRun.id} key={this.props.lastRun.id} />
             </>);
     }
 }
@@ -477,6 +548,9 @@ export class PredictionFutureLineChartsWithSelector extends Component {
         return (
             <>
                 <h3>Latest predictions</h3>
+                {this.props.lastPredictionRun && (this.props.lastPredictionRun.finished_at
+                    ? <p>The latest predictions were generated on {moment(this.props.lastPredictionRun.finished_at).format('YYYY-MM-DD HH:mm:ss')}.</p>
+                    : <p>The predictions are being generated now.</p>)}
                 <Form stateOwner={this} >
                     {this.state.futureSet && <TableSelect
                         key="signals"
@@ -494,6 +568,7 @@ export class PredictionFutureLineChartsWithSelector extends Component {
 
                 <TimeContext initialIntervalSpec={initialIntervalSpec}>
                     {charts}
+                    {charts.length > 0 && <TimeRangeSelector />}
                 </TimeContext>
             </>
         );
