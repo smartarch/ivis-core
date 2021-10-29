@@ -11,7 +11,7 @@ class RunParams(Params):
         self.target_signals = []  # The target signals and their types, keep empty for autoregressive models
         self.aggregated = False  # Whether the queries should be aggregated
         self.interval = None  # Aggregation interval in milliseconds.
-        self.normalization_coefficients = {}  #: Normalization coefficients for the signals
+        self.normalization_coefficients = {}  # Normalization coefficients for the signals
         self.input_width = 0  # Number of time steps used for prediction.
         self.target_width = 0  # Number of predicted time steps.
         self.index = str()  # the ES index (signal set)

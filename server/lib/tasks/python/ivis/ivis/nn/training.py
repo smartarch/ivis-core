@@ -280,10 +280,15 @@ def run_training(parameters, model_factory=None, save_data=lambda _1, _2: None):
     parameters : dict
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types in the `entities` value.
-    save_data : (TrainingParams, List[pd.DataFrame]) -> None
-        Function to save predicted data for .
+    save_data : (TrainingParams, list[pandas.DataFrame]) -> None
+        Function to save the predicted data for the test set.
     model_factory : ModelFactory
         Factory for creating the NN models.
+
+    Returns
+    -------
+    tensorflow.keras.Model
+        The found model.
     """
 
     print("Initializing...")

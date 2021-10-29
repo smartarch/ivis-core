@@ -5,6 +5,7 @@ from collections import defaultdict
 import pandas as pd
 from .common import get_aggregated_field
 from ivis import ivis
+from .ParamsClasses import PredictionParams
 
 
 def _get_output_signal_cid(signal):
@@ -124,12 +125,22 @@ def _save_future(prediction_parameters, dataframes):
     ivis.insert_records(set_cid, records_future(prediction_parameters, dataframes))
 
 
-def save_data(prediction_parameters, dataframes, log_callback=print):
-    for k in range(1, prediction_parameters.target_width + 1):
-        log_callback(f"Saving '{k}ahead' signal set...", end='')
-        _save_k_ahead(prediction_parameters, dataframes, k)
-        log_callback("Done.")
+def save_data(prediction_parameters, dataframes):
+    """
+    Saves the predicted data into the IVIS signal sets.
 
-    log_callback("Saving 'future' signal set...", end='')
+    Parameters
+    ----------
+    prediction_parameters : PredictionParams
+
+    dataframes : list[pandas.DataFrame]
+        The data to be saved. Each dataframe in the list must have the columns corresponding to the `PredictionParams.target_signals` and rows corresponding to the timestamps of the prediction. There must be `prediction_parameters.target_width` dataframes, on for each 'k ahead' signal set.
+    """
+    for k in range(1, prediction_parameters.target_width + 1):
+        print(f"Saving '{k}ahead' signal set...", end='')
+        _save_k_ahead(prediction_parameters, dataframes, k)
+        print("Done.")
+
+    print("Saving 'future' signal set...", end='')
     _save_future(prediction_parameters, dataframes)
-    log_callback("Done.")
+    print("Done.")

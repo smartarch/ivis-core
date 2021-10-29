@@ -45,7 +45,7 @@ class ModelFactory(ABC):
 
         Returns
         -------
-        tf.keras.Model
+        tensorflow.keras.Model
         """
         return
 
@@ -56,11 +56,11 @@ class ModelFactory(ABC):
 
         Parameters
         ----------
-        model : tf.keras.Model
+        model : tensorflow.keras.Model
         prediction_parameters : PredictionParams
 
         Returns
         -------
-        tf.keras.Model
+        tensorflow.keras.Model
         """
         return model

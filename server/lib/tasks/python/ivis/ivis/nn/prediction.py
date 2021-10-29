@@ -14,6 +14,7 @@ from .common import get_aggregated_field, print_divider
 from .load_data import load_data
 from .preprocessing import get_column_names, preprocess_using_coefficients
 from .ParamsClasses import PredictionParams
+from .architecture import ModelFactory
 
 
 def load_data_first(prediction_parameters):
@@ -224,6 +225,23 @@ def postprocess(prediction_parameters, data, last_ts):
 
 
 def load_model(model_factory=None):
+    """
+    Loads the model from the IVIS server.
+
+    The model is loaded based on the training job id (`ivis.params["training_job"]`) and its file name (`ivis.params["model_file"]`). The prediction parameters file (with name `ivis.params["prediction_parameters_file"]`) is also downloaded from the same job.
+
+    Parameters
+    ----------
+    model_factory : ModelFactory
+        The factory which was used to create the model. It's `update_loaded_model` method is applied to the file loaded from the IVIS server. If no model factory is supplied, it is selected based on the `PredictionParams.architecture`.
+    Returns
+    -------
+    parameters : PredictionParams
+        Additional parameters needed for generating the predictions.
+    model : tensorflow.keras.Model
+        The loaded model.
+    """
+
     training_job = ivis.params["training_job"]
     model_file = ivis.params["model_file"]
     params_file = ivis.params["prediction_parameters_file"]
@@ -282,9 +300,9 @@ def run_prediction(prediction_parameters, model, save_data):
     prediction_parameters : PredictionParams
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types.
-    model : tf.keras.Model
+    model : tensorflow.keras.Model
         The model to use for predictions.
-    save_data : (PredictionParams, List[pd.DataFrame]) -> None
+    save_data : (PredictionParams, list[pandas.DataFrame]) -> None
         Function to save the data.
     """
 
