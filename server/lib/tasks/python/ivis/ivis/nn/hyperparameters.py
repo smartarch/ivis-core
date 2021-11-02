@@ -1,3 +1,7 @@
+"""
+Wrapper for KerasTuner to obtain the training and architecture hyperparameters.
+"""
+
 import kerastuner as kt
 
 

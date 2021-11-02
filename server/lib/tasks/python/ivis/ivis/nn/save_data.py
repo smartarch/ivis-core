@@ -1,5 +1,5 @@
 """
-Code for saving the predictions.
+Code for saving the predictions into IVIS signal sets.
 """
 from collections import defaultdict
 import pandas as pd
@@ -58,9 +58,10 @@ def _row_to_record(prediction_parameters, row):
     dict
         Record(s) for the dataframe row.
     """
-    record = dict()
-    record["ts"] = row.name  # unix ts (in ms)
-    record["_id"] = str(row.name)[:-3]  # unix ts (in s)
+    record = {
+        "ts": row.name,  # unix ts (in ms)
+        "_id": str(row.name)[:-3]  # unix ts (in s)
+    }
 
     for sig in prediction_parameters.target_signals:
         cid = _get_output_signal_cid(sig)

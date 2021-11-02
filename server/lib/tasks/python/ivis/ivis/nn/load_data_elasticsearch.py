@@ -12,7 +12,7 @@ from .common import get_aggregated_field
 
 
 def get_time_interval_filter(ts_field, time_interval):
-    time_range = dict()
+    time_range = {}
     if "start" in time_interval and time_interval["start"] is not None and time_interval["start"] != "":
         time_range["gte"] = time_interval["start"]
     if "start_exclusive" in time_interval and time_interval["start_exclusive"] is not None and time_interval["start_exclusive"] != "":

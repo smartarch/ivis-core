@@ -1,10 +1,10 @@
 """
-Preprocessing of the data before training.
+Preprocessing of the data before training and prediction. Includes data normalization and generating the windowed datasets.
 """
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from .common import get_aggregated_field
+from .common import get_aggregated_field, NotEnoughDataError
 
 
 def split_data(training_parameters, dataframe):
@@ -302,3 +302,28 @@ def make_datasets(train_df, val_df, test_df, window_generator_params):
     val = window.make_dataset(val_df)
     test = window.make_dataset(test_df)
     return train, val, test
+
+
+def get_windowed_dataset(prediction_parameters, dataframe):
+    """
+    Creates the windowed dataset for one dataframe based on the prediction parameters. This is intended for use during prediction.
+
+    Parameters
+    ----------
+    prediction_parameters : PredictionParams
+        The prediction parameters.
+    dataframe : pandas.DataFrame
+        The data to use to create the dataset.
+    Returns
+    -------
+
+    """
+    if dataframe.shape[0] < prediction_parameters.input_width:
+        raise NotEnoughDataError
+
+    return tf.keras.preprocessing.timeseries_dataset_from_array(
+        data=np.array(dataframe, dtype=np.float32),
+        targets=None,
+        sequence_length=prediction_parameters.input_width,
+        sequence_stride=1,
+        shuffle=False)

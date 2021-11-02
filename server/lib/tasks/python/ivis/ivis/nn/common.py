@@ -43,3 +43,8 @@ def print_divider(length=10):
     print()
     print("#" * length)
     print()
+
+
+class NotEnoughDataError(Exception):
+    def __str__(self):
+        return "Not enough data."

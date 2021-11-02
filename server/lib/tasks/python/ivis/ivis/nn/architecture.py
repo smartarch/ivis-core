@@ -1,5 +1,5 @@
 """
-Functions for creating NN models.
+Function for selecting the NN architecture from known architectures.
 """
 import tensorflow as tf
 from .ParamsClasses import TrainingParams

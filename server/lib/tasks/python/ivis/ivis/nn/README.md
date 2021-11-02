@@ -102,6 +102,36 @@ The parameters (instance variables of the class) are described in the class defi
 
 ## File structure
 
+The project is structured into following files:
+
+* [`training.py`](training.py)
+  * Code for training of neural-network-based prediction models. Prepares the parameters, manages the data loading and preprocessing, runs the hyperparameter tuner and network training, evaluates the model and generates predictions on the test set, saves the model to the IVIS server.
+* [`prediction.py`](prediction.py)
+  * Code for using the trained models to generate prediction. Manages the data loading and preprocessing, loads the model from IVIS server, generates the prediction and saves them to the signal sets on server.
+* [`common.py`](common.py)
+  * Common function for the whole `nn` submodule.
+* [`load_data.py`](load_data.py)
+  * Code for loading data from server.
+* [`load_data_elasticsearch.py`](load_data_elasticsearch.py)
+  * Elasticsearch queries generation and results parsing.
+* [`preprocessing.py`](preprocessing.py)
+  * Preprocessing of the data before training and prediction. Includes data normalization and generating the windowed datasets.
+* [`hyperparameter.py`](hyperparameters.py)
+  * Wrapper for KerasTuner to obtain the training and architecture hyperparameters.
+* [`architecture.py`](architecture.py)
+  * Function for selecting the NN architecture from known architectures.
+* [`architectures` folder](architectures)
+  * Contains the ModelFactory abstract class and its implementations for supported architectures ([LSTM](architectures/lstm.py), [MLP](architectures/mlp.py)).
+  * [`ModelFactory.py`](architectures/ModelFactory.py)
+    * Abstract class for factories for creating the NN models based on the hyperparameters. See TODO for details.
+  * [`residual_wrapper.py`](architectures/residual_wrapper.py)
+    * Functions to alter the model to add a residual connection around the whole model (used by the MLP architecture).
+* [`postprocessing.py`](postprocessing.py)
+  * Postprocessing of the data after generating the predictions. Converts the predicted tensors into dataframes, performs denormalization, adds timestamps to the data.
+* [`save_data.py`](save_data.py)
+  * Code for saving the predictions into IVIS signal sets.
+* [`ParamsClasses` folder](ParamsClasses)
+  * Implementations of [`RunParams`](ParamsClasses/RunParams.py), [`TrainingParams`](ParamsClasses/TrainingParams.py) and [`PredictionParams`](ParamsClasses/PredictionParams.py) (see [RunParams – TrainingParams, PredictionParams](#RunParams-–-TrainingParams,-PredictionParams)).
 
 
 ## Adding a new NN model architecture

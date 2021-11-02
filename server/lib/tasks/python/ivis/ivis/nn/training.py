@@ -1,5 +1,7 @@
 """
-Code for Neural Network training.
+Code for training of neural-network-based prediction models.
+
+Prepares the parameters, manages the data loading and preprocessing, runs the hyperparameter tuner and network training, evaluates the model and generates predictions on the test set, saves the model to the IVIS server.
 """
 import json
 import shutil
@@ -14,7 +16,8 @@ from .ParamsClasses import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters, get_tuned_parameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
 from .architectures.ModelFactory import ModelFactory
-from .prediction import postprocess, get_windowed_dataset
+from .preprocessing import get_windowed_dataset
+from .postprocessing import postprocess
 
 
 ######################
@@ -92,9 +95,9 @@ def get_default_training_parameters(parameters, training_parameters_class=Traini
     return training_parameters
 
 
-#######################
-# Load a prepare data #
-#######################
+#########################
+# Load and prepare data #
+#########################
 
 
 def load_data_training(training_parameters, time_interval):
