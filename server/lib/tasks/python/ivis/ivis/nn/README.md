@@ -90,7 +90,11 @@ Saves the predicted data into the IVIS signal sets.
   
 ### Classes
 
-#### TODO: RunParams
+#### RunParams – TrainingParams, PredictionParams
+
+For holding the extra parameters needed for training the network and generating predictions (such as the list of signals, network architecture, hyperparameters, etc.), we created the `TrainingParams` and `PredictionParams` with common base class `RunParams`.
+
+The parameters (instance variables of the class) are described in the class definitions in [`RunParams.py`](ParamsClasses/RunParams.py), [`TrainingParams.py`](ParamsClasses/TrainingParams.py) and [`PredictionParams.py`](ParamsClasses/PredictionParams.py).
 
 #### TODO: ModelFactory
 

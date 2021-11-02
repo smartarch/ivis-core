@@ -8,8 +8,12 @@ class PredictionParams(RunParams):
         """
         Parameters
         ----------
-        copy_from : RunParams
+        copy_from : RunParams, optional
+            If specified, all parameters are copied from the `copy_from` object.
+        architecture_params : dict
+            The tuned architecture hyperparameters. They might be needed when loading the model from the server.
         """
+
         super().__init__(copy_from)
 
-        self.architecture_params = architecture_params or {}  # tuned architecture parameters
+        self.architecture_params = architecture_params or {}  #: tuned architecture parameters

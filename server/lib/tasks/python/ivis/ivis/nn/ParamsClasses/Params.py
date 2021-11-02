@@ -2,7 +2,7 @@ import json
 
 
 class Params:
-    """Base class for TrainingParams and PredictionParams."""
+    """Base class for holding any parameters. Provides functionality to import and export parameters to JSON."""
 
     def to_json(self):
         return json.dumps(self.__dict__, indent=2)
