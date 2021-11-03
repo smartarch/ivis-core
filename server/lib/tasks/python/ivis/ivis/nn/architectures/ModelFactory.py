@@ -32,20 +32,31 @@ class ModelFactory(ABC):
     @staticmethod
     @abstractmethod
     def get_params_class():
+        """
+        Returns the corresponding architecture parameters class.
+
+        Returns
+        -------
+        type
+            The corresponding model parameters class, i.e. a class derived from ModelParams. Note that this should return the class itself, not an instance of it.
+        """
         return ModelParams
 
     @staticmethod
     @abstractmethod
     def create_model(model_params):
         """
+        Construct a new TensorFlow model based on the model parameters.
 
         Parameters
         ----------
         model_params : ModelParams
+            An instance of the model parameters (i.e. instance of the class derived from ModelParams which was returned by the `get_params_class` method) with the current set of hyperparameters.
 
         Returns
         -------
         tensorflow.keras.Model
+            A new TensorFlow model based on the model hyperparameters. It should not be compiled yet.
         """
         return
 
@@ -57,10 +68,13 @@ class ModelFactory(ABC):
         Parameters
         ----------
         model : tensorflow.keras.Model
+            The model loaded from the server.
         prediction_parameters : PredictionParams
+            The prediction parameters.
 
         Returns
         -------
         tensorflow.keras.Model
+            Updated model.
         """
         return model

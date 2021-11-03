@@ -6,10 +6,17 @@ import kerastuner as kt
 
 
 class Hyperparameters:
-    """Wrapper for KerasTuner to obtain the training and architecture hyperparameters."""
+    """
+    Wrapper for KerasTuner to obtain the training and architecture hyperparameters.
+
+    Use the square brackets indexing operator to obtain the value (as if this object were a dictionary).
+
+    Additional information about the hyperparameters can be found in `architectures/AddingArchitecture.md`.
+    """
 
     def __init__(self, params, hp):
         """
+        Initializes the object with the hyperparameter definitions based on the job parameters.
 
         Parameters
         ----------
@@ -19,11 +26,11 @@ class Hyperparameters:
             Allowed "optimizable_type" values are:
                 - "float": then "min", "max" are required, "default" and "sampling" are optional
                 - "int": then "min", "max" are required, "default" and "sampling" are optional
-                - "bool": then default" is optional
+                - "bool": then "default" is optional
                 - "enum": then "values" array is required, "default" value is optional
                 - "list" then either "count" (fixed) or "min_count" and "max_count" are required. The items
                          specifications are taken from the "items" array and should be in the same format. If
-                         there are less items specifications than count, items specifications are repeated.
+                         there are fewer items specifications than count, items specifications are repeated.
             See also https://keras.io/api/keras_tuner/hyperparameters/ for details on "sampling", etc.
 
         hp : kt.HyperParameters

@@ -15,6 +15,7 @@ def get_model_factory(training_parameters):
     Parameters
     ----------
     training_parameters : TrainingParams
+        Training parameters.
 
     Returns
     -------
@@ -35,9 +36,10 @@ def get_optimizer(learning_rate):
     Parameters
     ----------
     learning_rate
+        The learning rate for the optimizer.
 
     Returns
     -------
-    tf.keras.optimizers.Optimizer
+    tensorflow.keras.optimizers.Optimizer
     """
     return tf.keras.optimizers.Adam(learning_rate)
