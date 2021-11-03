@@ -95,7 +95,23 @@ To allow automatic use of the factory, it must be added to this function. Otherw
 
 Up until now, we have only talked about adding the support for the new architecture to the `ivis.nn` library. The usual way new prediction models are created is through the user interface of the IVIS instance. To allow using the new architecture in the user interface, a specification of the hyperparameters must be provided.
 
-TODO(MT)
+This is done in the [predictions-nn.js](/shared/predictions-nn.js) file. The `NeuralNetworkArchitectures` object contains the list of the implemented architectures with their identifiers. In the `NeuralNetworkArchitecturesSpecs`, the specification must be provided. The specification consists of a `label`, `description`, `params` (the hyperparameters of the architecture), and the `defaultParams` (the default values of the hyperparameters).
+
+For `params`, any parameter type defined in [`ParamTypes.js`](/client/src/settings/ParamTypes.js) (the default parameter types available for tasks and templates, their documentation can be found [here](https://github.com/smartarch/ivis-core/wiki/Template-Parameters)) or [`ParamTypesTunable.js`](/client/src/settings/ParamTypesTunable.js) (specific parameters for use with the tuner, see below) can be used.
+
+Again, we recommend looking at the already implemented architectures for reference.
+
+### Tunable parameter types
+
+The value of the tunable hyperparameters is automatically optimized for the best model accuracy by the hyperparameter tuner. For these settings, the user can select whether they want to specify the value directly (*Fixed*) or let the tuner find it (*Tuned*). When *Tuned* option is selected, restrictions (e.g., minimum and maximum for numbers) of the value have to be specified.
+
+We provide the following tunable parameter types:
+
+* `tunable_integer`, `tunable_float` – The numeric types, the minimum and maximum have to be specified by the user. 
+* `tunable_boolean`
+* `tunable_list` – It is necessary to specify the type of the items in the list using the `child` field. This can again be any parameter specification (normal or tunable). The `itemLabel` field can be used to make the user interface more descriptive, such as calling the items in the list `"layers"`. The user can then set either a fixed number of items or tuned number of items in the list and the properties of the items in the list.
+
+We recommend looking also at the [end-user documentation](https://github.com/smartarch/ivis-core/wiki/Neural-Networks-Add-Model#tunable-settings-and-parameters) of the tunable parameter types for more information. These parameter types are then transformed into the corresponding hyperparameter `"optimizable_type"`s described [earlier](#hyperparameters).
 
 ## Summary
 
