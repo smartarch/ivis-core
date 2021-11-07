@@ -19,7 +19,7 @@ def get_model_factory(training_parameters):
 
     Returns
     -------
-    ModelFactory
+    model_factory : ModelFactory
     """
     if training_parameters.architecture == "mlp":
         return MLPFactory
@@ -31,7 +31,7 @@ def get_model_factory(training_parameters):
 
 def get_optimizer(learning_rate):
     """
-    Get an optimizer (tf.keras.optimizers.Optimizer) for the neural network.
+    Get an optimizer (``tf.keras.optimizers.Optimizer``) for the neural network.
 
     Parameters
     ----------
@@ -40,6 +40,6 @@ def get_optimizer(learning_rate):
 
     Returns
     -------
-    tensorflow.keras.optimizers.Optimizer
+    optimizer : tensorflow.keras.optimizers.Optimizer
     """
     return tf.keras.optimizers.Adam(learning_rate)

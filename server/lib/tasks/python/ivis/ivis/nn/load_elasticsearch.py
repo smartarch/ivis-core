@@ -12,6 +12,7 @@ from .common import get_aggregated_field
 
 
 def get_time_interval_filter(ts_field, time_interval):
+    """Construct an ES filter for the time interval and timestamp field."""
     time_range = {}
     if "start" in time_interval and time_interval["start"] is not None and time_interval["start"] != "":
         time_range["gte"] = time_interval["start"]
@@ -30,15 +31,15 @@ def get_time_interval_filter(ts_field, time_interval):
 def get_docs_query(signals, ts_field, time_interval=None, size=10000):
     """
     Creates a query for ES to return the docs (in their original form).
-    Note: The results are sorted in reversed order (from latest to oldest).
+
+    Note: The results will be sorted in reversed order (from latest to oldest).
 
     Parameters
     ----------
     signals : list[dict]
-        Signal parameters for query creation. Expected keys:
-         - "field" - the ES field for the signal
+        Signal parameters for query creation. Each signal is expected to have the ``"field"`` with value representing the ES field for the signal.
     ts_field : string
-        ES field for timestamp signal
+        ES field for timestamp signal.
     time_interval : dict
         Dict with "start" and "end" keys which are ISO date strings.
     size : int
@@ -46,7 +47,7 @@ def get_docs_query(signals, ts_field, time_interval=None, size=10000):
 
     Returns
     -------
-    dict
+    query : dict
         The generated ES query.
     """
     if time_interval is None:
@@ -71,28 +72,27 @@ def get_histogram_query(signals, ts_field, aggregation_interval, time_interval=N
     ----------
     signals : list[dict]
         Signal parameters for query creation. Expected keys:
-         - "field" - the ES field for the signal
-         - "data_type": "numerical" or "categorical"
-         - "aggregation": aggregation for Elasticsearch ("min", "max", "avg", ...)
+         - ``"field"``: the ES field for the signal,
+         - ``"data_type"``: "numerical" or "categorical",
+         - ``"aggregation"``: aggregation for Elasticsearch (``"min"``, ``"max"``, ``"avg"``, ...).
     ts_field : string
         ES field for timestamp signal
     aggregation_interval : string
-        The interval for the ES date histogram aggregation. Format is number + unit (e.g. "1d").
+        The interval for the ES date histogram aggregation. Format is number + unit (e.g. ``"1d"˙˙).
     time_interval : dict
-        Dict with "start" and "end" keys which are ISO date strings.
+        Dictionary with ``"start"`` and ``"end"`` keys which are ISO date strings.
     size : int
         Max number of returned docs. The latest docs are returned.
 
-
     Returns
     -------
-    dict
+    query : dict
         The generated ES query.
     """
     if time_interval is None:
         time_interval = {"start": "", "end": ""}
 
-    signal_aggs = dict()
+    signal_aggs = {}
     for sig in signals:
         field = sig["field"]
 
@@ -145,26 +145,22 @@ def get_histogram_query(signals, ts_field, aggregation_interval, time_interval=N
 
 
 def _parse_signal_values_from_docs(signal, docs):
-    """Returns the values of one signal as np array (vector)"""
+    """Returns the values of one signal as a `numpy` array."""
     field = signal["field"]
     data_type = signal["data_type"]
-    values = []
-    for d in docs:
-        values.append(d["_source"][field])
+    values = [d["_source"][field] for d in docs]
     return np.array(values,
                     dtype=np.float32 if data_type == "numerical" else np.str)
 
 
 def _parse_signal_values_from_sort(docs):
-    """Returns the values of the timestamp signal as np array (vector)"""
-    values = []
-    for d in docs:
-        values.append(d["sort"][0])
+    """Returns the values of the timestamp signal as a `numpy` array."""
+    values = [d["sort"][0] for d in docs]
     return np.array(values)
 
 
 def _parse_signal_values_from_buckets(signal, buckets):
-    """Returns the values of one signal as np array (vector)"""
+    """Returns the values of one signal as numpy array."""
     field = get_aggregated_field(signal)
     data_type = signal["data_type"]
 
@@ -181,10 +177,8 @@ def _parse_signal_values_from_buckets(signal, buckets):
 
 
 def _parse_signal_values_from_buckets_key(buckets):
-    """Returns the values of the timestamp signal as np array (vector)"""
-    values = []
-    for b in buckets:
-        values.append(b["key"])
+    """Returns the values of the timestamp signal as numpy array."""
+    values = [b["key"] for b in buckets]
     return np.array(values)
 
 
@@ -206,15 +200,15 @@ def parse_docs(signals, data):
     ----------
     signals : list[dict]
         Signal parameters (same as used for query creation). Expected keys:
-         - "field" - the ES field for the signal
-         - "data_type": "numerical" or "categorical"
+         - ``"field"``: the ES field for the signal,
+         - ``"data_type"``: ``"numerical"`` or ``"categorical"``.
     data : dict
         JSON response from Elasticsearch parsed to dict. It is expected that the Elasticsearch query was produced by `get_docs_query` and the data are thus ordered from the latest to the oldest.
 
     Returns
     -------
-    pd.DataFrame
-        Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES).
+    dataframe : pandas.DataFrame
+        Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (docs from ES) indexed by timestamp.
     """
     docs = _get_hits(data)
     if not docs:
@@ -240,16 +234,16 @@ def parse_histogram(signals, data):
     ----------
     signals : list[dict]
         Signal parameters for query creation. Expected keys:
-         - "field" - the ES field for the signal
-         - "data_type": "numerical" or "categorical"
-         - "aggregation": aggregation for Elasticsearch ("min", "max", "avg", ...)
+         - ``"field"``: the ES field for the signal,
+         - ``"data_type"``: "numerical" or "categorical",
+         - ``"aggregation"``: aggregation for Elasticsearch (``"min"``, ``"max"``, ``"avg"``, ...).
     data : dict
-        JSON response from Elasticsearch parsed to dict
+        JSON response from Elasticsearch parsed to dict.
 
     Returns
     -------
-    pd.DataFrame
-        Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (buckets from ES).
+    dataframe : pandas.DataFrame
+        Dataframe of both inputs and targets. Columns are fields, rows are the training patterns (buckets from ES) indexed by timestamp.
     """
     buckets = _get_buckets(data)
     if not buckets:

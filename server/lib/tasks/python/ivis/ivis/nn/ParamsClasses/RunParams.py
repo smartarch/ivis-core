@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from .Params import Params
 
 
@@ -15,8 +15,8 @@ class RunParams(Params):
 
         super().__init__()
         self.architecture: Optional[str] = None  #: the architecture of neural network
-        self.input_signals = []  #: The input signals and their types
-        self.target_signals = []  #: The target signals and their types, keep empty for autoregressive models
+        self.input_signals: List[dict] = []  #: The input signals and their types
+        self.target_signals: List[dict] = []  #: The target signals and their types, keep empty for autoregressive models
         self.aggregated = False  #: Whether the queries should be aggregated
         self.interval: Optional[int] = None  #: Aggregation interval in milliseconds.
         self.normalization_coefficients = {}  #: Normalization coefficients for the signals

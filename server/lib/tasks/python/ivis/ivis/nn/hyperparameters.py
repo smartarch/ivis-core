@@ -22,19 +22,23 @@ class Hyperparameters:
         ----------
         params : dict
             Our parameters specification.
-            If "optimizable_type" key is not present, the value is taken as fixed.
-            Allowed "optimizable_type" values are:
-                - "float": then "min", "max" are required, "default" and "sampling" are optional
-                - "int": then "min", "max" are required, "default" and "sampling" are optional
-                - "bool": then "default" is optional
-                - "enum": then "values" array is required, "default" value is optional
-                - "list" then either "count" (fixed) or "min_count" and "max_count" are required. The items
-                         specifications are taken from the "items" array and should be in the same format. If
-                         there are fewer items specifications than count, items specifications are repeated.
-            See also https://keras.io/api/keras_tuner/hyperparameters/ for details on "sampling", etc.
 
-        hp : kt.HyperParameters
-            The Keras Tuner HyperParameters instance.
+            If ``"optimizable_type"`` key is not present, the value is taken as fixed.
+
+            Allowed ``"optimizable_type"`` values are:
+
+                - ``"float"``: then ``"min", ``"max"`` are required, ``"default"`` and ``"sampling"`` are optional
+                - ``"int"``: then ``"min", ``"max"`` are required, ``"default"`` and ``"sampling"`` are optional
+                - ``"bool"``: then ``"default"`` is optional
+                - ``"enum"``: then ``"values"`` array is required, ``"default"`` value is optional
+                - ``"list"`` then either ``"count"`` (fixed) or ``"min_count"`` and ``"max_count"`` are required. The items
+                         specifications are taken from the ``"items"`` array and should be in the same format. If
+                         there are fewer items specifications than count, items specifications are repeated.
+
+            See also https://keras.io/api/keras_tuner/hyperparameters/ for details on ``"sampling", etc.
+
+        hp : kerastuner.HyperParameters
+            The KerasTuner HyperParameters instance (https://keras.io/api/keras_tuner/hyperparameters/#hyperparameters-class).
         """
         self.params = params
         self.hp = hp
@@ -122,14 +126,14 @@ def get_tuned_parameters(parameters, hp, optimized_only=False):
     ----------
     parameters : dict
         Original job parameters.
-    hp : kt.HyperParameters
+    hp : kerastuner.HyperParameters
         Best found hyperparameters.
     optimized_only : bool
-        Only return those parameters which are tunable (have "optimizable_type").
+        Only return those parameters which are tunable (have ``"optimizable_type"``).
 
     Returns
     -------
-    dict
+    tuned_parameters : dict
         Parameters with the best found tunable values.
     """
     hyperparameters = Hyperparameters(parameters, hp)

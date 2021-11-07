@@ -9,9 +9,11 @@ import pandas as pd
 
 from .common import get_aggregated_field
 from .preprocessing import get_column_names
+from .ParamsClasses import PredictionParams
 
 
 def get_column_indices(normalization_coefficients, signals):
+    """Returns the mapping from the names of the columns for signals and their index."""
     column_names = get_column_names(normalization_coefficients, signals)
     return {c: i for i, c in enumerate(column_names)}
 
@@ -22,14 +24,15 @@ def _postprocess_sample(sample, signals, normalization_coefficients, column_indi
 
     Parameters
     ----------
+    sample : numpy.ndarray
+        Shape is [time, signals].
+    signals : list[dict]
     normalization_coefficients : dict
     column_indices : dict
-    sample : np.ndarray
-        Shape is [time, signals]
 
     Returns
     -------
-    pd.DataFrame
+    pandas.DataFrame
         The columns correspond to the `PredictionParams.target_signals`, row are time steps of the prediction (without timestamps).
     """
 
@@ -78,7 +81,7 @@ def _set_sample_ts(sample, start_ts, interval):
 
     Parameters
     ----------
-    sample : pd.DataFrame
+    sample : pandas.DataFrame
         Shape is [time, signals]
     start_ts : int
         UNIX timestamp (ms).
@@ -87,7 +90,7 @@ def _set_sample_ts(sample, start_ts, interval):
 
     Returns
     -------
-    pd.DataFrame
+    pandas.DataFrame
         The index is altered to correspond to the timestamps of the predictions.
     """
     row_count = sample.shape[0]
@@ -104,14 +107,14 @@ def postprocess(prediction_parameters, data, last_ts):
     Parameters
     ----------
     prediction_parameters : PredictionParams
-    data : np.ndarray
-        The shape of the array is [samples, time, signals]
-    last_ts : int[]
-        The UNIX timestamp of the last record in each prediction input window. This is used to compute the timestamp of the prediction as `last_ts + interval`.
+    data : numpy.ndarray
+        The shape of the array is [samples, time, signals].
+    last_ts : list[int]
+        The UNIX timestamp of the last record in each prediction input window. This is used to compute the timestamp of the prediction as ``last_ts + interval``.
 
     Returns
     -------
-    list[pd.DataFrame]
+    list[pandas.DataFrame]
         Each dataframe in the list has the columns corresponding to the `PredictionParams.target_signals` and rows corresponding to the timestamps of the prediction.
     """
     signals = prediction_parameters.target_signals

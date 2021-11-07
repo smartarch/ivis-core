@@ -3,8 +3,8 @@ Code for saving the predictions into IVIS signal sets.
 """
 from collections import defaultdict
 import pandas as pd
-from .common import get_aggregated_field
 from ivis import ivis
+from .common import get_aggregated_field
 from .ParamsClasses import PredictionParams
 
 
@@ -49,9 +49,9 @@ def _row_to_record(prediction_parameters, row):
 
     Parameters
     ----------
-    row : pd.Series
-        One row of pd.DataFrame.
-    prediction_parameters : ivis.nn.PredictionParams
+    row : pandas.Series
+        One row of pandas.DataFrame.
+    prediction_parameters : PredictionParams
 
     Yields
     ------
@@ -79,11 +79,11 @@ def records_k_ahead(prediction_parameters, dataframes, k):
 
     Parameters
     ----------
-    dataframes : list[pd.DataFrame]
+    dataframes : list[pandas.DataFrame]
         Predicted dataframes.
     k : int
-        The k-th row of each dataframe is returned, 1 <= k <= prediction_parameters.target_width.
-    prediction_parameters : ivis.nn.PredictionParams
+        The k-th row of each dataframe is returned, ``1 <= k <= prediction_parameters.target_width``.
+    prediction_parameters : PredictionParams
 
     Yields
     ------

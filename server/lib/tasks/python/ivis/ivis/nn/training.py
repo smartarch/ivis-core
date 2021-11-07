@@ -10,8 +10,8 @@ import kerastuner as kt
 from uuid import uuid4
 from pathlib import Path
 from ivis import ivis
-from . import load_data_elasticsearch as es, preprocessing as pre, architecture
-from .load_data import load_data
+from . import load_elasticsearch as es, preprocessing as pre, architecture
+from .load import load_data
 from .ParamsClasses import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters, get_tuned_parameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
@@ -28,6 +28,7 @@ from .postprocessing import postprocess
 def prepare_signal_parameters(signals, entities_signals, aggregated):
     """
     Go through the `input_signals` and `target_signals` and preprocess the signal properties for later use. Modifies the `signals` array.
+
     - Determine the automatic values of numerical/categorical data types for all signals in input and target.
     - Parse float values (min, max, ...).
     - Add field and type from entity information.
@@ -63,11 +64,26 @@ def prepare_signal_parameters(signals, entities_signals, aggregated):
 
 
 def get_els_index(parameters):
+    """Returns the Elasticsearch index based on the job `parameters`."""
     sig_set_cid = parameters["signal_set"]
     return ivis.entities["signalSets"][sig_set_cid]["index"]
 
 
 def get_default_training_parameters(parameters, training_parameters_class=TrainingParams):
+    """
+    Returns the default training parameters based on the job `parameters`.
+
+    Parameters
+    ----------
+    parameters : dict
+        The job parameters (`ivis.params`).
+    training_parameters_class : type[TrainingParams]
+        The default is `TrainingParams`.
+
+    Returns
+    -------
+    training_parameters : TrainingParams
+    """
     training_parameters = training_parameters_class()
     aggregated = parameters["aggregation"] != ""
 
@@ -101,6 +117,20 @@ def get_default_training_parameters(parameters, training_parameters_class=Traini
 
 
 def load_data_training(training_parameters, time_interval):
+    """
+    Loads data for training.
+
+    Parameters
+    ----------
+    training_parameters : TrainingParams
+    time_interval : dict
+        Time interval to filter the queries. Allowed keys are ``"start"``, ``"start_exclusive"``, ``"end"``.
+
+    Returns
+    -------
+    dataframe : pandas.DataFrame
+        Dataframe of both inputs and targets. Columns are fields, rows are the patterns (indexed by timestamp).
+    """
     print("Loading data...")
     data = load_data(training_parameters, time_interval=time_interval, include_targets=True)
     print(f"Loaded {data.shape[0]} records.")
@@ -108,6 +138,20 @@ def load_data_training(training_parameters, time_interval):
 
 
 def prepare_data(training_parameters, dataframe):
+    """
+    Prepares (preprocesses) the training data and splits it to train, validation and test dataframes.
+
+    Parameters
+    ----------
+    training_parameters : TrainingParams
+    dataframe : pandas.DataFrame
+
+    Returns
+    -------
+    train_df : pandas.DataFrame
+    val_df : pandas.DataFrame
+    test_df : pandas.DataFrame
+    """
     print("Processing data...")
     train_df, val_df, test_df = pre.split_data(training_parameters, dataframe)
 
@@ -119,6 +163,21 @@ def prepare_data(training_parameters, dataframe):
 
 
 def prepare_datasets(training_parameters, dataframes):
+    """
+    Generate the windowed datasets from dataframes.
+
+    Parameters
+    ----------
+    training_parameters : TrainingParams
+    dataframes : tuple[pandas.DataFrame]
+        Should contain exactly three datasets: train, validation, test.
+
+    Returns
+    -------
+    train : tensorflow.data.Dataset
+    val : tensorflow.data.Dataset
+    test : tensorflow.data.Dataset
+    """
     print("Generating training datasets...")
     train_df, val_df, test_df = dataframes
 
@@ -150,6 +209,7 @@ def _infer_interval_from_data(dataframe):
 
 
 def evaluate(model, test_dataset):
+    """Evaluates the `model` on the `test_dataset` and returns the computed loss (MSE)."""
     print("Evaluating model...")
     test_loss = model.evaluate(test_dataset, verbose=0)
     print(f"Test loss: {test_loss}")
@@ -174,7 +234,8 @@ def predict_and_save(model, test_dataframe, prediction_parameters, save_data):
     predicted_dataframes = postprocess(prediction_parameters, predicted, last_ts)
 
     print("Saving data...")
-    save_data(prediction_parameters, predicted_dataframes)
+    if save_data is not None:
+        save_data(prediction_parameters, predicted_dataframes)
 
 
 ##############
@@ -185,6 +246,7 @@ TRAINING_LOGS = "training_logs"
 
 
 def get_working_directory():
+    """Returns the unique working directory for the training."""
     training_logs_dir = Path(TRAINING_LOGS)
     while True:
         working_directory = str(uuid4().hex)[:8]
@@ -193,6 +255,18 @@ def get_working_directory():
 
 
 def save_model(parameters, training_parameters, tuner, working_directory):
+    """
+    Saves the model to the IVIS server.
+
+    Parameters
+    ----------
+    parameters : dict
+        The job parameters (`ivis.params`).
+    training_parameters : TrainingParams
+    tuner : kerastuner.Tuner
+    working_directory : str
+        Working directory. Can be generated using `get_working_directory`.
+    """
     save_folder = Path(TRAINING_LOGS) / working_directory
 
     model = tuner.get_best_models()[0]
@@ -220,6 +294,18 @@ def save_model(parameters, training_parameters, tuner, working_directory):
 
 
 def save_training_results(parameters, tuner, test_loss, working_directory):
+    """
+    Saves the training results to the IVIS server so they can be later displayed to the user.
+
+    Parameters
+    ----------
+    parameters : dict
+        The job parameters (`ivis.params`).
+    tuner : kerastuner.Tuner
+    test_loss : float
+    working_directory : str
+        Working directory. Can be generated using `get_working_directory`.
+    """
     save_folder = Path(TRAINING_LOGS) / working_directory
 
     # save the best hyperparameters
@@ -263,6 +349,7 @@ def save_training_results(parameters, tuner, test_loss, working_directory):
 
 
 def cleanup(working_directory):
+    """Clean up the working directory."""
     print("Cleaning up...", end="")
     folder = Path(TRAINING_LOGS) / working_directory
     shutil.rmtree(folder)
@@ -274,7 +361,7 @@ def cleanup(working_directory):
 ##########################
 
 
-def run_training(parameters, model_factory=None, save_data=lambda _1, _2: None):
+def run_training(parameters, model_factory=None, save_data=None):
     """
     Runs the hyperparameter tuner to try to find the best possible model for the data.
 
@@ -283,8 +370,8 @@ def run_training(parameters, model_factory=None, save_data=lambda _1, _2: None):
     parameters : dict
         The parameters from user parsed from the JSON parameters of the IVIS Job. It should also contain the signal set,
         signals and their types in the `entities` value.
-    save_data : (TrainingParams, list[pandas.DataFrame]) -> None
-        Function to save the predicted data for the test set.
+    save_data : (RunParams, list[pandas.DataFrame]) -> None
+        Function to save the predicted data for the test set. The default function does nothing. It is recommended to use the `save_data` function from `ivis.nn`.
     model_factory : ModelFactory
         Factory for creating the NN models.
 

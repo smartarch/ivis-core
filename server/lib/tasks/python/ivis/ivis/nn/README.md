@@ -1,6 +1,6 @@
 # IVIS core time series forecasting using neural networks
 
-Sublibrary of the library for tasks in IVIS project to support time series forecasting using neural networks.
+Module of the library for tasks in IVIS project to support time series forecasting using neural networks.
 
 The rest of this file assumes that the reader is familiar with [Tasks and Jobs concepts](https://github.com/smartarch/ivis-core/wiki/Tasks-and-Jobs) in IVIS.
 
@@ -96,9 +96,9 @@ For holding the extra parameters needed for training the network and generating 
 
 The parameters (instance variables of the class) are described in the class definitions in [`RunParams.py`](ParamsClasses/RunParams.py), [`TrainingParams.py`](ParamsClasses/TrainingParams.py) and [`PredictionParams.py`](ParamsClasses/PredictionParams.py).
 
-#### TODO: ModelFactory
+#### ModelFactory
 
-
+The [`ModelFactory`](architectures/ModelFactory.py) is an abstract class which serves as a base class for creating neural networks. It is described in more detail in tutorial on [adding new architectures](architectures/AddingArchitecture.md).
 
 ## File structure
 
@@ -110,9 +110,9 @@ The project is structured into following files:
   * Code for using the trained models to generate prediction. Manages the data loading and preprocessing, loads the model from IVIS server, generates the prediction and saves them to the signal sets on server.
 * [`common.py`](common.py)
   * Common function for the whole `nn` submodule.
-* [`load_data.py`](load_data.py)
+* [`load.py`](load.py)
   * Code for loading data from server.
-* [`load_data_elasticsearch.py`](load_data_elasticsearch.py)
+* [`load_elasticsearch.py`](load_elasticsearch.py)
   * Elasticsearch queries generation and results parsing.
 * [`preprocessing.py`](preprocessing.py)
   * Preprocessing of the data before training and prediction. Includes data normalization and generating the windowed datasets.
@@ -128,7 +128,7 @@ The project is structured into following files:
     * Functions to alter the model to add a residual connection around the whole model (used by the MLP architecture).
 * [`postprocessing.py`](postprocessing.py)
   * Postprocessing of the data after generating the predictions. Converts the predicted tensors into dataframes, performs denormalization, adds timestamps to the data.
-* [`save_data.py`](save_data.py)
+* [`save.py`](save.py)
   * Code for saving the predictions into IVIS signal sets.
 * [`ParamsClasses` folder](ParamsClasses)
   * Implementations of [`RunParams`](ParamsClasses/RunParams.py), [`TrainingParams`](ParamsClasses/TrainingParams.py) and [`PredictionParams`](ParamsClasses/PredictionParams.py) (see [RunParams – TrainingParams, PredictionParams](#RunParams-–-TrainingParams,-PredictionParams)).
@@ -136,3 +136,4 @@ The project is structured into following files:
 
 ## Adding a new NN model architecture
 
+See [AddingArchitecture.md](architectures/AddingArchitecture.md).

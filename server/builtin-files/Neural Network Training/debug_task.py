@@ -18,7 +18,7 @@ ivis.elasticsearch = ESMock()
 ivis.upload_file = lambda f: print(f"Mocking upload of '{f.name}'")
 
 from ivis.nn import run_training
-from ivis.nn.save_data import records_future, records_k_ahead
+from ivis.nn.save import records_future, records_k_ahead
 
 
 def save_data(prediction_parameters, dataframes):

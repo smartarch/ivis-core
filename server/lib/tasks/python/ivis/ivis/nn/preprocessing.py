@@ -5,10 +5,11 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from .common import get_aggregated_field, NotEnoughDataError
+from .ParamsClasses import TrainingParams, PredictionParams
 
 
 def split_data(training_parameters, dataframe):
-    """Returns three datasets for train, val, test as DataFrames"""
+    """Returns three datasets for train, validation, test as DataFrames."""
     split = training_parameters.split
     n = dataframe.shape[0]  # number of records
     train_size = int(np.floor(n * split["train"]))
@@ -26,16 +27,17 @@ def one_hot_encoding(dataframe, column, values):
 
     Parameters
     ----------
-    dataframe : pd.DataFrame
+    dataframe : pandas.DataFrame
+        Original dataframe. It gets modified!
     column : str
-        Column name
-    values : list of str
+        Column name.
+    values : list[str]
         List of unique values, ordered by the desired one-hot indices.
 
     Returns
     -------
-    pd.DataFrame
-        Modified dataframe
+    dataframe : pandas.DataFrame
+        Modified dataframe.
     """
 
     index = dataframe.columns.get_loc(column)
@@ -53,9 +55,15 @@ def compute_normalization_coefficients(training_parameters, train_df):
     """
     Computes the normalization coefficients which can later be applied by `preprocess_using_coefficients`.
 
+    Parameters
+    ----------
+    training_parameters : TrainingParams
+    train_df : pandas.DataFrame
+
     Returns
     -------
-    dict
+    normalization_coefficients : dict
+        The computed coefficients for normalization.
     """
 
     normalization_coefficients = {}
@@ -135,10 +143,16 @@ def preprocess_using_coefficients(normalization_coefficients, dataframe):
 
 
 def preprocess_dataframes(normalization_coefficients, *dataframes):
+    """Preprocess multiple dataframes using the `preprocess_using_coefficients` function."""
     return (preprocess_using_coefficients(normalization_coefficients, d) for d in dataframes)
 
 
 def get_column_names_for_signal(normalization_coefficients, signal):
+    """
+    Returns the names of the columns produced for a given signal.
+
+    For most signals, only one name is returned. Multiple columns are produced only for one-hot-encoded signals
+    """
     column_names = []
     column = get_aggregated_field(signal)
 
@@ -169,13 +183,36 @@ class WindowGenerator:
     Time series window dataset generator
     (inspired by https://www.tensorflow.org/tutorials/structured_data/time_series#data_windowing)
 
+    For list of records in time:
     [ #, #, #, #, #, #, #, #, #, #, #, #, # ]
      | input_width | offset | target_width |
      |               width                 |
     """
 
-    def __init__(self, dataframe, input_column_names, target_column_names, input_width, target_width, offset,
+    def __init__(self, dataframe, input_column_names, target_column_names, input_width, target_width, offset=0,
                  interval=None, batch_size=32, shuffle=False):
+        """
+        Parameters
+        ----------
+        dataframe : pandas.DataFrame
+            Dataframe used to construct the dataset from.
+        input_column_names : list[str]
+            The names of the input columns. These can be constructed using the `get_column_names` function.
+        target_column_names : list[str]
+            The names of the target columns. These can be constructed using the `get_column_names` function.
+        input_width : int
+            The number of time steps used as inputs.
+        target_width : int
+            The number of time steps used as targets.
+        offset : int
+            The number of time steps between the inputs and the targets. Defaults to 0.
+        interval : int or None
+            Optional. Aggregation interval in milliseconds.
+        batch_size : int
+            Size of the training batch. Defaults to 32.
+        shuffle : bool
+            Shuffle the dataset. Defaults to ``False``.
+        """
         self.input_width = input_width
         self.target_width = target_width
         self.offset = offset
@@ -208,6 +245,7 @@ class WindowGenerator:
             f'Target indices: {np.arange(self.width)[self.target_slice]}'])
 
     def split_window(self, batch):
+        """Splits one window into `inputs` and `targets`."""
         inputs = batch[:, self.input_slice, :]  # slice along the time axis
         inputs = tf.gather(inputs, self.input_columns, axis=2)  # select features
         inputs.set_shape([None, self.input_width, None])
@@ -243,12 +281,12 @@ class WindowGenerator:
 
         Parameters
         ----------
-        dataframe : pd.DataFrame
+        dataframe : pandas.DataFrame
             The dataframe from which to make windows. If equal to `None`, the `self.dataframe` is used. The dataframe must have the same columns as `self.dataframe`.
 
         Returns
         -------
-        tf.data.Dataset
+        dataset : tensorflow.data.Dataset
         """
         if dataframe is None:
             dataframe = self.dataframe
@@ -282,22 +320,22 @@ def make_datasets(train_df, val_df, test_df, window_generator_params):
 
     Parameters
     ----------
-    train_df : pd.DataFrame
-    val_df : pd.DataFrame
-    test_df : pd.DataFrame
+    train_df : pandas.DataFrame
+    val_df : pandas.DataFrame
+    test_df : pandas.DataFrame
     window_generator_params : dict
-        parameters for the constructor of `WindowGenerator`
+        Parameters for the constructor of `WindowGenerator`.
 
     Returns
     -------
-    (tf.data.Dataset, tf.data.Dataset, tf.data.Dataset)
-        train, validation, test datasets
+    train : tensorflow.data.Dataset
+        Training dataset.
+    validation : tensorflow.data.Dataset
+        Validation dataset.
+    test : tensorflow.data.Dataset
+        Testing dataset.
     """
-    default_window_params = {
-        "offset": 0,
-    }
-    default_window_params.update(window_generator_params)
-    window = WindowGenerator(train_df, **default_window_params)
+    window = WindowGenerator(train_df, **window_generator_params)
     train = window.make_dataset(train_df)
     val = window.make_dataset(val_df)
     test = window.make_dataset(test_df)
@@ -306,7 +344,7 @@ def make_datasets(train_df, val_df, test_df, window_generator_params):
 
 def get_windowed_dataset(prediction_parameters, dataframe):
     """
-    Creates the windowed dataset for one dataframe based on the prediction parameters. This is intended for use during prediction.
+    Creates the windowed dataset for one dataframe based on the prediction parameters. This is intended for use during prediction; during training, use the `WindowGenerator`.
 
     Parameters
     ----------
@@ -314,9 +352,10 @@ def get_windowed_dataset(prediction_parameters, dataframe):
         The prediction parameters.
     dataframe : pandas.DataFrame
         The data to use to create the dataset.
+
     Returns
     -------
-
+    dataset : tensorflow.data.Dataset
     """
     if dataframe.shape[0] < prediction_parameters.input_width:
         raise NotEnoughDataError

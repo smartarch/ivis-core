@@ -11,9 +11,9 @@ import pandas as pd
 import tensorflow as tf
 from ivis import ivis
 
-from . import load_data_elasticsearch as es, architecture
+from . import load_elasticsearch as es, architecture
 from .common import print_divider, NotEnoughDataError
-from .load_data import load_data
+from .load import load_data
 from .postprocessing import postprocess
 from .preprocessing import preprocess_using_coefficients, get_windowed_dataset
 from .ParamsClasses import PredictionParams
@@ -30,7 +30,7 @@ def load_data_first(prediction_parameters):
     Loads data for the first prediction.
 
     This loads the `prediction_parameters.input_width` latest records to create the latest prediction plus
-    `prediction_parameters.target_width - 1` in order to seamlessly continue the predictions created by the
+    ``prediction_parameters.target_width - 1`` in order to seamlessly continue the predictions created by the
     training task.
     """
     size = prediction_parameters.input_width + prediction_parameters.target_width - 1
@@ -65,7 +65,8 @@ def load_data_since(prediction_parameters, last_window_start):
 
     Returns
     -------
-    pd.DataFrame
+    dataframe : pandas.DataFrame
+        The loaded data.
     """
     print(f"(since {last_window_start})")
     time_interval = {"start_exclusive": last_window_start}
@@ -83,7 +84,8 @@ def load_data_prediction(prediction_parameters):
 
     Returns
     -------
-    pd.DataFrame
+    dataframe : pandas.DataFrame
+        The loaded data.
     """
     last_window_start = _get_last_prediction_ts()
 
@@ -108,6 +110,7 @@ def load_model(model_factory=None):
     ----------
     model_factory : ModelFactory
         The factory which was used to create the model. It's `update_loaded_model` method is applied to the file loaded from the IVIS server. If no model factory is supplied, it is selected based on the `PredictionParams.architecture`.
+
     Returns
     -------
     parameters : PredictionParams
