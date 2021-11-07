@@ -16,7 +16,7 @@ from .common import print_divider, NotEnoughDataError
 from .load import load_data
 from .postprocessing import postprocess
 from .preprocessing import preprocess_using_coefficients, get_windowed_dataset
-from .ParamsClasses import PredictionParams
+from .params_classes import PredictionParams
 from .architecture import ModelFactory
 
 

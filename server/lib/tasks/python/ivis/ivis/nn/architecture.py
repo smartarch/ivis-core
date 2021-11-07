@@ -2,7 +2,7 @@
 Function for selecting the NN architecture from known architectures.
 """
 import tensorflow as tf
-from .ParamsClasses import TrainingParams
+from .params_classes import TrainingParams
 from .architectures.ModelFactory import ModelFactory
 from .architectures.mlp import MLPFactory
 from .architectures.lstm import LSTMFactory

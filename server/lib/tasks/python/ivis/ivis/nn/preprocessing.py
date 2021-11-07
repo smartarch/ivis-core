@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from .common import get_aggregated_field, NotEnoughDataError
-from .ParamsClasses import TrainingParams, PredictionParams
+from .params_classes import TrainingParams, PredictionParams
 
 
 def split_data(training_parameters, dataframe):
@@ -183,10 +183,11 @@ class WindowGenerator:
     Time series window dataset generator
     (inspired by https://www.tensorflow.org/tutorials/structured_data/time_series#data_windowing)
 
-    For list of records in time:
-    [ #, #, #, #, #, #, #, #, #, #, #, #, # ]
-     | input_width | offset | target_width |
-     |               width                 |
+    For list of records in time::
+
+        [ #, #, #, #, #, #, #, #, #, #, #, #, # ]
+         | input_width | offset | target_width |
+         |               width                 |
     """
 
     def __init__(self, dataframe, input_column_names, target_column_names, input_width, target_width, offset=0,

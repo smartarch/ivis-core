@@ -5,7 +5,7 @@ from collections import defaultdict
 import pandas as pd
 from ivis import ivis
 from .common import get_aggregated_field
-from .ParamsClasses import PredictionParams
+from .params_classes import PredictionParams
 
 
 def _get_output_signal_cid(signal):

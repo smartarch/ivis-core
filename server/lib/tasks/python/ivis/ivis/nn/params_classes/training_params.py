@@ -1,4 +1,4 @@
-from .RunParams import RunParams
+from .run_params import RunParams
 
 
 class TrainingParams(RunParams):

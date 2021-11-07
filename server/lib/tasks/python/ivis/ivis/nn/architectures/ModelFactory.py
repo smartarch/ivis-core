@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from .. import preprocessing as pre
 from ..hyperparameters import Hyperparameters
-from ..ParamsClasses import TrainingParams, PredictionParams
+from ..params_classes import TrainingParams, PredictionParams
 
 
 class ModelParams(ABC):

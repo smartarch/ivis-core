@@ -4,7 +4,7 @@ Code for loading data.
 from ivis import ivis
 
 from . import load_elasticsearch as es
-from .ParamsClasses import RunParams
+from .params_classes import RunParams
 
 
 def _get_query_and_index(run_parameters, time_interval, include_targets, size):

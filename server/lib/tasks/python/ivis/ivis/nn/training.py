@@ -12,7 +12,7 @@ from pathlib import Path
 from ivis import ivis
 from . import load_elasticsearch as es, preprocessing as pre, architecture
 from .load import load_data
-from .ParamsClasses import TrainingParams, PredictionParams
+from .params_classes import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters, get_tuned_parameters
 from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
 from .architectures.ModelFactory import ModelFactory

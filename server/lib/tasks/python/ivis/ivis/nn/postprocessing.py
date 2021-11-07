@@ -9,7 +9,7 @@ import pandas as pd
 
 from .common import get_aggregated_field
 from .preprocessing import get_column_names
-from .ParamsClasses import PredictionParams
+from .params_classes import PredictionParams
 
 
 def get_column_indices(normalization_coefficients, signals):

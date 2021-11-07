@@ -1,5 +1,5 @@
 from typing import Optional, List
-from .Params import Params
+from .params import Params
 
 
 class RunParams(Params):

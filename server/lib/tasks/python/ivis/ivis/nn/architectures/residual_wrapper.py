@@ -13,7 +13,7 @@ def get_targets_to_inputs_mapping(input_column_names, target_column_names):
 
     Returns
     -------
-    list of int
+    list[int]
         `targets_indices_in_inputs` for `ResidualWrapper`
     """
     mapping = []
@@ -35,9 +35,9 @@ def wrap_model_with_residual_connection(model, targets_to_inputs_mapping):
 
     Parameters
     ----------
-    model : tf.keras.Model
+    model : tensorflow.keras.Model
 
-    targets_to_inputs_mapping : list of int or tf.Tensor
+    targets_to_inputs_mapping : list[int] or tensorflow.Tensor
         The mapping of the target columns to the input columns. Use `get_targets_to_inputs_mapping` to compute it.
     """
 
@@ -67,7 +67,7 @@ def with_residual_connection(model_factory_class):
 
     Returns
     -------
-
+    model_factory_class : type[ModelFactory]
     """
     orig_create = model_factory_class.create_model
 

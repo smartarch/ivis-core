@@ -41,7 +41,7 @@ def get_docs_query(signals, ts_field, time_interval=None, size=10000):
     ts_field : string
         ES field for timestamp signal.
     time_interval : dict
-        Dict with "start" and "end" keys which are ISO date strings.
+        Dict with ``"start"`` and ``"end"`` keys which are ISO date strings.
     size : int
         Max number of returned docs. The latest docs are returned.
 
@@ -73,12 +73,12 @@ def get_histogram_query(signals, ts_field, aggregation_interval, time_interval=N
     signals : list[dict]
         Signal parameters for query creation. Expected keys:
          - ``"field"``: the ES field for the signal,
-         - ``"data_type"``: "numerical" or "categorical",
+         - ``"data_type"``: ``"numerical"`` or ``"categorical"``,
          - ``"aggregation"``: aggregation for Elasticsearch (``"min"``, ``"max"``, ``"avg"``, ...).
     ts_field : string
         ES field for timestamp signal
     aggregation_interval : string
-        The interval for the ES date histogram aggregation. Format is number + unit (e.g. ``"1d"˙˙).
+        The interval for the ES date histogram aggregation. Format is number + unit (e.g. ``"1d"``).
     time_interval : dict
         Dictionary with ``"start"`` and ``"end"`` keys which are ISO date strings.
     size : int
@@ -235,7 +235,7 @@ def parse_histogram(signals, data):
     signals : list[dict]
         Signal parameters for query creation. Expected keys:
          - ``"field"``: the ES field for the signal,
-         - ``"data_type"``: "numerical" or "categorical",
+         - ``"data_type"``: ``"numerical"`` or ``"categorical"``,
          - ``"aggregation"``: aggregation for Elasticsearch (``"min"``, ``"max"``, ``"avg"``, ...).
     data : dict
         JSON response from Elasticsearch parsed to dict.

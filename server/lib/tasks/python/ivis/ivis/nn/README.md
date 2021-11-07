@@ -94,7 +94,7 @@ Saves the predicted data into the IVIS signal sets.
 
 For holding the extra parameters needed for training the network and generating predictions (such as the list of signals, network architecture, hyperparameters, etc.), we created the `TrainingParams` and `PredictionParams` with common base class `RunParams`.
 
-The parameters (instance variables of the class) are described in the class definitions in [`RunParams.py`](ParamsClasses/RunParams.py), [`TrainingParams.py`](ParamsClasses/TrainingParams.py) and [`PredictionParams.py`](ParamsClasses/PredictionParams.py).
+The parameters (instance variables of the class) are described in the class definitions in [`RunParams.py`](params_classes/run_params.py), [`TrainingParams.py`](params_classes/training_params.py) and [`PredictionParams.py`](params_classes/prediction_params.py).
 
 #### ModelFactory
 
@@ -130,8 +130,8 @@ The project is structured into following files:
   * Postprocessing of the data after generating the predictions. Converts the predicted tensors into dataframes, performs denormalization, adds timestamps to the data.
 * [`save.py`](save.py)
   * Code for saving the predictions into IVIS signal sets.
-* [`ParamsClasses` folder](ParamsClasses)
-  * Implementations of [`RunParams`](ParamsClasses/RunParams.py), [`TrainingParams`](ParamsClasses/TrainingParams.py) and [`PredictionParams`](ParamsClasses/PredictionParams.py) (see [RunParams – TrainingParams, PredictionParams](#RunParams-–-TrainingParams,-PredictionParams)).
+* [`params_classes` folder](params_classes)
+  * Implementations of [`RunParams`](params_classes/run_params.py), [`TrainingParams`](params_classes/training_params.py) and [`PredictionParams`](params_classes/prediction_params.py) (see [RunParams – TrainingParams, PredictionParams](#RunParams-–-TrainingParams,-PredictionParams)).
 
 
 ## Adding a new NN model architecture
