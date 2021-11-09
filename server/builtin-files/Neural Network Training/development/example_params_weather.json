@@ -1,0 +1,79 @@
+{
+  "aggregation": "1d",
+  "cleanup": true,
+  "name": "lstm_2021_09_15",
+  "automatic_predictions": false,
+  "input_width": 5,
+  "architecture": "lstm",
+  "start_training": true,
+  "target_width": 3,
+  "time_interval": {
+    "start": "",
+    "end": ""
+  },
+  "ts": "ts",
+  "max_trials": null,
+  "executions_per_trial": null,
+  "learning_rate": 0.0007771898199735252,
+  "batch_size": null,
+  "epochs": null,
+  "early_stopping": true,
+  "early_stopping_patience": null,
+  "input_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "min": null,
+      "max": null,
+      "aggregation": "min"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "min": null,
+      "max": null,
+      "aggregation": "avg"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "min": null,
+      "max": null,
+      "aggregation": "max"
+    }
+  ],
+  "target_signals": [
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "min": null,
+      "max": null,
+      "aggregation": "min"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "min": null,
+      "max": null,
+      "aggregation": "avg"
+    },
+    {
+      "cid": "temperature",
+      "data_type": "numerical",
+      "min": null,
+      "max": null,
+      "aggregation": "max"
+    }
+  ],
+  "architecture_params": {
+    "lstm_layers": {
+      "optimizable_type": "list",
+      "items": [
+        67
+      ],
+      "count": 1
+    }
+  },
+  "signal_set": "top:weather_prague",
+  "prediction_id": 21
+}

@@ -3,7 +3,7 @@
 const config = require('../../lib/config');
 const { TaskType, PythonSubtypes, TaskSource } = require("../../../shared/tasks");
 
-// code and params are in the 'builtin-files' folder
+// code and params are in the 'server/builtin-files' folder
 
 const NN_TRAINING_TASK_NAME = 'Neural Network Training';
 const NN_TRAINING_TASK_DESCRIPTION = 'System task for training the neural networks prediction models.';
