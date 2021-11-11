@@ -7,12 +7,11 @@ import os
 import requests
 from pathlib import Path
 from uuid import uuid4
-import pandas as pd
 import tensorflow as tf
+from datetime import datetime
 from ivis import ivis
-
-from . import load_elasticsearch as es, architecture
-from .common import print_divider, NotEnoughDataError
+from . import architecture
+from .common import print_divider, NotEnoughDataError, NoDataError
 from .load import load_data
 from .postprocessing import postprocess
 from .preprocessing import preprocess_using_coefficients, get_windowed_dataset
@@ -68,7 +67,7 @@ def load_data_since(prediction_parameters, last_window_start):
     dataframe : pandas.DataFrame
         The loaded data.
     """
-    print(f"(since {last_window_start})")
+    print(f"  since {datetime.fromtimestamp(last_window_start / 1000)} ({last_window_start})")
     time_interval = {"start_exclusive": last_window_start}
 
     return load_data(prediction_parameters, time_interval)
@@ -186,11 +185,18 @@ def run_prediction(prediction_parameters, model, save_data):
     print("Initializing...")
     print(f"Using TensorFlow (version {tf.__version__}).")
 
+    print("Parameters:")
+    print(f"  Architecture: {prediction_parameters.architecture}")
+    print(f"  Input signals: {len(prediction_parameters.input_signals)}, Target signals: {len(prediction_parameters.target_signals)}")
+    print(
+        f"  Observations (input_width): {prediction_parameters.input_width}, Predictions (target_width): {prediction_parameters.target_width}")
+    print(f"  Aggregation interval (ms): {prediction_parameters.interval}")
+
     print_divider()
     try:
         print("Loading data...")
         dataframe = load_data_prediction(prediction_parameters)
-        print(f"Loaded {dataframe.shape[0]} records.")
+        print(f"Loaded dataframe shape: {dataframe.shape}.")
         print("Processing data...")
         dataframe = preprocess_using_coefficients(prediction_parameters.normalization_coefficients, dataframe)
         last_ts = dataframe.index[prediction_parameters.input_width - 1:]
@@ -198,9 +204,9 @@ def run_prediction(prediction_parameters, model, save_data):
         dataset = get_windowed_dataset(prediction_parameters, dataframe)
         print("Data successfully loaded and processed.")
 
-    except es.NoDataError:
+    except NoDataError:
         print("No data in the defined time range, can't continue.")
-        raise es.NoDataError from None
+        raise NoDataError from None
     except NotEnoughDataError:
         print("Not enough new data since the last prediction, can't continue.")
         raise NotEnoughDataError from None

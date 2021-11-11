@@ -86,3 +86,8 @@ class NotEnoughDataError(Exception):
     """Raised when there is not enough data for running the training or prediction."""
     def __str__(self):
         return "Not enough data."
+
+
+class NoDataError(Exception):
+    def __str__(self):
+        return "No data."

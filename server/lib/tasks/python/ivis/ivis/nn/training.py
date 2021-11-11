@@ -10,11 +10,11 @@ import kerastuner as kt
 from uuid import uuid4
 from pathlib import Path
 from ivis import ivis
-from . import load_elasticsearch as es, preprocessing as pre, architecture
+from . import preprocessing as pre, architecture
 from .load import load_data
 from .params_classes import TrainingParams, PredictionParams
 from .hyperparameters import Hyperparameters, get_tuned_parameters
-from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider
+from .common import interval_string_to_milliseconds, get_ts_field, get_entities_signals, print_divider, NoDataError, NotEnoughDataError
 from .architectures.ModelFactory import ModelFactory
 from .preprocessing import get_windowed_dataset
 from .postprocessing import postprocess
@@ -133,7 +133,7 @@ def load_data_training(training_parameters, time_interval):
     """
     print("Loading data...")
     data = load_data(training_parameters, time_interval=time_interval, include_targets=True)
-    print(f"Loaded {data.shape[0]} records.")
+    print(f"Loaded dataframe shape: {data.shape}.")
     return data
 
 
@@ -313,7 +313,7 @@ def save_training_results(parameters, tuner, test_loss, working_directory):
     tuned_parameters = get_tuned_parameters(parameters, best_hyperparameters)
 
     # save results from all trials
-    trials = tuner.oracle.get_best_trials(int(parameters.get("max_trials", 5)))
+    trials = tuner.oracle.get_best_trials(int(parameters.get("max_trials", 7)))
     trials_results = []
 
     for t in trials:
@@ -391,6 +391,12 @@ def run_training(parameters, model_factory=None, save_data=None):
     if model_factory is None:
         model_factory = architecture.get_model_factory(training_parameters)
 
+    print("Parameters:")
+    print(f"  Architecture: {training_parameters.architecture}")
+    print(f"  Input signals: {len(training_parameters.input_signals)}, Target signals: {len(training_parameters.target_signals)}")
+    print(f"  Observations (input_width): {training_parameters.input_width}, Predictions (target_width): {training_parameters.target_width}")
+    print(f"  Aggregation interval (ms): {training_parameters.interval}")
+
     # load the data
     print_divider()
     try:
@@ -398,9 +404,12 @@ def run_training(parameters, model_factory=None, save_data=None):
         dataframes = prepare_data(training_parameters, data)
         train, val, test = prepare_datasets(training_parameters, dataframes)
         print("Data successfully loaded and processed.")
-    except es.NoDataError:
+    except NoDataError:
         print("No data in the defined time range, can't continue.")
-        raise es.NoDataError from None
+        raise NoDataError from None
+    except NotEnoughDataError:
+        print("Not enough data in the dataset to perform the training, can't continue.")
+        raise NotEnoughDataError from None
 
     if training_parameters.interval is None:
         training_parameters.interval = _infer_interval_from_data(data)
@@ -426,7 +435,7 @@ def run_training(parameters, model_factory=None, save_data=None):
     print_divider()
     print("Preparing hyperparameters tuner...", end="")
     max_trials = int(parameters.get("max_trials", 7))
-    executions_per_trial=int(parameters.get("executions_per_trial", 3))
+    executions_per_trial = int(parameters.get("executions_per_trial", 3))
     working_directory = get_working_directory()
     tuner = kt.BayesianOptimization(
         build_model,
@@ -442,7 +451,9 @@ def run_training(parameters, model_factory=None, save_data=None):
     tuner.search_space_summary()
 
     print_divider()
-    print("Starting model search.\n")
+    print("Starting model search.")
+    print(f"  Max trials: {max_trials}, executions per trial: {executions_per_trial}")
+    print()
 
     callbacks = []
     if "early_stopping" in parameters and parameters["early_stopping"]:
@@ -478,3 +489,5 @@ def run_training(parameters, model_factory=None, save_data=None):
 
     if "cleanup" in parameters and parameters["cleanup"]:
         cleanup(working_directory)
+
+    print("All done.")

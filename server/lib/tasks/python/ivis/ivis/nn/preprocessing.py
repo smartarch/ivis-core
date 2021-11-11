@@ -2,7 +2,7 @@
 Preprocessing of the data before training and prediction. Includes data normalization and generating the windowed datasets.
 """
 import numpy as np
-import pandas as pd
+from datetime import datetime
 import tensorflow as tf
 from .common import get_aggregated_field, NotEnoughDataError
 from .params_classes import TrainingParams, PredictionParams
@@ -288,6 +288,7 @@ class WindowGenerator:
         Returns
         -------
         dataset : tensorflow.data.Dataset
+            Batched dataset containing the time windows of the data from the dataframe (split by discontinuities).
         """
         if dataframe is None:
             dataframe = self.dataframe
@@ -295,10 +296,20 @@ class WindowGenerator:
         if dataframe.empty:
             return None
 
+        print("    Splitting the dataset around missing data...", end="")
         dataframes = self.split_by_interval_discontinuities(dataframe)
+        print(f"Done, data split into {len(dataframes)} parts.")
+
         dataset = None
+        count = 0
         for df in dataframes:
             data = np.array(df, dtype=np.float32)
+
+            if data.shape[0] < self.width:  # not enough data to create a time window
+                timestamp = df.index[0]
+                print(f"    Warning: This part of data, starting at {datetime.fromtimestamp(timestamp / 1000)} ({timestamp}), contains fewer records ({data.shape[0]}) than necessary for creating a time window ({self.width}). It is thus skipped.")
+                continue
+
             ds = tf.keras.preprocessing.timeseries_dataset_from_array(
                 data=data,
                 targets=None,
@@ -308,6 +319,13 @@ class WindowGenerator:
                 batch_size=self.batch_size, )
             ds = ds.unbatch()
             dataset = ds if dataset is None else dataset.concatenate(ds)
+            count += data.shape[0] - self.width + 1
+
+        print(f"    Generated dataset with {count} examples.")
+
+        if dataset is None:
+            print("    ERROR: No data in the dataset. If this message is reported during generating the 'train' dataset, it is probably caused by aggregation interval smaller than the actual differences between the records in the signal set. Try setting a bigger aggregation interval.")
+            raise NotEnoughDataError
 
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.map(self.split_window)
@@ -337,8 +355,11 @@ def make_datasets(train_df, val_df, test_df, window_generator_params):
         Testing dataset.
     """
     window = WindowGenerator(train_df, **window_generator_params)
+    print("  Train:")
     train = window.make_dataset(train_df)
+    print("  Validation:")
     val = window.make_dataset(val_df)
+    print("  Test:")
     test = window.make_dataset(test_df)
     return train, val, test
 
@@ -360,6 +381,9 @@ def get_windowed_dataset(prediction_parameters, dataframe):
     """
     if dataframe.shape[0] < prediction_parameters.input_width:
         raise NotEnoughDataError
+
+    if dataframe.shape[0] == 1:
+        return tf.data.Dataset.from_tensors(np.array(dataframe, dtype=np.float32)).batch(1)
 
     return tf.keras.preprocessing.timeseries_dataset_from_array(
         data=np.array(dataframe, dtype=np.float32),

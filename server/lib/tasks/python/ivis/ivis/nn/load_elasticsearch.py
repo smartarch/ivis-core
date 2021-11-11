@@ -3,7 +3,7 @@ Elasticsearch queries generation and results parsing.
 """
 import numpy as np
 import pandas as pd
-from .common import get_aggregated_field
+from .common import get_aggregated_field, NoDataError
 
 
 ###########
@@ -258,8 +258,3 @@ def parse_histogram(signals, data):
 
     dataframe.set_index("ts", inplace=True)
     return dataframe
-
-
-class NoDataError(Exception):
-    def __str__(self):
-        return "No data."

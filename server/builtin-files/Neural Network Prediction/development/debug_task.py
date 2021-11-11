@@ -19,7 +19,7 @@ ivis.elasticsearch = ESMock()
 ivis.state = {"last_window_start": 1620518400000}
 ivis.store_state = lambda x: print("Saving state:", x)
 
-from ivis.nn.params_classes.PredictionParams import PredictionParams
+from ivis.nn.params_classes import PredictionParams
 from ivis.nn import run_prediction, architecture
 from ivis.nn.save import records_future, records_k_ahead
 
