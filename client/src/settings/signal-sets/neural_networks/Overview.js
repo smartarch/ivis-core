@@ -537,7 +537,7 @@ export class PredictionFutureLineChartsWithSelector extends Component {
         }
 
         let initialIntervalSpec;
-        if (this.props.prediction.settings.hasOwnProperty("interval")) {
+        if (this.props.prediction.settings.hasOwnProperty("interval") && this.props.prediction.settings.interval > 0) {
             const interval = this.props.prediction.settings.interval / 1000;
             const aheadCount = this.props.prediction.ahead_count;
             initialIntervalSpec = new IntervalSpec(`now-${interval * aheadCount}s`, `now+${interval * aheadCount}s`, moment.duration(interval, 's'), null);
