@@ -6,7 +6,7 @@ The rest of this file assumes that the reader is familiar with [Tasks and Jobs c
 
 ## Install
 
-See [Readme.md](../../README.md) in root directory of the `ivis` package.
+See [Readme.md](../../README.md) in the root directory of the `ivis` package. To enable the tasks for neural-networks-based predictions, which use this library, see [Enabling neural networks](https://github.com/smartarch/ivis-core/wiki/Neural-Networks#Enabling-neural-networks) in the documentation.
 
 ## Usage
 
