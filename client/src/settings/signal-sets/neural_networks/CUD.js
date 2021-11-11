@@ -223,8 +223,8 @@ export default class CUD extends Component {
                 sampling: "log",
                 default: 0.001,
             },
-            max_trials: "5", // TODO (MT) reasonable defaults, also change in training.py
-            executions_per_trial: "2",
+            max_trials: "7",
+            executions_per_trial: "3",
             batch_size: "32",
             epochs: "50",
             early_stopping: true,
@@ -242,9 +242,9 @@ export default class CUD extends Component {
             loaded: true, // for determining whether the default values were already loaded
             name: '',
             description: '',
-            aggregation: '',
-            target_width: '1', // TODO (MT)
-            input_width: '1', // TODO (MT)
+            aggregation: '1d',
+            target_width: '7',
+            input_width: '7',
             time_interval_start: '',
             time_interval_end: '',
             architecture: NeuralNetworkArchitecturesList[0],

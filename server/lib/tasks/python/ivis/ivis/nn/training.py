@@ -425,12 +425,14 @@ def run_training(parameters, model_factory=None, save_data=None):
 
     print_divider()
     print("Preparing hyperparameters tuner...", end="")
+    max_trials = int(parameters.get("max_trials", 7))
+    executions_per_trial=int(parameters.get("executions_per_trial", 3))
     working_directory = get_working_directory()
     tuner = kt.BayesianOptimization(
         build_model,
         objective="val_loss",
-        max_trials=int(parameters.get("max_trials", 5)),
-        executions_per_trial=int(parameters.get("executions_per_trial", 2)),
+        max_trials=max_trials,
+        executions_per_trial=executions_per_trial,
         overwrite=True,
         directory=TRAINING_LOGS,
         project_name=working_directory
