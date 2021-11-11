@@ -165,11 +165,11 @@ export default class CUD extends Component {
         }];
         this.input_signals_configSpec = () => [signalsConfigSpec("input_signals", "Input Signals", "Signals to use for prediction.", props.signalSet.cid, this.isAggregated())]
         this.target_signals_configSpec = () => [signalsConfigSpec("target_signals", "Target Signals", "Signals to predict.", props.signalSet.cid,  this.isAggregated())]
-        this.configSpec = () => [].concat(
+        this.configSpec = (include_input_signals = true) => [].concat(
             this.ts_configSpec,
             this.tuning_configSpec,
             this.training_configSpec,
-            this.input_signals_configSpec(),
+            include_input_signals ? this.input_signals_configSpec() : [],
             this.target_signals_configSpec(),
         );
 
@@ -252,6 +252,7 @@ export default class CUD extends Component {
             automatic_predictions: true,
             minimal_interval: '',
             cleanup: true,
+            same_signals: true,
             ...formValuesParamTypes,
         };
 
@@ -363,6 +364,9 @@ export default class CUD extends Component {
         const architectureData = this.paramTypes.getParams(this.getArchitectureParamsSpec(), data);
         const architecture_params = this.paramTypes.upcast(this.getArchitectureParamsSpec(), architectureData);
 
+        if (data.same_signals)
+            params.input_signals = params.target_signals;
+
         data.name = data.name.trim();
         data.description = data.description.trim();
         data.aggregation = data.aggregation.trim();
@@ -408,22 +412,37 @@ export default class CUD extends Component {
     validateNoRepeatedSignals(state, spec, paramId) {
         // for some reason, `state.map(attr => attr.get('value')).toJS()` deletes the entries from the map, so we need to do it by hand
         const formValues = {};
-        state.forEach((value, key) => formValues[key] = state.getIn([key, 'value']));
+        for(let [key, param] of state) {
+            formValues[key] = param.get('value');
+        }
 
         const signals = this.paramTypes.getParams(spec, formValues)[spec[0].id];
         const signalsAndAggs = new Map();
 
-        for (const s of signals) {
-            if (s.cid) {
-                if (!signalsAndAggs.has(s.cid))
-                    signalsAndAggs.set(s.cid, [])
-                const aggs = signalsAndAggs.get(s.cid);
-                if (aggs.includes(s.aggregation)) { // repeated signal and aggregation
-                    if (!state.getIn([paramId, 'error'])) {
-                        state.setIn([paramId, 'error'], `The signal '${s.cid}' with aggregation '${s.aggregation}' is repeated more than once. Please, remove the duplicates or set a different aggregation for one of them.`);
+        if (!this.isAggregated()) { // not aggregated: ban repeated signals
+            for (const s of signals) {
+                if (s.cid) {
+                    if (signalsAndAggs.has(s.cid)) { // repeated signal (aggregations are ignored)
+                        if (!state.getIn([paramId, 'error'])) {
+                            state.setIn([paramId, 'error'], `The signal '${s.cid}' is repeated more than once. Please, remove the duplicates.`);
+                        }
                     }
+                    signalsAndAggs.set(s.cid, []);
                 }
-                aggs.push(s.aggregation);
+            }
+        } else { // not aggregated: ban repeated signal-aggregation pairs
+            for (const s of signals) {
+                if (s.cid) {
+                    if (!signalsAndAggs.has(s.cid))
+                        signalsAndAggs.set(s.cid, [])
+                    const aggs = signalsAndAggs.get(s.cid);
+                    if (aggs.includes(s.aggregation)) { // repeated signal and aggregation
+                        if (!state.getIn([paramId, 'error'])) {
+                            state.setIn([paramId, 'error'], `The signal '${s.cid}' with aggregation '${s.aggregation}' is repeated more than once. Please, remove the duplicates or set a different aggregation for one of them.`);
+                        }
+                    }
+                    aggs.push(s.aggregation);
+                }
             }
         }
     }
@@ -438,12 +457,15 @@ export default class CUD extends Component {
                 state.deleteIn([paramId, 'error']);
             }
         }
+
         // validate params
-        this.paramTypes.localValidate(this.configSpec(), state);
+        const same_signals = state.getIn(['same_signals', 'value']);
+        this.paramTypes.localValidate(this.configSpec(!same_signals), state); // ignore input_signals during validation if same_signals is true
         this.paramTypes.localValidate(this.getArchitectureParamsSpec(), state);
 
         // validate signals
-        this.validateNoRepeatedSignals(state, this.input_signals_configSpec(), `${paramPrefix}input_signals`);
+        if (!same_signals)
+            this.validateNoRepeatedSignals(state, this.input_signals_configSpec(), `${paramPrefix}input_signals`);
         this.validateNoRepeatedSignals(state, this.target_signals_configSpec(), `${paramPrefix}target_signals`);
 
         // name
@@ -616,9 +638,11 @@ export default class CUD extends Component {
 
                     <CollapsableSection stateOwner={this} controlVariable={"collapseSignals"}>
 
-                        {renderParam(this.input_signals_configSpec())}
-
                         {renderParam(this.target_signals_configSpec())}
+
+                        <CheckBox id={"same_signals"} label={"Same inputs as targets"} help={"Use the same input signals as target signals."} />
+
+                        {!this.getFormValue("same_signals") && renderParam(this.input_signals_configSpec())}
 
                     </CollapsableSection>
 
