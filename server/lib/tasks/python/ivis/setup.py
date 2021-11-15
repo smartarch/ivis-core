@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="ivis",
-    version="0.0.1",
+    version="0.0.2",
     author='Petr Siegl',
     author_email='p.siegl@email.cz',
     description='python library for tasks in IVIS-CORE project',
