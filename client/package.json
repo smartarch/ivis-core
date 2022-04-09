@@ -51,7 +51,7 @@
     "mathjs": "^8.0.1",
     "memoize-one": "^5.2.1",
     "memoizee": "^0.4.14",
-    "moment": "^2.29.1",
+    "moment": "^2.29.2",
     "popper.js": "^1.16.1",
     "prop-types": "^15.6.2",
     "react": "^16.14.0",
