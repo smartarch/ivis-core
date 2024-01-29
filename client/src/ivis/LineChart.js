@@ -87,6 +87,8 @@ export class LineChart extends Component {
         tooltipContentRender: PropTypes.func,
         tooltipExtraProps: PropTypes.object,
         getSignalValuesForDefaultTooltip: PropTypes.func,
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         getExtraQueries: PropTypes.func,
         prepareExtraData: PropTypes.func,
@@ -218,6 +220,8 @@ export class LineChart extends Component {
                 displayLoadingTextWhenUpdating={this.props.displayLoadingTextWhenUpdating}
                 minimumIntervalMs={this.props.minimumIntervalMs}
                 xAxisType={this.props.xAxisType}
+                withCursorContext={props.withCursorContext}
+                cursorContextName={props.cursorContextName}
             />
         );
     }

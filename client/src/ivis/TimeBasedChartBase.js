@@ -23,6 +23,9 @@ import commonStyles from "./commons.scss";
 import timeBasedChartBaseStyles from "./TimeBasedChartBase.scss";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {rangeAccessMixin} from "./RangeContext";
+import {cursorAccessMixin} from "./CursorContext";
+import moment from "moment";
+import _ from "lodash";
 
 export function createBase(base, self) {
     self.base = base;
@@ -171,6 +174,7 @@ function compareConfigs(conf1, conf2, customComparator) {
     withErrorHandling,
     intervalAccessMixin(),
     rangeAccessMixin,
+    cursorAccessMixin(),
 ])
 export class TimeBasedChartBase extends Component {
     constructor(props) {
@@ -208,15 +212,21 @@ export class TimeBasedChartBase extends Component {
         contentRender: PropTypes.func,
         height: PropTypes.number.isRequired,
         margin: PropTypes.object.isRequired,
+
         withBrush: PropTypes.bool,
         drawBrushAreaBehindData: PropTypes.bool, // set to `true` if you need to use pointer (mouse) events on the drawn data. By default, the brush area is drawn on top of the data – it is not visible but it catches the events.
+
         withTooltip: PropTypes.bool,
+        tooltipContentComponent: PropTypes.func,
+        tooltipContentRender: PropTypes.func,
+
         withZoom: PropTypes.bool,
         zoomUpdateReloadInterval: PropTypes.number, // milliseconds after the zoom ends; set to null to disable updates
         loadingOverlayColor: PropType_d3Color(),
         displayLoadingTextWhenUpdating: PropTypes.bool,
-        tooltipContentComponent: PropTypes.func,
-        tooltipContentRender: PropTypes.func,
+
+        withCursorContext: PropTypes.bool, // save cursor position to cursor context
+        cursorContextName: PropTypes.string,
 
         getSignalValuesForDefaultTooltip: PropTypes.func,
         getQueries: PropTypes.func.isRequired,
@@ -242,6 +252,7 @@ export class TimeBasedChartBase extends Component {
         displayLoadingTextWhenUpdating: true,
         drawBrushAreaBehindData: false,
         xAxisType: XAxisType.DATETIME,
+        withCursorContext: true,
     }
 
     updateTimeIntervalChartWidth() { // TODO: XAxisType.NUMBER – do we need to do anything?
@@ -338,6 +349,20 @@ export class TimeBasedChartBase extends Component {
 
             this.createChart(signalSetsData, forceRefresh);
             this.prevContainerNode = this.containerNode;
+
+            if (this.props.withCursorContext) {
+                if (!_.isEqual(prevState.mousePosition, this.state.mousePosition)) {
+                    if (this.state.mousePosition !== null) {
+                        let x = this.state.mousePosition.x - this.props.margin.left;
+                        x = this.xScale.invert(x);
+                        if (xIsDate)
+                            x = moment(x);
+                        this.setCursorByName(this.props.cursorContextName, x);
+                    } else {
+                        this.setCursorByName(this.props.cursorContextName, null);
+                    }
+                }
+            }
         }
     }
 
@@ -469,6 +494,7 @@ export class TimeBasedChartBase extends Component {
                     .range([0, innerWidth])
             );
         }
+        this.xScale = xScale;
         this.xScaleDomain = xScale.domain().map(d => d.valueOf());
 
         const xAxis = d3Axis.axisBottom(xScale)
@@ -708,7 +734,7 @@ export class TimeBasedChartBase extends Component {
                     </text>
 
                     {/* tooltip */}
-                    {this.props.withTooltip && !this.state.brushInProgress &&
+                    {this.props.withTooltip && !this.state.brushInProgress && !(!areZoomTransformsEqual(this.state.zoomTransform, d3Zoom.zoomIdentity) || this.state.loading) &&
                     <Tooltip
                         config={this.props.config.signalSets}
                         signalSetsData={this.state.signalSetsData}

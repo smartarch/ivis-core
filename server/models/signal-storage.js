@@ -163,6 +163,7 @@ async function insertRecords(sigSetWithSigMap, records) {
     }
 
     await indexer.onInsertRecords(sigSetWithSigMap, records, isAppend);
+    await signalSets.dataModified(sigSetWithSigMap.id);
 }
 
 async function updateRecord(sigSetWithSigMap, existingRecordId, record) {
@@ -178,6 +179,7 @@ async function updateRecord(sigSetWithSigMap, existingRecordId, record) {
 
     const updatedRow = await knex(tblName).where('id', record.id).first(); // This fetches all the data in case the update was only partial
     await indexer.onUpdateRecord(sigSetWithSigMap, existingRecordId, rowToRecord(sigSetWithSigMap.signalByCidMap, updatedRow));
+    await signalSets.dataModified(sigSetWithSigMap.id);
 }
 
 async function removeRecord(sigSet, recordId) {
@@ -185,6 +187,7 @@ async function removeRecord(sigSet, recordId) {
     await knex(tblName).where('id', recordId).del();
 
     await indexer.onRemoveRecord(sigSet, recordId);
+    await signalSets.dataModified(sigSet.id);
 }
 
 async function idExists(sigSet, recordId, existingId) {

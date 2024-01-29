@@ -86,10 +86,11 @@ async function listDTAjax(context, params) {
         [{entityTypeId: 'signalSet', requiredOperations: ['view']}],
         params,
         builder => builder.from('signal_sets').innerJoin('namespaces', 'namespaces.id', 'signal_sets.namespace'),
-        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.state', 'signal_sets.created', 'signal_sets.settings', 'namespaces.name'],
+        ['signal_sets.id', 'signal_sets.cid', 'signal_sets.name', 'signal_sets.description', 'signal_sets.type', 'signal_sets.state', 'signal_sets.created', 'signal_sets.settings', 'namespaces.name', 'signal_sets.data_modified'],
         {
             mapFun: data => {
                 data[5] = JSON.parse(data[5]);
+                data[9] = moment.utc(data[9]).toISOString();
             }
         }
     );
@@ -167,6 +168,15 @@ async function _validateAndPreprocess(tx, entity, isCreate) {
     const existingWithCid = await existingWithCidQuery.first();
     enforce(!existingWithCid, `Signal set's machine name (cid) '${entity.cid}' is already used for another signal set.`)
 
+}
+
+
+// call this whenever the data are modified (new records added, deleted, ...)
+async function dataModified(sigSetId, timestamp=moment.utc()) {
+    timestamp = moment(timestamp);
+    await knex.transaction(async tx => {
+        await tx('signal_sets').where('id', sigSetId).update({ data_modified: timestamp.format('YYYY-MM-DD HH:mm:ss') });
+    });
 }
 
 
@@ -874,3 +884,4 @@ module.exports.getLastId = getLastId;
 module.exports.getSignalByCidMapTx = getSignalByCidMapTx;
 module.exports.getRecordIdTemplate = getRecordIdTemplate;
 module.exports.listRecordsDTAjax = listRecordsDTAjax;
+module.exports.dataModified = dataModified;

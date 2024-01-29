@@ -21,6 +21,7 @@ const subtypesByType = {
     [TaskType.PYTHON]: PythonSubtypes
 };
 
+
 const BuildState = {
     SCHEDULED: 0,
     PROCESSING: 1,
