@@ -12,10 +12,13 @@ router.getAsync('/signals/:signalId', passport.loggedIn, async (req, res) => {
     return res.json(signal);
 });
 
+router.getAsync('/signals-simple-table/:sigSetId', passport.loggedIn, async (req, res) => {
+    return res.json(await signals.getBySigSetId(req.context, castToInteger(req.params.sigSetId)));
+});
+
 router.postAsync('/signals/:signalSetId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     return res.json(await signals.create(req.context, castToInteger(req.params.signalSetId), req.body));
 });
-
 router.putAsync('/signals/:signalId', passport.loggedIn, passport.csrfProtection, async (req, res) => {
     const signal = req.body;
     signal.id = castToInteger(req.params.signalId);

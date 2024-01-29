@@ -17,9 +17,7 @@ const RunStatus = {
     INITIALIZATION: 4
 };
 
-if (Object.freeze) {
-    Object.freeze(RunStatus)
-}
+Object.freeze(RunStatus)
 
 const HandlerMsgType = {
     BUILD: 0,
@@ -29,20 +27,17 @@ const HandlerMsgType = {
     DELETE_TASK: 4,
     SIGNAL_TRIGGER: 5,
     CREATE: 6,
-    INIT: 7
+    INIT: 7,
+    ACCESS_TOKEN: 8
 };
-if (Object.freeze) {
-    Object.freeze(HandlerMsgType)
-}
+Object.freeze(HandlerMsgType)
 
 const JobMsgType = {
     STORE_STATE: 'store_state',
     CREATE_SIGNALS: 'create_signals'
 };
 
-if (Object.freeze) {
-    Object.freeze(JobMsgType)
-}
+Object.freeze(JobMsgType)
 
 module.exports = {
     JobState,

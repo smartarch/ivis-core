@@ -20,9 +20,11 @@ const {
     PYTHON_JOB_FILE_NAME
 } = require('../../shared/tasks');
 const {storeBuiltinTasks, list} = require('../models/builtin-tasks');
+const users = require('../models/users');
+const contextHelpers = require('../lib/context-helpers');
 
 const {emitter: esEmitter, EventTypes: EsEventTypes} = require('./elasticsearch-events');
-const {emitter: taskEmitter} = require('./task-events');
+const {emitter: taskEmitter, EventTypes: TaskEventTypes} = require('./task-events');
 const {emitter: filesEmitter, EventTypes: FilesEventTypes} = require('./files-events');
 
 const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'services', 'task-handler.js'));
@@ -79,7 +81,7 @@ async function init() {
     }
 
     try {
-        await initBuiltin();
+        await initBuiltinAndSystemTasks();
     } catch (err) {
         log.error(LOG_ID, err);
     }
@@ -102,6 +104,46 @@ async function init() {
 
     handlerProcess.on('message', (msg) => {
         taskEmitter.emit(msg.type, msg.data)
+    });
+
+
+    taskEmitter.on(TaskEventTypes.ACCESS_TOKEN, async (data) => {
+        const {
+            jobId,
+            runId,
+        } = data;
+
+        const token = await getJobRestrictedAccessToken(jobId);
+
+        handlerProcess.send({
+            type: HandlerMsgType.ACCESS_TOKEN,
+            spec: {
+                jobId,
+                runId,
+                accessToken: token
+            }
+        });
+    });
+
+    taskEmitter.on(TaskEventTypes.ACCESS_TOKEN_REFRESH, async (data) => {
+        const {
+            jobId,
+            accessToken
+        } = data;
+
+        try {
+            const job = await knex('jobs').where('jobs.id', jobId).first();
+            // Just faking context here as the request for refresh comes from our system
+            await users.refreshRestrictedAccessToken(
+                {
+                    user: {
+                        id: job.owner,
+                    }
+                }
+                , accessToken);
+        } catch (e) {
+            log.error(e);
+        }
     });
 
     esEmitter
@@ -254,9 +296,16 @@ async function initIndices() {
 
 }
 
-async function initBuiltin() {
-    await storeBuiltinTasks();
+async function initBuiltinAndSystemTasks() {
+    await initBuiltinTasks();
+}
 
+/**
+ * Initialize system and builtin tasks
+ * @returns {Promise<void>}
+ */
+async function initBuiltinTasks() {
+    await storeBuiltinTasks();
     // Copy the builtin-files to dist folder
     const builtinTaskFilesDir = path.join(__dirname, '..', 'builtin-files');
     const builtinTasks = await list();
@@ -312,6 +361,20 @@ async function cleanBuilds() {
             }
         }
     }
+}
+
+async function getJobRestrictedAccessToken(jobId) {
+    let token = null;
+    try {
+        const job = await knex('jobs').where('jobs.id', jobId).first();
+        if (job.owner) {
+            token = await users.getRestrictedAccessToken(contextHelpers.getAdminContext(), 'job', {jobId}, job.owner);
+        }
+    } catch (e) {
+        log.error(e);
+    }
+
+    return token;
 }
 
 async function reindexOccurred(cid) {
@@ -408,3 +471,4 @@ module.exports.scheduleInit = scheduleInit;
 module.exports.esConstants = {INDEX_JOBS, TYPE_JOBS, STATE_FIELD};
 module.exports.getTaskDir = getTaskDir;
 module.exports.getTaskBuildOutputDir = getTaskBuildOutputDir;
+module.exports.getTaskDevelopmentDir = getTaskDevelopmentDir;

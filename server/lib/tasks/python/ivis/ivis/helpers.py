@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import requests
 
 from .exceptions import *
 
@@ -17,6 +18,9 @@ class Ivis:
         self.params = self._data['params']
         self.entities = self._data['entities']
         self.owned = self._data['owned']
+        self._accessToken = self._data['accessToken']
+        self._jobId = self._data['context']['jobId']
+        self._sandboxUrlBase = self._data['server']['sandboxUrlBase']
 
     @property
     def elasticsearch(self):
@@ -50,13 +54,15 @@ class Ivis:
 
         # Add newly created to owned
         for sig_set_cid, set_props in response.items():
-            signals_created = set_props.pop('signals', {})
+            signals_created = set_props.get('signals', {})
             if signal_sets is not None:
                 # Function allows passing in either array of signal sets or one signal set
                 if (isinstance(signal_sets, list) and any(map(lambda s: s["cid"] == sig_set_cid, signal_sets))) or (
                         not isinstance(signal_sets, list) and signal_sets["cid"] == sig_set_cid):
                     self.owned.setdefault('signalSets', {}).setdefault(sig_set_cid, {})
-            self.entities['signalSets'].setdefault(sig_set_cid, set_props)
+            setEntity = dict(set_props)
+            setEntity.pop('signals', None) # Don't belong to entities
+            self.entities['signalSets'].setdefault(sig_set_cid, setEntity)
             if signals_created:
                 self.owned.setdefault('signals', {}).setdefault(sig_set_cid, {})
                 for sigCid, sig_props in signals_created.items():
@@ -124,6 +130,13 @@ class Ivis:
 
         Ivis._send_request_message(msg)
         return Ivis._get_response_message()
+
+    def upload_file(self, file):
+        url = f"{self._sandboxUrlBase}/{self._accessToken}/rest/files/job/file/{self._jobId}/"
+        response = requests.post(url, files = {"files[]": file})
+
+    def get_job_file(self, id):
+        return requests.get(f"{self._sandboxUrlBase}/{self._accessToken}/rest/files/job/file/{id}")
 
 
 ivis = Ivis()
