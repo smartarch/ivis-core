@@ -2,12 +2,12 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {Redirect, Route, Switch} from "react-router-dom";
+import {Navigate, Route, Routes} from "react-router-dom";
 import {withAsyncErrorHandler, withErrorHandling} from "./error-handling";
 import axios from "../lib/axios";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
-import {withTranslation} from "./i18n";
+import {withTranslation} from "react-i18next";
 import shallowEqual from "shallowequal";
 import {checkPermissions} from "./permissions";
 

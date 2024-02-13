@@ -25,7 +25,7 @@ import {
 } from "./lib/bootstrap-components";
 import {getUrl} from "./lib/urls";
 import {withComponentMixins} from "./lib/decorator-helpers";
-import {withTranslation} from "./lib/i18n";
+import {withTranslation} from "react-i18next";
 import ivisConfig
     from "ivisConfig";
 

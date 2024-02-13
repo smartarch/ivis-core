@@ -38,7 +38,7 @@ import {
     getTypesBySource
 } from "../../../../../shared/signals"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
-import {withTranslation} from "../../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {SignalSetType} from "../../../../../shared/signal-sets"
 
 function isPainless(source) {

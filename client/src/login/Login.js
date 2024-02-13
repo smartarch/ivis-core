@@ -19,7 +19,7 @@ import URL
 import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import em from '../lib/extension-manager';
 
 @withComponentMixins([

@@ -14,7 +14,7 @@ import {RunStatus} from "../../../../shared/jobs";
 import {ActionLink} from "../../lib/bootstrap-components";
 import moment from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 
 const Span = props => <span>{props.data}</span>
 

@@ -11,7 +11,7 @@ import {
     withErrorHandling
 } from "../../lib/error-handling";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import RunConsole from "./RunConsole";
 
 @withComponentMixins([

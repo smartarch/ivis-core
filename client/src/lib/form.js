@@ -1,9 +1,9 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import axios, {HTTPMethod} from './axios';
-import Immutable from 'immutable';
+import {Map} from 'immutable';
 import PropTypes from 'prop-types';
 import interoperableErrors from '../../../shared/interoperable-errors';
 import {withPageHelpers} from './page'
@@ -14,11 +14,12 @@ import {Button} from "./bootstrap-components";
 import {SketchPicker} from 'react-color';
 
 import ACEEditorRaw from 'react-ace';
-import 'brace/theme/github';
-import 'brace/ext/searchbox';
+import 'ace-builds/src-noconflict/theme-github';
+import 'ace-builds/src-noconflict/ext-searchbox';
 
-import DayPicker from 'react-day-picker';
-import 'react-day-picker/lib/style.css';
+
+import {DayPicker} from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 import {
     birthdayYear,
     DateFormat,

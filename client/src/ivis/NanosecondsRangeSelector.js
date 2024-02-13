@@ -10,7 +10,7 @@ import {
 } from "../lib/bootstrap-components";
 import _ from "lodash";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {rangeAccessMixin} from "./RangeContext";
 
 /* helper function to split nanoseconds into readable values */

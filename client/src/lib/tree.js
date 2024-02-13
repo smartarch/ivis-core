@@ -2,7 +2,7 @@
 
 import React, {Component} from 'react';
 import ReactDOMServer from 'react-dom/server';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import PropTypes from 'prop-types';
 
 import jQuery from 'jquery';

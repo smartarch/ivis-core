@@ -12,7 +12,7 @@ import {StaticLegend} from "./Legend";
 import styles
     from './PieChart.scss';
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 
 export const LegendPosition = {

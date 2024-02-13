@@ -27,7 +27,7 @@ import {
     tableRestActionDialogInit
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import styles from "./List.scss";
 
 

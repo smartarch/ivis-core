@@ -18,7 +18,7 @@ import styles
 import {UntrustedContentHost} from "../../lib/untrusted";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 
 @withComponentMixins([
     withTranslation,

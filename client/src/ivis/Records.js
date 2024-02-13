@@ -9,7 +9,7 @@ import moment from "moment";
 import {SignalType} from "../../../shared/signals";
 import {tableAddDeleteButton, tableRestActionDialogInit, tableRestActionDialogRender,} from "../lib/modals";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import PropTypes from "prop-types";
 import base64url from 'base64-url';
 import axios from "../lib/axios";

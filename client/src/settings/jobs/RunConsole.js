@@ -11,7 +11,7 @@ import {
     withErrorHandling
 } from "../../lib/error-handling";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import developStyles from "../tasks/Develop.scss";
 import {RunStatus} from "../../../../shared/jobs";
 import {getUrl} from "../../lib/urls";

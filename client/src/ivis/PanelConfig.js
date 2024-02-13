@@ -1,5 +1,5 @@
 import React, {Component} from "react";
-import Immutable from 'immutable';
+import {Map,fromJS} from 'immutable';
 import PropTypes from "prop-types";
 import {Trans} from "react-i18next";
 import {
@@ -15,8 +15,8 @@ import {
     TextArea,
     withForm
 } from "../lib/form";
-import "brace/mode/html";
-import "brace/mode/json";
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-json';
 import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} from "../lib/error-handling";
 import ParamTypes from "../settings/ParamTypes"
 import {checkPermissions} from "../lib/permissions";
@@ -29,7 +29,7 @@ import {NamespaceSelect, validateNamespace} from "../lib/namespace";
 import {ActionLink} from "../lib/bootstrap-components";
 import {withPageHelpers} from "../lib/page-common";
 import {createComponentMixin, withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
 import {VIRTUAL_PANEL_ID} from "../../../shared/panels"
 

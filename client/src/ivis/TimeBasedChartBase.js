@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
-import {event as d3Event, select} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Brush from "d3-brush";
 import {intervalAccessMixin} from "./TimeContext";
 import {DataAccessSession} from "./DataAccess";
@@ -16,7 +16,7 @@ import tooltipStyles from "./Tooltip.scss";
 import * as dateMath from "../lib/datemath";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {areZoomTransformsEqual, ConfigDifference, setZoomTransform, transitionInterpolate, wheelDelta} from "./common";
 import * as d3Zoom from "d3-zoom";
 import commonStyles from "./commons.scss";

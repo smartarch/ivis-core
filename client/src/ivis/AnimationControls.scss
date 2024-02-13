@@ -1,6 +1,14 @@
-@import "node_modules/@coreui/coreui/scss/variables";
+@import "../../node_modules/bootstrap/scss/_functions";
+@import '../../node_modules/bootstrap/scss/variables';
+@import '../../node_modules/bootstrap/scss/variables-dark';
+@import '../../node_modules/bootstrap/scss/mixins';
+@import "../../node_modules/bootstrap/scss/maps";
+@import "../../node_modules/bootstrap/scss/utilities";
+@import "../../node_modules/bootstrap/scss/helpers";
+@import "../../node_modules/bootstrap/scss/utilities/api";
 
-@import "node_modules/@coreui/coreui/scss/bootstrap/mixins";
+@import "../../node_modules/@coreui/coreui/scss/_functions";
+@import "../../node_modules/@coreui/coreui/scss/variables";
 
 .label {
     user-select: none;

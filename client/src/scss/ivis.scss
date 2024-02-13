@@ -1,3 +1,7 @@
+//@import "functions";
+@import "../../node_modules/bootstrap/scss/_functions";
+
+@import "./variables.scss";
 @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,400i,700,700i|Ubuntu:300,300i,400,400i,700,700i&subset=latin-ext');
 
 $font-family-sans-serif: 'Ubuntu', sans-serif;
@@ -6,8 +10,31 @@ $font-family-monospace: 'Ubuntu Mono', monospace;
 $fa-font-path: "../static-npm/fontawesome";
 $enable-print-styles: false;
 
-@import "./variables.scss";
-@import "../../node_modules/@coreui/coreui/scss/coreui.scss";
+//@import '../../node_modules/bootstrap/scss';
+@import '../../node_modules/bootstrap/scss/variables';
+@import '../../node_modules/bootstrap/scss/variables-dark';
+@import '../../node_modules/bootstrap/scss/mixins';
+@import "../../node_modules/bootstrap/scss/maps";
+@import "../../node_modules/bootstrap/scss/utilities";
+@import "../../node_modules/bootstrap/scss/helpers";
+@import "../../node_modules/bootstrap/scss/utilities/api";
+
+
+@import '../../node_modules/@coreui/coreui/scss/_variables';
+@import '../../node_modules/@coreui/coreui/scss/variables-dark';
+@import "../../node_modules/@coreui/coreui/scss/_maps";
+
+@import "../../node_modules/@coreui/coreui/scss/_functions";
+@import "../../node_modules/@coreui/coreui/scss/variables";
+@import "../../node_modules/@coreui/coreui/scss/root";
+@import "../../node_modules/@coreui/coreui/scss/_utilities";
+//@import "../../node_modules/@coreui/coreui/scss/mixins";
+//@import "../../node_modules/@coreui/coreui/scss/helpers";
+@import "../../node_modules/@coreui/coreui/scss/utilities/api";
+//@import "../../node_modules/@coreui/coreui/scss/coreui.scss";
+//@import "../../node_modules/@coreui/coreui/scss/coreui";
+
+
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/fontawesome.scss";
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/regular.scss";
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/solid.scss";
@@ -45,7 +72,7 @@ body.ivis {
     display: flex;
     border-radius: 0;
     @include border-radius($breadcrumb-border-radius);
-    @include borders($breadcrumb-borders);
+ //   @include borders($breadcrumb-borders);
     background-color: $breadcrumb-bg;
 
     .breadcrumb {
@@ -62,8 +89,8 @@ body.ivis {
       padding: 0 15px;
 
       .navbar-brand {
-        width: $sidebar-width - 30px;
-
+        $px-to-rem: calc(1rem / 16px);
+        width: $sidebar-width - 30px * $px-to-rem;
         @include media-breakpoint-down(md) {
           // This is to keep the title and the menu buttons in order. Normally the brand is position: absolute which distorts the order
           position: relative;

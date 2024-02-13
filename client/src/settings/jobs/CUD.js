@@ -17,9 +17,9 @@ import {
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
 import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
 import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog, ImportExportModalDialog} from "../../lib/modals";
@@ -32,7 +32,7 @@ import ParamTypes from "../ParamTypes"
 import axios from '../../lib/axios';
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {TaskSource} from "../../../../shared/tasks"
 import {getVirtualNamespaceId} from "../../../../shared/namespaces"
 

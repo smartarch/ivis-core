@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
-import {select, event as d3Event} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
@@ -13,7 +13,7 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";

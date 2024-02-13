@@ -7,7 +7,7 @@ import {getSandboxUrl} from "../../lib/urls";
 import ParamTypes from "../../../../client/src/settings/ParamTypes";
 import {parentRPC} from "../../lib/untrusted";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import memoize from "memoize-one";
 
 @withComponentMixins([

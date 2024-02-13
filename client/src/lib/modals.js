@@ -2,7 +2,7 @@
 
 import React, {Component} from 'react';
 import axios, {HTTPMethod} from './axios';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import PropTypes from 'prop-types';
 import {Icon, ModalDialog} from "./bootstrap-components";
 import {getUrl} from "./urls";

@@ -2,15 +2,15 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {withRouter} from "react-router";
-import {BrowserRouter as Router, Route, Switch} from "react-router-dom";
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
 import {withErrorHandling} from "./error-handling";
 import styles from "./styles-content.scss";
 import {getRoutes, renderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
 import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
-import {withTranslation} from "./i18n";
+import {withTranslation} from "react-i18next";
 import jQuery from 'jquery';
 import {ThemeContext} from "./theme-context";
 import {Theme} from "../../../shared/themes";

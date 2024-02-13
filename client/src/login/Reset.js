@@ -25,7 +25,7 @@ import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {getUrl} from "../lib/urls";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 
 const ResetTokenValidationState = {
     PENDING: 0,

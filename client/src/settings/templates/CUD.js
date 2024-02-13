@@ -20,9 +20,10 @@ import {
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
+
 import {
     withAsyncErrorHandler,
     withErrorHandling
@@ -36,7 +37,7 @@ import {Panel} from "../../lib/panel";
 import ivisConfig
     from "ivisConfig";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 
 @withComponentMixins([
     withTranslation,

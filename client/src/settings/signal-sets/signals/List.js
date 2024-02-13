@@ -19,7 +19,7 @@ import {
 import {checkPermissions} from "../../../lib/permissions";
 import {IndexingStatus, SignalSource} from "../../../../../shared/signals";
 import {withComponentMixins} from "../../../lib/decorator-helpers";
-import {withTranslation} from "../../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {SignalSetType} from "../../../../../shared/signal-sets"
 
 @withComponentMixins([

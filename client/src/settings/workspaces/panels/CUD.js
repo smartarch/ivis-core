@@ -22,8 +22,9 @@ import {
     TextArea,
     withForm, withFormErrorHandlers
 } from "../../../lib/form";
-import "brace/mode/html";
-import "brace/mode/json";
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-json';
+
 import {
     withAsyncErrorHandler,
     withErrorHandling
@@ -44,7 +45,7 @@ import {getUrl} from "../../../lib/urls";
 import ParamTypes
     from "../../ParamTypes"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
-import {withTranslation} from "../../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import styles from "../../../lib/styles.scss";
 import {
     getBuiltinTemplates,

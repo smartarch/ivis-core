@@ -12,7 +12,7 @@ import {rgb} from "d3-color";
 import PropTypes from "prop-types";
 import {DataPathApproximator} from "./DataPathApproximator";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {cursorAccessMixin} from "./CursorContext";
 import _ from "lodash";

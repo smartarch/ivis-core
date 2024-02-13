@@ -3,7 +3,7 @@
 const em = require('../lib/extension-manager');
 const config = require('../lib/config');
 const knex = require('../lib/knex');
-const hasher = require('node-object-hash')();
+const hasher = require('node-object-hash').hasher();
 const signalStorage = require('./signal-storage');
 const indexer = require('../lib/indexers/' + config.indexer);
 const {IndexingStatus, getTypesBySource, SignalSource, AllSignalSources} = require('../../shared/signals');

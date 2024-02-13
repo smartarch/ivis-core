@@ -8,7 +8,7 @@ import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import base64url from 'base64-url';
 import FieldTypes from "./FieldTypes";
 import styles from "../../lib/styles.scss";

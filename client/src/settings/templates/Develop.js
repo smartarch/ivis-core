@@ -15,9 +15,9 @@ import {
     FormSendMethod,
     withForm
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
 import {
     withAsyncErrorHandler,
     withErrorHandling
@@ -34,7 +34,7 @@ import Preview
 import Files
     from "../../lib/files";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 
 const SaveState = {
     SAVED: 0,

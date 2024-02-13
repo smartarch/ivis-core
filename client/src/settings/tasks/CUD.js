@@ -14,9 +14,10 @@ import {
     TextArea,
     withForm, withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
+
 import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
 import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
@@ -24,7 +25,7 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {TaskType, subtypesByType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {getSubtypeLabel} from "./types";
 import {getWizardsForType, WizardType} from "./wizards";
 

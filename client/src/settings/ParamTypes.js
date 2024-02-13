@@ -13,8 +13,8 @@ import {
     TableSelect,
     TextArea
 } from "../lib/form";
-import "brace/mode/html";
-import "brace/mode/json";
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-json';
 import moment from "moment";
 import {TableSelectMode} from "../lib/table";
 import styles from "./ParamTypes.scss";

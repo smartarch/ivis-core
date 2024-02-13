@@ -2,7 +2,9 @@
 
 import em from './extension-manager';
 import React, {Component} from "react";
-import i18n, {withTranslation} from './i18n';
+import i18n from './i18n';
+import {withTranslation} from "react-i18next";
+
 import PropTypes from "prop-types";
 import {withRouter} from "react-router";
 import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
