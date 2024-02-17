@@ -13,6 +13,7 @@ import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
+import {withTranslationCustom} from "../lib/i18n";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData, isAgg) {
     const isAvg = signalData.avg !== null;
@@ -54,7 +55,7 @@ function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, s
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom,
 ])
 export class LineChart extends Component {
     constructor(props){

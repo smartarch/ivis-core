@@ -35,6 +35,7 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 
 const FormState = {
@@ -69,7 +70,7 @@ export function withFormErrorHandlers(target, name, descriptor) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers
 ])
@@ -307,7 +308,7 @@ class StaticField extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ])
 class InputField extends Component {
@@ -711,7 +712,7 @@ class ColorPicker extends Component {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 class ColumnSelect extends Component {
 
@@ -803,7 +804,7 @@ class ColumnSelect extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ])
 class TimePicker extends Component {
@@ -884,7 +885,7 @@ class TimePicker extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ])
 class DateTimePicker extends Component {
@@ -1136,7 +1137,7 @@ class ButtonRow extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ], null, ['submitFormValuesMutator', 'getFormValueIdForPicker'])
 class ListCreator extends Component {
@@ -1363,7 +1364,7 @@ class TreeTableSelect extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ], ['refresh'])
 class TableSelect extends Component {
@@ -1573,13 +1574,13 @@ const withForm = createComponentMixin({
     decoratorFn: (TargetClass, InnerClass) => {
         const proto = InnerClass.prototype;
 
-        const cleanFormState = Immutable.Map({
+        const cleanFormState = Map({
             state: FormState.Loading,
             isValidationShown: false,
             isDisabled: false,
             statusMessageText: '',
-            data: Immutable.Map(),
-            savedData: Immutable.Map(),
+            data: Map(),
+            savedData: Map(),
             isServerValidationRunning: false
         });
 
@@ -1827,7 +1828,7 @@ const withForm = createComponentMixin({
 
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
                         for (const key in data) {
-                            mutStateData.set(key, Immutable.Map({
+                            mutStateData.set(key, Map({
                                 value: data[key]
                             }));
                         }

@@ -15,9 +15,10 @@ import styles from "../../lib/styles.scss";
 import {SignalSetType} from "../../../../shared/signal-sets"
 import {SignalSource} from "../../../../shared/signals"
 import {DataAccessSession} from "../../ivis/DataAccess";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,

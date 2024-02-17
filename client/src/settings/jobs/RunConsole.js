@@ -16,9 +16,10 @@ import developStyles from "../tasks/Develop.scss";
 import {RunStatus} from "../../../../shared/jobs";
 import {getUrl} from "../../lib/urls";
 import PropTypes from "prop-types";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

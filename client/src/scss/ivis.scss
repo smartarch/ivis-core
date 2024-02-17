@@ -89,8 +89,10 @@ body.ivis {
       padding: 0 15px;
 
       .navbar-brand {
-        $px-to-rem: calc(1rem / 16px);
-        width: $sidebar-width - 30px * $px-to-rem;
+        //$px-to-rem: calc(1rem / 16);
+        //width: $sidebar-width - 30px * $px-to-rem;
+        width: $sidebar-width;
+
         @include media-breakpoint-down(md) {
           // This is to keep the title and the menu buttons in order. Normally the brand is position: absolute which distorts the order
           position: relative;

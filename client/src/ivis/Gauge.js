@@ -10,9 +10,10 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import * as d3Scale from "d3-scale";
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 /**

@@ -35,9 +35,10 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {SignalSetType, SignalSetKind} from "../../../../shared/signal-sets"
 import {getSignalSetKindsLabels} from "../../lib/signal-sets-helpers";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,

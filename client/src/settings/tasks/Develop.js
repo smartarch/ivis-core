@@ -20,6 +20,7 @@ import {withTranslation} from "react-i18next";
 import axios from "../../lib/axios";
 import {getUrl} from "../../lib/urls";
 import {RunStatus} from "../../../../shared/jobs";
+import {withTranslationCustom} from "../../lib/i18n";
 
 const SaveState = {
     SAVED: 0,
@@ -35,7 +36,7 @@ typeToEditor.set(TaskType.NUMPY, 'python');
 typeToEditor.set(TaskType.ENERGY_PLUS, 'python');
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withForm,
     withPageHelpers,

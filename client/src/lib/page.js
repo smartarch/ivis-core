@@ -2,12 +2,12 @@
 
 import em from './extension-manager';
 import React, {Component} from "react";
-import i18n from './i18n';
-import {withTranslation} from "react-i18next";
+import i18n, {withTranslationCustom} from './i18n';
 
 import PropTypes from "prop-types";
-import {withRouter} from "react-router";
-import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
+import {BrowserRouter as Router, Link, Route, Routes} from "react-router-dom";
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+
 import {withErrorHandling} from "./error-handling";
 import interoperableErrors from "../../../shared/interoperable-errors";
 import {ActionLink, Button, DismissibleAlert, DropdownActionLink, Icon} from "./bootstrap-components";
@@ -219,7 +219,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 class PanelRoute extends Component {
     constructor(props) {
@@ -240,7 +240,7 @@ class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired,
+        params: PropTypes.object.isRequired,
         flashMessage: PropTypes.object
     }
 
@@ -261,7 +261,7 @@ class PanelRoute extends Component {
     render() {
         const t = this.props.t;
         const route = this.props.route;
-        const params = this.props.match.params;
+        const params = this.props.params;
 
         const showSidebar = !!route.secondaryMenuComponent;
 
@@ -274,7 +274,6 @@ class PanelRoute extends Component {
 
             if (resolved && permissions) {
                 const compProps = {
-                    match: this.props.match,
                     location: this.props.location,
                     resolved,
                     permissions,
@@ -335,10 +334,13 @@ class PanelRoute extends Component {
         };
 
 
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+        return <Resolver route={route} render={render} location={this.props.location} params={this.props.params}/>;
     }
 }
 
+const DummyComponent = () => {
+    return <div>Dummy Component Content Here</div>;
+};
 
 export class BeforeUnloadListeners {
     constructor() {
@@ -370,12 +372,11 @@ export class BeforeUnloadListeners {
     }
 }
 
-@withRouter
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ], ['onNavigationConfirmationDialog'])
-export class SectionContent extends Component {
+class SectionContentBase extends Component {
     constructor(props) {
         super(props);
 
@@ -383,13 +384,13 @@ export class SectionContent extends Component {
             flashMessageText: ''
         };
 
-        this.historyUnlisten = props.history.listen((location, action) => {
+        /*this.historyUnlisten = props.history.listen((location, action) => {
             if (action === "REPLACE") return;
             if (location.state && location.state.preserveFlashMessage) return;
 
             // noinspection JSIgnoredPromiseFromCall
             this.closeFlashMessage();
-        });
+        });*/
 
         this.beforeUnloadListeners = new BeforeUnloadListeners();
         this.beforeUnloadHandler = ::this.onBeforeUnload;
@@ -420,13 +421,14 @@ export class SectionContent extends Component {
     }
 
     componentDidMount() {
-        window.addEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock = this.props.history.block('Changes you made may not be saved. Are you sure you want to leave this page?');
+        /*window.addEventListener('beforeunload', this.beforeUnloadHandler);
+        this.historyUnblock = this.props.navigate.block('Changes you made may not be saved. Are you sure you want to leave this page?');
+        */
     }
 
     componentWillUnmount() {
-        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock();
+        /*window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        this.historyUnblock();*/
     }
 
     setFlashMessage(severity, text) {
@@ -437,16 +439,16 @@ export class SectionContent extends Component {
     }
 
     navigateTo(path) {
-        this.props.history.push(path);
+        this.props.navigate(path);
     }
 
     navigateBack() {
-        this.props.history.goBack();
+        this.props.navigate(-1);
     }
 
     navigateToWithFlashMessage(path, severity, text) {
-        this.props.history.push(path, {preserveFlashMessage: true});
         this.setFlashMessage(severity, text);
+        this.props.navigate(path, { state: { preserveFlashMessage: true } });
     }
 
     ensureAuthenticated() {
@@ -485,7 +487,7 @@ export class SectionContent extends Component {
     }
 
     renderRoute(route) {
-        const render = props => {
+        const Element = () => {
             let flashMessage;
             if (this.state.flashMessageText) {
                 flashMessage = <DismissibleAlert severity={this.state.flashMessageSeverity} onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>;
@@ -496,11 +498,10 @@ export class SectionContent extends Component {
                 PanelRoute,
                 () => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t)),
                 flashMessage,
-                props
             );
         };
 
-        return <Route key={route.path} exact={route.exact} path={route.path} render={render} />
+        return <Route key={route.path} exact={route.exact} path={route.path} element={<Element/>} />
     }
 
     render() {
@@ -508,14 +509,24 @@ export class SectionContent extends Component {
 
         return (
             <SectionContentContext.Provider value={this}>
-                <Switch>{routes.map(x => this.renderRoute(x))}</Switch>
+                <Routes>{routes.map(x => this.renderRoute(x))}</Routes>
             </SectionContentContext.Provider>
         );
     }
 }
 
+function SectionContent(props) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const params = useParams();
+
+    return <SectionContentBase {...props} navigate={navigate} location={location} params={params} />;
+}
+
+export { SectionContent };
+
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class Section extends Component {
     constructor(props) {

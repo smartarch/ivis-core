@@ -26,6 +26,7 @@ import {rangeAccessMixin} from "./RangeContext";
 import {cursorAccessMixin} from "./CursorContext";
 import moment from "moment";
 import _ from "lodash";
+import {withTranslationCustom} from "../lib/i18n";
 
 export function createBase(base, self) {
     self.base = base;
@@ -170,7 +171,7 @@ function compareConfigs(conf1, conf2, customComparator) {
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     intervalAccessMixin(),
     rangeAccessMixin,

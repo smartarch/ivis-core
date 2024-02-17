@@ -10,9 +10,10 @@ import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropType
 import {StaticBarChart} from "./BarChart";
 import {FrequencyDataLoader} from "./FrequencyDataLoader";
 import StatusMsg from "./StatusMsg";
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class FrequencyBarChart extends Component {

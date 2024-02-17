@@ -30,9 +30,10 @@ import {getSignalTypes} from "../signal-sets/signals/signal-types.js";
 import moment from "moment";
 import interoperableErrors from "../../../../shared/interoperable-errors";
 import {isSignalSetAggregationIntervalValid} from "../../../../shared/validators"
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,

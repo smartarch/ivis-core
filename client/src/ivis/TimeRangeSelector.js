@@ -28,9 +28,10 @@ import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {ThemeContext} from "../lib/theme-context";
 import {Theme} from "../../../shared/themes"
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     intervalAccessMixin()
 ])

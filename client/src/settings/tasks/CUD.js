@@ -28,9 +28,10 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {getSubtypeLabel} from "./types";
 import {getWizardsForType, WizardType} from "./wizards";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withForm,
     withPageHelpers,

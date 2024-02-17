@@ -8,9 +8,10 @@ import {withTranslation} from "react-i18next";
 import {ScatterPlotBase} from "./ScatterPlotBase";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapeNames} from "./dot_shapes";
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ], ["setMaxDotCount", "setWithTooltip", "getView", "setView"], ["getQueries", "getQueriesForSignalSet", "prepareData", "computeExtents", "processDocs", "filterData", "drawChart", "drawDots", "drawHighlightDot"])
 export class BubblePlot extends Component {

@@ -17,6 +17,7 @@ import tooltipStyles
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
+import {withTranslationCustom} from "../lib/i18n";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
     const val = signalData.max ? 'ON' : 'OFF';
@@ -29,7 +30,7 @@ function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, s
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class OnOffAreaChart extends Component {
     constructor(props){

@@ -14,10 +14,11 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import PropTypes from "prop-types";
 import base64url from 'base64-url';
+import {withTranslationCustom} from "../../lib/i18n";
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

@@ -6,9 +6,10 @@ import PropTypes from 'prop-types';
 import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import {withComponentMixins} from "./decorator-helpers";
 import moment from "moment";
+import {withTranslationCustom} from "./i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class DismissibleAlert extends Component {
@@ -266,7 +267,7 @@ export class DropdownDivider extends Component {
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class ModalDialog extends Component {

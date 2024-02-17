@@ -27,9 +27,10 @@ import {
 } from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
 import {Panel} from "./panel";
+import {withTranslationCustom} from "./i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

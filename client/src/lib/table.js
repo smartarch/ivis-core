@@ -18,6 +18,7 @@ import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import styles from "./styles.scss";
 import {getUrl} from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 //dtFactory();
 //dtSelectFactory();
@@ -30,7 +31,7 @@ const TableSelectMode = {
 };
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers
 ], ['refresh'])

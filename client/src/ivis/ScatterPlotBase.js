@@ -28,6 +28,7 @@ import {areZoomTransformsEqual, ConfigDifference, distance, extentWithMargin, ge
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
 import {withPageHelpers} from "../lib/page-common";
+import {withTranslationCustom} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -155,7 +156,7 @@ class TooltipContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm
 ])
 class ScatterPlotToolbar extends Component {
@@ -298,7 +299,7 @@ class ScatterPlotToolbar extends Component {
  * Common class for ScatterPlot, BubblePlot (and possibly other) components
  */
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     intervalAccessMixin()
@@ -1470,8 +1471,8 @@ export class ScatterPlotBase extends Component {
         let selections = this.state.selections;
         let mousePosition;
 
-        const selectPoints = function () {
-            const containerPos = d3Selection.mouse(self.containerNode);
+        const selectPoints = function (event) {
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
 
@@ -1529,8 +1530,8 @@ export class ScatterPlotBase extends Component {
         };
 
         this.brushParentSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', ::this.deselectPoints);
     }
 

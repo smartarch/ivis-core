@@ -3,10 +3,11 @@
 import React, {Component} from "react";
 import {getLanguageChooser} from "./lib/page";
 import {withComponentMixins} from "./lib/decorator-helpers";
+import {withTranslationCustom} from "./lib/i18n";
 import {withTranslation} from "react-i18next";
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export default class MainMenu extends Component {
     constructor(props) {
@@ -14,7 +15,7 @@ export default class MainMenu extends Component {
     }
 
     render() {
-        const t = this.props.t;
+        const t = this.context;
 
         return (
             <ul className="navbar-nav ivis-navbar-nav-right">

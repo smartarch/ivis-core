@@ -24,11 +24,12 @@ import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
 import {checkPermissions} from "../../lib/permissions";
 import {HTTPMethod} from "../../lib/axios";
+import {withTranslationCustom} from "../../lib/i18n";
 
 const {getVirtualNamespaceId} = require("../../../../shared/namespaces");
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

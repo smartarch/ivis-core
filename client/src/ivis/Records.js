@@ -14,10 +14,11 @@ import PropTypes from "prop-types";
 import base64url from 'base64-url';
 import axios from "../lib/axios";
 import {getUrl} from "../lib/urls";
+import {withTranslationCustom} from "../lib/i18n";
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 class RecordsList extends Component {
@@ -76,7 +77,7 @@ class RecordsList extends Component {
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
 ])
 export class Records extends Component {

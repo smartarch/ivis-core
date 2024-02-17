@@ -5,10 +5,11 @@ import {withTranslation} from "react-i18next";
 import {TreeTableSelect} from './form';
 import {withComponentMixins} from "./decorator-helpers";
 import ivisConfig from 'ivisConfig';
+import {withTranslationCustom} from "./i18n";
 
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class NamespaceSelect extends Component {
     render() {

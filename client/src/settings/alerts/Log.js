@@ -23,9 +23,10 @@ import {CSVLink} from "react-csv";
 import axios from "../../lib/axios";
 import {getUrl} from "../../lib/urls";
 import moment from "moment";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

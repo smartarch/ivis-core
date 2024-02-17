@@ -14,9 +14,10 @@ import {withComponentMixins} from "./decorator-helpers";
 import {withAsyncErrorHandler} from "./error-handling";
 import ACEEditorRaw from 'react-ace';
 import {ACEEditor, Form, withForm} from "./form";
+import {withTranslationCustom} from "./i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withPageHelpers
 ])
 export class RestActionModalDialog extends Component {
@@ -138,7 +139,7 @@ function _getDependencyErrorMessage(err, t, name) {
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withPageHelpers
 ])
 export class DeleteModalDialog extends Component {
@@ -329,7 +330,7 @@ export function tableRestActionDialogRender(owner) {
 
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class ContentModalDialog extends Component {
     constructor(props) {
@@ -399,7 +400,7 @@ export class ContentModalDialog extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm
 ])
 export class ImportExportModalDialog extends Component {

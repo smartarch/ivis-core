@@ -9,6 +9,7 @@ import axios from "./axios";
 import styles from "./styles.scss";
 import {getSandboxUrl, getUrl, setRestrictedAccessToken} from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 @withComponentMixins([
     withErrorHandling,
@@ -194,7 +195,7 @@ class ErrorBoundary extends Component {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class UntrustedContentRoot extends Component {
     constructor(props) {

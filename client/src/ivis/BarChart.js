@@ -16,6 +16,7 @@ import {PropType_d3Color, PropType_d3Color_Required, PropType_NumberInRange} fro
 import {Tooltip} from "./Tooltip";
 import {areZoomTransformsEqual, extentWithMargin, transitionInterpolate, wheelDelta} from "./common";
 import styles from "./CorrelationCharts.scss";
+import {withTranslationCustom} from "../lib/i18n";
 
 class TooltipContent extends Component {
     constructor(props) {
@@ -40,7 +41,7 @@ class TooltipContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
 ])
 export class StaticBarChart extends Component {

@@ -5,14 +5,14 @@ import * as d3Scheme from "d3-scale-chromatic";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslationCustom} from "../lib/i18n";
 import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {StaticPieChart} from "./PieChart";
 import {FrequencyDataLoader} from "./FrequencyDataLoader";
 import StatusMsg from "./StatusMsg";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class FrequencyPieChart extends Component {

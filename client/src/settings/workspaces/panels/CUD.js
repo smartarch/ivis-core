@@ -53,9 +53,10 @@ import {
     anyBuiltinTemplate,
     getBuiltinTemplate
 } from "../../../lib/builtin-templates";
+import {withTranslationCustom} from "../../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,

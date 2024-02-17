@@ -10,7 +10,7 @@ import ReactDOM from 'react-dom';
 
 import {Section} from './lib/page';
 import Account from './account/Account';
-import Login from './login/Login';
+import Login, {LoginContainer} from './login/Login';
 import Reset from './login/Forgot';
 import ResetLink from './login/Reset';
 import API from './account/API';
@@ -114,7 +114,7 @@ const getStructure = t => {
             login: {
                 title: t('Sign in'),
                 link: '/login',
-                panelComponent: Login,
+                panelComponent: LoginContainer,
                 primaryMenuComponent: MainMenuAnonymous,
                 children: {
                     forgot: {
@@ -326,25 +326,27 @@ const getStructure = t => {
                                         title: t('Settings'),
                                         link: params => `/settings/alerts/${params.alertId}/edit`,
                                         visible: resolved => resolved.alert.permissions.includes('edit'),
-                                        panelRender: props => <AlertsCUD action={props.match.params.action} entity={props.resolved.alert} />
+                                        panelRender: props => <AlertsCUD action={props.match.params.action}
+                                                                         entity={props.resolved.alert}/>
                                     },
                                     log: {
                                         title: t('Log'),
                                         link: params => `/settings/alerts/${params.alertId}/log`,
                                         visible: resolved => resolved.alert.permissions.includes('view'),
-                                        panelRender: props => <AlertsLog alertId={props.resolved.alert.id} />
+                                        panelRender: props => <AlertsLog alertId={props.resolved.alert.id}/>
                                     },
                                     share: {
                                         title: t('Share'),
                                         link: params => `/settings/alerts/${params.alertId}/share`,
                                         visible: resolved => resolved.alert.permissions.includes('share'),
-                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.alert} entityTypeId="alert" />
+                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.alert}
+                                                                     entityTypeId="alert"/>
                                     }
                                 }
                             },
                             create: {
                                 title: t('Create'),
-                                panelRender: props => <AlertsCUD action="create" />
+                                panelRender: props => <AlertsCUD action="create"/>
                             }
                         }
                     },

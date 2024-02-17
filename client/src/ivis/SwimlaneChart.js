@@ -206,7 +206,7 @@ export class SwimlaneChart extends Component {
         let mousePosition = null;
 
         const selectBar = function (bar = null, mousePos = null) {
-            const containerPos = mousePos !== null ? mousePos : d3Selection.mouse(base.containerNode);
+            const containerPos = mousePos !== null ? mousePos : d3Selection.pointer(base.containerNode);
 
             base.cursorSelection
                 .attr('x1', containerPos[0])

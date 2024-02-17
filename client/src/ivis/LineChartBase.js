@@ -16,6 +16,7 @@ import {withTranslation} from "react-i18next";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {cursorAccessMixin} from "./CursorContext";
 import _ from "lodash";
+import {withTranslationCustom} from "../lib/i18n";
 
 
 const SelectedState = {
@@ -103,7 +104,7 @@ export function getAxisIdx(sigConf) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     cursorAccessMixin(),
 ])
 export class LineChartBase extends Component {
@@ -406,7 +407,7 @@ export class LineChartBase extends Component {
         let mousePosition = null;
 
         const selectPoints = function (mousePos = null) {
-            const containerPos = mousePos !== null ? mousePos : d3Selection.mouse(base.containerNode);
+            const containerPos = mousePos !== null ? mousePos : d3Selection.pointer(event,base.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
             const ts = xScale.invert(x);
@@ -592,8 +593,8 @@ export class LineChartBase extends Component {
         };
 
         base.brushSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', deselectPoints)
             .on('click', click);
 

@@ -5,9 +5,10 @@ import PropTypes from "prop-types";
 import {NavLink} from "../lib/page";
 import {withComponentMixins} from "../lib/decorator-helpers";
 import {withTranslation} from "react-i18next";
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export default class Sidebar extends Component {
     constructor(props) {

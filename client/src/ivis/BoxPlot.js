@@ -17,6 +17,7 @@ import {Tooltip} from "./Tooltip";
 import {ConfigDifference, extentWithMargin, timeIntervalDifference} from "./common";
 import {PropType_d3Color, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import commonStyles from "./commons.scss";
+import {withTranslationCustom} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -44,7 +45,7 @@ function compareSignalSetConfigs(conf1, conf2) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     intervalAccessMixin()
 ])

@@ -17,6 +17,7 @@ import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import styles from "./styles.scss";
 import {getUrl} from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 const TreeSelectMode = {
     NONE: 0,
@@ -25,7 +26,7 @@ const TreeSelectMode = {
 };
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers
 ], ['refresh'])

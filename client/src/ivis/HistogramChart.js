@@ -23,6 +23,7 @@ import {brushHandlesLeftRight, ConfigDifference, isInExtent, transitionInterpola
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import StatusMsg from "./StatusMsg";
 import commonStyles from "./commons.scss";
+import {withTranslationCustom} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -71,7 +72,7 @@ class TooltipContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     intervalAccessMixin()
 ], ["getView", "setView"], ["processBucket", "prepareData"])
@@ -519,11 +520,11 @@ export class HistogramChart extends Component {
 
         let selection, mousePosition;
 
-        const selectPoints = function () {
+        const selectPoints = function (event) {
             if (self.state.zoomInProgress)
                 return;
 
-            const containerPos = d3Selection.mouse(self.containerNode);
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
 
             const key = xScale.invert(x);
@@ -565,8 +566,8 @@ export class HistogramChart extends Component {
         };
 
         this.cursorAreaSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', ::this.deselectPoints);
     }
 

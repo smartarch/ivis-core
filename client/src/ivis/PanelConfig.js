@@ -32,6 +32,7 @@ import {createComponentMixin, withComponentMixins} from "../lib/decorator-helper
 import {withTranslation} from "react-i18next";
 import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
 import {VIRTUAL_PANEL_ID} from "../../../shared/panels"
+import {withTranslationCustom} from "../lib/i18n";
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
@@ -46,7 +47,7 @@ export const panelConfigAccessMixin = createComponentMixin({
 });
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm
 ])
 export class Configurator extends Component {
@@ -200,7 +201,7 @@ function openSaveDialog(owner, dialog) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withPageHelpers,
     withForm,
     panelConfigAccessMixin
@@ -449,7 +450,7 @@ function openPermanentLinkDialog(owner, opened) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     panelConfigAccessMixin
 ])
 export class PermanentLinkDialog extends Component {
@@ -495,7 +496,7 @@ function openPdfExportDialog(owner, opened) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withForm,
     panelConfigAccessMixin
@@ -639,7 +640,7 @@ export class PdfExportDialog extends Component {
 
 
 export const panelConfigMixin = createComponentMixin({
-    deps: [withErrorHandling, panelMenuMixin, withTranslation, withPageHelpers],
+    deps: [withErrorHandling, panelMenuMixin, withTranslationCustom , withPageHelpers],
     decoratorFn: (TargetClass, InnerClass) => {
         const inst = InnerClass.prototype;
 

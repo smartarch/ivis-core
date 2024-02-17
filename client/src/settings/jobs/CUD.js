@@ -40,9 +40,10 @@ import {
     fetchBuiltinTasks
 } from "../../lib/builtin-tasks";
 import styles from "../../lib/styles.scss";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,

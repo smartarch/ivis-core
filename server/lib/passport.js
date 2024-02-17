@@ -71,9 +71,19 @@ module.exports.setupRegularAuth = app => {
     app.use(passport.session());
 };
 
-module.exports.restLogout = (req, res) => {
+/*module.exports.restLogout = (req, res) => {
     req.logout();
     res.json();
+};*/
+
+module.exports.restLogout = function(req, res) {
+    req.logout(function(err) {
+        if (err) {
+            console.error(err);
+            return res.status(500).send({error: 'Logout failed'});
+        }
+        res.json();
+    });
 };
 
 module.exports.restLogin = (req, res, next) => {

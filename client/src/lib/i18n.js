@@ -60,11 +60,12 @@ export default i18n;
 
 export const TranslationContext = React.createContext(null);
 
-/*export const withTranslation = createComponentMixin({
+export const withTranslationCustom = createComponentMixin({
     contexts: [{context: TranslationContext, propName: 't'}]
-});*/
+});
 
-const TranslationContextProvider = withNamespaces()(props => {
+
+const TranslationContextProvider = withTranslation()(props => {
     return (
         <TranslationContext.Provider value={props.t}>
             {props.children}
