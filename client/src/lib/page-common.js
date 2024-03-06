@@ -35,6 +35,7 @@ async function resolve(route, params, prevResolverState) {
             for (const key of keysToGo) {
                 const resolveEntry = route.resolve[key];
 
+
                 let allDepsSatisfied = true;
                 let urlFn = null;
 
@@ -280,7 +281,7 @@ export class Resolver extends Component {
         route: PropTypes.object.isRequired,
         render: PropTypes.func.isRequired,
         location: PropTypes.object,
-        params: PropTypes.object
+        params: PropTypes.object,
     }
 
     @withAsyncErrorHandler
@@ -305,7 +306,7 @@ export class Resolver extends Component {
                 });
             }
 
-            const {resolved, permissions, resolverState} = await resolve(props.route, this.params, prevResolverState);
+            const {resolved, permissions, resolverState} = await resolve(props.route, this.props.params, prevResolverState);
 
             if (!this.disregardResolve) { // This is to prevent the warning about setState on discarded component when we immediatelly redirect.
                 this.setState({
@@ -375,7 +376,7 @@ class SubRoute extends Component {
         params: PropTypes.object.isRequired,
         flashMessage: PropTypes.object,
         panelRouteCtor: PropTypes.func.isRequired,
-        loadingMessageFn: PropTypes.func.isRequired
+        loadingMessageFn: PropTypes.func.isRequired,
     }
 
     render() {

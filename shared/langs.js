@@ -54,6 +54,7 @@ const langCodes = {
 }
 
 function getLang(lng) {
+    console.log(lng);
     return langCodes[lng] || langCodes['en-US'];
 }
 

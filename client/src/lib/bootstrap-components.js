@@ -138,7 +138,7 @@ export class ButtonDropdown extends Component {
 
         return (
             <div className={className}>
-                <button type="button" className={buttonClassName} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{icon}{iconSpacer}{props.label}</button>
+                <button type="button" className={buttonClassName} data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{icon}{iconSpacer}{props.label}</button>
                 <ul className={menuClassName}>{props.children}</ul>
             </div>
         );

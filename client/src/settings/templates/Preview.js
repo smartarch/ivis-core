@@ -123,14 +123,23 @@ export default class Preview extends Component {
             const warnings = [];
 
             let idx = 0;
-            for (const error of template.output.errors) {
-                errors.push(<div key={idx}><pre><Ansi>{error}</Ansi></pre></div>)
-                idx++;
+
+            if (template.output.errors) {
+                for (const error of template.output.errors) {
+                    errors.push(<div key={idx}>
+                        <pre><Ansi>{error.message}</Ansi></pre>
+                    </div>)
+                    idx++;
+                }
             }
 
-            for (const warning of template.output.warnings) {
-                warnings.push(<div key={idx}><pre><Ansi>{warning}</Ansi></pre></div>)
-                idx++;
+            if (template.output.warnings) {
+                for (const warning of template.output.warnings) {
+                    warnings.push(<div key={idx}>
+                        <pre><Ansi>{warning.message}</Ansi></pre>
+                    </div>)
+                    idx++;
+                }
             }
 
             result = (

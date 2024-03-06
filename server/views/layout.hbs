@@ -9,10 +9,12 @@
 
     <script src="{{publicPath}}static-npm/jquery.min.js"></script>
     <script src="{{publicPath}}static-npm/popper.min.js"></script>
-    <script src="{{publicPath}}static-npm/bootstrap.min.js"></script>
-    <script src="{{publicPath}}static-npm/coreui.min.js"></script>
+    <!--<script src="{{publicPath}}static-npm/bootstrap.min.js"></script>-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"crossorigin="anonymous"></script>
+    <!---<script src="{{publicPath}}static-npm/coreui.min.js"></script>-->
 </head>
 <body class="ivis {{bodyClass}}">
 {{{ body }}}
+<link href="https://cdn.jsdelivr.net/npm/@coreui/coreui@5.0.0-beta.2/dist/css/coreui.min.css" rel="stylesheet" integrity="sha384-H8oVKJOQVGGCdfFNM+9gLKN0xagtq9oiNLirmijheEuqD3kItTbTvoOGgxVKqNiB" crossorigin="anonymous">
 </body>
 </html>

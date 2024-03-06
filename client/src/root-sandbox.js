@@ -27,7 +27,7 @@ const getStructure = t => {
                 insideIframe: true,
 
                 children: {
-                    ':panelId([0-9]+)': {
+                    ':panelId': {
                         resolve: {
                             panel: params => `rest/panels/${params.panelId}`
                         },

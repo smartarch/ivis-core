@@ -158,6 +158,7 @@ export default class RecordsCUD extends Component {
         const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
         if (submitSuccessful) {
+            console.log(`/settings/signal-sets/${sigSetId}/records`)
             this.navigateToWithFlashMessage(`/settings/signal-sets/${sigSetId}/records`, 'success', t('Record saved'));
         } else {
             this.enableForm();

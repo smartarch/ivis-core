@@ -217,7 +217,9 @@ function _hide(owner, dontRefresh = false) {
         if (refreshTables) {
             refreshTables();
         } else {
-            owner.table.refresh();
+            if(owner.table != null) {
+                owner.table.refresh();
+            }
         }
     } else {
         // _hide is called twice: (1) at performing action, and at (2) success. Here we keep the refreshTables

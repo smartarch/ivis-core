@@ -25,13 +25,15 @@ import {withTranslationCustom} from "../../lib/i18n";
 ])
 export default class Overview extends Component {
     constructor(props) {
+        console.log("overview constructor");
         super(props);
 
         this.state = {};
     }
 
     static propTypes = {
-        workspace: PropTypes.object
+        workspace: PropTypes.object,
+        workspaceId : PropTypes.number
     }
 
     render() {

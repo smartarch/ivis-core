@@ -60,9 +60,9 @@ function getWebpackConfig(moduleId) {
                                 ],
                                 plugins: [
                                     ["@babel/plugin-proposal-decorators", { "legacy": true }],
-                                    ["@babel/plugin-proposal-class-properties", { "loose" : true }],
-                                    ["@babel/plugin-proposal-private-methods", { "loose": true }],
-                                    ["@babel/plugin-proposal-private-property-in-object", { "loose": true }],
+                                    ["@babel/plugin-transform-class-properties", { "loose" : true }],
+                                    ["@babel/plugin-transform-private-methods", { "loose": true }],
+                                    ["@babel/plugin-transform-private-property-in-object", { "loose": true }],
                                     "@babel/plugin-proposal-function-bind"
                                 ]
                             }
@@ -86,17 +86,19 @@ function getWebpackConfig(moduleId) {
                 },
                 {
                     test: /\.scss$/,
-                    exclude: path.join(__dirname, '..', 'node_modules'),
+                    exclude: path.join(__dirname, 'node_modules'),
                     use: [
                         'style-loader',
                         {
                             loader: 'css-loader',
                             options: {
-                                modules: true,
-                                localIdentName: '[path][name]__[local]--[hash:base64:5]'
+                                modules: {
+                                    localIdentName: '[path][name]__[local]--[hash:base64:5]'
+                                }
                             }
                         },
-                        'sass-loader' ]
+                        'sass-loader',
+                    ]
                 },
                 {
                     test: /\.(png|jpg|gif)$/,

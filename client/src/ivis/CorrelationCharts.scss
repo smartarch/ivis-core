@@ -1,6 +1,9 @@
 @import "../../node_modules/bootstrap/scss/_functions";
 @import "../scss/variables";
 
+@import "../../node_modules/bootstrap/scss/_variables";
+@import "../../node_modules/@coreui/coreui/scss/_variables";
+
 .scatterPlotToolbar {
   max-width: 300px;
   float: right;

@@ -28,11 +28,12 @@ class Breadcrumb extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         params: PropTypes.object.isRequired,
-        resolved: PropTypes.object.isRequired
+        resolved: PropTypes.object.isRequired,
     }
 
     renderElement(entry, isActive) {
         const params = this.props.params;
+
         let title;
         if (typeof entry.title === 'function') {
             title = entry.title(this.props.resolved, params);
@@ -185,14 +186,14 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
                 <header key="appHeader" className="app-header">
                     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                         {showSidebar &&
-                        <button className="navbar-toggler sidebar-toggler" data-toggle="sidebar-show" type="button">
+                        <button className="navbar-toggler sidebar-toggler" data-bs-toggle="sidebar-show" type="button">
                             <span className="navbar-toggler-icon"/>
                         </button>
                         }
 
                         <Link className="navbar-brand" to="/">{em.get('app.title')}</Link>
 
-                        <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#ivisMainNavbar" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ivisMainNavbar" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
                             <span className="navbar-toggler-icon"/>
                         </button>
 
@@ -241,7 +242,7 @@ class PanelRoute extends Component {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
         params: PropTypes.object.isRequired,
-        flashMessage: PropTypes.object
+        flashMessage: PropTypes.object,
     }
 
     registerSidebarAnimationListener() {
@@ -268,6 +269,7 @@ class PanelRoute extends Component {
         const panelInFullScreen = this.state.panelInFullScreen;
 
         const render = (resolved, permissions) => {
+
             let primaryMenu = null;
             let secondaryMenu = null;
             let content = null;
@@ -332,7 +334,6 @@ class PanelRoute extends Component {
 
             return renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content);
         };
-
 
         return <Resolver route={route} render={render} location={this.props.location} params={this.props.params}/>;
     }
@@ -447,6 +448,7 @@ class SectionContentBase extends Component {
     }
 
     navigateToWithFlashMessage(path, severity, text) {
+        console.log("Navigate to path" + path);
         this.setFlashMessage(severity, text);
         this.props.navigate(path, { state: { preserveFlashMessage: true } });
     }
@@ -497,10 +499,9 @@ class SectionContentBase extends Component {
                 route,
                 PanelRoute,
                 () => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t)),
-                flashMessage,
+                flashMessage
             );
         };
-
         return <Route key={route.path} exact={route.exact} path={route.path} element={<Element/>} />
     }
 
@@ -560,7 +561,7 @@ export class Section extends Component {
 
 export class Toolbar extends Component {
     static propTypes = {
-        className: PropTypes.string,
+        className: PropTypes.string
     };
 
     render() {
@@ -664,7 +665,7 @@ export class NavDropdown extends Component {
         icon: PropTypes.string,
         className: PropTypes.string,
         menuClassName: PropTypes.string
-    }
+    };
 
     render() {
         const props = this.props;
@@ -673,7 +674,18 @@ export class NavDropdown extends Component {
         const menuClassName = 'dropdown-menu' + (props.menuClassName ? ' ' + props.menuClassName : '');
 
         return (
-            <li className={className}>
+            <div className="dropdown">
+                <button className="btn btn-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
+                        aria-expanded="false">
+                    Dropdown button
+                </button>
+                <ul className="dropdown-menu">
+                    <li><a className="dropdown-item" href="#">Action</a></li>
+                    <li><a className="dropdown-item" href="#">Another action</a></li>
+                    <li><a className="dropdown-item" href="#">Something else here</a></li>
+                </ul>
+            </div>
+            /*<li className={className}>
                 {props.icon ?
                     <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <Icon icon={props.icon}/>{' '}{props.label}
@@ -686,9 +698,33 @@ export class NavDropdown extends Component {
                 <ul className={menuClassName}>
                     {props.children}
                 </ul>
-            </li>
+            </li>*/
         );
     }
+
+    /*render() {
+        const props = this.props;
+
+        const className = 'nav-item dropdown' + (props.className ? ' ' + props.className : '');
+        const menuClassName = 'dropdown-menu' + (props.menuClassName ? ' ' + props.menuClassName : '');
+
+        return (
+            <li className={className}>
+                {props.icon ?
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        <Icon icon={props.icon}/>{' '}{props.label}
+                    </a>
+                    :
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                        {props.label}
+                    </a>
+                }
+                <ul className={menuClassName}>
+                    {props.children}
+                </ul>
+            </li>
+        );
+    }*/
 }
 
 

@@ -39,14 +39,19 @@ export default class CUD extends Component {
 
         if (entity.output) {
             let idx = 0;
-            for (const error of entity.output.errors) {
-                errors.push(<div key={idx}><Ansi>{error}</Ansi></div>)
-                idx++;
+
+            if(entity.output.errors) {
+                for (const error of entity.output.errors) {
+                    errors.push(<div key={idx}><Ansi>{error}</Ansi></div>)
+                    idx++;
+                }
             }
 
-            for (const warning of entity.output.warnings) {
-                warnings.push(<div key={idx}><Ansi>{warning}</Ansi></div>)
-                idx++;
+            if(entity.output.warnings) {
+                for (const warning of entity.output.warnings) {
+                    warnings.push(<div key={idx}><Ansi>{warning}</Ansi></div>)
+                    idx++;
+                }
             }
         }
 

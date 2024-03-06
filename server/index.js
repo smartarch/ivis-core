@@ -75,7 +75,6 @@ async function initAndStart() {
     await templates.compileAll();
     await tasks.compileAll();
     await em.invokeAsync('services.start');
-    console.log('87');
     await createServerAsync(AppType.TRUSTED, 'trusted', config.www.host, config.www.trustedPort, config.www.trustedPortIsHttps, config.certs.www);
     await createServerAsync(AppType.SANDBOXED, 'sandbox', config.www.host, config.www.sandboxPort, config.www.sandboxPortIsHttps, config.certs.www);
     await createServerAsync(AppType.API, 'api', config.www.host, config.www.apiPort, config.www.apiPortIsHttps, config.certs.api);
