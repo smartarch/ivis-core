@@ -674,48 +674,13 @@ export class NavDropdown extends Component {
         const menuClassName = 'dropdown-menu' + (props.menuClassName ? ' ' + props.menuClassName : '');
 
         return (
-            <div className="dropdown">
-                <button className="btn btn-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
-                        aria-expanded="false">
-                    Dropdown button
-                </button>
-                <ul className="dropdown-menu">
-                    <li><a className="dropdown-item" href="#">Action</a></li>
-                    <li><a className="dropdown-item" href="#">Another action</a></li>
-                    <li><a className="dropdown-item" href="#">Something else here</a></li>
-                </ul>
-            </div>
-            /*<li className={className}>
-                {props.icon ?
-                    <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        <Icon icon={props.icon}/>{' '}{props.label}
-                    </a>
-                    :
-                    <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                        {props.label}
-                    </a>
-                }
-                <ul className={menuClassName}>
-                    {props.children}
-                </ul>
-            </li>*/
-        );
-    }
-
-    /*render() {
-        const props = this.props;
-
-        const className = 'nav-item dropdown' + (props.className ? ' ' + props.className : '');
-        const menuClassName = 'dropdown-menu' + (props.menuClassName ? ' ' + props.menuClassName : '');
-
-        return (
             <li className={className}>
                 {props.icon ?
-                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-coreui-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <Icon icon={props.icon}/>{' '}{props.label}
                     </a>
                     :
-                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-coreui-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         {props.label}
                     </a>
                 }
@@ -724,7 +689,7 @@ export class NavDropdown extends Component {
                 </ul>
             </li>
         );
-    }*/
+    }
 }
 
 
