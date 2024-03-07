@@ -676,11 +676,11 @@ export class NavDropdown extends Component {
         return (
             <li className={className}>
                 {props.icon ?
-                    <a href="#" className="nav-link dropdown-toggle" data-coreui-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <Icon icon={props.icon}/>{' '}{props.label}
                     </a>
                     :
-                    <a href="#" className="nav-link dropdown-toggle" data-coreui-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         {props.label}
                     </a>
                 }
