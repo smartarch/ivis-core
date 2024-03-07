@@ -58,7 +58,7 @@ export default class Sidebar extends Component {
                     {t('Settings')}
                 </div>
                 <nav className="sidebar-nav">
-                    <ul className="nav">
+                    <ul className="navbar-nav flex-column">
                         {settings}
                     </ul>
                 </nav>

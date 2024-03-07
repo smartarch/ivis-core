@@ -186,7 +186,8 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
                 <header key="appHeader" className="app-header">
                     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                         {showSidebar &&
-                        <button className="navbar-toggler sidebar-toggler" data-bs-toggle="sidebar-show" type="button">
+                            // TODO: figure out how to make the sidebar collapsable on mobile
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle sidebar">
                             <span className="navbar-toggler-icon"/>
                         </button>
                         }
@@ -205,7 +206,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
                 <div key="appBody" className="app-body">
                     {showSidebar &&
-                    <div key="sidebar" className="sidebar">
+                    <div key="sidebar" className="sidebar text-bg-dark">
                         {secondaryMenu}
                     </div>
                     }

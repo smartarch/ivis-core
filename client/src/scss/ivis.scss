@@ -8,6 +8,7 @@ $font-family-monospace: 'Ubuntu Mono', monospace;
 
 $fa-font-path: "../static-npm/fontawesome";
 $enable-print-styles: false;
+$sidebar-width: 200px;
 
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/fontawesome.scss";
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/regular.scss";
@@ -48,6 +49,7 @@ body.ivis {
     @include border-radius($breadcrumb-border-radius);
     //@include borders($breadcrumb-borders);
     background-color: $breadcrumb-bg;
+    padding: 0 1rem;
 
     .breadcrumb {
       border: 0px none;
@@ -63,7 +65,7 @@ body.ivis {
       padding: 0 15px;
 
       .navbar-brand {
-        // width: calc($sidebar-width - 30px); // TODO: Update this after sidebar is fixed
+        width: calc($sidebar-width - 30px);
 
         @include media-breakpoint-down(md) {
           // This is to keep the title and the menu buttons in order. Normally the brand is position: absolute which distorts the order
@@ -133,6 +135,25 @@ body.ivis {
 
     .nav-item {
       min-width: 0px;
+    }
+  }
+
+  .app-body {
+    display: flex;
+    flex-direction: row;
+
+    .sidebar {
+      flex: 0 1 $sidebar-width;
+      padding: 0 1rem;
+
+      .sidebar-header {
+        text-align: center;
+        padding: 0.5rem 0;
+      }
+    }
+
+    .main {
+      flex-grow: 1;
     }
   }
 
