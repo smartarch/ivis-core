@@ -108,10 +108,17 @@ module.exports = {
     },
     plugins: [
 //        new webpack.optimize.UglifyJsPlugin()
+        new webpack.ProvidePlugin({
+            Buffer: ['buffer', 'Buffer'],
+        }),
     ],
     watchOptions: {
         ignored: 'node_modules/',
         poll: 1000
     },
-    resolve: {}
+    resolve: {
+        fallback: {
+            "buffer": require.resolve("buffer/"),
+        }
+    },
 };
