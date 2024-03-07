@@ -30,7 +30,7 @@ export class DismissibleAlert extends Component {
 
         return (
             <div className={`alert alert-${this.props.severity} alert-dismissible`} role="alert">
-                <button type="button" className="close" aria-label={t('close')} onClick={::this.onClose}><span aria-hidden="true">&times;</span></button>
+                <button type="button" className="btn-close" aria-label={t('close')} onClick={::this.onClose} />
                 {this.props.children}
             </div>
         )
