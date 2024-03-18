@@ -11,7 +11,6 @@ import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
 import {withTranslation} from "react-i18next";
-import jQuery from 'jquery';
 import {ThemeContext} from "./theme-context";
 import {Theme} from "../../../shared/themes";
 import {withTranslationCustom} from "./i18n";
@@ -39,6 +38,80 @@ function getTheme(search){
     withTranslationCustom
 ])
 class PanelRoute extends Component {
+    static propTypes = {
+        route: PropTypes.object.isRequired,
+        location: PropTypes.object.isRequired,
+        match: PropTypes.object.isRequired
+    }
+
+    componentDidMount() {
+        this.updateBodyClasses();
+    }
+
+    componentDidUpdate(prevProps) {
+        this.updateBodyClasses();
+    }
+
+    componentWillUnmount() {
+        document.body.classList.remove('inside-iframe', 'theme-dark');
+    }
+
+    updateBodyClasses() {
+        const { route, location } = this.props;
+
+        if (route.insideIframe) {
+            document.body.classList.add('inside-iframe');
+        } else {
+            document.body.classList.remove('inside-iframe');
+        }
+
+        let theme = getTheme(location.search);
+        if (theme === Theme.DARK) {
+            document.body.classList.add('theme-dark');
+        } else {
+            document.body.classList.remove('theme-dark');
+        }
+    }
+
+    render() {
+        const { t, route, match } = this.props;
+
+        const render = (resolved, permissions) => {
+            if (resolved && permissions) {
+                const compProps = {
+                    match: match,
+                    location: this.props.location,
+                    resolved,
+                    permissions
+                };
+
+                let panel;
+                if (route.panelComponent) {
+                    panel = React.createElement(route.panelComponent, compProps);
+                } else if (route.panelRender) {
+                    panel = route.panelRender(compProps);
+                }
+
+                let cls = `container-fluid`;
+
+                return (
+                    <div className={cls}>
+                        <ThemeContext.Provider value={getTheme(this.props.location.search)}>
+                            {panel}
+                        </ThemeContext.Provider>
+                    </div>
+                );
+
+            } else {
+                return getLoadingMessage(t);
+            }
+        };
+
+        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+    }
+}
+
+/*class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
@@ -95,7 +168,7 @@ class PanelRoute extends Component {
 
         return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
     }
-}
+}*/
 
 
 @withRouter

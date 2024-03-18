@@ -1,5 +1,10 @@
 'use strict';
 
+import { CheckCSS } from 'checkcss';
+
+const checkcss = new CheckCSS();
+checkcss.scan().watch();
+
 export * from './PanelConfig';
 export * from './PanelMenu';
 export * from './DataAccess';

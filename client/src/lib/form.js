@@ -463,8 +463,9 @@ class CheckBox extends Component {
 
                         const inputClassName = owner.addFormValidationClass('form-check-input', id);
 
+                        const className = this.props.className !== undefined ? this.props.className : "";
                         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-                            <div className={`form-group form-check my-2 ${this.props.className}`}>
+                            <div className={`form-group form-check my-2 ${className}`}>
                                 <input className={inputClassName}
                                        type="checkbox"
                                        checked={owner.getFormValue(id)}
@@ -1085,7 +1086,7 @@ class Dropdown extends Component {
             <select id={htmlId}
                     className={className}
                     aria-describedby={htmlId + '_help'}
-                    value={owner.getFormValue(id)}
+                    value={owner.getFormValue(id) || ''}
                     onChange={evt => owner.updateFormValue(id, evt.target.value)}
                     disabled={props.disabled}>
                 {options}
@@ -1775,6 +1776,8 @@ const withForm = createComponentMixin({
         };
 
         proto.validateAndSendFormValuesToURL = async function (method, url) {
+            console.log("Initial " + method + "," + url)
+
             const settings = this.state.formSettings;
             await this.waitForFormServerValidated();
 
@@ -1800,7 +1803,9 @@ const withForm = createComponentMixin({
                     }
                 }
 
+                console.log("Before " + method + "," + getUrl(url))
                 const response = await axios.method(method, getUrl(url), data);
+                console.log("After " + method + "," + url)
 
                 if (settings.leaveConfirmation) {
                     await new Promise((resolve, reject) => {

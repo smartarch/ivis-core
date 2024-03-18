@@ -43,7 +43,7 @@ export default class Sidebar extends Component {
                 <div className="sidebar-header">
                     {sidebarTitle}
                 </div>
-                <nav className="sidebar-nav">
+                <nav>
                     <ul className="navbar-nav flex-column">
                         {sidebarEntries}
                     </ul>

@@ -13,7 +13,7 @@ const crypto = require('crypto');
 
 const bluebird = require('bluebird');
 
-const bcrypt = require('bcrypt-nodejs');
+const bcrypt = require('bcryptjs');
 const bcryptHash = bluebird.promisify(bcrypt.hash.bind(bcrypt));
 const bcryptCompare = bluebird.promisify(bcrypt.compare.bind(bcrypt));
 

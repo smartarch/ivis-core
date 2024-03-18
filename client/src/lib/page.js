@@ -171,7 +171,7 @@ function getLoadingMessage(t) {
 function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content) {
     if (panelInFullScreen) {
         return (
-            <div key="app" className="app panel-in-fullscreen">
+            <div key="app" className="panel-in-fullscreen">
                 <div key="appBody" className="app-body">
                     <main key="main" className="main">
                         {content}
@@ -182,7 +182,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
     } else {
         return (
-            <div key="app" className={"app " + (showSidebar ? 'sidebar-lg-show' : '')}>
+            <div key="app">
                 <header key="appHeader" className="app-header">
                     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                         {showSidebar &&

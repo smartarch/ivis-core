@@ -208,6 +208,16 @@ const getStructure = t => {
                 primaryMenuComponent: MainMenuAuthenticated,
                 secondaryMenuComponent: WorkspaceSidebar,
                 children: {
+                    ':workspaceId/:panelId': {
+                        ...panelStructureSpec,
+                        children: {
+                            'fullscreen': {
+                                ...panelStructureSpec,
+                                panelInFullScreen: true,
+                                link: params => `/workspaces/${params.props.workspaceId}/${params.panelId}/fullscreen`,
+                            }
+                        }
+                    },
                     ':workspaceId': {
                         title: resolved => resolved.workspace.name,
                         resolve: {
@@ -216,20 +226,7 @@ const getStructure = t => {
                         },
                         link: params => `/workspaces/${params.workspaceId}`,
                         panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>,
-                        children: {
-                            ':panelId': {
-                                ...panelStructureSpec,
-                                children: {
-                                    'fullscreen': {
-                                        ...panelStructureSpec,
-                                        panelInFullScreen: true,
-                                        link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
-                                    }
-                                }
-                            }
-                        }
                     },
-
                     sample: {
                         title: t('Sample workspace'),
                         link: '/workspaces/sample',

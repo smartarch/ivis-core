@@ -8,8 +8,8 @@ import {withTranslation} from "react-i18next";
 import jQuery from 'jquery';
 
 import 'datatables.net';
-import 'datatables.net-bs4';
-import 'datatables.net-bs4/css/dataTables.bootstrap4.css';
+import 'datatables.net-bs5';
+import 'datatables.net-bs5/css/dataTables.bootstrap5.css';
 
 import axios from './axios';
 
