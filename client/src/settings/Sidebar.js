@@ -7,11 +7,12 @@ import em
     from '../lib/extension-manager';
 import {NavLink} from "../lib/page";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
+import {withTranslationCustom} from "../lib/i18n";
 
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export default class Sidebar extends Component {
     constructor(props) {
@@ -56,8 +57,8 @@ export default class Sidebar extends Component {
                 <div className="sidebar-header">
                     {t('Settings')}
                 </div>
-                <nav className="sidebar-nav">
-                    <ul className="nav">
+                <nav>
+                    <ul className="navbar-nav flex-column">
                         {settings}
                     </ul>
                 </nav>

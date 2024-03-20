@@ -5,7 +5,7 @@ import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
-import {event as d3Event, select} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
 import * as d3Zoom from "d3-zoom";
@@ -16,13 +16,14 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
 import {areZoomTransformsEqual, brushHandlesLeftRight, brushHandlesTopBottom, ConfigDifference, drawBars, getColorScale, setZoomTransform, timeIntervalDifference, transitionInterpolate, wheelDelta, ZoomEventSources} from "./common";
 import styles from "./CorrelationCharts.scss";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import StatusMsg from "./StatusMsg";
+import {withTranslationCustom} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -94,7 +95,7 @@ const DataType = {
 
 /** 2D histogram */
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     intervalAccessMixin()
 ], ["getView", "setView"], ["processBucket", "prepareData", "getKeywordExtent", "getKeys"])
@@ -646,8 +647,8 @@ export class HeatmapChart extends Component {
         const self = this;
         let selection, mousePosition;
 
-        const selectPoints = function () {
-            const containerPos = d3Selection.mouse(self.containerNode);
+        const selectPoints = function (event) {
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
 
@@ -697,8 +698,8 @@ export class HeatmapChart extends Component {
         };
 
         this.cursorAreaSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', ::this.deselectPoints);
     }
 

@@ -3,13 +3,13 @@
 import React, {Component} from 'react';
 import ReactDOMServer from 'react-dom/server';
 import PropTypes from 'prop-types';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 
 import jQuery from 'jquery';
 
 import 'datatables.net';
-import 'datatables.net-bs4';
-import 'datatables.net-bs4/css/dataTables.bootstrap4.css';
+import 'datatables.net-bs5';
+import 'datatables.net-bs5/css/dataTables.bootstrap5.css';
 
 import axios from './axios';
 
@@ -18,6 +18,7 @@ import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import styles from "./styles.scss";
 import {getUrl} from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 //dtFactory();
 //dtSelectFactory();
@@ -30,7 +31,7 @@ const TableSelectMode = {
 };
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers
 ], ['refresh'])

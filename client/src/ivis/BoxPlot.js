@@ -12,11 +12,12 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {Tooltip} from "./Tooltip";
 import {ConfigDifference, extentWithMargin, timeIntervalDifference} from "./common";
 import {PropType_d3Color, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import commonStyles from "./commons.scss";
+import {withTranslationCustom} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -44,7 +45,7 @@ function compareSignalSetConfigs(conf1, conf2) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     intervalAccessMixin()
 ])
@@ -381,8 +382,8 @@ export class BoxPlot extends Component {
     createChartCursor(xSize, ySize, xScale, yScale, signalSetsData) {
         const self = this;
 
-        const mouseMove = function () {
-            const containerPos = d3Selection.mouse(self.containerNode);
+        const mouseMove = function (event) {
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const y = containerPos[1] - self.props.margin.top;
             const x = containerPos[0] - self.props.margin.left;
 

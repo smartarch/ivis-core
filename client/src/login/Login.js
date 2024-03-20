@@ -2,7 +2,7 @@
 
 import React, {Component} from 'react';
 import {withPageHelpers} from '../lib/page';
-import {Link} from 'react-router-dom';
+import {Link, useLocation} from 'react-router-dom';
 import {Panel} from '../lib/panel';
 import {
     Button,
@@ -19,11 +19,19 @@ import URL
 import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import em from '../lib/extension-manager';
+import {withTranslationCustom} from "../lib/i18n";
+
+
+export const LoginContainer = () => {
+    const location = useLocation();
+
+    return <Login location={location} />;
+};
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers
@@ -65,7 +73,6 @@ export default class Login extends Component {
 
     async submitHandler() {
         const t = this.props.t;
-
         try {
             this.disableForm();
             this.setFormStatusMessage('info', t('Verifying credentials ...'));

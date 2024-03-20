@@ -9,10 +9,11 @@ import {getBuildStates} from "./states";
 import Ansi from 'ansi-to-react';
 import outputStyles from './Output.scss';
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     requiresAuthenticatedUser
 ])
 export default class CUD extends Component {

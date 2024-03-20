@@ -1,5 +1,5 @@
 import React, {Component} from "react";
-import Immutable from 'immutable';
+import {Map, fromJS, isImmutable} from 'immutable';
 import PropTypes from "prop-types";
 import {Trans} from "react-i18next";
 import {
@@ -15,8 +15,8 @@ import {
     TextArea,
     withForm
 } from "../lib/form";
-import "brace/mode/html";
-import "brace/mode/json";
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-json';
 import {withAsyncErrorHandler, withErrorHandling, wrapWithAsyncErrorHandler} from "../lib/error-handling";
 import ParamTypes from "../settings/ParamTypes"
 import {checkPermissions} from "../lib/permissions";
@@ -29,9 +29,10 @@ import {NamespaceSelect, validateNamespace} from "../lib/namespace";
 import {ActionLink} from "../lib/bootstrap-components";
 import {withPageHelpers} from "../lib/page-common";
 import {createComponentMixin, withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {createPermanentLink, createPermanentLinkData} from "../lib/permanent-link";
 import {VIRTUAL_PANEL_ID} from "../../../shared/panels"
+import {withTranslationCustom} from "../lib/i18n";
 
 export const PanelConfigOwnerContext = React.createContext(null);
 
@@ -46,7 +47,7 @@ export const panelConfigAccessMixin = createComponentMixin({
 });
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm
 ])
 export class Configurator extends Component {
@@ -200,7 +201,7 @@ function openSaveDialog(owner, dialog) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withPageHelpers,
     withForm,
     panelConfigAccessMixin
@@ -449,7 +450,7 @@ function openPermanentLinkDialog(owner, opened) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     panelConfigAccessMixin
 ])
 export class PermanentLinkDialog extends Component {
@@ -495,7 +496,7 @@ function openPdfExportDialog(owner, opened) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withForm,
     panelConfigAccessMixin
@@ -639,7 +640,7 @@ export class PdfExportDialog extends Component {
 
 
 export const panelConfigMixin = createComponentMixin({
-    deps: [withErrorHandling, panelMenuMixin, withTranslation, withPageHelpers],
+    deps: [withErrorHandling, panelMenuMixin, withTranslationCustom , withPageHelpers],
     decoratorFn: (TargetClass, InnerClass) => {
         const inst = InnerClass.prototype;
 
@@ -648,10 +649,10 @@ export const panelConfigMixin = createComponentMixin({
                 self.state = {};
             }
 
-            self.state._panelConfig = Immutable.Map({
-                params: Immutable.fromJS(props.params),
-                templateParams: Immutable.fromJS(props.panel.templateParams),
-                state: Immutable.fromJS(props.state || {}),
+            self.state._panelConfig = Map({
+                params: fromJS(props.params),
+                templateParams: fromJS(props.panel.templateParams),
+                state: fromJS(props.state || {}),
                 savePermitted: false
             });
 
@@ -666,7 +667,7 @@ export const panelConfigMixin = createComponentMixin({
             if (this.props.params !== prevProps.params) {
                 this.setState(state => ({
                     _panelConfig: state._panelConfig
-                        .set('params', Immutable.fromJS(this.props.params))
+                        .set('params', fromJS(this.props.params))
                 }));
             }
 
@@ -794,7 +795,7 @@ export const panelConfigMixin = createComponentMixin({
 
         inst.getPanelConfig = function (path = []) {
             const value = this.state._panelConfig.getIn(['params', ...path]);
-            if (Immutable.isImmutable(value)) {
+            if (isImmutable(value)) {
                 return value.toJS();
             } else {
                 return value;
@@ -807,7 +808,7 @@ export const panelConfigMixin = createComponentMixin({
          */
         inst.getPanelConfigSpec = function (path = []) {
             const value = this.state._panelConfig.getIn(['templateParams', ...path]);
-            if (Immutable.isImmutable(value)) {
+            if (isImmutable(value)) {
                 return value.toJS();
             } else {
                 return value;
@@ -825,13 +826,13 @@ export const panelConfigMixin = createComponentMixin({
 
         inst.updatePanelConfig = function (path, newValue) {
             this.setState(state => ({
-                _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
+                _panelConfig: state._panelConfig.setIn(['params', ...path], fromJS(newValue))
             }));
         };
 
         inst.getPanelState = function (path = []) {
             const value = this.state._panelConfig.getIn(['state', ...path]);
-            if (Immutable.isImmutable(value)) {
+            if (isImmutable(value)) {
                 return value.toJS();
             } else {
                 return value;
@@ -849,7 +850,7 @@ export const panelConfigMixin = createComponentMixin({
 
         inst.updatePanelState = function (path, newValue) {
             this.setState(state => ({
-                _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
+                _panelConfig: state._panelConfig.setIn(['state', ...path], fromJS(newValue))
             }));
         };
 

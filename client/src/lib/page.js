@@ -2,10 +2,12 @@
 
 import em from './extension-manager';
 import React, {Component} from "react";
-import i18n, {withTranslation} from './i18n';
+import i18n, {withTranslationCustom} from './i18n';
+
 import PropTypes from "prop-types";
-import {withRouter} from "react-router";
-import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
+import {BrowserRouter as Router, Link, Route, Routes} from "react-router-dom";
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+
 import {withErrorHandling} from "./error-handling";
 import interoperableErrors from "../../../shared/interoperable-errors";
 import {ActionLink, Button, DismissibleAlert, DropdownActionLink, Icon} from "./bootstrap-components";
@@ -26,11 +28,12 @@ class Breadcrumb extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         params: PropTypes.object.isRequired,
-        resolved: PropTypes.object.isRequired
+        resolved: PropTypes.object.isRequired,
     }
 
     renderElement(entry, isActive) {
         const params = this.props.params;
+
         let title;
         if (typeof entry.title === 'function') {
             title = entry.title(this.props.resolved, params);
@@ -168,7 +171,7 @@ function getLoadingMessage(t) {
 function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content) {
     if (panelInFullScreen) {
         return (
-            <div key="app" className="app panel-in-fullscreen">
+            <div key="app" className="panel-in-fullscreen">
                 <div key="appBody" className="app-body">
                     <main key="main" className="main">
                         {content}
@@ -179,18 +182,19 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
     } else {
         return (
-            <div key="app" className={"app " + (showSidebar ? 'sidebar-lg-show' : '')}>
+            <div key="app">
                 <header key="appHeader" className="app-header">
                     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                         {showSidebar &&
-                        <button className="navbar-toggler sidebar-toggler" data-toggle="sidebar-show" type="button">
+                            // TODO: figure out how to make the sidebar collapsable on mobile
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle sidebar">
                             <span className="navbar-toggler-icon"/>
                         </button>
                         }
 
                         <Link className="navbar-brand" to="/">{em.get('app.title')}</Link>
 
-                        <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#ivisMainNavbar" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ivisMainNavbar" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
                             <span className="navbar-toggler-icon"/>
                         </button>
 
@@ -202,7 +206,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
                 <div key="appBody" className="app-body">
                     {showSidebar &&
-                    <div key="sidebar" className="sidebar">
+                    <div key="sidebar" className="sidebar text-bg-dark">
                         {secondaryMenu}
                     </div>
                     }
@@ -217,7 +221,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 class PanelRoute extends Component {
     constructor(props) {
@@ -238,8 +242,8 @@ class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired,
-        flashMessage: PropTypes.object
+        params: PropTypes.object.isRequired,
+        flashMessage: PropTypes.object,
     }
 
     registerSidebarAnimationListener() {
@@ -259,20 +263,20 @@ class PanelRoute extends Component {
     render() {
         const t = this.props.t;
         const route = this.props.route;
-        const params = this.props.match.params;
+        const params = this.props.params;
 
         const showSidebar = !!route.secondaryMenuComponent;
 
         const panelInFullScreen = this.state.panelInFullScreen;
 
         const render = (resolved, permissions) => {
+
             let primaryMenu = null;
             let secondaryMenu = null;
             let content = null;
 
             if (resolved && permissions) {
                 const compProps = {
-                    match: this.props.match,
                     location: this.props.location,
                     resolved,
                     permissions,
@@ -332,11 +336,13 @@ class PanelRoute extends Component {
             return renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content);
         };
 
-
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+        return <Resolver route={route} render={render} location={this.props.location} params={this.props.params}/>;
     }
 }
 
+const DummyComponent = () => {
+    return <div>Dummy Component Content Here</div>;
+};
 
 export class BeforeUnloadListeners {
     constructor() {
@@ -368,12 +374,11 @@ export class BeforeUnloadListeners {
     }
 }
 
-@withRouter
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ], ['onNavigationConfirmationDialog'])
-export class SectionContent extends Component {
+class SectionContentBase extends Component {
     constructor(props) {
         super(props);
 
@@ -381,13 +386,13 @@ export class SectionContent extends Component {
             flashMessageText: ''
         };
 
-        this.historyUnlisten = props.history.listen((location, action) => {
+        /*this.historyUnlisten = props.history.listen((location, action) => {
             if (action === "REPLACE") return;
             if (location.state && location.state.preserveFlashMessage) return;
 
             // noinspection JSIgnoredPromiseFromCall
             this.closeFlashMessage();
-        });
+        });*/
 
         this.beforeUnloadListeners = new BeforeUnloadListeners();
         this.beforeUnloadHandler = ::this.onBeforeUnload;
@@ -418,13 +423,14 @@ export class SectionContent extends Component {
     }
 
     componentDidMount() {
-        window.addEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock = this.props.history.block('Changes you made may not be saved. Are you sure you want to leave this page?');
+        /*window.addEventListener('beforeunload', this.beforeUnloadHandler);
+        this.historyUnblock = this.props.navigate.block('Changes you made may not be saved. Are you sure you want to leave this page?');
+        */
     }
 
     componentWillUnmount() {
-        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock();
+        /*window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        this.historyUnblock();*/
     }
 
     setFlashMessage(severity, text) {
@@ -435,16 +441,17 @@ export class SectionContent extends Component {
     }
 
     navigateTo(path) {
-        this.props.history.push(path);
+        this.props.navigate(path);
     }
 
     navigateBack() {
-        this.props.history.goBack();
+        this.props.navigate(-1);
     }
 
     navigateToWithFlashMessage(path, severity, text) {
-        this.props.history.push(path, {preserveFlashMessage: true});
+        console.log("Navigate to path" + path);
         this.setFlashMessage(severity, text);
+        this.props.navigate(path, { state: { preserveFlashMessage: true } });
     }
 
     ensureAuthenticated() {
@@ -483,7 +490,7 @@ export class SectionContent extends Component {
     }
 
     renderRoute(route) {
-        const render = props => {
+        const Element = () => {
             let flashMessage;
             if (this.state.flashMessageText) {
                 flashMessage = <DismissibleAlert severity={this.state.flashMessageSeverity} onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>;
@@ -493,12 +500,10 @@ export class SectionContent extends Component {
                 route,
                 PanelRoute,
                 () => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t)),
-                flashMessage,
-                props
+                flashMessage
             );
         };
-
-        return <Route key={route.path} exact={route.exact} path={route.path} render={render} />
+        return <Route key={route.path} exact={route.exact} path={route.path} element={<Element/>} />
     }
 
     render() {
@@ -506,14 +511,24 @@ export class SectionContent extends Component {
 
         return (
             <SectionContentContext.Provider value={this}>
-                <Switch>{routes.map(x => this.renderRoute(x))}</Switch>
+                <Routes>{routes.map(x => this.renderRoute(x))}</Routes>
             </SectionContentContext.Provider>
         );
     }
 }
 
+function SectionContent(props) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const params = useParams();
+
+    return <SectionContentBase {...props} navigate={navigate} location={location} params={params} />;
+}
+
+export { SectionContent };
+
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class Section extends Component {
     constructor(props) {
@@ -547,7 +562,7 @@ export class Section extends Component {
 
 export class Toolbar extends Component {
     static propTypes = {
-        className: PropTypes.string,
+        className: PropTypes.string
     };
 
     render() {
@@ -651,7 +666,7 @@ export class NavDropdown extends Component {
         icon: PropTypes.string,
         className: PropTypes.string,
         menuClassName: PropTypes.string
-    }
+    };
 
     render() {
         const props = this.props;
@@ -662,11 +677,11 @@ export class NavDropdown extends Component {
         return (
             <li className={className}>
                 {props.icon ?
-                    <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <Icon icon={props.icon}/>{' '}{props.label}
                     </a>
                     :
-                    <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         {props.label}
                     </a>
                 }

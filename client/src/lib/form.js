@@ -1,9 +1,9 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import axios, {HTTPMethod} from './axios';
-import Immutable from 'immutable';
+import {Map} from 'immutable';
 import PropTypes from 'prop-types';
 import interoperableErrors from '../../../shared/interoperable-errors';
 import {withPageHelpers} from './page'
@@ -14,11 +14,12 @@ import {Button} from "./bootstrap-components";
 import {SketchPicker} from 'react-color';
 
 import ACEEditorRaw from 'react-ace';
-import 'brace/theme/github';
-import 'brace/ext/searchbox';
+import 'ace-builds/src-noconflict/theme-github';
+import 'ace-builds/src-noconflict/ext-searchbox';
 
-import DayPicker from 'react-day-picker';
-import 'react-day-picker/lib/style.css';
+
+import {DayPicker} from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 import {
     birthdayYear,
     DateFormat,
@@ -34,6 +35,7 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 
 const FormState = {
@@ -68,7 +70,7 @@ export function withFormErrorHandlers(target, name, descriptor) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers
 ])
@@ -306,7 +308,7 @@ class StaticField extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ])
 class InputField extends Component {
@@ -461,8 +463,9 @@ class CheckBox extends Component {
 
                         const inputClassName = owner.addFormValidationClass('form-check-input', id);
 
+                        const className = this.props.className !== undefined ? this.props.className : "";
                         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-                            <div className={`form-group form-check my-2 ${this.props.className}`}>
+                            <div className={`form-group form-check my-2 ${className}`}>
                                 <input className={inputClassName}
                                        type="checkbox"
                                        checked={owner.getFormValue(id)}
@@ -710,7 +713,7 @@ class ColorPicker extends Component {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 class ColumnSelect extends Component {
 
@@ -802,7 +805,7 @@ class ColumnSelect extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ])
 class TimePicker extends Component {
@@ -883,7 +886,7 @@ class TimePicker extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ])
 class DateTimePicker extends Component {
@@ -1083,7 +1086,7 @@ class Dropdown extends Component {
             <select id={htmlId}
                     className={className}
                     aria-describedby={htmlId + '_help'}
-                    value={owner.getFormValue(id)}
+                    value={owner.getFormValue(id) || ''}
                     onChange={evt => owner.updateFormValue(id, evt.target.value)}
                     disabled={props.disabled}>
                 {options}
@@ -1135,7 +1138,7 @@ class ButtonRow extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ], null, ['submitFormValuesMutator', 'getFormValueIdForPicker'])
 class ListCreator extends Component {
@@ -1362,7 +1365,7 @@ class TreeTableSelect extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withFormStateOwner
 ], ['refresh'])
 class TableSelect extends Component {
@@ -1572,13 +1575,13 @@ const withForm = createComponentMixin({
     decoratorFn: (TargetClass, InnerClass) => {
         const proto = InnerClass.prototype;
 
-        const cleanFormState = Immutable.Map({
+        const cleanFormState = Map({
             state: FormState.Loading,
             isValidationShown: false,
             isDisabled: false,
             statusMessageText: '',
-            data: Immutable.Map(),
-            savedData: Immutable.Map(),
+            data: Map(),
+            savedData: Map(),
             isServerValidationRunning: false
         });
 
@@ -1773,6 +1776,8 @@ const withForm = createComponentMixin({
         };
 
         proto.validateAndSendFormValuesToURL = async function (method, url) {
+            console.log("Initial " + method + "," + url)
+
             const settings = this.state.formSettings;
             await this.waitForFormServerValidated();
 
@@ -1798,7 +1803,9 @@ const withForm = createComponentMixin({
                     }
                 }
 
+                console.log("Before " + method + "," + getUrl(url))
                 const response = await axios.method(method, getUrl(url), data);
+                console.log("After " + method + "," + url)
 
                 if (settings.leaveConfirmation) {
                     await new Promise((resolve, reject) => {
@@ -1826,7 +1833,7 @@ const withForm = createComponentMixin({
 
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
                         for (const key in data) {
-                            mutStateData.set(key, Immutable.Map({
+                            mutStateData.set(key, Map({
                                 value: data[key]
                             }));
                         }

@@ -23,10 +23,11 @@ import validators from "../../../../shared/validators";
 import {NamespaceSelect} from "../../lib/namespace";
 import {DeleteModalDialog} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,
@@ -259,7 +260,7 @@ export default class CUD extends Component {
                     <InputField id="phone_cell" label={t('Cell')}/>
                     <TextArea id="address" label={t('Address')}/>
 
-                    <InputField id="password" label={t('Password')} type="password"/>
+                    <InputField id="password" label={t('Password')} type="password" />
                     <InputField id="password2" label={t('Repeat Password')} type="password"/>
 
                     <TableSelect id="role" label={t('Role')} withHeader dropdown

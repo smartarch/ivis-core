@@ -1,4 +1,7 @@
+@import "../../node_modules/bootstrap/scss/_functions";
 @import "../scss/variables";
+
+@import "../../node_modules/bootstrap/scss/_variables";
 
 .scatterPlotToolbar {
   max-width: 300px;

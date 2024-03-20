@@ -1,7 +1,8 @@
 'use strict';
 
 const knex = require('../lib/knex');
-const hasher = require('node-object-hash')();
+
+const hasher = require('node-object-hash').hasher();
 const {enforce, filterObject} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -24,6 +25,7 @@ const {getWizard} = require("../lib/wizards");
 const {isBuiltinSource} = require("../../shared/tasks");
 const simpleGit = require("simple-git");
 const path = require("path");
+const nodeObjectHash = require("node-object-hash");
 
 const allowedKeysCreate = new Set(['name', 'description', 'type', 'settings', 'namespace']);
 const allowedKeysUpdate = new Set(['name', 'description', 'settings', 'namespace']);

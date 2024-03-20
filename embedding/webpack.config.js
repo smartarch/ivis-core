@@ -37,8 +37,8 @@ module.exports = {
                             ],
                             plugins: [
                                 ["@babel/plugin-proposal-decorators", { "legacy": true }],
-                                ["@babel/plugin-proposal-class-properties", { "loose" : true }],
-                                ["@babel/plugin-proposal-private-methods", { "loose": true }],
+                                ["@babel/plugin-transform-class-properties", { "loose" : true }],
+                                ["@babel/plugin-transform-private-methods", { "loose": true }],
                                 ["@babel/plugin-proposal-private-property-in-object", { "loose": true }],
                                 "@babel/plugin-proposal-function-bind"
                             ]
@@ -48,7 +48,17 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                use: [ 'style-loader', 'css-loader' ]
+                use: [
+                    'style-loader',
+                    {
+                        loader: 'css-loader',
+                        options: {
+                            modules: {
+                                localIdentName: '[name]__[local]___[hash:base64:5]',
+                            },
+                        }
+                    },
+                ]
             },
             {
                 test: /\.(png|jpg|gif|woff2?|svg)$/,
@@ -69,11 +79,12 @@ module.exports = {
                     {
                         loader: 'css-loader',
                         options: {
-                            modules: true,
-                            localIdentName: '[path][name]__[local]--[hash:base64:5]'
+                            modules: {
+                                localIdentName: '[path][name]__[local]--[hash:base64:5]'
+                            }
                         }
                     },
-                    'sass-loader'
+                    'sass-loader',
                 ]
             },
             {

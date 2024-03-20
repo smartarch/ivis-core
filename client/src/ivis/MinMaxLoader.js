@@ -6,8 +6,9 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {timeIntervalDifference} from "./common";
+import {withTranslationCustom} from "../lib/i18n";
 
 /**
  * This component fetches the minimum and maximum for given signal(s) and calls props.processData with the values.
@@ -16,7 +17,7 @@ import {timeIntervalDifference} from "./common";
  * It has no UI.
  */
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     intervalAccessMixin()
 ], ["reloadData"])

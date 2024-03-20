@@ -19,15 +19,16 @@ import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling
 import axios from "../../lib/axios";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {Panel} from "../../lib/panel";
 import {ModalDialog} from "../../lib/bootstrap-components";
 import {Icon} from "../../lib/bootstrap-components";
 import moment from "moment";
 import styles from "./Versioning.scss";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withForm,
     withPageHelpers,

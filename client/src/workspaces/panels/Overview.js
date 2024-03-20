@@ -13,24 +13,27 @@ import {withErrorHandling} from "../../lib/error-handling";
 import moment
     from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {getBuiltinTemplateName} from "../../lib/builtin-templates";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser
 ])
 export default class Overview extends Component {
     constructor(props) {
+        console.log("overview constructor");
         super(props);
 
         this.state = {};
     }
 
     static propTypes = {
-        workspace: PropTypes.object
+        workspace: PropTypes.object,
+        workspaceId : PropTypes.number
     }
 
     render() {

@@ -4,13 +4,14 @@ import React, {Component} from "react";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {ScatterPlotBase} from "./ScatterPlotBase";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapeNames} from "./dot_shapes";
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ], ["setMaxDotCount", "setWithTooltip", "getView", "setView"], ["getQueries", "getQueriesForSignalSet", "prepareData", "computeExtents", "processDocs", "filterData", "drawChart", "drawDots", "drawHighlightDot"])
 export class ScatterPlot extends Component {

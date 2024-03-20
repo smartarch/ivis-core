@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
-import {select, event as d3Event} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
@@ -13,7 +13,7 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {withPageHelpers} from "../lib/page-common";
 import {Tooltip} from "./Tooltip";
@@ -22,6 +22,7 @@ import {Icon} from "../lib/bootstrap-components";
 import * as d3Format from "d3-format";
 import * as d3Zoom from "d3-zoom";
 import commonStyles from "./commons.scss";
+import {withTranslationCustom} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -84,7 +85,7 @@ class TooltipContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     intervalAccessMixin()
@@ -676,11 +677,11 @@ export class ViolinPlot extends Component {
     createChartCursor(xSize, ySize, xScale, yScale, signalSetsData) {
         const self = this;
 
-        const mouseMove = function () {
+        const mouseMove = function (event) {
             if (self.state.zoomInProgress)
                 return;
 
-            const containerPos = d3Selection.mouse(self.containerNode);
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const y = containerPos[1] - self.props.margin.top;
             const x = containerPos[0] - self.props.margin.left;
 
@@ -757,8 +758,8 @@ export class ViolinPlot extends Component {
         }
 
         this.cursorAreaSelection
-            .on('mouseenter', mouseMove)
-            .on('mousemove', mouseMove)
+            .on('mouseenter', (event) => mouseMove(event))
+            .on('mousemove', (event) => mouseMove(event))
             .on('mouseleave', mouseLeave);
     }
 

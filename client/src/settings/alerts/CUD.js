@@ -18,8 +18,8 @@ import {
     TextArea,
     withForm, withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
 import {withErrorHandling} from "../../lib/error-handling";
 import {
     NamespaceSelect,
@@ -30,12 +30,13 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {RelativeTime} from "../../lib/bootstrap-components";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import testTrigger from "../../lib/alerts-trigger-tester";
 import { checkCondition, ConditionState } from "../../lib/alerts-condition-checker";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,

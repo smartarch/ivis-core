@@ -65,8 +65,8 @@ case "$hostType" in
         redisService=redis-server
         apacheConf="/etc/apache2/conf-available/${productId}.conf"
         apacheLogsPath="/var/log/apache2"
-        userId=ubuntu
-        groupId=ubuntu
+        userId=dave
+        groupId=dave
 
         if hash ufw 2>/dev/null; then
             firewallCmdExists=true
@@ -207,10 +207,9 @@ function installPrerequisities {
             yum -y install mariadb-server nodejs redis pwgen gcc-c++ make bzip2 java-1.8.0-openjdk git libXScrnSaver at-spi2-atk gtk3
             rpm -Uhv --force https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.rpm
             ;;
-
         ubuntu1804)
             apt-get install -y curl
-            curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+            curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
             apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libatk-bridge2.0 libgtk-3-0
 			TEMP_DEB="$(mktemp)"
 			wget -O "$TEMP_DEB" 'https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.deb'
@@ -271,8 +270,10 @@ certs:
     mysqlPassword=`pwgen 12 -1`
 
     # Setup MySQL user
+    mysql -u root -e "DROP USER IF EXISTS '$productId'@'localhost';"
     mysql -u root -e "CREATE USER '$productId'@'localhost' IDENTIFIED BY '$mysqlPassword';"
     mysql -u root -e "GRANT ALL PRIVILEGES ON \`$productId\`.* TO '$productId'@'localhost';"
+    mysql -u $productId --password="$mysqlPassword" -e "DROP database IF EXISTS \`$productId\`;"
     mysql -u $productId --password="$mysqlPassword" -e "CREATE database \`$productId\`;"
 
     # Setup installation configuration

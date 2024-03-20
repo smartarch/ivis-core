@@ -2,18 +2,18 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {withRouter} from "react-router";
-import {BrowserRouter as Router, Route, Switch} from "react-router-dom";
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
 import {withErrorHandling} from "./error-handling";
 import styles from "./styles-content.scss";
 import {getRoutes, renderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
 import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
-import {withTranslation} from "./i18n";
-import jQuery from 'jquery';
+import {withTranslation} from "react-i18next";
 import {ThemeContext} from "./theme-context";
 import {Theme} from "../../../shared/themes";
+import {withTranslationCustom} from "./i18n";
 
 export {withPageHelpers}
 
@@ -35,9 +35,83 @@ function getTheme(search){
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 class PanelRoute extends Component {
+    static propTypes = {
+        route: PropTypes.object.isRequired,
+        location: PropTypes.object.isRequired,
+        match: PropTypes.object.isRequired
+    }
+
+    componentDidMount() {
+        this.updateBodyClasses();
+    }
+
+    componentDidUpdate(prevProps) {
+        this.updateBodyClasses();
+    }
+
+    componentWillUnmount() {
+        document.body.classList.remove('inside-iframe', 'theme-dark');
+    }
+
+    updateBodyClasses() {
+        const { route, location } = this.props;
+
+        if (route.insideIframe) {
+            document.body.classList.add('inside-iframe');
+        } else {
+            document.body.classList.remove('inside-iframe');
+        }
+
+        let theme = getTheme(location.search);
+        if (theme === Theme.DARK) {
+            document.body.classList.add('theme-dark');
+        } else {
+            document.body.classList.remove('theme-dark');
+        }
+    }
+
+    render() {
+        const { t, route, match } = this.props;
+
+        const render = (resolved, permissions) => {
+            if (resolved && permissions) {
+                const compProps = {
+                    match: match,
+                    location: this.props.location,
+                    resolved,
+                    permissions
+                };
+
+                let panel;
+                if (route.panelComponent) {
+                    panel = React.createElement(route.panelComponent, compProps);
+                } else if (route.panelRender) {
+                    panel = route.panelRender(compProps);
+                }
+
+                let cls = `container-fluid`;
+
+                return (
+                    <div className={cls}>
+                        <ThemeContext.Provider value={getTheme(this.props.location.search)}>
+                            {panel}
+                        </ThemeContext.Provider>
+                    </div>
+                );
+
+            } else {
+                return getLoadingMessage(t);
+            }
+        };
+
+        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+    }
+}
+
+/*class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
@@ -94,12 +168,12 @@ class PanelRoute extends Component {
 
         return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
     }
-}
+}*/
 
 
 @withRouter
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class SectionContent extends Component {
@@ -166,7 +240,7 @@ export class SectionContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class Section extends Component {
     constructor(props) {

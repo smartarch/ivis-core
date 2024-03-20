@@ -1,7 +1,7 @@
 'use strict';
 
 import React from 'react';
-import {I18nextProvider, withNamespaces} from 'react-i18next';
+import {I18nextProvider, withTranslation} from 'react-i18next';
 import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import ivisConfig from 'ivisConfig';
@@ -60,11 +60,12 @@ export default i18n;
 
 export const TranslationContext = React.createContext(null);
 
-export const withTranslation = createComponentMixin({
+export const withTranslationCustom = createComponentMixin({
     contexts: [{context: TranslationContext, propName: 't'}]
 });
 
-const TranslationContextProvider = withNamespaces()(props => {
+
+const TranslationContextProvider = withTranslation()(props => {
     return (
         <TranslationContext.Provider value={props.t}>
             {props.children}

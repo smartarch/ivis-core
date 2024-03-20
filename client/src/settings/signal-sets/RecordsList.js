@@ -11,13 +11,14 @@ import {SignalType, SignalSource} from "../../../../shared/signals";
 import {SignalSetType} from "../../../../shared/signal-sets";
 import {tableAddDeleteButton, tableRestActionDialogInit, tableRestActionDialogRender,} from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import PropTypes from "prop-types";
 import base64url from 'base64-url';
+import {withTranslationCustom} from "../../lib/i18n";
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

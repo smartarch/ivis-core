@@ -1,14 +1,17 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import PropTypes from 'prop-types';
 import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import {withComponentMixins} from "./decorator-helpers";
 import moment from "moment";
+import {withTranslationCustom} from "./i18n";
+
+import JQuery from 'jquery'
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class DismissibleAlert extends Component {
@@ -29,7 +32,7 @@ export class DismissibleAlert extends Component {
 
         return (
             <div className={`alert alert-${this.props.severity} alert-dismissible`} role="alert">
-                <button type="button" className="close" aria-label={t('close')} onClick={::this.onClose}><span aria-hidden="true">&times;</span></button>
+                <button type="button" className="btn-close" aria-label={t('close')} onClick={::this.onClose} />
                 {this.props.children}
             </div>
         )
@@ -137,7 +140,7 @@ export class ButtonDropdown extends Component {
 
         return (
             <div className={className}>
-                <button type="button" className={buttonClassName} data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{icon}{iconSpacer}{props.label}</button>
+                <button type="button" className={buttonClassName} data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{icon}{iconSpacer}{props.label}</button>
                 <ul className={menuClassName}>{props.children}</ul>
             </div>
         );
@@ -189,7 +192,9 @@ export class DropdownActionLink extends Component {
             clsName += "disabled ";
         }
 
-        clsName += props.className;
+        if (props.className !== undefined) {
+            clsName += props.className;
+        }
 
         return (
             <ActionLink className={clsName} onClickAsync={props.onClickAsync}>{props.children}</ActionLink>
@@ -266,14 +271,14 @@ export class DropdownDivider extends Component {
 
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling
 ])
 export class ModalDialog extends Component {
     constructor(props) {
         super(props);
-
-        const t = props.t;
+        this.state = { isShown: !props.hidden };
+        this.modalRef = React.createRef();
     }
 
     static propTypes = {
@@ -289,41 +294,41 @@ export class ModalDialog extends Component {
       this.props.hidden - this is the desired state of the modal
       this.hidden - this is the actual state of the modal - this is because there is no public API on Bootstrap modal to know whether the modal is shown or not
      */
-
     componentDidMount() {
-        const jqModal = jQuery(this.domModal);
-
-        jqModal.on('shown.bs.modal', () => jqModal.focus());
-        jqModal.on('hide.bs.modal', ::this.onHide);
-
-        this.hidden = this.props.hidden;
-        jqModal.modal({
-            show: !this.props.hidden
+        const modalElement = this.modalRef.current;
+        this.modalInstance = new bootstrap.Modal(modalElement, {
+            keyboard: false
         });
+
+        if (this.state.isShown) {
+            this.modalInstance.show();
+        } else {
+            this.modalInstance.hide();
+        }
+
+        modalElement.addEventListener('hidden.bs.modal', this.onHide);
     }
 
-    componentDidUpdate() {
-        if (this.props.hidden != this.hidden) {
-            const jqModal = jQuery(this.domModal);
-            this.hidden = this.props.hidden;
-            jqModal.modal(this.props.hidden ? 'hide' : 'show');
+    componentDidUpdate(prevProps) {
+        if (this.props.hidden !== prevProps.hidden) {
+            this.setState({ isShown: !this.props.hidden }, () => {
+                this.state.isShown ? this.modalInstance.show() : this.modalInstance.hide();
+            });
         }
     }
 
     componentWillUnmount() {
-        // We discard the modal in a hard way (without hiding it). Thus we have to take care of the backgrop too.
-        jQuery('.modal-backdrop').remove();
+        this.modalInstance.dispose();
     }
 
-    onHide(evt) {
+    onHide = () => {
         // Hide event is emited is both when hidden through user action or through API. We have to let the API
         // calls through, otherwise the modal would never hide. The user actions, which change the desired state,
         // are capture, converted to onClose callback and prevented. It's up to the parent to decide whether to
         // hide the modal or not.
-        if (!this.props.hidden) {
-            // noinspection JSIgnoredPromiseFromCall
-            this.onClose();
-            evt.preventDefault();
+        this.setState({ isShown: false });
+        if (this.props.onCloseAsync) {
+            this.props.onCloseAsync();
         }
     }
 
@@ -341,39 +346,52 @@ export class ModalDialog extends Component {
         }
     }
 
+    renderButtons() {
+        return this.props.buttons.map((buttonSpec, idx) => {
+            return (
+                <button
+                    key={idx}
+                    className={buttonSpec.className}
+                    onClick={() => this.onButtonClick(idx)}
+                >
+                    {buttonSpec.label}
+                </button>
+            );
+        });
+    }
+
     render() {
-        const props = this.props;
-        const t = props.t;
+        const { className, title, children } = this.props;
 
-        let buttons;
-
-        if (this.props.buttons) {
-            buttons = [];
-            for (let idx = 0; idx < this.props.buttons.length; idx++) {
-                const buttonSpec = this.props.buttons[idx];
-                const button = <Button key={idx} label={buttonSpec.label} className={buttonSpec.className} onClickAsync={async () => await this.onButtonClick(idx)} />
-                buttons.push(button);
-            }
+        let modalClassName = `modal fade ${className || ''}`;
+        if (this.state.isShown) {
+            modalClassName += ' show d-block';
         }
 
         return (
             <div
-                ref={(domElem) => { this.domModal = domElem; }}
-                className={'modal fade' + (props.className ? ' ' + props.className : '')}
-                tabIndex="-1" role="dialog" aria-labelledby="myModalLabel">
-
+                ref={this.modalRef}
+                className={modalClassName}
+                tabIndex="-1"
+                role="dialog"
+                aria-labelledby="myModalLabel"
+                aria-hidden={!this.state.isShown}
+                style={{ display: this.state.isShown ? 'block' : 'none' }}
+            >
                 <div className="modal-dialog" role="document">
                     <div className="modal-content">
                         <div className="modal-header">
-                            <h4 className="modal-title">{this.props.title}</h4>
-                            <button type="button" className="close" aria-label={t('close')} onClick={::this.onClose}><span aria-hidden="true">&times;</span></button>
+                            <h4 className="modal-title">{title}</h4>
+                            <button type="button" className="close" aria-label="Close" onClick={this.onClose}>
+                                <span aria-hidden="true">&times;</span>
+                            </button>
                         </div>
-                        <div className="modal-body">{this.props.children}</div>
-                        {buttons &&
+                        <div className="modal-body">{children}</div>
+                        {this.props.buttons && (
                             <div className="modal-footer">
-                                {buttons}
+                                {this.renderButtons()}
                             </div>
-                        }
+                        )}
                     </div>
                 </div>
             </div>

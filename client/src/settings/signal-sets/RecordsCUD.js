@@ -8,16 +8,17 @@ import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling
 import {DeleteModalDialog} from "../../lib/modals";
 import {Panel} from "../../lib/panel";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "../../lib/i18n";
+import {withTranslation} from "react-i18next";
 import base64url from 'base64-url';
 import FieldTypes from "./FieldTypes";
 import styles from "../../lib/styles.scss";
 import {SignalSetType} from "../../../../shared/signal-sets"
 import {SignalSource} from "../../../../shared/signals"
 import {DataAccessSession} from "../../ivis/DataAccess";
+import {withTranslationCustom} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withForm,
     withErrorHandling,
     withPageHelpers,
@@ -157,6 +158,7 @@ export default class RecordsCUD extends Component {
         const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
         if (submitSuccessful) {
+            console.log(`/settings/signal-sets/${sigSetId}/records`)
             this.navigateToWithFlashMessage(`/settings/signal-sets/${sigSetId}/records`, 'success', t('Record saved'));
         } else {
             this.enableForm();

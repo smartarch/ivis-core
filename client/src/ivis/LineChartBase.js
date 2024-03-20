@@ -12,10 +12,11 @@ import {rgb} from "d3-color";
 import PropTypes from "prop-types";
 import {DataPathApproximator} from "./DataPathApproximator";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {cursorAccessMixin} from "./CursorContext";
 import _ from "lodash";
+import {withTranslationCustom} from "../lib/i18n";
 
 
 const SelectedState = {
@@ -103,7 +104,7 @@ export function getAxisIdx(sigConf) {
 }
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     cursorAccessMixin(),
 ])
 export class LineChartBase extends Component {
@@ -386,6 +387,8 @@ export class LineChartBase extends Component {
                 if (typeof yAxes[axisIdx].yAxisTicksFormat === "function")
                     yAxis.tickFormat(yAxes[axisIdx].yAxisTicksFormat);
 
+
+                console.log("shift" + shift);
                 base.yAxisSelection.append('g').attr("transform", "translate( " + shift + ", 0 )").call(yAxis);
                 base.yAxisSelection.append('text')
                         .attr("transform", "rotate(-90)")
@@ -405,8 +408,8 @@ export class LineChartBase extends Component {
         let selection = null;
         let mousePosition = null;
 
-        const selectPoints = function (mousePos = null) {
-            const containerPos = mousePos !== null ? mousePos : d3Selection.mouse(base.containerNode);
+        const selectPoints = function (event,mousePos = null) {
+            const containerPos = mousePos !== null ? mousePos : d3Selection.pointer(event,base.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
             const ts = xScale.invert(x);
@@ -514,8 +517,8 @@ export class LineChartBase extends Component {
                     for (const sigConf of sigSetConf.signals) {
                         if (isSignalVisible(sigConf)) {
                             self.linePointsSelection[sigSetConf.cid][sigConf.cid].selectAll('circle').each(function (dt, idx) {
-                                const selectState = self.linePointsSelected[sigSetConf.cid][sigConf.cid][idx];
 
+                                const selectState = self.linePointsSelected[sigSetConf.cid][sigConf.cid][idx];
                                 if (dt === point) {
                                     if (selectedPointsVisible && selectState !== SelectedState.SELECTED) {
                                         select(this).attr('r', 6).attr('visibility', 'visible');
@@ -592,8 +595,8 @@ export class LineChartBase extends Component {
         };
 
         base.brushSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', deselectPoints)
             .on('click', click);
 
@@ -618,8 +621,6 @@ export class LineChartBase extends Component {
             lineCircles[sigSetConf.cid] = {};
             lineApproximators[sigSetConf.cid] = {};
 
-            this.linePointsSelected[sigSetConf.cid] = {};
-
             if (points[sigSetConf.cid]) {
                 const {main} = signalSetsData[sigSetConf.cid];
 
@@ -639,6 +640,8 @@ export class LineChartBase extends Component {
 
                 for (const sigConf of sigSetConf.signals) {
                     if (isSignalVisible(sigConf)) {
+                        this.linePointsSelected[sigSetConf.cid] = {};
+
                         const sigCid = sigConf.cid;
                         const yScale = yScales[getAxisIdx(sigConf)];
 
@@ -662,6 +665,7 @@ export class LineChartBase extends Component {
                                 .attr('d', line);
 
                             if (pointsVisible === PointsVisibility.HOVER || pointsVisible === PointsVisibility.ALWAYS || selectedPointsVisible) {
+
                                 const circles = this.linePointsSelection[sigSetConf.cid][sigCid]
                                     .selectAll('circle')
                                     .data(main);
@@ -677,6 +681,7 @@ export class LineChartBase extends Component {
                                     .attr('fill', lineColor.toString());
 
                                 this.linePointsSelected[sigSetConf.cid][sigCid] = Array(main.length).fill(SelectedState.HIDDEN);
+
 
                                 circles.exit().remove();
 
@@ -703,6 +708,7 @@ export class LineChartBase extends Component {
             let sigIdx = 0;
             for (const sigConf of sigSetConf.signals) {
                 if (isSignalVisible(sigConf)) {
+
                     paths.push(
                         <g key={`${sigSetIdx}-${sigIdx}`}>
                             {this.props.getSignalGraphContent(self, sigSetConf.cid, sigConf.cid)}

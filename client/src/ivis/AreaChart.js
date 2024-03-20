@@ -16,8 +16,9 @@ import tooltipStyles
     from "./Tooltip.scss";
 import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
+import {withTranslationCustom} from "../lib/i18n";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
     const numberFormat = d3Format('.3f');
@@ -32,7 +33,7 @@ function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, s
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom,
 ])
 export class AreaChart extends Component {
     constructor(props){

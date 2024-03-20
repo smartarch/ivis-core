@@ -10,7 +10,7 @@ import ReactDOM from 'react-dom';
 
 import {Section} from './lib/page';
 import Account from './account/Account';
-import Login from './login/Login';
+import Login, {LoginContainer} from './login/Login';
 import Reset from './login/Forgot';
 import ResetLink from './login/Reset';
 import API from './account/API';
@@ -88,7 +88,6 @@ import {TaskSource, isBuiltinSource} from "../../shared/tasks";
 emCommonDefaults.setDefaults(em);
 
 const getStructure = t => {
-
     let panelStructureSpec = {
         title: resolved => resolved.panel.name,
         link: params => `/workspaces/${params.workspaceId}/${params.panelId}`,
@@ -107,6 +106,51 @@ const getStructure = t => {
         }
     };
 
+    function getSignalChildren() {
+        return{
+            ':signalId': {
+            title: resolved => t('Signal "{{name}}"', {name: resolved.signal.name || resolved.signal.cid}),
+                resolve: {
+                signal: params => `rest/signals/${params.signalId}`
+            },
+            link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/edit`,
+                navs: {
+                'edit': {
+                    title: t('Edit'),
+                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/edit`,
+                        visible: resolved => resolved.signal.permissions.includes('edit'),
+                        panelRender: props => <SignalsCUD
+                        action='edit'
+                        signalSet={props.resolved.signalSet}
+                        entity={props.resolved.signal}/>
+                },
+                    'delete': {
+                        title: t('Edit'),
+                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/edit`,
+                        visible: resolved => resolved.signal.permissions.includes('edit'),
+                        panelRender: props => <SignalsCUD
+                            action='delete'
+                            signalSet={props.resolved.signalSet}
+                            entity={props.resolved.signal}/>
+                    },
+                share: {
+                    title: t('Share'),
+                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/share`,
+                        visible: resolved => resolved.signal.permissions.includes('share'),
+                        panelRender: props => <Share title={t('Share')}
+                                                     entity={props.resolved.signal}
+                                                     entityTypeId="signal"/>
+                }
+            }
+        },
+            create: {
+                title: t('Create'),
+                    panelRender: props => <SignalsCUD signalSet={props.resolved.signalSet}
+                                                      action="create"/>
+            }
+        }
+    }
+
     const structure = {
         title: t('Home'),
         link: () => ivisConfig.isAuthenticated ? '/workspaces' : '/login',
@@ -114,7 +158,7 @@ const getStructure = t => {
             login: {
                 title: t('Sign in'),
                 link: '/login',
-                panelComponent: Login,
+                panelComponent: LoginContainer,
                 primaryMenuComponent: MainMenuAnonymous,
                 children: {
                     forgot: {
@@ -164,7 +208,17 @@ const getStructure = t => {
                 primaryMenuComponent: MainMenuAuthenticated,
                 secondaryMenuComponent: WorkspaceSidebar,
                 children: {
-                    ':workspaceId([0-9]+)': {
+                    ':workspaceId/:panelId': {
+                        ...panelStructureSpec,
+                        children: {
+                            'fullscreen': {
+                                ...panelStructureSpec,
+                                panelInFullScreen: true,
+                                link: params => `/workspaces/${params.props.workspaceId}/${params.panelId}/fullscreen`,
+                            }
+                        }
+                    },
+                    ':workspaceId': {
                         title: resolved => resolved.workspace.name,
                         resolve: {
                             workspace: params => `rest/workspaces/${params.workspaceId}`,
@@ -172,20 +226,7 @@ const getStructure = t => {
                         },
                         link: params => `/workspaces/${params.workspaceId}`,
                         panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>,
-                        children: {
-                            ':panelId([0-9]+)': {
-                                ...panelStructureSpec,
-                                children: {
-                                    'fullscreen': {
-                                        ...panelStructureSpec,
-                                        panelInFullScreen: true,
-                                        link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
-                                    }
-                                }
-                            }
-                        }
                     },
-
                     sample: {
                         title: t('Sample workspace'),
                         link: '/workspaces/sample',
@@ -231,18 +272,34 @@ const getStructure = t => {
                         link: '/settings/workspaces',
                         panelComponent: WorkspacesList,
                         children: {
-                            ':workspaceId([0-9]+)': {
+                            ':workspaceId': {
                                 title: resolved => t('Workspace "{{name}}"', {name: resolved.workspace.name}),
                                 resolve: {
                                     workspace: params => `rest/workspaces/${params.workspaceId}`
                                 },
                                 link: params => `/settings/workspaces/${params.workspaceId}/edit`,
                                 navs: {
-                                    ':action(edit|delete)': {
+                                    /*':action(edit|delete)': {
                                         title: t('Edit'),
                                         link: params => `/settings/workspaces/${params.workspaceId}/edit`,
                                         visible: resolved => resolved.workspace.permissions.includes('edit'),
                                         panelRender: props => <WorkspacesCUD action={props.match.params.action}
+                                                                             entity={props.resolved.workspace}
+                                                                             workspacesVisible={props.resolved.workspacesVisible}/>
+                                    },*/
+                                    edit: {
+                                        title: t('Edit'),
+                                        link: params => `/settings/workspaces/${params.workspaceId}/edit`,
+                                        visible: resolved => resolved.workspace.permissions.includes('edit'),
+                                        panelRender: props => <WorkspacesCUD action="edit"
+                                                                             entity={props.resolved.workspace}
+                                                                             workspacesVisible={props.resolved.workspacesVisible}/>
+                                    },
+                                    'delete': {
+                                        title: t('Delete'),
+                                        link: params => `/settings/workspaces/${params.workspaceId}/delete`,
+                                        visible: resolved => resolved.workspace.permissions.includes('delete'),
+                                        panelRender: props => <WorkspacesCUD action="delete"
                                                                              entity={props.resolved.workspace}
                                                                              workspacesVisible={props.resolved.workspacesVisible}/>
                                     },
@@ -251,14 +308,14 @@ const getStructure = t => {
                                         link: params => `/settings/workspaces/${params.workspaceId}/panels`,
                                         panelRender: props => <PanelsList workspace={props.resolved.workspace}/>,
                                         children: {
-                                            ':panelId([0-9]+)': {
+                                            ':panelId': {
                                                 title: resolved => t('Panel "{{name}}"', {name: resolved.panel.name}),
                                                 resolve: {
                                                     panel: params => `rest/panels/${params.panelId}`
                                                 },
                                                 link: params => `/settings/workspaces/${params.workspaceId}/panels/${params.panelId}/edit`,
                                                 navs: {
-                                                    ':action(edit|delete)': {
+                                                    'edit': {
                                                         title: t('Edit'),
                                                         resolve: {
                                                             panelsVisible: params => `rest/panels-visible/${params.workspaceId}`
@@ -266,7 +323,20 @@ const getStructure = t => {
                                                         link: params => `/settings/workspaces/${params.workspaceId}/panels/${params.panelId}/edit`,
                                                         visible: resolved => resolved.panel.permissions.includes('edit'),
                                                         panelRender: props => <PanelsCUD
-                                                            action={props.match.params.action}
+                                                            action='edit'
+                                                            entity={props.resolved.panel}
+                                                            workspace={props.resolved.workspace}
+                                                            panelsVisible={props.resolved.panelsVisible}/>
+                                                    },
+                                                    ':delete': {
+                                                        title: t('Edit'),
+                                                        resolve: {
+                                                            panelsVisible: params => `rest/panels-visible/${params.workspaceId}`
+                                                        },
+                                                        link: params => `/settings/workspaces/${params.workspaceId}/panels/${params.panelId}/edit`,
+                                                        visible: resolved => resolved.panel.permissions.includes('edit'),
+                                                        panelRender: props => <PanelsCUD
+                                                            action='delete'
                                                             entity={props.resolved.panel}
                                                             workspace={props.resolved.workspace}
                                                             panelsVisible={props.resolved.panelsVisible}/>
@@ -315,36 +385,45 @@ const getStructure = t => {
                         link: '/settings/alerts',
                         panelComponent: AlertsList,
                         children: {
-                            ':alertId([0-9]+)': {
+                            ':alertId': {
                                 title: resolved => t('Alert "{{name}}"', {name: resolved.alert.name}),
                                 resolve: {
                                     alert: params => `rest/alerts/${params.alertId}`
                                 },
                                 link: params => `/settings/alerts/${params.alertId}/edit`,
                                 navs: {
-                                    ':action(edit|delete)': {
+                                    'edit': {
                                         title: t('Settings'),
                                         link: params => `/settings/alerts/${params.alertId}/edit`,
                                         visible: resolved => resolved.alert.permissions.includes('edit'),
-                                        panelRender: props => <AlertsCUD action={props.match.params.action} entity={props.resolved.alert} />
+                                        panelRender: props => <AlertsCUD action='edit'
+                                                                         entity={props.resolved.alert}/>
+                                    },
+                                    'delete': {
+                                        title: t('Settings'),
+                                        link: params => `/settings/alerts/${params.alertId}/edit`,
+                                        visible: resolved => resolved.alert.permissions.includes('edit'),
+                                        panelRender: props => <AlertsCUD action='delete'
+                                                                         entity={props.resolved.alert}/>
                                     },
                                     log: {
                                         title: t('Log'),
                                         link: params => `/settings/alerts/${params.alertId}/log`,
                                         visible: resolved => resolved.alert.permissions.includes('view'),
-                                        panelRender: props => <AlertsLog alertId={props.resolved.alert.id} />
+                                        panelRender: props => <AlertsLog alertId={props.resolved.alert.id}/>
                                     },
                                     share: {
                                         title: t('Share'),
                                         link: params => `/settings/alerts/${params.alertId}/share`,
                                         visible: resolved => resolved.alert.permissions.includes('share'),
-                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.alert} entityTypeId="alert" />
+                                        panelRender: props => <Share title={t('Share')} entity={props.resolved.alert}
+                                                                     entityTypeId="alert"/>
                                     }
                                 }
                             },
                             create: {
                                 title: t('Create'),
-                                panelRender: props => <AlertsCUD action="create" />
+                                panelRender: props => <AlertsCUD action="create"/>
                             }
                         }
                     },
@@ -353,7 +432,7 @@ const getStructure = t => {
                         link: '/settings/templates',
                         panelComponent: TemplatesList,
                         children: {
-                            ':templateId([0-9]+)': {
+                            ':templateId': {
                                 title: resolved => t('Template "{{name}}"', {name: resolved.template.name}),
                                 resolve: {
                                     template: params => `rest/templates/${params.templateId}`
@@ -373,11 +452,18 @@ const getStructure = t => {
                                         visible: resolved => resolved.template.permissions.includes('edit'),
                                         panelRender: props => <TemplatesOutput entity={props.resolved.template}/>
                                     },
-                                    ':action(edit|delete)': {
+                                    edit: {
+                                        title: t('Settings - edit'),
+                                        link: params => `/settings/templates/${params.templateId}/edit`,
+                                        visible: resolved => resolved.template.permissions.includes('edit'),
+                                        panelRender: props => <TemplatesCUD action="edit"
+                                                                            entity={props.resolved.template}/>
+                                    },
+                                    'delete': {
                                         title: t('Settings'),
                                         link: params => `/settings/templates/${params.templateId}/edit`,
                                         visible: resolved => resolved.template.permissions.includes('edit'),
-                                        panelRender: props => <TemplatesCUD action={props.match.params.action}
+                                        panelRender: props => <TemplatesCUD action="delete"
                                                                             entity={props.resolved.template}/>
                                     },
                                     share: {
@@ -400,7 +486,7 @@ const getStructure = t => {
                         link: '/settings/tasks',
                         panelComponent: TasksList,
                         children: {
-                            ':taskId([0-9]+)': {
+                            ':taskId': {
                                 title: resolved => t('Task "{{name}}"', {name: resolved.task.name}),
                                 resolve: {
                                     task: params => `rest/tasks/${params.taskId}`
@@ -419,13 +505,22 @@ const getStructure = t => {
                                         visible: resolved => isBuiltinSource(resolved.task.source) || resolved.task.permissions.includes('edit'),
                                         panelRender: props => <TasksOutput entity={props.resolved.task}/>
                                     },
-                                    ':action(edit|delete)': {
+                                    'edit': {
                                         title: t('Settings'),
                                         link: params => `/settings/tasks/${params.taskId}/edit`,
                                         visible: resolved => resolved.task.permissions.includes('edit'),
-                                        panelRender: props => <TasksCUD action={props.match.params.action}
+                                        panelRender: props => <TasksCUD action='edit'
                                                                         entity={props.resolved.task}/>
                                     },
+                                    'delete': {
+                                        title: t('Settings'),
+                                        link: params => `/settings/tasks/${params.taskId}/edit`,
+                                        visible: resolved => resolved.task.permissions.includes('edit'),
+                                        panelRender: props => <TasksCUD action='delete'
+                                                                        entity={props.resolved.task}/>
+                                    },
+
+
                                     share: {
                                         title: t('Share'),
                                         link: params => `/settings/tasks/${params.taskId}/share`,
@@ -454,18 +549,25 @@ const getStructure = t => {
                         },
                         panelComponent: JobsList,
                         children: {
-                            ':jobId([0-9]+)': {
+                            ':jobId': {
                                 title: resolved => t('Job "{{name}}"', {name: resolved.job.name}),
                                 resolve: {
                                     job: params => `rest/jobs/${params.jobId}`
                                 },
                                 link: params => `/settings/jobs/${params.jobId}/edit`,
                                 navs: {
-                                    ':action(edit|delete)': {
+                                    'edit': {
                                         title: t('Settings'),
                                         link: params => `/settings/jobs/${params.jobId}/edit`,
                                         visible: resolved => resolved.job.permissions.includes('edit'),
-                                        panelRender: props => <JobsCUD action={props.match.params.action}
+                                        panelRender: props => <JobsCUD action='edit'
+                                                                       entity={props.resolved.job}/>
+                                    },
+                                    'delete': {
+                                        title: t('Settings'),
+                                        link: params => `/settings/jobs/${params.jobId}/edit`,
+                                        visible: resolved => resolved.job.permissions.includes('edit'),
+                                        panelRender: props => <JobsCUD action='delete'
                                                                        entity={props.resolved.job}/>
                                     },
                                     'signal-sets': {
@@ -480,7 +582,7 @@ const getStructure = t => {
                                         visible: resolved => resolved.job.permissions.includes('view'),
                                         panelRender: props => <RunLog entity={props.resolved.job}/>,
                                         children: {
-                                            ':runId([0-9]*)': {
+                                            ':runId': {
                                                 title: t('View log'),
                                                 resolve: {
                                                     run: params => `rest/jobs/${params.jobId}/run/${params.runId}`
@@ -511,7 +613,7 @@ const getStructure = t => {
                         link: '/settings/signal-sets',
                         panelComponent: SignalSetsList,
                         children: {
-                            ':signalSetId([0-9]+)': {
+                            ':signalSetId': {
                                 title: resolved =>
                                     !em.get('settings.signalSetsAsSensors', false)
                                         ? t('Signal Set "{{name}}"', {name: resolved.signalSet.name || resolved.signalSet.cid})
@@ -521,11 +623,18 @@ const getStructure = t => {
                                 },
                                 link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
                                 navs: {
-                                    ':action(edit|delete)': {
+                                    'edit': {
                                         title: t('Edit'),
                                         link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
                                         visible: resolved => resolved.signalSet.permissions.includes('edit'),
-                                        panelRender: props => <SignalSetsCUD action={props.match.params.action}
+                                        panelRender: props => <SignalSetsCUD action='edit'
+                                                                             entity={props.resolved.signalSet}/>
+                                    },
+                                    'delete': {
+                                        title: t('Edit'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
+                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                        panelRender: props => <SignalSetsCUD action='delete'
                                                                              entity={props.resolved.signalSet}/>
                                     },
                                     'aggregations': {
@@ -535,21 +644,30 @@ const getStructure = t => {
                                         panelRender: props => <SignalSetAggregations
                                             signalSet={props.resolved.signalSet}/>,
                                         children: {
-                                            ":jobId([0-9]+)": {
+                                            ":jobId": {
                                                 title: resolved => t('Aggregation "{{name}}"', {name: resolved.job.name}),
                                                 resolve: {
                                                     job: params => `rest/jobs/${params.jobId}`
                                                 },
                                                 link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
                                                 children: {
-                                                    ':action(edit|delete)': {
+                                                    'edit': {
                                                         title: t('Edit'),
                                                         link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
                                                         visible: resolved => resolved.signalSet.permissions.includes('edit'),
                                                         panelRender: props => <AggregationsCUD
                                                             signalSet={props.resolved.signalSet}
                                                             job={props.resolved.job}
-                                                            action={props.match.params.action}/>
+                                                            action='edit'/>
+                                                    },
+                                                    'delete': {
+                                                        title: t('Edit'),
+                                                        link: params => `/settings/signal-sets/${params.signalSetId}/aggregations/${params.jobId}/edit`,
+                                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                                        panelRender: props => <AggregationsCUD
+                                                            signalSet={props.resolved.signalSet}
+                                                            job={props.resolved.job}
+                                                            action='delete'/>
                                                     }
                                                 }
                                             },
@@ -560,44 +678,19 @@ const getStructure = t => {
                                             }
                                         }
                                     },
-                                    ':action(signals|reindex)': {
+                                    'signals': {
                                         title: t('Signals'),
                                         link: params => `/settings/signal-sets/${params.signalSetId}/signals`,
-                                        panelRender: props => <SignalsList action={props.match.params.action}
+                                        panelRender: props => <SignalsList action='signals'
                                                                            signalSet={props.resolved.signalSet}/>,
-                                        children: {
-                                            ':signalId([0-9]+)': {
-                                                title: resolved => t('Signal "{{name}}"', {name: resolved.signal.name || resolved.signal.cid}),
-                                                resolve: {
-                                                    signal: params => `rest/signals/${params.signalId}`
-                                                },
-                                                link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/edit`,
-                                                navs: {
-                                                    ':action(edit|delete)': {
-                                                        title: t('Edit'),
-                                                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/edit`,
-                                                        visible: resolved => resolved.signal.permissions.includes('edit'),
-                                                        panelRender: props => <SignalsCUD
-                                                            action={props.match.params.action}
-                                                            signalSet={props.resolved.signalSet}
-                                                            entity={props.resolved.signal}/>
-                                                    },
-                                                    share: {
-                                                        title: t('Share'),
-                                                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/share`,
-                                                        visible: resolved => resolved.signal.permissions.includes('share'),
-                                                        panelRender: props => <Share title={t('Share')}
-                                                                                     entity={props.resolved.signal}
-                                                                                     entityTypeId="signal"/>
-                                                    }
-                                                }
-                                            },
-                                            create: {
-                                                title: t('Create'),
-                                                panelRender: props => <SignalsCUD signalSet={props.resolved.signalSet}
-                                                                                  action="create"/>
-                                            }
-                                        }
+                                        children: getSignalChildren()
+                                    },
+                                    'reindex': {
+                                        title: t('Signals'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/signals`,
+                                        panelRender: props => <SignalsList action='reindex'
+                                                                           signalSet={props.resolved.signalSet}/>,
+                                        children: getSignalChildren()
                                     },
                                     'records': {
                                         title: t('Records'),
@@ -619,14 +712,26 @@ const getStructure = t => {
                                                                                   signalSet={props.resolved.signalSet}
                                                                                   signalsVisibleForEdit={props.resolved.signalsVisibleForEdit}/>
                                             },
-                                            ':recordIdBase64/:action(edit|delete)': {
+                                            ':recordIdBase64/edit': {
                                                 title: t('Edit'),
                                                 resolve: {
                                                     signalsVisibleForEdit: params => `rest/signals-visible-edit/${params.signalSetId}`,
                                                     record: params => `rest/signal-set-records/${params.signalSetId}/${params.recordIdBase64}`
                                                 },
                                                 link: params => `/settings/signal-sets/${params.signalSetId}/records/${params.recordIdBase64}/edit`,
-                                                panelRender: props => <RecordsCUD action={props.match.params.action}
+                                                panelRender: props => <RecordsCUD action='edit'
+                                                                                  signalSet={props.resolved.signalSet}
+                                                                                  signalsVisibleForEdit={props.resolved.signalsVisibleForEdit}
+                                                                                  record={props.resolved.record}/>
+                                            },
+                                            ':recordIdBase64/delete': {
+                                                title: t('Edit'),
+                                                resolve: {
+                                                    signalsVisibleForEdit: params => `rest/signals-visible-edit/${params.signalSetId}`,
+                                                    record: params => `rest/signal-set-records/${params.signalSetId}/${params.recordIdBase64}`
+                                                },
+                                                link: params => `/settings/signal-sets/${params.signalSetId}/records/${params.recordIdBase64}/edit`,
+                                                panelRender: props => <RecordsCUD action='delete'
                                                                                   signalSet={props.resolved.signalSet}
                                                                                   signalsVisibleForEdit={props.resolved.signalsVisibleForEdit}
                                                                                   record={props.resolved.record}/>
@@ -654,18 +759,24 @@ const getStructure = t => {
                         link: '/settings/users',
                         panelComponent: UsersList,
                         children: {
-                            ':userId([0-9]+)': {
+                            ':userId': {
                                 title: resolved => t('User "{{name}}"', {name: resolved.user.name}),
                                 resolve: {
                                     user: params => `rest/users/${params.userId}`
                                 },
                                 link: params => `/settings/users/${params.userId}/edit`,
                                 navs: {
-                                    ':action(edit|delete)': {
+                                    'edit': {
                                         title: t('Edit'),
                                         link: params => `/settings/users/${params.userId}/edit`,
                                         panelRender: props => (
-                                            <UsersCUD action={props.match.params.action} entity={props.resolved.user}/>)
+                                            <UsersCUD action='edit' entity={props.resolved.user}/>)
+                                    },
+                                    'delete': {
+                                        title: t('Edit'),
+                                        link: params => `/settings/users/${params.userId}/edit`,
+                                        panelRender: props => (
+                                            <UsersCUD action='delete' entity={props.resolved.user}/>)
                                     },
                                     shares: {
                                         title: t('Shares'),
@@ -685,18 +796,25 @@ const getStructure = t => {
                         link: '/settings/namespaces',
                         panelComponent: NamespacesList,
                         children: {
-                            ':namespaceId([0-9]+)': {
+                            ':namespaceId': {
                                 title: resolved => t('Namespace "{{name}}"', {name: resolved.namespace.name}),
                                 resolve: {
                                     namespace: params => `rest/namespaces/${params.namespaceId}`
                                 },
                                 link: params => `/settings/namespaces/${params.namespaceId}/edit`,
                                 navs: {
-                                    ':action(edit|delete)': {
+                                    'edit': {
                                         title: t('Edit'),
                                         link: params => `/settings/namespaces/${params.namespaceId}/edit`,
                                         visible: resolved => resolved.namespace.permissions.includes('edit'),
-                                        panelRender: props => <NamespacesCUD action={props.match.params.action}
+                                        panelRender: props => <NamespacesCUD action='edit'
+                                                                             entity={props.resolved.namespace}/>
+                                    },
+                                    'delete': {
+                                        title: t('Delete'),
+                                        link: params => `/settings/namespaces/${params.namespaceId}/edit`,
+                                        visible: resolved => resolved.namespace.permissions.includes('edit'),
+                                        panelRender: props => <NamespacesCUD action='delete'
                                                                              entity={props.resolved.namespace}/>
                                     },
                                     share: {

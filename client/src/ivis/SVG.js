@@ -4,11 +4,12 @@ import PropTypes from "prop-types";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import axios from "../lib/axios";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {select} from "d3-selection";
+import {withTranslationCustom} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
 ])
 export class SVG extends Component {

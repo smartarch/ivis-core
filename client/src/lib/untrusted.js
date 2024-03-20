@@ -2,13 +2,14 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import {requiresAuthenticatedUser, withPageHelpers} from "./page";
 import {withAsyncErrorHandler, withErrorHandling} from "./error-handling";
 import axios from "./axios";
 import styles from "./styles.scss";
 import {getSandboxUrl, getUrl, setRestrictedAccessToken} from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 @withComponentMixins([
     withErrorHandling,
@@ -194,7 +195,7 @@ class ErrorBoundary extends Component {
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslationCustom
 ])
 export class UntrustedContentRoot extends Component {
     constructor(props) {

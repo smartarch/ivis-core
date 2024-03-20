@@ -10,8 +10,9 @@ import {
 } from "../lib/bootstrap-components";
 import _ from "lodash";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "../lib/i18n";
+import {withTranslation} from "react-i18next";
 import {rangeAccessMixin} from "./RangeContext";
+import {withTranslationCustom} from "../lib/i18n";
 
 /* helper function to split nanoseconds into readable values */
 function getSeconds(value) {
@@ -95,7 +96,7 @@ export class NanosecondsSelector extends Component {
 
 @withComponentMixins([
     rangeAccessMixin,
-    withTranslation,
+    withTranslationCustom,
 ])
 export class NanosecondsRangeSelector extends Component {
     constructor(props, context) {

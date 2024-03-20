@@ -2,7 +2,7 @@
 
 import React, {Component} from 'react';
 import ReactDOMServer from 'react-dom/server';
-import {withTranslation} from './i18n';
+import {withTranslation} from "react-i18next";
 import PropTypes from 'prop-types';
 
 import jQuery from 'jquery';
@@ -17,6 +17,7 @@ import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import styles from "./styles.scss";
 import {getUrl} from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
+import {withTranslationCustom} from "./i18n";
 
 const TreeSelectMode = {
     NONE: 0,
@@ -25,7 +26,7 @@ const TreeSelectMode = {
 };
 
 @withComponentMixins([
-    withTranslation,
+    withTranslationCustom,
     withErrorHandling,
     withPageHelpers
 ], ['refresh'])
