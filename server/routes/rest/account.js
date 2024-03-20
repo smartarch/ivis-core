@@ -39,7 +39,6 @@ router.postAsync('/access-token-reset', passport.loggedIn, passport.csrfProtecti
     return res.json(accessToken);
 });
 
-
 router.post('/login', passport.csrfProtection, passport.restLogin);
 router.post('/logout', passport.csrfProtection, passport.restLogout);
 

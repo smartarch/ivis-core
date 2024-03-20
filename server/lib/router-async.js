@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const cors = require("cors");
 
 function replaceLastBySafeHandler(handlers) {
     if (handlers.length === 0) {
@@ -15,6 +16,14 @@ function replaceLastBySafeHandler(handlers) {
 
 function create() {
     const router = new express.Router();
+
+    const cors = require('cors');
+
+    router.use(cors({
+        origin: 'http://localhost:52428',
+        credentials: true,
+        methods: ['GET', 'POST', 'OPTIONS'],
+    }));
 
     router.allAsync = (path, ...handlers) => router.all(path, ...replaceLastBySafeHandler(handlers));
     router.getAsync = (path, ...handlers) => router.get(path, ...replaceLastBySafeHandler(handlers));

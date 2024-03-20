@@ -1,7 +1,6 @@
 'use strict';
 
 import { CheckCSS } from 'checkcss';
-
 const checkcss = new CheckCSS();
 checkcss.scan().watch();
 

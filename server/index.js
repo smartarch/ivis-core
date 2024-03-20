@@ -1,5 +1,15 @@
 'use strict';
 
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+app.use(cors({
+    origin: 'http://localhost:52428',
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+}));
+
 const em = require('./lib/extension-manager');
 const emCommonDefaults = require('../shared/em-common-defaults');
 const config = require('./lib/config');
@@ -36,7 +46,6 @@ async function initAndStart() {
 
         let server;
 
-        isHttps = false;
         if (isHttps) {
             const options = {
                 key: fs.readFileSync(__dirname + '/' + certsConfig.serverKey),

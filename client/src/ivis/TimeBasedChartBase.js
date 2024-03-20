@@ -273,8 +273,8 @@ export class TimeBasedChartBase extends Component {
 
     componentDidMount() {
         window.addEventListener('resize', this.resizeListener);
-        window.addEventListener('keydown', ::this.keydownListener);
-        window.addEventListener('keyup', ::this.keyupListener);
+        window.addEventListener('keydown', (event) => this.keydownListener(event));
+        window.addEventListener('keyup', (event) => this.keyupListener(event));
 
         // This causes the absolute interval to change, which in turn causes a data fetch
         this.resizeListener();
@@ -508,12 +508,12 @@ export class TimeBasedChartBase extends Component {
         if (this.props.withBrush) {
             const brush = d3Brush.brushX()
                 .extent([[0, 0], [innerWidth, innerHeight]])
-                .filter(() => { // TODO what to do when withZoom == false
+                .filter((event) => { // TODO what to do when withZoom == false
                     // noinspection JSUnresolvedVariable
-                    return d3Event.ctrlKey && !d3Event.button; // enable brush only when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
+                    return event.ctrlKey && !event.button; // enable brush only when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
                 })
-                .on("end", function brushed() {
-                    const sel = d3Event.selection;
+                .on("end", function brushed(event) {
+                    const sel = event.selection;
 
                     if (sel) {
                         const selFrom = xScale.invert(sel[0]).valueOf();
@@ -583,13 +583,13 @@ export class TimeBasedChartBase extends Component {
     createChartZoom() {
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             // noinspection JSUnresolvedVariable
-            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                transitionInterpolate(self.containerNodeSelection, self.state.zoomTransform, d3Event.transform, setZoomTransform(self));
+            if (event.sourceEvent && event.sourceEvent.type === "wheel") {
+                transitionInterpolate(self.containerNodeSelection, self.state.zoomTransform, event.transform, setZoomTransform(self));
             } else {
                 // noinspection JSUnresolvedVariable
-                self.setState({zoomTransform: d3Event.transform});
+                self.setState({zoomTransform: event.transform});
             }
         };
 
@@ -597,12 +597,12 @@ export class TimeBasedChartBase extends Component {
             clearTimeout(self.zoomUpdateReloadTimeoutID);
         };
 
-        const handleZoomEnd = function () {
+        const handleZoomEnd = function (event) {
             // noinspection JSUnresolvedVariable
             if (self.props.zoomUpdateReloadInterval === null || self.props.zoomUpdateReloadInterval === undefined) // don't update automatically
                 return;
             // noinspection JSUnresolvedVariable
-            if (!Object.is(d3Event.transform, d3Zoom.zoomIdentity))
+            if (!Object.is(event.transform, d3Zoom.zoomIdentity))
                 if (self.props.zoomUpdateReloadInterval > 0) {
                     clearTimeout(self.zoomUpdateReloadTimeoutID);
                     self.zoomUpdateReloadTimeoutID = setTimeout(() => {
@@ -620,14 +620,14 @@ export class TimeBasedChartBase extends Component {
         this.zoom
             .translateExtent(translateExtent)
             .extent(zoomExtent)
-            .on("zoom", handleZoom)
-            .on("end", handleZoomEnd)
+            .on("zoom", (event) => handleZoom(event))
+            .on("end", (event) => handleZoomEnd(event))
             .on("start", handleZoomStart)
             .wheelDelta(wheelDelta(3))
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button;
+                return !event.ctrlKey && !event.button;
             });
         this.containerNodeSelection.call(this.zoom);
         if (!zoomExisted)

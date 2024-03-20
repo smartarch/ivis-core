@@ -1,5 +1,5 @@
 import React, {Component} from "react";
-import {Map,fromJS} from 'immutable';
+import {Map, fromJS, isImmutable} from 'immutable';
 import PropTypes from "prop-types";
 import {Trans} from "react-i18next";
 import {
@@ -649,10 +649,10 @@ export const panelConfigMixin = createComponentMixin({
                 self.state = {};
             }
 
-            self.state._panelConfig = Immutable.Map({
-                params: Immutable.fromJS(props.params),
-                templateParams: Immutable.fromJS(props.panel.templateParams),
-                state: Immutable.fromJS(props.state || {}),
+            self.state._panelConfig = Map({
+                params: fromJS(props.params),
+                templateParams: fromJS(props.panel.templateParams),
+                state: fromJS(props.state || {}),
                 savePermitted: false
             });
 
@@ -667,7 +667,7 @@ export const panelConfigMixin = createComponentMixin({
             if (this.props.params !== prevProps.params) {
                 this.setState(state => ({
                     _panelConfig: state._panelConfig
-                        .set('params', Immutable.fromJS(this.props.params))
+                        .set('params', fromJS(this.props.params))
                 }));
             }
 
@@ -795,7 +795,7 @@ export const panelConfigMixin = createComponentMixin({
 
         inst.getPanelConfig = function (path = []) {
             const value = this.state._panelConfig.getIn(['params', ...path]);
-            if (Immutable.isImmutable(value)) {
+            if (isImmutable(value)) {
                 return value.toJS();
             } else {
                 return value;
@@ -808,7 +808,7 @@ export const panelConfigMixin = createComponentMixin({
          */
         inst.getPanelConfigSpec = function (path = []) {
             const value = this.state._panelConfig.getIn(['templateParams', ...path]);
-            if (Immutable.isImmutable(value)) {
+            if (isImmutable(value)) {
                 return value.toJS();
             } else {
                 return value;
@@ -826,13 +826,13 @@ export const panelConfigMixin = createComponentMixin({
 
         inst.updatePanelConfig = function (path, newValue) {
             this.setState(state => ({
-                _panelConfig: state._panelConfig.setIn(['params', ...path], Immutable.fromJS(newValue))
+                _panelConfig: state._panelConfig.setIn(['params', ...path], fromJS(newValue))
             }));
         };
 
         inst.getPanelState = function (path = []) {
             const value = this.state._panelConfig.getIn(['state', ...path]);
-            if (Immutable.isImmutable(value)) {
+            if (isImmutable(value)) {
                 return value.toJS();
             } else {
                 return value;
@@ -850,7 +850,7 @@ export const panelConfigMixin = createComponentMixin({
 
         inst.updatePanelState = function (path, newValue) {
             this.setState(state => ({
-                _panelConfig: state._panelConfig.setIn(['state', ...path], Immutable.fromJS(newValue))
+                _panelConfig: state._panelConfig.setIn(['state', ...path], fromJS(newValue))
             }));
         };
 

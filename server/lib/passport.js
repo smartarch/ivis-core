@@ -3,6 +3,17 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 
+
+/*function csurf (options) {
+    return function csrf (req, res, next) {
+        req.csrfToken = function csrfToken () {
+            return "x"
+        }
+
+        next()
+    }
+}*/
+
 const csrf = require('csurf');
 
 const users = require('../models/users');
