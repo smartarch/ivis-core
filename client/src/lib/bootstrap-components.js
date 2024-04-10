@@ -22,6 +22,7 @@ export class DismissibleAlert extends Component {
 
     @withAsyncErrorHandler
     onClose() {
+        console.log("dismiss");
         if (this.props.onCloseAsync) {
             this.props.onCloseAsync();
         }
@@ -279,6 +280,7 @@ export class ModalDialog extends Component {
         super(props);
         this.state = { isShown: !props.hidden };
         this.modalRef = React.createRef();
+        this.onClose = this.onClose.bind(this);
     }
 
     static propTypes = {
@@ -302,42 +304,57 @@ export class ModalDialog extends Component {
 
         if (this.state.isShown) {
             this.modalInstance.show();
-        } else {
-            this.modalInstance.hide();
         }
 
         modalElement.addEventListener('hidden.bs.modal', this.onHide);
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.hidden !== prevProps.hidden) {
-            this.setState({ isShown: !this.props.hidden }, () => {
-                this.state.isShown ? this.modalInstance.show() : this.modalInstance.hide();
-            });
+        if (this.modalInstance && this.props.hidden !== prevProps.hidden) {
+            if (!this.props.hidden) {
+                this.modalInstance.show();
+            } else {
+                this.modalInstance.hide();
+            }
         }
     }
 
     componentWillUnmount() {
-        this.modalInstance.dispose();
+        const modalElement = this.modalRef.current;
+        if (modalElement) {
+            modalElement.removeEventListener('hidden.bs.modal', this.onHide);
+            this.modalInstance.hide();
+        }
+
+        const onModalHidden = () => {
+            this.modalInstance.dispose();
+            modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
+        };
+
+        modalElement.addEventListener('hidden.bs.modal', onModalHidden);
     }
 
-    onHide = () => {
-        // Hide event is emited is both when hidden through user action or through API. We have to let the API
-        // calls through, otherwise the modal would never hide. The user actions, which change the desired state,
-        // are capture, converted to onClose callback and prevented. It's up to the parent to decide whether to
-        // hide the modal or not.
-        this.setState({ isShown: false });
+    onHide = async () => {
         if (this.props.onCloseAsync) {
-            this.props.onCloseAsync();
+            try {
+                await this.props.onCloseAsync();
+            } catch (error) {
+                console.error('Error when closing modal:', error);
+            }
+        }
+
+        if (this._isMounted) {
+            this.setState({ isShown: false });
         }
     }
 
     @withAsyncErrorHandler
     async onClose() {
-        if (this.props.onCloseAsync) {
+        if (this.props && this.props.onCloseAsync) {
             await this.props.onCloseAsync();
         }
     }
+
 
     async onButtonClick(idx) {
         const buttonSpec = this.props.buttons[idx];

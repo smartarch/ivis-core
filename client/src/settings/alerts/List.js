@@ -33,6 +33,7 @@ import {withTranslationCustom} from "../../lib/i18n";
 export default class List extends Component {
     constructor(props) {
         super(props);
+        this._isMounted = false;
 
         this.state = {};
         tableRestActionDialogInit(this);
@@ -47,13 +48,20 @@ export default class List extends Component {
             }
         });
 
-        this.setState({
-            createPermitted: result.data.createAlert
-        });
+        if (this._isMounted) {
+            this.setState({
+                createPermitted: result.data.createAlert
+            });
+        }
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.fetchPermissions();
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
     }
 
     render() {

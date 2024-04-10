@@ -125,9 +125,9 @@ const getStructure = t => {
                         entity={props.resolved.signal}/>
                 },
                     'delete': {
-                        title: t('Edit'),
-                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/edit`,
-                        visible: resolved => resolved.signal.permissions.includes('edit'),
+                        title: t('Delete'),
+                        link: params => `/settings/signal-sets/${params.signalSetId}/signals/${params.signalId}/delete`,
+                        visible: resolved => resolved.signal.permissions.includes('delete'),
                         panelRender: props => <SignalsCUD
                             action='delete'
                             signalSet={props.resolved.signalSet}
@@ -453,16 +453,16 @@ const getStructure = t => {
                                         panelRender: props => <TemplatesOutput entity={props.resolved.template}/>
                                     },
                                     edit: {
-                                        title: t('Settings - edit'),
+                                        title: t('Edit'),
                                         link: params => `/settings/templates/${params.templateId}/edit`,
                                         visible: resolved => resolved.template.permissions.includes('edit'),
                                         panelRender: props => <TemplatesCUD action="edit"
                                                                             entity={props.resolved.template}/>
                                     },
                                     'delete': {
-                                        title: t('Settings'),
-                                        link: params => `/settings/templates/${params.templateId}/edit`,
-                                        visible: resolved => resolved.template.permissions.includes('edit'),
+                                        title: t('Delete'),
+                                        link: params => `/settings/templates/${params.templateId}/delete`,
+                                        visible: resolved => resolved.template.permissions.includes('delete'),
                                         panelRender: props => <TemplatesCUD action="delete"
                                                                             entity={props.resolved.template}/>
                                     },
@@ -506,16 +506,16 @@ const getStructure = t => {
                                         panelRender: props => <TasksOutput entity={props.resolved.task}/>
                                     },
                                     'edit': {
-                                        title: t('Settings'),
+                                        title: t('Edit'),
                                         link: params => `/settings/tasks/${params.taskId}/edit`,
                                         visible: resolved => resolved.task.permissions.includes('edit'),
                                         panelRender: props => <TasksCUD action='edit'
                                                                         entity={props.resolved.task}/>
                                     },
                                     'delete': {
-                                        title: t('Settings'),
-                                        link: params => `/settings/tasks/${params.taskId}/edit`,
-                                        visible: resolved => resolved.task.permissions.includes('edit'),
+                                        title: t('Delete'),
+                                        link: params => `/settings/tasks/${params.taskId}/delete`,
+                                        visible: resolved => resolved.task.permissions.includes('delete'),
                                         panelRender: props => <TasksCUD action='delete'
                                                                         entity={props.resolved.task}/>
                                     },
@@ -557,16 +557,16 @@ const getStructure = t => {
                                 link: params => `/settings/jobs/${params.jobId}/edit`,
                                 navs: {
                                     'edit': {
-                                        title: t('Settings'),
+                                        title: t('Edit'),
                                         link: params => `/settings/jobs/${params.jobId}/edit`,
                                         visible: resolved => resolved.job.permissions.includes('edit'),
                                         panelRender: props => <JobsCUD action='edit'
                                                                        entity={props.resolved.job}/>
                                     },
                                     'delete': {
-                                        title: t('Settings'),
-                                        link: params => `/settings/jobs/${params.jobId}/edit`,
-                                        visible: resolved => resolved.job.permissions.includes('edit'),
+                                        title: t('Delete'),
+                                        link: params => `/settings/jobs/${params.jobId}/delete`,
+                                        visible: resolved => resolved.job.permissions.includes('delete'),
                                         panelRender: props => <JobsCUD action='delete'
                                                                        entity={props.resolved.job}/>
                                     },
@@ -631,9 +631,9 @@ const getStructure = t => {
                                                                              entity={props.resolved.signalSet}/>
                                     },
                                     'delete': {
-                                        title: t('Edit'),
-                                        link: params => `/settings/signal-sets/${params.signalSetId}/edit`,
-                                        visible: resolved => resolved.signalSet.permissions.includes('edit'),
+                                        title: t('Delete'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/delete`,
+                                        visible: resolved => resolved.signalSet.permissions.includes('delete'),
                                         panelRender: props => <SignalSetsCUD action='delete'
                                                                              entity={props.resolved.signalSet}/>
                                     },
@@ -686,8 +686,8 @@ const getStructure = t => {
                                         children: getSignalChildren()
                                     },
                                     'reindex': {
-                                        title: t('Signals'),
-                                        link: params => `/settings/signal-sets/${params.signalSetId}/signals`,
+                                        title: t('Reindex'),
+                                        link: params => `/settings/signal-sets/${params.signalSetId}/reindex`,
                                         panelRender: props => <SignalsList action='reindex'
                                                                            signalSet={props.resolved.signalSet}/>,
                                         children: getSignalChildren()
@@ -773,8 +773,8 @@ const getStructure = t => {
                                             <UsersCUD action='edit' entity={props.resolved.user}/>)
                                     },
                                     'delete': {
-                                        title: t('Edit'),
-                                        link: params => `/settings/users/${params.userId}/edit`,
+                                        title: t('Delete'),
+                                        link: params => `/settings/users/${params.userId}/delete`,
                                         panelRender: props => (
                                             <UsersCUD action='delete' entity={props.resolved.user}/>)
                                     },
@@ -812,8 +812,8 @@ const getStructure = t => {
                                     },
                                     'delete': {
                                         title: t('Delete'),
-                                        link: params => `/settings/namespaces/${params.namespaceId}/edit`,
-                                        visible: resolved => resolved.namespace.permissions.includes('edit'),
+                                        link: params => `/settings/namespaces/${params.namespaceId}/delete`,
+                                        visible: resolved => resolved.namespace.permissions.includes('delete'),
                                         panelRender: props => <NamespacesCUD action='delete'
                                                                              entity={props.resolved.namespace}/>
                                     },

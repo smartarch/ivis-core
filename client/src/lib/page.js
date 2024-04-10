@@ -449,9 +449,11 @@ class SectionContentBase extends Component {
     }
 
     navigateToWithFlashMessage(path, severity, text) {
-        console.log("Navigate to path" + path);
+        console.log("Navigate to path: " + path);
         this.setFlashMessage(severity, text);
         this.props.navigate(path, { state: { preserveFlashMessage: true } });
+        console.log("DONE Navigate to path: " + path);
+
     }
 
     ensureAuthenticated() {

@@ -210,9 +210,9 @@ function installPrerequisities {
         ubuntu1804)
             apt-get install -y curl
             curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-            apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-8-jre git libatk-bridge2.0 libgtk-3-0
+            apt-get install -y mariadb-server nodejs redis pwgen g++ make bzip2 openjdk-11-jre git libatk-bridge2.0 libgtk-3-0
 			TEMP_DEB="$(mktemp)"
-			wget -O "$TEMP_DEB" 'https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-oss-6.6.1.deb'
+			wget -O "$TEMP_DEB" 'https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.13.1-amd64.deb'
 			dpkg -i "$TEMP_DEB"
 			rm -f "$TEMP_DEB"
             ;;

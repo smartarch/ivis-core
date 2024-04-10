@@ -1563,22 +1563,22 @@ export class ScatterPlotBase extends Component {
             const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
             const brush = d3Brush.brush()
                 .extent([[0, 0], [xSize, ySize]])
-                .filter(() => {
+                .filter((event) => {
                     // noinspection JSUnresolvedVariable
-                    return !d3Event.button // enable brush when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
+                    return !event.button // enable brush when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
                 })
                 .on("start", function () {
                     self.setState({
                         zoomInProgress: true
                     });
                 })
-                .on("end", function () {
+                .on("end", function (event) {
                     if (self.props.withZoom)
                         self.setState({
                             zoomInProgress: false
                         });
                     // noinspection JSUnresolvedVariable
-                    const sel = d3Event.selection;
+                    const sel = event.selection;
 
                     if (sel) {
                         const xMin = self.xScale.invert(sel[0][0]);
@@ -1632,20 +1632,20 @@ export class ScatterPlotBase extends Component {
     createChartZoom(xSize, ySize) {
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             // noinspection JSUnresolvedVariable
-            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+            if (self.props.withTransition && event.sourceEvent && event.sourceEvent.type === "wheel") {
                 self.lastZoomCausedByUser = true;
-                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform(self), () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, event.transform, setZoomTransform(self), () => {
                     self.deselectPoints();
                 });
             } else {
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                     self.lastZoomCausedByUser = true;
                 // noinspection JSUnresolvedVariable
                 self.setState({
-                    zoomTransform: d3Event.transform
+                    zoomTransform: event.transform
                 });
             }
         };
@@ -1672,12 +1672,12 @@ export class ScatterPlotBase extends Component {
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(translateExtent)
             .extent(zoomExtent)
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button && !this.state.brushInProgress;
+                return !event.ctrlKey && !event.button && !this.state.brushInProgress;
             })
-            .on("zoom", handleZoom)
+            .on("zoom", (event) => handleZoom(event))
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
             .interpolate(d3Interpolate.interpolate)

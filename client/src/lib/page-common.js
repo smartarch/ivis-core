@@ -86,10 +86,18 @@ async function resolve(route, params, prevResolverState) {
             if (keysToResolveByRest.length > 0) {
                 const promises = urlsToResolveByRest.map(url => {
                     if (url) {
-                        return axios.get(getUrl(url));
+                        console.log("url to be resolved: " + url);
+                        return axios.get(getUrl(url))
+                            .then(response => {
+                                return response;
+                            })
+                            .catch(error => {
+                                return Promise.resolve({ data: null });
+                            });
                     } else {
-                        return Promise.resolve({data: null});
+                        return Promise.resolve({ data: null });
                     }
+
                 });
                 const resolvedArr = await Promise.all(promises);
 

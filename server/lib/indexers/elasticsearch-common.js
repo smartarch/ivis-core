@@ -44,9 +44,7 @@ async function createIndex(sigSet, signalByCidMap) {
         index: indexName,
         body: {
             mappings: {
-                _doc: {
-                    properties
-                }
+                properties
             },
             settings: {
                     default_pipeline: COPY_ID_PIPELINE
@@ -68,7 +66,6 @@ async function extendMapping(sigSet, fields) {
 
     await elasticsearch.indices.putMapping({
         index: indexName,
-        type: '_doc',
         body: {
             properties
         }

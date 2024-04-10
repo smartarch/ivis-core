@@ -34,7 +34,7 @@ import {withTranslationCustom} from "../../lib/i18n";
 export default class List extends Component {
     constructor(props) {
         super(props);
-
+        this._isMounted = false;
         this.state = {};
         tableRestActionDialogInit(this);
     }
@@ -47,15 +47,21 @@ export default class List extends Component {
                 requiredOperations: ['createNamespace']
             }
         });
-
-        this.setState({
-            createPermitted: result.data.createNamespace
-        });
+        if(this._isMounted) {
+            this.setState({
+                createPermitted: result.data.createNamespace
+            });
+        }
     }
 
     componentDidMount() {
+        this._isMounted = true;
         // noinspection JSIgnoredPromiseFromCall
         this.fetchPermissions();
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
     }
 
     render() {

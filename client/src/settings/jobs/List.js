@@ -43,6 +43,7 @@ export default class List extends Component {
     constructor(props) {
         super(props);
 
+        this._isMounted = false;
         this.state = {
             tab: TaskSource.USER
         };
@@ -62,9 +63,11 @@ export default class List extends Component {
             }
         });
 
-        this.setState({
-            createPermitted: result.data.createJob
-        });
+        if(this._isMounted) {
+            this.setState({
+                createPermitted: result.data.createJob
+            });
+        }
     }
 
     @withAsyncErrorHandler
@@ -109,10 +112,12 @@ export default class List extends Component {
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.fetchPermissions();
     }
 
     componentWillUnmount() {
+        this._isMounted = false;
         this.runSpecs.forEach((k, v) => {
             if (v && v.timeout) {
                 clearTimeout(v.timeout)

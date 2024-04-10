@@ -43,6 +43,7 @@ export default class List extends Component {
     constructor(props) {
         super(props);
 
+        this._isMounted = false;
         this.state = {};
         tableRestActionDialogInit(this);
 
@@ -58,9 +59,11 @@ export default class List extends Component {
             }
         });
 
-        this.setState({
-            createPermitted: result.data.createTemplate
-        });
+        if(this._isMounted) {
+            this.setState({
+                createPermitted: result.data.createTemplate
+            });
+        }
     }
 
     @withAsyncErrorHandler
@@ -70,7 +73,12 @@ export default class List extends Component {
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.fetchPermissions();
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
     }
 
     render() {

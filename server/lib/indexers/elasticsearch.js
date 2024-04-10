@@ -49,7 +49,7 @@ async function init() {
     const startedPromise = new Promise((resolve, reject) => {
         startedCallback = resolve;
     });
-
+;
     indexerProcess.on('message', msg => {
         if (msg) {
             switch (msg.type) {
@@ -170,7 +170,6 @@ async function onInsertRecords(sigSetWithSigMap, records) {
         bulk.push({
             index: {
                 _index: indexName,
-                _type: '_doc',
                 _id: record.id
             }
         });
@@ -216,7 +215,6 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
     try {
         await elasticsearch.delete({
             index: indexName,
-            type: '_doc',
             id: existingRecordId
         });
     } catch (err) {
@@ -228,7 +226,6 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
 
     await elasticsearch.create({
         index: indexName,
-        type: '_doc',
         id: record.id,
         body: esDoc
     });
@@ -243,7 +240,6 @@ async function onRemoveRecord(sigSet, recordId) {
     try {
         await elasticsearch.delete({
             index: indexName,
-            type: '_doc',
             id: recordId
         });
     } catch (err) {

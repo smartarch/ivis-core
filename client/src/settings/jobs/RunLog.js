@@ -38,6 +38,7 @@ export default class Log extends Component {
     constructor(props) {
         super(props);
 
+        this._isMounted = false;
         this.state = {};
         tableRestActionDialogInit(this);
 
@@ -53,13 +54,20 @@ export default class Log extends Component {
             }
         });
 
-        this.setState({
-            deletePermitted: result.data.deleteJob
-        });
+        if(this._isMounted) {
+            this.setState({
+                deletePermitted: result.data.deleteJob
+            });
+        }
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.fetchPermissions();
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
     }
 
     render() {

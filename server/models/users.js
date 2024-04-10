@@ -159,7 +159,8 @@ async function _validateAndPreprocess(tx, entity, isCreate, isOwnAccount = false
             throw new Error('Invalid password');
         }
 
-        entity.password = await bcryptHash(entity.password, null, null);
+        const saltRounds = 10;
+        entity.password = await bcrypt.hash(entity.password, saltRounds);
     } else {
         delete entity.password;
     }

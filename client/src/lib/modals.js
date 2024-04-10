@@ -44,18 +44,24 @@ export class RestActionModalDialog extends Component {
     }
 
     async hideModal(isBack) {
+        console.log("hiding the RestActionModalDialog");
         if (this.props.backUrl) {
+            console.log("1");
             this.navigateTo(this.props.backUrl);
         } else {
             if (isBack) {
+                console.log("2");
                 this.props.onBack();
+                console.log("2 done");
             } else {
+                console.log("3");
                 this.props.onPerformingAction();
             }
         }
     }
 
     async performAction() {
+        console.log("perform action")
         const props = this.props;
         const t = props.t;
         const owner = props.stateOwner;
@@ -73,6 +79,7 @@ export class RestActionModalDialog extends Component {
             await axios.method(props.actionMethod, getUrl(props.actionUrl), props.actionData);
 
             if (props.successUrl) {
+                console.log("success " + props.successUrl);
                 this.navigateToWithFlashMessage(props.successUrl, 'success', props.actionDoneMsg);
             } else {
                 props.onSuccess();
@@ -209,8 +216,6 @@ export function tableRestActionDialogInit(owner) {
 function _hide(owner, dontRefresh = false) {
     const refreshTables = owner.tableRestActionDialogData.refreshTables;
 
-    owner.setState({ tableRestActionDialogShown: false });
-
     if (!dontRefresh) {
         owner.tableRestActionDialogData = {};
 
@@ -218,12 +223,15 @@ function _hide(owner, dontRefresh = false) {
             refreshTables();
         } else {
             if(owner.table != null) {
+                console.log("calling refresh in modals");
                 owner.table.refresh();
             }
         }
     } else {
         // _hide is called twice: (1) at performing action, and at (2) success. Here we keep the refreshTables
         // reference till it is really needed in step #2.
+        console.log("called set state" + JSON.toString(owner));
+        owner.setState({ tableRestActionDialogShown: false });
         owner.tableRestActionDialogData = { refreshTables };
     }
 }
@@ -320,7 +328,7 @@ export function tableRestActionDialogRender(owner) {
         actionMethod={data.httpMethod || HTTPMethod.POST}
         actionUrl={data.actionUrl || ''}
         actionData={data.actionData}
-        onBack={() => _hide(owner)}
+        onBack={() => _hide(owner,true)}
         onPerformingAction={() => _hide(owner, true)}
         onSuccess={() => _hide(owner)}
         actionInProgressMsg={data.actionInProgressMsg || ''}

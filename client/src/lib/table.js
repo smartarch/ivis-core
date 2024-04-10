@@ -70,6 +70,7 @@ class Table extends Component {
     }
 
     refresh() {
+        console.log("called refresh in table.js");
         if (this.table) {
             this.table.rows().draw('page');
         }

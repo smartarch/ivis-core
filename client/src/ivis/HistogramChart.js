@@ -590,19 +590,19 @@ export class HistogramChart extends Component {
         // noinspection DuplicatedCode
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             // noinspection JSUnresolvedVariable
-            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+            if (self.props.withTransition && event.sourceEvent && event.sourceEvent.type === "wheel") {
                 self.lastZoomCausedByUser = true;
-                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, event.transform, setZoomTransform, () => {
                     self.deselectPoints();
                 });
             } else {
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                     self.lastZoomCausedByUser = true;
                 // noinspection JSUnresolvedVariable
-                setZoomTransform(d3Event.transform);
+                setZoomTransform(event.transform);
             }
         };
 
@@ -632,14 +632,14 @@ export class HistogramChart extends Component {
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(zoomExtent)
             .extent(zoomExtent)
-            .on("zoom", handleZoom)
+            .on("zoom", (event) => handleZoom(event))
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
             .wheelDelta(wheelDelta(2))
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button;
+                return !event.ctrlKey && !event.button;
             });
         this.svgContainerSelection.call(this.zoom);
         this.moveBrush(this.state.zoomTransform);
@@ -754,18 +754,18 @@ export class HistogramChart extends Component {
         this.brush
             .extent([[0, 0], [xSize, ySize]])
             .handleSize(20)
-            .on("brush", function () {
+            .on("brush", function (event) {
                 // noinspection JSUnresolvedVariable
-                const sel = d3Event.selection;
+                const sel = event.selection;
                 self.overviewBrushSelection.call(brushHandlesLeftRight, sel, ySize);
 
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom" && d3Event.sourceEvent.target === self.zoom) return; // ignore brush-by-zoom
+                if (event.sourceEvent && event.sourceEvent.type === "zoom" && event.sourceEvent.target === self.zoom) return; // ignore brush-by-zoom
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "brush" && d3Event.sourceEvent.target === self.brush) return; // ignore brush by itself
+                if (event.sourceEvent && event.sourceEvent.type === "brush" && event.sourceEvent.target === self.brush) return; // ignore brush by itself
 
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                     self.lastZoomCausedByUser = true;
 
                 const newTransform = d3Zoom.zoomIdentity.scale(xSize / (sel[1] - sel[0])).translate(-sel[0], 0);
