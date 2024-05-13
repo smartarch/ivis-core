@@ -34,6 +34,8 @@ export function forAggs(signals, fn) {
 }
 
 function getTsSignalCid(signalSet) {
+    console.log("signalSet");
+    console.log(signalSet);
     return signalSet.tsSigCid || SUBSTITUTE_TS_SIGNAL;
 }
 
@@ -87,6 +89,9 @@ class DataAccess {
         let reqDataIdx = 0;
 
         for (const hlQuery of queries) {
+            console.log("data access query ");
+            console.log(hlQuery);
+            console.log(hlQuery.type);
             const qry = this.queryTypes[hlQuery.type].getQueries(...hlQuery.args);
             segments.push({
                 start: reqDataIdx,
@@ -101,6 +106,8 @@ class DataAccess {
         const fetchTaskData = this.fetchTaskData;
         const startIdx = fetchTaskData.reqData.length;
 
+        console.log("reqData");
+        console.log(reqData);
         fetchTaskData.reqData.push(...reqData);
         this.scheduleFetchTask();
 
@@ -240,6 +247,7 @@ class DataAccess {
       }
     */
     getTimeSeriesQueries(sigSets, intervalAbsolute, docsLimit = docsLimitDefault) {
+        console.log("getTimeSeriesQueries");
         const reqData = [];
         const fetchDocs = intervalAbsolute.aggregationInterval.valueOf() === 0;
 
@@ -726,7 +734,12 @@ class DataAccess {
         this.resetFetchQueue();
 
         try {
+            console.log("fetchTaskData.reqData");
+            console.log(fetchTaskData.reqData);
             const response = await axios.post(getUrl('rest/signals-query'), fetchTaskData.reqData);
+
+            console.log("response");
+            console.log(response);
 
             const signalsData = response.data;
             fetchTaskData.successful(signalsData);
@@ -748,8 +761,11 @@ export class DataAccessSession {
 
         const requestNo = this.requestNos[type];
 
+        console.log("get latest multiple");
+        console.log(queries);
         const results = await dataAccess.query(queries);
-
+        console.log("result");
+        console.log(results);
         if (requestNo == this.requestNos[type]) {
             return results;
         } else {
@@ -836,12 +852,14 @@ class TimeSeriesDataProvider extends Component {
         try {
             const signalSetsData = await this.props.fetchDataFun(this.dataAccessSession, this.getIntervalAbsolute());
 
+            console.log(signalSetsData);
             if (signalSetsData) {
                 this.setState({
                     signalSetsData
                 });
             }
         } catch (err) {
+            console.log("error fetching data in timeseriesDataprovider")
             throw err;
         }
     }
@@ -982,7 +1000,8 @@ export class TimeSeriesLimitedPointsProvider extends Component {
         }
 
         const results = await dataAccessSession.getLatestMixed(queries);
-
+        console.log("results");
+        console.log(results);
         const data = {};
 
         if (results) {

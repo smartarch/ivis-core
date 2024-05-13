@@ -387,8 +387,6 @@ export class LineChartBase extends Component {
                 if (typeof yAxes[axisIdx].yAxisTicksFormat === "function")
                     yAxis.tickFormat(yAxes[axisIdx].yAxisTicksFormat);
 
-
-                console.log("shift" + shift);
                 base.yAxisSelection.append('g').attr("transform", "translate( " + shift + ", 0 )").call(yAxis);
                 base.yAxisSelection.append('text')
                         .attr("transform", "rotate(-90)")

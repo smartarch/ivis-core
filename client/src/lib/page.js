@@ -13,7 +13,7 @@ import interoperableErrors from "../../../shared/interoperable-errors";
 import {ActionLink, Button, DismissibleAlert, DropdownActionLink, Icon} from "./bootstrap-components";
 import ivisConfig from "ivisConfig";
 import styles from "./styles.scss";
-import {getRoutes, renderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
+import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
 import {getBaseDir} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
 import {getLang} from "../../../shared/langs";
@@ -449,11 +449,8 @@ class SectionContentBase extends Component {
     }
 
     navigateToWithFlashMessage(path, severity, text) {
-        console.log("Navigate to path: " + path);
         this.setFlashMessage(severity, text);
         this.props.navigate(path, { state: { preserveFlashMessage: true } });
-        console.log("DONE Navigate to path: " + path);
-
     }
 
     ensureAuthenticated() {
@@ -498,22 +495,27 @@ class SectionContentBase extends Component {
                 flashMessage = <DismissibleAlert severity={this.state.flashMessageSeverity} onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>;
             }
 
-            return renderRoute(
-                route,
-                PanelRoute,
-                () => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t)),
-                flashMessage
+            return (
+                <RenderRoute
+                    route={route}
+                    panelRouteCtor={PanelRoute}
+                    loadingMessageFn={() => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t))}
+                    flashMessage={flashMessage}
+                />
             );
+
         };
         return <Route key={route.path} exact={route.exact} path={route.path} element={<Element/>} />
     }
 
     render() {
         const routes = getRoutes(this.props.structure);
-
         return (
             <SectionContentContext.Provider value={this}>
-                <Routes>{routes.map(x => this.renderRoute(x))}</Routes>
+                <Routes>{routes.map(x => {
+                    return this.renderRoute(x);
+                })
+                }</Routes>
             </SectionContentContext.Provider>
         );
     }

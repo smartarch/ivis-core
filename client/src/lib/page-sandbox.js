@@ -6,7 +6,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
 import {withErrorHandling} from "./error-handling";
 import styles from "./styles-content.scss";
-import {getRoutes, renderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
+import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
 import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
@@ -41,7 +41,6 @@ class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired
     }
 
     componentDidMount() {
@@ -74,12 +73,11 @@ class PanelRoute extends Component {
     }
 
     render() {
-        const { t, route, match } = this.props;
+        const { t, route } = this.props;
 
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
                 const compProps = {
-                    match: match,
                     location: this.props.location,
                     resolved,
                     permissions
@@ -106,72 +104,10 @@ class PanelRoute extends Component {
                 return getLoadingMessage(t);
             }
         };
-
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+        return <Resolver route={route} render={render} params={this.props.params} location={this.props.location}/>;
     }
 }
 
-/*class PanelRoute extends Component {
-    static propTypes = {
-        route: PropTypes.object.isRequired,
-        location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired
-    }
-
-    render() {
-        const t = this.props.t;
-        const route = this.props.route;
-        const params = this.props.match.params;
-
-        if (route.insideIframe) {
-            jQuery(document.body).addClass('inside-iframe');
-        } else {
-            jQuery(document.body).removeClass('inside-iframe');
-        }
-
-        let theme = getTheme(this.props.location.search);
-        if (theme === Theme.DARK) {
-            jQuery(document.body).addClass('theme-dark');
-        }
-
-        const render = (resolved, permissions) => {
-            if (resolved && permissions) {
-                const compProps = {
-                    match: this.props.match,
-                    location: this.props.location,
-                    resolved,
-                    permissions
-                };
-
-                let panel;
-                if (route.panelComponent) {
-                    panel = React.createElement(route.panelComponent, compProps);
-                } else if (route.panelRender) {
-                    panel = route.panelRender(compProps);
-                }
-
-
-                let cls = `container-fluid`;
-
-                return (
-                    <div className={cls}>
-                        <ThemeContext.Provider value={theme}>
-                            {panel}
-                        </ThemeContext.Provider>
-                    </div>
-                );
-
-            } else {
-                return getLoadingMessage(t);
-            }
-        };
-
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
-    }
-}*/
-
-
-@withRouter
 @withComponentMixins([
     withTranslationCustom,
     withErrorHandling
@@ -224,8 +160,21 @@ export class SectionContent extends Component {
     }
 
     renderRoute(route) {
-        const render = props => renderRoute(route, PanelRoute, () => getLoadingMessage(this.props.t), null, props);
-        return <Route key={route.path} exact={route.exact} path={route.path} render={render}/>
+            const renderFunc = () => (
+                <RenderRoute
+                    route={route}
+                    panelRouteCtor={PanelRoute}
+                    loadingMessageFn={() => getLoadingMessage(this.props.t)}
+                />
+            );
+
+            return (
+                <Route
+                    key={route.path}
+                    path={route.path}
+                    element={renderFunc()}
+                />
+            );
     }
 
     render() {
@@ -233,7 +182,10 @@ export class SectionContent extends Component {
 
         return (
             <SectionContentContext.Provider value={this}>
-                <Switch>{routes.map(x => this.renderRoute(x))}</Switch>
+                <Routes>{
+                    routes.map(x => this.renderRoute(x))
+                }
+                </Routes>
             </SectionContentContext.Provider>
         );
     }

@@ -84,6 +84,7 @@ import {TranslationRoot} from "./lib/i18n";
 
 import {SignalSetKind} from "../../shared/signal-sets";
 import {TaskSource, isBuiltinSource} from "../../shared/tasks";
+import {LegendPosition, StaticPieChart} from "./ivis/PieChart";
 
 emCommonDefaults.setDefaults(em);
 
@@ -94,16 +95,20 @@ const getStructure = t => {
         resolve: {
             panel: params => `rest/panels/${params.panelId}`
         },
-        structure: (resolved, params) => {
+        panelRender: props => <WorkspacePanel panel={props.resolved.panel}/>
+
+        /*structure: (resolved, params) => {
             if (resolved.panel.template) {
+                console.log("resolved.panel.template ok")
                 return {
                     panelRender: props => <WorkspacePanel panel={resolved.panel}/>
                 }
             } else {
+                console.log("failed to resolved.panel.template")
                 const panelStructure = em.get('client.builtinTemplates.routes.' + resolved.panel.builtin_template);
                 return panelStructure(resolved.panel, t, `/workspaces/${params.workspaceId}/${params.panelId}`);
             }
-        }
+        }*/
     };
 
     function getSignalChildren() {
@@ -208,16 +213,6 @@ const getStructure = t => {
                 primaryMenuComponent: MainMenuAuthenticated,
                 secondaryMenuComponent: WorkspaceSidebar,
                 children: {
-                    ':workspaceId/:panelId': {
-                        ...panelStructureSpec,
-                        children: {
-                            'fullscreen': {
-                                ...panelStructureSpec,
-                                panelInFullScreen: true,
-                                link: params => `/workspaces/${params.props.workspaceId}/${params.panelId}/fullscreen`,
-                            }
-                        }
-                    },
                     ':workspaceId': {
                         title: resolved => resolved.workspace.name,
                         resolve: {
@@ -225,8 +220,19 @@ const getStructure = t => {
                             panelsVisible: params => `rest/panels-visible/${params.workspaceId}`
                         },
                         link: params => `/workspaces/${params.workspaceId}`,
-                        panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>,
+                        panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>
                     },
+                    ':workspaceId/:panelId': {
+                            ...panelStructureSpec,
+                            children: {
+                                'fullscreen': {
+                                    ...panelStructureSpec,
+                                    panelInFullScreen: true,
+                                    link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
+                                }
+                            }
+                    },
+
                     sample: {
                         title: t('Sample workspace'),
                         link: '/workspaces/sample',

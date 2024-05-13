@@ -1607,13 +1607,11 @@ const withForm = createComponentMixin({
 
         function scheduleValidateForm(self) {
             setTimeout(() => {
-                if(proto._isComponentMounted) {
                     self.setState(previousState => ({
                         formState: previousState.formState.withMutations(mutState => {
                             validateFormState(self, mutState);
                         })
                     }));
-                }
             }, 0);
         }
 
@@ -1621,6 +1619,12 @@ const withForm = createComponentMixin({
             const settings = self.state.formSettings;
 
             if (!mutState.get('isServerValidationRunning') && settings.serverValidation) {
+
+                /*if(settings.serverValidation.changed.length === 0){
+                    mutState['data'].setIn(['cid', 'serverValidated'], true);
+                    mutState['data'].setIn(['cid', 'serverValidation'], true);
+                }*/
+
                 const payload = {};
                 let payloadNotEmpty = false;
 
@@ -1650,8 +1654,8 @@ const withForm = createComponentMixin({
 
                     axios.post(getUrl(settings.serverValidation.url), payload)
                         .then(response => {
-
                             if (self.isComponentMounted()) {
+
                                 self.setState(previousState => ({
                                     formState: previousState.formState.withMutations(mutState => {
                                         mutState.set('isServerValidationRunning', false);
@@ -1674,7 +1678,6 @@ const withForm = createComponentMixin({
                         })
                         .catch(error => {
                             if (self.isComponentMounted()) {
-                                console.log('Error in "validateFormState": ' + error);
 
                                 self.setState(previousState => ({
                                     formState: previousState.formState.set('isServerValidationRunning', false)
@@ -1693,11 +1696,11 @@ const withForm = createComponentMixin({
                 }
             }
 
-            /*if (self.localValidateFormValues) {
+            if (self.localValidateFormValues) {
                 mutState.update('data', stateData => stateData.withMutations(mutStateData => {
                     self.localValidateFormValues(mutStateData);
                 }));
-            }*/
+            }
         }
 
         const previousComponentDidMount = proto.componentDidMount;
@@ -1781,17 +1784,13 @@ const withForm = createComponentMixin({
         };
 
         proto.validateAndSendFormValuesToURL = async function (method, url) {
-            console.log("Initial " + method + "," + url)
 
             const settings = this.state.formSettings;
             await this.waitForFormServerValidated();
-            console.log("Await " + method + "," + url)
 
             if (this.isFormWithoutErrors()) {
-                console.log("without errors");
 
                 if (settings.getPreSubmitUpdater) {
-                    console.log("get");
                     const preSubmitUpdater = await settings.getPreSubmitUpdater();
 
                     await new Promise((resolve, reject) => {
@@ -1812,9 +1811,7 @@ const withForm = createComponentMixin({
                     }
                 }
 
-                console.log("Before " + method + "," + getUrl(url))
                 const response = await axios.method(method, getUrl(url), data);
-                console.log("After " + method + "," + url)
 
                 if (settings.leaveConfirmation) {
                     await new Promise((resolve, reject) => {
@@ -2075,7 +2072,6 @@ const withForm = createComponentMixin({
         };
 
         proto.isFormWithoutErrors = function () {
-            console.log(this.state.formState.get('data'));
             return !this.state.formState.get('data').find(attr => attr.get('error'));
         };
 

@@ -1,8 +1,8 @@
 'use strict';
 
 import { CheckCSS } from 'checkcss';
-const checkcss = new CheckCSS();
-checkcss.scan().watch();
+//const checkcss = new CheckCSS();
+//checkcss.scan().watch();
 
 export * from './PanelConfig';
 export * from './PanelMenu';

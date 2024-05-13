@@ -237,6 +237,7 @@ function _hide(owner, dontRefresh = false) {
 }
 
 export function tableAddDeleteButton(actions, owner, perms, deleteUrl, name, deletingMsg, deletedMsg) {
+    console.log("[tableAddDeleteButton]");
     const t = owner.props.t;
 
     async function onErrorAsync(err) {
@@ -250,33 +251,28 @@ export function tableAddDeleteButton(actions, owner, perms, deleteUrl, name, del
     }
 
     if (!perms || perms.includes('delete')) {
-        if (owner.tableRestActionDialogData.shown) {
-            actions.push({
-                label: <Icon className={styles.iconDisabled} icon="trash-alt" title={t('delete')}/>
-            });
-        } else {
-            actions.push({
-                label: <Icon icon="trash-alt" title={t('delete')}/>,
-                action: () => {
-                    owner.tableRestActionDialogData = {
-                        shown: true,
-                        title: t('confirmDeletion'),
-                        message:t('areYouSureYouWantToDeleteName?', {name}),
-                        httpMethod: HTTPMethod.DELETE,
-                        actionUrl: deleteUrl,
-                        actionInProgressMsg: deletingMsg,
-                        actionDoneMsg: deletedMsg,
-                        onErrorAsync: onErrorAsync
-                    };
+        console.log("modals else");
+        actions.push({
+            label: <Icon icon="trash-alt" title={t('delete')}/>,
+            action: () => {
+                owner.tableRestActionDialogData = {
+                    shown: true,
+                    title: t('confirmDeletion'),
+                    message: t('areYouSureYouWantToDeleteName?', {name}),
+                    httpMethod: HTTPMethod.DELETE,
+                    actionUrl: deleteUrl,
+                    actionInProgressMsg: deletingMsg,
+                    actionDoneMsg: deletedMsg,
+                    onErrorAsync: onErrorAsync
+                };
 
-                    owner.setState({
-                        tableRestActionDialogShown: true
-                    });
+                owner.setState({
+                    tableRestActionDialogShown: true
+                });
 
-                    owner.table.refresh();
-                }
-            });
-        }
+                owner.table.refresh();
+            }
+        });
     }
 }
 

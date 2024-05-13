@@ -199,6 +199,7 @@ class Table extends Component {
     }
 
     componentDidMount() {
+        console.log("component did mount");
         this.mounted = true;
 
         const columns = this.props.columns.slice();

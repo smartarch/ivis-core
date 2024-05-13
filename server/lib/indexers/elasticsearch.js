@@ -35,7 +35,6 @@ async function init() {
 
     const options = {
         cwd: path.join(__dirname, '..', '..'),
-        env: {NODE_ENV: process.env.NODE_ENV}
     };
 
     if (process.env.NODE_ENV && process.env.NODE_ENV === 'development') {
@@ -74,7 +73,7 @@ async function init() {
 
     const sigSets = await signalSets.list();
     for (const sigSet of sigSets) {
-        // TODO non existing indices for computed singal sets are not handled yet
+        // TODO non existing indices for computed signal sets are not handled yet
         // it might cause problems. For example when clearing indices, starting ivis, jobs might expect index to exits.
         if (sigSet.type !== SignalSetType.COMPUTED) {
             await signalSets.index(contextHelpers.getAdminContext(), sigSet.id, IndexMethod.INCREMENTAL);
@@ -91,8 +90,8 @@ async function init() {
             }
         }
     }
-}
 
+}
 
 async function initPipelines() {
 

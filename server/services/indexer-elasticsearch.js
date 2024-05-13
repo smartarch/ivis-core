@@ -129,7 +129,6 @@ async function index(cid, method, from) {
                 bulk.push({
                     index: {
                         _index: indexName,
-                        _type: '_doc',
                         _id: row.id
                     }
                 });

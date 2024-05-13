@@ -23,7 +23,8 @@ const ReplacementBehavior = entitySettings.ReplacementBehavior;
 const {emitter, EventTypes} = require('../lib/files-events');
 
 function enforceTypePermitted(type, subType) {
-    enforce(type in entityTypes && entityTypes[type].files && entityTypes[type].files[subType], `File type ${type}:${subType} does not exist`);
+    enforce(type in entityTypes && entityTypes[type].files && entityTypes[type].files[subType],
+        `File type ${type}:${subType} does not exist`);
 }
 
 function getFilePath(type, subType, entityId, filename) {

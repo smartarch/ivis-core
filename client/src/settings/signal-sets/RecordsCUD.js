@@ -98,10 +98,13 @@ export default class RecordsCUD extends Component {
     }
 
     localValidateFormValues(state) {
+        console.log("localValidateFormValues recordsCUD")
         const t = this.props.t;
 
         const idValue = state.getIn(['id', 'value']);
 
+        console.log(this.state);
+        console.log("sate");
         const idServerValidation = state.getIn(['id', 'serverValidation']);
         state.setIn(['id', 'error'], null);
         if (!this.state.autoId && !idValue) {

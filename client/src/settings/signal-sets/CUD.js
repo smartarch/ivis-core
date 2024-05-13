@@ -228,6 +228,7 @@ export default class CUD extends Component {
 
     @withFormErrorHandlers
     async submitHandler(submitAndLeave) {
+        console.log("submit handler in CUD in signal-sets");
         const t = this.props.t;
         const labels = this.labels;
 

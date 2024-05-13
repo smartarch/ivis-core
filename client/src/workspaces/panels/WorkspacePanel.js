@@ -94,8 +94,8 @@ function WorkspacePanel(props) {
     const navigate = useNavigate();
     const location = useLocation();
     const params = useParams();
-
+    console.log("Obtained hooks for workspace panel");
     return <WorkspacePanelBase {...props} navigate={navigate} location={location} params={params} />;
 }
 
-export default { WorkspacePanel};
+export default WorkspacePanel;

@@ -35,6 +35,7 @@ export default class List extends Component {
     }
 
     render() {
+        console.log("render called");
         // There are no permissions checks here because this page makes no sense for anyone who does not have manageUsers permission
         // Once someone has this permission, then all on this page can be used.
 
@@ -51,7 +52,7 @@ export default class List extends Component {
         columns.push({
             actions: data => {
                 const actions = [];
-
+                console.log("called actions");
                 actions.push({
                     label: <Icon icon="edit" title={t('Edit')}/>,
                     link: `/settings/users/${data[0]}/edit`
@@ -67,6 +68,7 @@ export default class List extends Component {
                 return actions;
             }
         });
+        console.log("render called before return");
 
         return (
             <Panel title={t('Users')}>

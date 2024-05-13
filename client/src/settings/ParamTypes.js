@@ -857,8 +857,10 @@ export default class ParamTypes {
                     if (spec.children) {
                         const result = [];
 
-                        for (const childConfig of value) {
-                            result.push(upcastChild(childConfig));
+                        if(value !== undefined) {
+                            for (const childConfig of value) {
+                                result.push(upcastChild(childConfig));
+                            }
                         }
 
                         return result;

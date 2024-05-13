@@ -86,7 +86,6 @@ async function resolve(route, params, prevResolverState) {
             if (keysToResolveByRest.length > 0) {
                 const promises = urlsToResolveByRest.map(url => {
                     if (url) {
-                        console.log("url to be resolved: " + url);
                         return axios.get(getUrl(url))
                             .then(response => {
                                 return response;
@@ -199,7 +198,7 @@ export function getRoutes(structure, parentRoute) {
 
             const route = {
                 path: (pathWithParams === '' ? '/' : pathWithParams),
-                exact: !entry.structure && entry.exact !== false,
+                exact: true,//!entry.structure && entry.exact !== false,
                 structure: entry.structure,
                 panelComponent: entry.panelComponent,
                 panelRender: entry.panelRender,
@@ -390,33 +389,46 @@ class SubRoute extends Component {
     render() {
         const t = this.context;
         const route = this.props.route;
+        const params = this.props.params;
+        const location = this.props.location;
 
         const renderRouteComponent = (route) => {
-            return renderRoute(route, this.props.panelRouteCtor, this.props.loadingMessageFn, this.props.flashMessage);
+            return <RenderRoute route={route} panelRouteCtor={this.props.panelRouteCtor} loadingMessageFn={this.props.loadingMessageFn} flashMessage={this.props.flashMessage} />;
         };
 
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
-                const subStructure = route.structure(resolved, permissions);
+                const subStructure = route.structure(resolved, permissions,params);
                 const routes = getRoutes(subStructure, route);
-
+                const childRoute = routes[0];
                 return (
-                    <Routes>
-                        {routes.map(route => (
-                            <Route key={route.path} path={route.path} element={renderRouteComponent(route)} />
+                    <Route
+                        key={childRoute.path}
+                        path={childRoute.path}
+                        element={renderRouteComponent(childRoute)}
+                    >
+                    </Route>
+                    /*<Routes>
+                        {routes.map(childRoute => (
+                            <Route
+                                key={childRoute.path}
+                                path={childRoute.path}
+                                element={renderRouteComponent(childRoute)}
+                            >
+                            </Route>
                         ))}
-                    </Routes>
+                    </Routes>*/
                 );
             } else {
                 return this.props.loadingMessageFn();
             }
         };
 
-        return <Resolver route={route} render={render}/>;
+        return <Resolver route={route} render={render} params={params} location={location}/>;
     }
 }
 
-export function renderRoute(route, panelRouteCtor, loadingMessageFn, flashMessage) {
+export const RenderRoute = ({ route, panelRouteCtor, loadingMessageFn, flashMessage }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const params = useParams();
@@ -425,15 +437,14 @@ export function renderRoute(route, panelRouteCtor, loadingMessageFn, flashMessag
 
     if (route.structure) {
         return <SubRoute route={route} flashMessage={flashMessage} panelRouteCtor={panelRouteCtor} loadingMessageFn={loadingMessageFn} {...props}/>;
-
     } else if (!route.panelRender && !route.panelComponent && route.link) {
         return <RedirectRoute route={route} {...props}/>;
-
     } else {
         const PanelRoute = panelRouteCtor;
         return <PanelRoute route={route} flashMessage={flashMessage} {...props}/>;
     }
-}
+};
+
 
 export const SectionContentContext = React.createContext(null);
 export const withPageHelpers = createComponentMixin({
