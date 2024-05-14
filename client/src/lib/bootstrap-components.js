@@ -368,7 +368,7 @@ export class ModalDialog extends Component {
             return (
                 <button
                     key={idx}
-                    className={buttonSpec.className}
+                    className={'btn ' + buttonSpec.className}
                     onClick={() => this.onButtonClick(idx)}
                 >
                     {buttonSpec.label}
@@ -378,7 +378,7 @@ export class ModalDialog extends Component {
     }
 
     render() {
-        const { className, title, children } = this.props;
+        const { className, title, children, t } = this.props;
 
         let modalClassName = `modal fade ${className || ''}`;
         if (this.state.isShown) {
@@ -399,9 +399,7 @@ export class ModalDialog extends Component {
                     <div className="modal-content">
                         <div className="modal-header">
                             <h4 className="modal-title">{title}</h4>
-                            <button type="button" className="close" aria-label="Close" onClick={this.onClose}>
-                                <span aria-hidden="true">&times;</span>
-                            </button>
+                            <button type="button" className="btn-close" aria-label={t('close')} onClick={this.onClose} />
                         </div>
                         <div className="modal-body">{children}</div>
                         {this.props.buttons && (
