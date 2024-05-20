@@ -61,6 +61,7 @@ function createApp(type) {
 
     function install404Fallback(url) {
         app.use(url, (req, res, next) => {
+            console.log("url not found: " + url);
             next(new interoperableErrors.NotFoundError());
         });
 
@@ -112,7 +113,8 @@ function createApp(type) {
         app.use(cookieParser());
 
         if (config.redis.enabled) {
-            const RedisStore = require('connect-redis')(session);
+            const RedisStore = new require('connect-redis').default;
+            RedisStore.session = session;
 
             app.use(session({
                 store: new RedisStore(config.redis),
@@ -163,6 +165,7 @@ function createApp(type) {
     });
 
     if (type === AppType.TRUSTED || type === AppType.SANDBOXED) {
+        console.log("client path = " + path.join(__dirname, '..', 'client', 'dist'));
         const clientDist = em.get('app.clientDist', path.join(__dirname, '..', 'client', 'dist'));
         useWith404Fallback('/static', express.static(path.join(__dirname, '..', 'client', 'static')));
         useWith404Fallback('/client', express.static(clientDist));
@@ -213,6 +216,7 @@ function createApp(type) {
         app.use('/api', embedApi);
     }
 
+    console.log("get router: ", index.getRouter(type));
     app.use('/', index.getRouter(type));
 
     // catch 404 and forward to error handler
