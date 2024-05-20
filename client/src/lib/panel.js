@@ -50,6 +50,8 @@ export class Panel extends Component {
             );
         }
 
+
+
         return (
             <div className="card ivis-panel">
                 {(props.title || menu) &&
