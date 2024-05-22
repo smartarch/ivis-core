@@ -215,8 +215,6 @@ function createApp(type) {
 
         app.use('/api', embedApi);
     }
-
-    console.log("get router: ", index.getRouter(type));
     app.use('/', index.getRouter(type));
 
     // catch 404 and forward to error handler

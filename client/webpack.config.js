@@ -1,6 +1,7 @@
 const webpack = require('webpack');
 const path = require('path');
 
+console.log("dirname" + __dirname);
 module.exports = {
     mode: 'development',
     entry: {
