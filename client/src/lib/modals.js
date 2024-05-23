@@ -251,28 +251,30 @@ export function tableAddDeleteButton(actions, owner, perms, deleteUrl, name, del
     }
 
     if (!perms || perms.includes('delete')) {
-        console.log("modals else");
-        actions.push({
-            label: <Icon icon="trash-alt" title={t('delete')}/>,
-            action: () => {
-                owner.tableRestActionDialogData = {
-                    shown: true,
-                    title: t('confirmDeletion'),
-                    message: t('areYouSureYouWantToDeleteName?', {name}),
-                    httpMethod: HTTPMethod.DELETE,
-                    actionUrl: deleteUrl,
-                    actionInProgressMsg: deletingMsg,
-                    actionDoneMsg: deletedMsg,
-                    onErrorAsync: onErrorAsync
-                };
+        if (owner.tableRestActionDialogData.shown) {
+            console.log("modals else");
+            actions.push({
+                label: <Icon icon="trash-alt" title={t('delete')}/>,
+                action: () => {
+                    owner.tableRestActionDialogData = {
+                        shown: true,
+                        title: t('confirmDeletion'),
+                        message: t('areYouSureYouWantToDeleteName?', {name}),
+                        httpMethod: HTTPMethod.DELETE,
+                        actionUrl: deleteUrl,
+                        actionInProgressMsg: deletingMsg,
+                        actionDoneMsg: deletedMsg,
+                        onErrorAsync: onErrorAsync
+                    };
 
-                owner.setState({
-                    tableRestActionDialogShown: true
-                });
+                    owner.setState({
+                        tableRestActionDialogShown: true
+                    });
 
-                owner.table.refresh();
-            }
-        });
+                    owner.table.refresh();
+                }
+            });
+        }
     }
 }
 

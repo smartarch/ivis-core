@@ -506,7 +506,7 @@ class QueryProcessor {
                 } else if (field.type === SignalType.INTEGER || field.type === SignalType.LONG || field.type === SignalType.FLOAT || field.type === SignalType.DOUBLE) {
                     elsAgg.histogram = {
                         ...this.getField(field),
-                        fixed_interval: agg.computedStep || 1e-16 /* FIXME - this is  a hack, find better way to handle situations when there is no interval */,
+                        interval: agg.computedStep || 1e-16 /* FIXME - this is  a hack, find better way to handle situations when there is no interval */,
                         offset: agg.computedOffset,
                         min_doc_count: agg.minDocCount
                     };
