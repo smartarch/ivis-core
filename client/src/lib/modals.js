@@ -2,7 +2,7 @@
 
 import React, {Component} from 'react';
 import axios, {HTTPMethod} from './axios';
-import {withTranslation} from "react-i18next";
+
 import PropTypes from 'prop-types';
 import {Icon, ModalDialog} from "./bootstrap-components";
 import {getUrl} from "./urls";
@@ -14,10 +14,10 @@ import {withComponentMixins} from "./decorator-helpers";
 import {withAsyncErrorHandler} from "./error-handling";
 import ACEEditorRaw from 'react-ace';
 import {ACEEditor, Form, withForm} from "./form";
-import {withTranslationCustom} from "./i18n";
+import {withTranslation} from "./i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withPageHelpers
 ])
 export class RestActionModalDialog extends Component {
@@ -146,7 +146,7 @@ function _getDependencyErrorMessage(err, t, name) {
 
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withPageHelpers
 ])
 export class DeleteModalDialog extends Component {
@@ -336,7 +336,7 @@ export function tableRestActionDialogRender(owner) {
 
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 export class ContentModalDialog extends Component {
     constructor(props) {
@@ -406,7 +406,7 @@ export class ContentModalDialog extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm
 ])
 export class ImportExportModalDialog extends Component {

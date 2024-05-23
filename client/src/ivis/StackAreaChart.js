@@ -15,13 +15,13 @@ import PropTypes
 import tooltipStyles
     from "./Tooltip.scss";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {PropType_d3Color} from "../lib/CustomPropTypes";
-import {withTranslationCustom} from "../lib/i18n";
+import {withTranslation} from "../lib/i18n";
 
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 export class StackAreaChart extends Component {
     constructor(props) {

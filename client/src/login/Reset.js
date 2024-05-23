@@ -25,8 +25,8 @@ import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {getUrl} from "../lib/urls";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
-import {withTranslationCustom} from "../lib/i18n";
+
+import {withTranslation} from "../lib/i18n";
 
 const ResetTokenValidationState = {
     PENDING: 0,
@@ -35,7 +35,7 @@ const ResetTokenValidationState = {
 };
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm,
     withErrorHandling,
     withPageHelpers

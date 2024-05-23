@@ -1,17 +1,17 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from "react-i18next";
+
 import PropTypes from 'prop-types';
 import {withAsyncErrorHandler, withErrorHandling} from './error-handling';
 import {withComponentMixins} from "./decorator-helpers";
 import moment from "moment";
-import {withTranslationCustom} from "./i18n";
+import {withTranslation} from "./i18n";
 
 import JQuery from 'jquery'
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling
 ])
 export class DismissibleAlert extends Component {
@@ -272,7 +272,7 @@ export class DropdownDivider extends Component {
 
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling
 ])
 export class ModalDialog extends Component {

@@ -25,13 +25,13 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {TaskType, subtypesByType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {getSubtypeLabel} from "./types";
 import {getWizardsForType, WizardType} from "./wizards";
-import {withTranslationCustom} from "../../lib/i18n";
+import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     withForm,
     withPageHelpers,

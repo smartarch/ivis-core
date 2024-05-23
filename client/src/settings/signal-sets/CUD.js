@@ -32,13 +32,13 @@ import ivisConfig
 import em
     from "../../lib/extension-manager";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {SignalSetType, SignalSetKind} from "../../../../shared/signal-sets"
 import {getSignalSetKindsLabels} from "../../lib/signal-sets-helpers";
-import {withTranslationCustom} from "../../lib/i18n";
+import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm,
     withErrorHandling,
     withPageHelpers,

@@ -37,6 +37,7 @@ function getRouter(appType) {
                 csrfToken: req.csrfToken(),
                 ivisConfig: JSON.stringify(ivisConfig),
                 indexFile: appType === AppType.TRUSTED ? getTrustedUrl('client/index-trusted.js') : getSandboxUrl('client/index-sandbox.js'),
+                bodyClass: appType === AppType.TRUSTED ? "trusted" : "sandbox",
                 publicPath: appType === AppType.TRUSTED ? getTrustedUrl() : getSandboxUrl()
             });
         });

@@ -20,11 +20,11 @@ import {getUrl} from "../lib/urls";
 import em
     from '../lib/extension-manager';
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
-import {withTranslationCustom} from "../lib/i18n";
+
+import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

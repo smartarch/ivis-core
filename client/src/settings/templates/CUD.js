@@ -37,11 +37,11 @@ import {Panel} from "../../lib/panel";
 import ivisConfig
     from "ivisConfig";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
-import {withTranslationCustom} from "../../lib/i18n";
+
+import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm,
     withErrorHandling,
     withPageHelpers,

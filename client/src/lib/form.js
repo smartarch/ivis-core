@@ -1,7 +1,7 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from "react-i18next";
+
 import axios, {HTTPMethod} from './axios';
 import {Map} from 'immutable';
 import PropTypes from 'prop-types';
@@ -35,7 +35,7 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
-import {withTranslationCustom} from "./i18n";
+import {withTranslation} from "./i18n";
 
 
 const FormState = {
@@ -70,7 +70,7 @@ export function withFormErrorHandlers(target, name, descriptor) {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     withPageHelpers
 ])
@@ -209,7 +209,7 @@ function wrapInput(id, htmlId, owner, format, rightContainerClass, label, help, 
     // wrapInput may be used also outside forms to make a kind of fake read-only forms
     let className;
     if (owner) {
-        className = 'form-group withPadding';
+        className = 'form-group mb-3';
     } else {
         className = styles.staticFormGroup;
     }
@@ -311,7 +311,7 @@ class StaticField extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withFormStateOwner
 ])
 class InputField extends Component {
@@ -716,7 +716,7 @@ class ColorPicker extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 class ColumnSelect extends Component {
 
@@ -808,7 +808,7 @@ class ColumnSelect extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withFormStateOwner
 ])
 class TimePicker extends Component {
@@ -889,7 +889,7 @@ class TimePicker extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withFormStateOwner
 ])
 class DateTimePicker extends Component {
@@ -1141,7 +1141,7 @@ class ButtonRow extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withFormStateOwner
 ], null, ['submitFormValuesMutator', 'getFormValueIdForPicker'])
 class ListCreator extends Component {
@@ -1368,7 +1368,7 @@ class TreeTableSelect extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withFormStateOwner
 ], ['refresh'])
 class TableSelect extends Component {

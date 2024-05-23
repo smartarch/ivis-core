@@ -564,12 +564,7 @@ async function query(context, queries) {
 }
 
 async function queryTx(tx, context, queries) {
-    console.log("context in signal-sets");
-    console.log(context);
-    console.log("query tx in signal-sets");
-    console.log(JSON.stringify(queries));
     for (const sigSetQry of queries) {
-        console.log(sigSetQry);
         const sigSet = await tx('signal_sets').where('cid', sigSetQry.sigSetCid).first();
         if (!sigSet) {
             shares.throwPermissionDenied({sigSetCid: sigSetQry.sigSetCid});

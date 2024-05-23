@@ -34,8 +34,8 @@ import Preview
 import Files
     from "../../lib/files";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
-import {withTranslationCustom} from "../../lib/i18n";
+
+import {withTranslation} from "../../lib/i18n";
 
 const SaveState = {
     SAVED: 0,
@@ -46,7 +46,7 @@ const SaveState = {
 const defaultEditorHeight = 600;
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm,
     withErrorHandling,
     withPageHelpers,

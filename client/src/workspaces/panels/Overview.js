@@ -13,12 +13,12 @@ import {withErrorHandling} from "../../lib/error-handling";
 import moment
     from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {getBuiltinTemplateName} from "../../lib/builtin-templates";
-import {withTranslationCustom} from "../../lib/i18n";
+import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

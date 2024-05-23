@@ -27,10 +27,10 @@ import {getUrl} from "./lib/urls";
 import {withComponentMixins} from "./lib/decorator-helpers";
 import ivisConfig
     from "ivisConfig";
-import {withTranslationCustom} from "./lib/i18n";
+import {withTranslation} from "./lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     requiresAuthenticatedUser
 ])
@@ -56,6 +56,7 @@ export default class MainMenu extends Component {
 
         const workspaces = [];
         for (const ws of this.props.resolved.workspacesVisible) {
+            console.log(ws.id);
             workspaces.push(
                 <NavLink key={ws.id} to={'/workspaces/' + ws.id + (ws.default_panel ? '/' + ws.default_panel : '')}>{ws.name}</NavLink>
             );

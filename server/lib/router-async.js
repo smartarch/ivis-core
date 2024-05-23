@@ -1,7 +1,6 @@
 'use strict';
 
 const express = require('express');
-const cors = require("cors");
 
 function replaceLastBySafeHandler(handlers) {
     if (handlers.length === 0) {
@@ -10,21 +9,16 @@ function replaceLastBySafeHandler(handlers) {
 
     const lastHandler = handlers[handlers.length - 1];
     const ret = handlers.slice();
-    ret[handlers.length - 1] = (req, res, next) => lastHandler(req, res, next).catch(error => next(error));
+    ret[handlers.length - 1] = (req, res, next) => lastHandler(req, res, next).catch(error => {
+        console.log("error caught");
+        next(error)
+    });
     return ret;
 }
 
+
 function create() {
     const router = new express.Router();
-
-    const cors = require('cors');
-
-    router.use(cors({
-        origin: 'http://localhost:52428',
-        credentials: true,
-        methods: ['GET', 'POST', 'OPTIONS'],
-    }));
-
     router.allAsync = (path, ...handlers) => router.all(path, ...replaceLastBySafeHandler(handlers));
     router.getAsync = (path, ...handlers) => router.get(path, ...replaceLastBySafeHandler(handlers));
     router.postAsync = (path, ...handlers) => router.post(path, ...replaceLastBySafeHandler(handlers));

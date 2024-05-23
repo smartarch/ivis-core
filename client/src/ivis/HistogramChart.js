@@ -15,7 +15,7 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {Tooltip} from "./Tooltip";
 import {Icon} from "../lib/bootstrap-components";
 import styles from "./CorrelationCharts.scss";
@@ -23,7 +23,7 @@ import {brushHandlesLeftRight, ConfigDifference, isInExtent, transitionInterpola
 import {PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import StatusMsg from "./StatusMsg";
 import commonStyles from "./commons.scss";
-import {withTranslationCustom} from "../lib/i18n";
+import {withTranslation} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -72,7 +72,7 @@ class TooltipContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     intervalAccessMixin()
 ], ["getView", "setView"], ["processBucket", "prepareData"])

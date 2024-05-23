@@ -26,7 +26,6 @@ module.exports.csrfProtection = csrf({
 });
 
 module.exports.loggedIn = (req, res, next) => {
-    console.log("checked logged in");
     if (!req.user) {
         next(new interoperableErrors.NotLoggedInError());
     } else {

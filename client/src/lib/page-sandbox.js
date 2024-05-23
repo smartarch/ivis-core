@@ -10,10 +10,10 @@ import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers
 import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {ThemeContext} from "./theme-context";
 import {Theme} from "../../../shared/themes";
-import {withTranslationCustom} from "./i18n";
+import {withTranslation} from "./i18n";
 
 export {withPageHelpers}
 
@@ -35,7 +35,7 @@ function getTheme(search){
 }
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 class PanelRoute extends Component {
     static propTypes = {
@@ -109,7 +109,7 @@ class PanelRoute extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling
 ])
 export class SectionContent extends Component {
@@ -192,7 +192,7 @@ export class SectionContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 export class Section extends Component {
     constructor(props) {

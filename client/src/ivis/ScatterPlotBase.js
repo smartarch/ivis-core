@@ -19,7 +19,7 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {Tooltip} from "./Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../lib/form";
 import styles from "./CorrelationCharts.scss";
@@ -28,7 +28,7 @@ import {areZoomTransformsEqual, ConfigDifference, distance, extentWithMargin, ge
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
 import {withPageHelpers} from "../lib/page-common";
-import {withTranslationCustom} from "../lib/i18n";
+import {withTranslation} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;
@@ -156,7 +156,7 @@ class TooltipContent extends Component {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm
 ])
 class ScatterPlotToolbar extends Component {
@@ -299,7 +299,7 @@ class ScatterPlotToolbar extends Component {
  * Common class for ScatterPlot, BubblePlot (and possibly other) components
  */
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     withPageHelpers,
     intervalAccessMixin()

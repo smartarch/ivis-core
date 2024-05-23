@@ -19,9 +19,9 @@ import URL
 import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import em from '../lib/extension-manager';
-import {withTranslationCustom} from "../lib/i18n";
+import {withTranslation} from "../lib/i18n";
 
 
 export const LoginContainer = () => {
@@ -31,7 +31,7 @@ export const LoginContainer = () => {
 };
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm,
     withErrorHandling,
     withPageHelpers

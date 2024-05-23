@@ -32,7 +32,7 @@ import ParamTypes from "../ParamTypes"
 import axios from '../../lib/axios';
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {TaskSource} from "../../../../shared/tasks"
 import {getVirtualNamespaceId} from "../../../../shared/namespaces"
 
@@ -40,10 +40,10 @@ import {
     fetchBuiltinTasks
 } from "../../lib/builtin-tasks";
 import styles from "../../lib/styles.scss";
-import {withTranslationCustom} from "../../lib/i18n";
+import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withForm,
     withErrorHandling,
     withPageHelpers,

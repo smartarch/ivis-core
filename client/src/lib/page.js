@@ -2,7 +2,7 @@
 
 import em from './extension-manager';
 import React, {Component} from "react";
-import i18n, {withTranslationCustom} from './i18n';
+import i18n, {withTranslation} from './i18n';
 
 import PropTypes from "prop-types";
 import {BrowserRouter as Router, Link, Route, Routes} from "react-router-dom";
@@ -221,7 +221,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 class PanelRoute extends Component {
     constructor(props) {
@@ -375,7 +375,7 @@ export class BeforeUnloadListeners {
 }
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling
 ], ['onNavigationConfirmationDialog'])
 class SectionContentBase extends Component {
@@ -468,6 +468,7 @@ class SectionContentBase extends Component {
     }
 
     errorHandler(error) {
+        console.log("Handling error");
         if (error instanceof interoperableErrors.NotLoggedInError) {
             if (window.location.pathname !== '/login') { // There may be multiple async requests failing at the same time. So we take the pathname only from the first one.
                 this.navigateTo('/login?next=' + encodeURIComponent(window.location.pathname));
@@ -532,7 +533,7 @@ function SectionContent(props) {
 export { SectionContent };
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 export class Section extends Component {
     constructor(props) {

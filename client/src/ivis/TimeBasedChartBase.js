@@ -16,7 +16,7 @@ import tooltipStyles from "./Tooltip.scss";
 import * as dateMath from "../lib/datemath";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {areZoomTransformsEqual, ConfigDifference, setZoomTransform, transitionInterpolate, wheelDelta} from "./common";
 import * as d3Zoom from "d3-zoom";
 import commonStyles from "./commons.scss";
@@ -26,7 +26,7 @@ import {rangeAccessMixin} from "./RangeContext";
 import {cursorAccessMixin} from "./CursorContext";
 import moment from "moment";
 import _ from "lodash";
-import {withTranslationCustom} from "../lib/i18n";
+import {withTranslation} from "../lib/i18n";
 
 export function createBase(base, self) {
     self.base = base;
@@ -171,7 +171,7 @@ function compareConfigs(conf1, conf2, customComparator) {
 
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     intervalAccessMixin(),
     rangeAccessMixin,
@@ -376,11 +376,13 @@ export class TimeBasedChartBase extends Component {
 
     @withAsyncErrorHandler
     async fetchData() {
+        console.log("fetch data");
         const t = this.props.t;
         const newState = { loading: true }
         if (this.props.displayLoadingTextWhenUpdating)
             newState.statusMsg = t('Loading...');
         this.setState(newState);
+        console.log("before try");
 
         try {
             let results = null;
@@ -396,9 +398,11 @@ export class TimeBasedChartBase extends Component {
                 results = await this.dataAccessSession.getLatestMixed(queries);
             }
 
+            console.log("before if");
             if (results) {
                 // This converts NaNs and Infinity to null. D3 can handle nulls in data by omitting the data point
                 for (const resultSet of results) {
+                    console.log("for");
                     for (const sigSetCid in resultSet) {
                         const sigSetData = resultSet[sigSetCid];
 
@@ -414,21 +418,25 @@ export class TimeBasedChartBase extends Component {
                         };
 
                         if (sigSetData.prev) {
+                            console.log("if1");
                             processSignals(sigSetData.prev.data);
                         }
 
                         if (sigSetData.main) {
+                            console.log("if2");
                             for (const mainData of sigSetData.main) {
                                 processSignals(mainData.data);
                             }
                         }
 
                         if (sigSetData.next) {
+                            console.log("if3");
                             processSignals(sigSetData.next.data);
                         }
                     }
                 }
 
+                console.log("set state");
                 this.setState({signalSetsData: null}, () =>
                     this.setState({
                         statusMsg: "",
@@ -436,8 +444,12 @@ export class TimeBasedChartBase extends Component {
                         loading: false
                     })
                 );
+                console.log("setState after");
+
             }
         } catch (err) {
+            console.log("caught error");
+            console.log(err);
             if (err instanceof interoperableErrors.TooManyPointsError) {
                 this.setState({
                     statusMsg: t('Too many data points.')

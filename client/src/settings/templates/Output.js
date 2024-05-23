@@ -11,11 +11,11 @@ import Ansi
 import outputStyles
     from './Output.scss';
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
-import {withTranslationCustom} from "../../lib/i18n";
+
+import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     requiresAuthenticatedUser
 ])
 export default class CUD extends Component {

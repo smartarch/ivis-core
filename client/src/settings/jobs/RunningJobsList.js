@@ -17,13 +17,13 @@ import {
 import moment from "moment";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import {getRunStatuses} from './states';
-import {withTranslationCustom} from "../../lib/i18n";
+import {withTranslation} from "../../lib/i18n";
 
 
 @withComponentMixins([
-    withTranslationCustom,
+    withTranslation,
     withErrorHandling,
     withPageHelpers,
     requiresAuthenticatedUser

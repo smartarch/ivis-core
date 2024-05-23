@@ -18,10 +18,6 @@ $sidebar-width: 200px;
   -webkit-appearance: none; // This is a fix for Chrome
 }
 
-.withPadding {
-  padding: 10px;
-}
-
 body.ivis {
   &.sandbox {
     background-color: white;

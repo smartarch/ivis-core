@@ -7,10 +7,10 @@ import {withAsyncErrorHandler, withErrorHandling} from "./error-handling";
 import axios from "../lib/axios";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
-import {withTranslation} from "react-i18next";
+
 import shallowEqual from "shallowequal";
 import {checkPermissions} from "./permissions";
-import {withTranslationCustom} from "./i18n";
+import {withTranslation} from "./i18n";
 
 async function resolve(route, params, prevResolverState) {
     const resolved = {};
@@ -374,7 +374,7 @@ const RedirectRoute = (props) => {
 }
 
 @withComponentMixins([
-    withTranslationCustom
+    withTranslation
 ])
 class SubRoute extends Component {
     static propTypes = {
