@@ -2,7 +2,7 @@
 
 import React, {Component} from 'react';
 import axios, {HTTPMethod} from './axios';
-
+import {withTranslation} from './i18n';
 import PropTypes from 'prop-types';
 import {Icon, ModalDialog} from "./bootstrap-components";
 import {getUrl} from "./urls";
@@ -14,7 +14,6 @@ import {withComponentMixins} from "./decorator-helpers";
 import {withAsyncErrorHandler} from "./error-handling";
 import ACEEditorRaw from 'react-ace';
 import {ACEEditor, Form, withForm} from "./form";
-import {withTranslation} from "./i18n";
 
 @withComponentMixins([
     withTranslation,
@@ -44,24 +43,18 @@ export class RestActionModalDialog extends Component {
     }
 
     async hideModal(isBack) {
-        console.log("hiding the RestActionModalDialog");
         if (this.props.backUrl) {
-            console.log("1");
             this.navigateTo(this.props.backUrl);
         } else {
             if (isBack) {
-                console.log("2");
                 this.props.onBack();
-                console.log("2 done");
             } else {
-                console.log("3");
                 this.props.onPerformingAction();
             }
         }
     }
 
     async performAction() {
-        console.log("perform action")
         const props = this.props;
         const t = props.t;
         const owner = props.stateOwner;
@@ -79,7 +72,6 @@ export class RestActionModalDialog extends Component {
             await axios.method(props.actionMethod, getUrl(props.actionUrl), props.actionData);
 
             if (props.successUrl) {
-                console.log("success " + props.successUrl);
                 this.navigateToWithFlashMessage(props.successUrl, 'success', props.actionDoneMsg);
             } else {
                 props.onSuccess();
@@ -196,7 +188,7 @@ export class DeleteModalDialog extends Component {
             stateOwner={this.props.stateOwner}
             visible={this.props.visible}
             actionMethod={HTTPMethod.DELETE}
-            actionUrl={this.props.deleteUrl} 
+            actionUrl={this.props.deleteUrl}
             backUrl={this.props.backUrl}
             successUrl={this.props.successUrl}
             actionInProgressMsg={this.props.deletingMsg}
@@ -216,28 +208,24 @@ export function tableRestActionDialogInit(owner) {
 function _hide(owner, dontRefresh = false) {
     const refreshTables = owner.tableRestActionDialogData.refreshTables;
 
+    owner.setState({ tableRestActionDialogShown: false });
+
     if (!dontRefresh) {
         owner.tableRestActionDialogData = {};
 
         if (refreshTables) {
             refreshTables();
         } else {
-            if(owner.table != null) {
-                console.log("calling refresh in modals");
-                owner.table.refresh();
-            }
+            owner.table?.refresh();
         }
     } else {
         // _hide is called twice: (1) at performing action, and at (2) success. Here we keep the refreshTables
         // reference till it is really needed in step #2.
-        console.log("called set state" + JSON.toString(owner));
-        owner.setState({ tableRestActionDialogShown: false });
         owner.tableRestActionDialogData = { refreshTables };
     }
 }
 
 export function tableAddDeleteButton(actions, owner, perms, deleteUrl, name, deletingMsg, deletedMsg) {
-    console.log("[tableAddDeleteButton]");
     const t = owner.props.t;
 
     async function onErrorAsync(err) {
@@ -252,7 +240,10 @@ export function tableAddDeleteButton(actions, owner, perms, deleteUrl, name, del
 
     if (!perms || perms.includes('delete')) {
         if (owner.tableRestActionDialogData.shown) {
-            console.log("modals else");
+            actions.push({
+                label: <Icon className={styles.iconDisabled} icon="trash-alt" title={t('delete')}/>
+            });
+        } else {
             actions.push({
                 label: <Icon icon="trash-alt" title={t('delete')}/>,
                 action: () => {
@@ -326,7 +317,7 @@ export function tableRestActionDialogRender(owner) {
         actionMethod={data.httpMethod || HTTPMethod.POST}
         actionUrl={data.actionUrl || ''}
         actionData={data.actionData}
-        onBack={() => _hide(owner,true)}
+        onBack={() => _hide(owner)}
         onPerformingAction={() => _hide(owner, true)}
         onSuccess={() => _hide(owner)}
         actionInProgressMsg={data.actionInProgressMsg || ''}
