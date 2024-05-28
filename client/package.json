@@ -23,7 +23,6 @@
     "base64-url": "^2.3.3",
     "bootstrap": "^5.0.0",
     "buffer": "^6.0.3",
-    "checkcss": "^2.0.9",
     "core-js": "^3.35.1",
     "cors": "^2.8.5",
     "cubic-spline": "^3.0.3",
