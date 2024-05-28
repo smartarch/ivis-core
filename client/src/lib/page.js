@@ -182,7 +182,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
     } else {
         return (
-            <div key="app">
+            <div key="app" className="app">
                 <header key="appHeader" className="app-header">
                     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                         {showSidebar &&
