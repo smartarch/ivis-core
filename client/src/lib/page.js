@@ -336,7 +336,7 @@ class PanelRoute extends Component {
             return renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content);
         };
 
-        return <Resolver route={route} render={render} location={this.props.location} params={this.props.params}/>;
+        return <Resolver key={route.path} route={route} render={render} location={this.props.location} params={this.props.params}/>;
     }
 }
 

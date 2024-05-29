@@ -104,7 +104,7 @@ class PanelRoute extends Component {
                 return getLoadingMessage(t);
             }
         };
-        return <Resolver route={route} render={render} params={this.props.params} location={this.props.location}/>;
+        return <Resolver key={route.path} route={route} render={render} params={this.props.params} location={this.props.location}/>;
     }
 }
 
@@ -160,21 +160,17 @@ export class SectionContent extends Component {
     }
 
     renderRoute(route) {
-            const renderFunc = () => (
-                <RenderRoute
+        return (
+            <Route
+                key={route.path}
+                path={route.path}
+                element={<RenderRoute
                     route={route}
                     panelRouteCtor={PanelRoute}
                     loadingMessageFn={() => getLoadingMessage(this.props.t)}
-                />
-            );
-
-            return (
-                <Route
-                    key={route.path}
-                    path={route.path}
-                    element={renderFunc()}
-                />
-            );
+                />}
+            />
+        );
     }
 
     render() {

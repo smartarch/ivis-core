@@ -424,7 +424,7 @@ class SubRoute extends Component {
             }
         };
 
-        return <Resolver route={route} render={render} params={params} location={location}/>;
+        return <Resolver key={route.path} route={route} render={render} params={params} location={location}/>;
     }
 }
 
