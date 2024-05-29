@@ -490,23 +490,15 @@ class SectionContentBase extends Component {
     }
 
     renderRoute(route) {
-        const Element = () => {
-            let flashMessage;
-            if (this.state.flashMessageText) {
-                flashMessage = <DismissibleAlert severity={this.state.flashMessageSeverity} onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>;
-            }
-
-            return (
-                <RenderRoute
-                    route={route}
-                    panelRouteCtor={PanelRoute}
-                    loadingMessageFn={() => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t))}
-                    flashMessage={flashMessage}
-                />
-            );
-
-        };
-        return <Route key={route.path} exact={route.exact} path={route.path} element={<Element/>} />
+        return <Route key={route.path} exact={route.exact} path={route.path} element={<RenderRoute
+            route={route}
+            panelRouteCtor={PanelRoute}
+            loadingMessageFn={() => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t))}
+            flashMessage={this.state.flashMessageText
+                ? <DismissibleAlert severity={this.state.flashMessageSeverity}
+                                    onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>
+                : null}
+        />}/>
     }
 
     render() {
