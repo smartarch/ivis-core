@@ -220,19 +220,20 @@ const getStructure = t => {
                             panelsVisible: params => `rest/panels-visible/${params.workspaceId}`
                         },
                         link: params => `/workspaces/${params.workspaceId}`,
-                        panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>
-                    },
-                    ':workspaceId/:panelId': {
-                            ...panelStructureSpec,
-                            children: {
-                                'fullscreen': {
-                                    ...panelStructureSpec,
-                                    panelInFullScreen: true,
-                                    link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
+                        panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>,
+                        children: {
+                            ':panelId': {
+                                ...panelStructureSpec,
+                                children: {
+                                    'fullscreen': {
+                                        ...panelStructureSpec,
+                                        panelInFullScreen: true,
+                                        link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
+                                    }
                                 }
-                            }
+                            },
+                        }
                     },
-
                     sample: {
                         title: t('Sample workspace'),
                         link: '/workspaces/sample',
