@@ -1081,9 +1081,9 @@ export class ScatterPlotBase extends Component {
      * Should only be called when setting state to noData or similar situation, i.e. no data are rendered */
     clearChart() {
         this.brushParentSelection
-            .on('mouseenter', null)
-            .on('mousemove', null)
-            .on('mouseleave', null);
+            ?.on('mouseenter', null)
+            ?.on('mousemove', null)
+            ?.on('mouseleave', null);
 
         this.zoom = null;
         this.globalRegressions = [];
@@ -1536,15 +1536,17 @@ export class ScatterPlotBase extends Component {
     }
 
     deselectPoints() {
-        this.cursorSelectionX.attr('visibility', 'hidden');
-        this.cursorSelectionY.attr('visibility', 'hidden');
+        this.cursorSelectionX?.attr('visibility', 'hidden');
+        this.cursorSelectionY?.attr('visibility', 'hidden');
 
-        for (let i = 0; i < this.props.config.signalSets.length; i++) {
-            const signalSetCidIndex = this.props.config.signalSets[i].cid + "-" + i;
-            const signalSetConfig = this.props.config.signalSets[i];
+        if (this.dotHighlightSelections) {
+            for (let i = 0; i < this.props.config.signalSets.length; i++) {
+                const signalSetCidIndex = this.props.config.signalSets[i].cid + "-" + i;
+                const signalSetConfig = this.props.config.signalSets[i];
 
-            const drawHighlightDot = this.props.drawHighlightDot || ScatterPlotBase.drawHighlightDot;
-            drawHighlightDot(this, null, this.dotHighlightSelections[signalSetCidIndex], this.xScale, this.yScale, this.sScale, this.cScales[i], signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape);
+                const drawHighlightDot = this.props.drawHighlightDot || ScatterPlotBase.drawHighlightDot;
+                drawHighlightDot(this, null, this.dotHighlightSelections[signalSetCidIndex], this.xScale, this.yScale, this.sScale, this.cScales[i], signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape);
+            }
         }
 
         this.setState({
