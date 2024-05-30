@@ -153,15 +153,26 @@ body.ivis {
     .sidebar {
       flex: 0 1 $sidebar-width;
       padding: 0 1rem;
+      flex-direction: column;
 
       .sidebar-header {
         text-align: center;
         padding: 0.5rem 0;
       }
+
+      nav {
+        align-self: start;
+      }
     }
 
     .main {
       flex-grow: 1;
+    }
+  }
+
+  @include media-breakpoint-down(lg) {
+    .app-body {
+      flex-direction: column;
     }
   }
 
