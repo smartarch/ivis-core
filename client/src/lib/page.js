@@ -194,7 +194,7 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
                         <Link className="navbar-brand" to="/">{em.get('app.title')}</Link>
 
-                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ivisMainNavbar" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ivisMainNavbar" aria-controls="ivisMainNavbar" aria-expanded="false" aria-label="Toggle navigation">
                             <span className="navbar-toggler-icon"/>
                         </button>
 
@@ -725,7 +725,7 @@ export function getLanguageChooser(t) {
     const currentLngCode = getLang(i18n.language).getShortLabel(t);
 
     const languageChooser = (
-        <NavDropdown menuClassName="dropdown-menu-right" label={currentLngCode}>
+        <NavDropdown menuClassName="dropdown-menu-end" label={currentLngCode}>
             {languageOptions}
         </NavDropdown>
     );
