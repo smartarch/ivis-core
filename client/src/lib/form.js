@@ -1545,7 +1545,8 @@ class ACEEditor extends Component {
         height: PropTypes.string,
         mode: PropTypes.string,
         format: PropTypes.string,
-        readOnly: PropTypes.bool
+        readOnly: PropTypes.bool,
+        commands: PropTypes.array, // ICommand[] (from react-ace)
     }
 
     render() {
@@ -1568,6 +1569,7 @@ class ACEEditor extends Component {
                 tabSize={2}
                 readOnly={props.readOnly}
                 setOptions={{useWorker: false}} // This disables syntax check because it does not always work well (e.g. in case of JS code in report templates)
+                commands={props.commands}
             />
         );
     }

@@ -262,6 +262,16 @@ export default class Develop extends Component {
             }
         };
 
+         const saveCommand = {
+            name: 'save',
+            bindKey: {win: "Ctrl-S", "mac": "Cmd-S"},
+            exec: (editor) => {
+                this.save().then(
+                    () => editor.focus()
+                );
+            }
+        };
+
         const tabs = []
         tabs.push(
             {
@@ -269,7 +279,7 @@ export default class Develop extends Component {
                 default: true,
                 label: t('Code'),
                 getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="code" mode={editorMode}
-                                             format="wide" readOnly={isReadOnly}/>
+                                             format="wide" readOnly={isReadOnly} commands={[saveCommand]}/>
             });
         if (!isReadOnly) {
             tabs.push(
@@ -287,7 +297,7 @@ export default class Develop extends Component {
                 id: 'params',
                 label: t('Parameters'),
                 getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="params" mode="json"
-                                             format="wide" readOnly={isReadOnly}/>
+                                             format="wide" readOnly={isReadOnly} commands={[saveCommand]}/>
             }
         );
 
