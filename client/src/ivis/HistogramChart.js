@@ -607,10 +607,12 @@ export class HistogramChart extends Component {
         };
 
         const setZoomTransform = function (transform) {
+            if (areZoomTransformsEqual(transform, self.state.zoomTransform))
+                return
+
             self.setState({
                 zoomTransform: transform
-            });
-            self.moveBrush(transform);
+            }, () => self.moveBrush(transform));
         };
 
         const handleZoomEnd = function () {
@@ -694,11 +696,15 @@ export class HistogramChart extends Component {
 
     /** Helper method to update zoom transform in state and zoom object. */
     setZoom(transform) {
+        if (areZoomTransformsEqual(transform, this.state.zoomTransform))
+            return
+
         if (this.zoom)
             this.svgContainerSelection.call(this.zoom.transform, transform);
         else {
-            this.setState({zoomTransform: transform});
-            this.moveBrush(transform);
+            this.setState({
+                zoomTransform: transform
+            }, () => this.moveBrush(transform));
         }
     }
 
@@ -758,11 +764,6 @@ export class HistogramChart extends Component {
                 // noinspection JSUnresolvedVariable
                 const sel = event.selection;
                 self.overviewBrushSelection.call(brushHandlesLeftRight, sel, ySize);
-
-                // noinspection JSUnresolvedVariable
-                if (event.sourceEvent && event.sourceEvent.type === "zoom" && event.sourceEvent.target === self.zoom) return; // ignore brush-by-zoom
-                // noinspection JSUnresolvedVariable
-                if (event.sourceEvent && event.sourceEvent.type === "brush" && event.sourceEvent.target === self.brush) return; // ignore brush by itself
 
                 // noinspection JSUnresolvedVariable
                 if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
