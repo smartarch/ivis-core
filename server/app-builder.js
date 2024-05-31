@@ -84,7 +84,7 @@ function createApp(type) {
     // Do not expose software used
     app.disable('x-powered-by');
 
-    if (type === AppType.SANDBOXED) {
+    if (type === AppType.SANDBOXED || type === AppType.API) {
         app.use(cors());
     }
 

@@ -7,7 +7,7 @@ export function embedPanel(domElementId, ivisSandboxUrlBase, panelId, accessToke
         id: panelId
     };
 
-    const options = JSON.parse(optionsStr);
+    const options = optionsStr && JSON.parse(optionsStr);
 
     embedEntity(domElementId, ivisSandboxUrlBase, entityParams, accessToken, options, callbacks);
 }
@@ -30,7 +30,7 @@ export function embedTemplate(domElementId, ivisSandboxUrlBase, templateId, conf
         config: config
     };
 
-    const options = JSON.parse(optionsStr);
+    const options = optionsStr && JSON.parse(optionsStr);
     embedEntity(domElementId, ivisSandboxUrlBase, entityParams, accessToken, options, callbacks);
 }
 
