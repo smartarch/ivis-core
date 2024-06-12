@@ -381,14 +381,6 @@ class SectionContentBase extends Component {
             flashMessageText: ''
         };
 
-        /*this.historyUnlisten = props.history.listen((location, action) => {
-            if (action === "REPLACE") return;
-            if (location.state && location.state.preserveFlashMessage) return;
-
-            // noinspection JSIgnoredPromiseFromCall
-            this.closeFlashMessage();
-        });*/
-
         this.beforeUnloadListeners = new BeforeUnloadListeners();
         this.beforeUnloadHandler = ::this.onBeforeUnload;
         this.historyUnblock = null;
@@ -426,6 +418,14 @@ class SectionContentBase extends Component {
     componentWillUnmount() {
         /*window.removeEventListener('beforeunload', this.beforeUnloadHandler);
         this.historyUnblock();*/
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.location === this.props.location) return;
+        if (this.props.location.state && this.props.location.state.preserveFlashMessage) return;
+
+        // noinspection JSIgnoredPromiseFromCall
+        this.closeFlashMessage();
     }
 
     setFlashMessage(severity, text) {
