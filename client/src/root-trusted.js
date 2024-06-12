@@ -286,14 +286,6 @@ const getStructure = t => {
                                 },
                                 link: params => `/settings/workspaces/${params.workspaceId}/edit`,
                                 navs: {
-                                    /*':action(edit|delete)': {
-                                        title: t('Edit'),
-                                        link: params => `/settings/workspaces/${params.workspaceId}/edit`,
-                                        visible: resolved => resolved.workspace.permissions.includes('edit'),
-                                        panelRender: props => <WorkspacesCUD action={props.match.params.action}
-                                                                             entity={props.resolved.workspace}
-                                                                             workspacesVisible={props.resolved.workspacesVisible}/>
-                                    },*/
                                     edit: {
                                         title: t('Edit'),
                                         link: params => `/settings/workspaces/${params.workspaceId}/edit`,

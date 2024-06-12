@@ -339,10 +339,6 @@ class PanelRoute extends Component {
     }
 }
 
-const DummyComponent = () => {
-    return <div>Dummy Component Content Here</div>;
-};
-
 export class BeforeUnloadListeners {
     constructor() {
         this.listeners = new Set();
