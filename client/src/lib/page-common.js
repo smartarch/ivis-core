@@ -86,13 +86,7 @@ async function resolve(route, params, prevResolverState) {
             if (keysToResolveByRest.length > 0) {
                 const promises = urlsToResolveByRest.map(url => {
                     if (url) {
-                        return axios.get(getUrl(url))
-                            .then(response => {
-                                return response;
-                            })
-                            .catch(error => {
-                                return Promise.resolve({ data: null });
-                            });
+                        return axios.get(getUrl(url));
                     } else {
                         return Promise.resolve({ data: null });
                     }
@@ -313,7 +307,7 @@ export class Resolver extends Component {
                 });
             }
 
-            const {resolved, permissions, resolverState} = await resolve(props.route, this.props.params, prevResolverState);
+            const {resolved, permissions, resolverState} = await resolve(props.route, props.params, prevResolverState);
 
             if (!this.disregardResolve) { // This is to prevent the warning about setState on discarded component when we immediatelly redirect.
                 this.setState({
@@ -398,7 +392,7 @@ class SubRoute extends Component {
 
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
-                const subStructure = route.structure(resolved, permissions,params);
+                const subStructure = route.structure(resolved, permissions, params);
                 const routes = getRoutes(subStructure, route);
                 const childRoute = routes[0];
                 return (
