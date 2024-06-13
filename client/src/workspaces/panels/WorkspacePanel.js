@@ -1,6 +1,6 @@
 'use strict';
 
-import React, {Component} from "react";
+import React, {Component, useEffect} from "react";
 import PropTypes from "prop-types";
 import {Panel} from "../../lib/panel";
 import {requiresAuthenticatedUser} from "../../lib/page";
@@ -59,14 +59,6 @@ class WorkspacePanelBase extends Component {
         });
     }
 
-    componentDidMount() {
-        extractPermanentLinkAndRedirect(this.props.location, this.props.navigate);
-    }
-
-    componentDidUpdate() {
-        extractPermanentLinkAndRedirect(this.props.location, this.props.navigate);
-    }
-
     render() {
         if (needsToExtractPermanentLinkAndRedirect(this.props.location)) {
             return null; // This will be handled by componentDidMount / componentDidUpdate and retried
@@ -95,6 +87,11 @@ function WorkspacePanel(props) {
     const location = useLocation();
     const params = useParams();
     console.log("Obtained hooks for workspace panel");
+
+    useEffect(() => {
+        extractPermanentLinkAndRedirect(location, navigate);
+    }, [location]);
+
     return <WorkspacePanelBase {...props} navigate={navigate} location={location} params={params} />;
 }
 
