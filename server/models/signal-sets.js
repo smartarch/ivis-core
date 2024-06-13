@@ -485,7 +485,9 @@ async function getLastId(context, sigSet) {
     return lastId;
 }
 
-/* queries = [
+/** Query the data from signal sets. Basic query description is below, see also https://github.com/smartarch/ivis-core/wiki/Data-Access-from-Templates-(Queries) for more details.
+ *
+ * queries = [
     {
         params: {
             withId: <true returns also _id field>
@@ -539,7 +541,7 @@ async function getLastId(context, sigSet) {
 
         <OR>
 
-        docs: { // TODO: Not implemented yet
+        docs: {
             limit: <max no. of records>,
             sort: [
                 {

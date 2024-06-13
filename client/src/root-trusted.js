@@ -97,7 +97,8 @@ const getStructure = t => {
         },
         panelRender: props => <WorkspacePanel panel={props.resolved.panel}/>
 
-        /*structure: (resolved, params) => {
+        /* TODO: update the following code for the new react router (v6), see also page-common.js (`SubRoute`)
+        structure: (resolved, params) => {
             if (resolved.panel.template) {
                 console.log("resolved.panel.template ok")
                 return {

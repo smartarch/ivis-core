@@ -392,6 +392,7 @@ class SubRoute extends Component {
 
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
+                // TODO: update the following code for the new react router (v6), see also root-trusted.js (`getStructure`)
                 const subStructure = route.structure(resolved, permissions, params);
                 const routes = getRoutes(subStructure, route);
                 const childRoute = routes[0];

@@ -410,7 +410,8 @@ class SectionContentBase extends Component {
     }
 
     componentDidMount() {
-        /*window.addEventListener('beforeunload', this.beforeUnloadHandler);
+        /* TODO: update this code for the new router (v6), possibly with https://reactrouter.com/en/main/hooks/use-blocker
+        window.addEventListener('beforeunload', this.beforeUnloadHandler);
         this.historyUnblock = this.props.navigate.block('Changes you made may not be saved. Are you sure you want to leave this page?');
         */
     }
