@@ -13,10 +13,11 @@ import interoperableErrors from "../../../shared/interoperable-errors";
 import {ActionLink, Button, DismissibleAlert, DropdownActionLink, Icon} from "./bootstrap-components";
 import ivisConfig from "ivisConfig";
 import styles from "./styles.scss";
-import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
+import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers, NoMatch} from "./page-common";
 import {getBaseDir} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
 import {getLang} from "../../../shared/langs";
+import _ from "lodash";
 
 export { withPageHelpers }
 
@@ -280,7 +281,8 @@ class PanelRoute extends Component {
                     resolved,
                     permissions,
                     setPanelInFullScreen: this.setPanelInFullScreen,
-                    panelInFullScreen: this.state.panelInFullScreen
+                    panelInFullScreen: this.state.panelInFullScreen,
+                    params: _.omit(params, "*"),  // the trailing space in ':panelId/*' is matched incorrectly, so we remove it here
                 };
 
                 let panel;
@@ -504,7 +506,9 @@ class SectionContentBase extends Component {
                 <Routes>{routes.map(x => {
                     return this.renderRoute(x);
                 })
-                }</Routes>
+                }
+                <Route path="*" element={<NoMatch />} />
+                </Routes>
             </SectionContentContext.Provider>
         );
     }

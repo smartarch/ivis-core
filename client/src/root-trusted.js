@@ -83,34 +83,32 @@ import ivisConfig from "ivisConfig";
 import {TranslationRoot} from "./lib/i18n";
 
 import {SignalSetKind} from "../../shared/signal-sets";
-import {TaskSource, isBuiltinSource} from "../../shared/tasks";
-import {LegendPosition, StaticPieChart} from "./ivis/PieChart";
+import {isBuiltinSource} from "../../shared/tasks";
+
+import "./templates/builtin-templates-root"
 
 emCommonDefaults.setDefaults(em);
 
 const getStructure = t => {
-    let panelStructureSpec = {
+    let panelStructureSpec = (isFullscreen) => ({
         title: resolved => resolved.panel.name,
         link: params => `/workspaces/${params.workspaceId}/${params.panelId}`,
         resolve: {
             panel: params => `rest/panels/${params.panelId}`
         },
-        panelRender: props => <WorkspacePanel panel={props.resolved.panel}/>
+        panelRender: props => <WorkspacePanel panel={props.resolved.panel}/>,
 
-        /* TODO: update the following code for the new react router (v6), see also page-common.js (`SubRoute`)
-        structure: (resolved, params) => {
+        structure: (resolved, permissions, params) => {
             if (resolved.panel.template) {
-                console.log("resolved.panel.template ok")
                 return {
                     panelRender: props => <WorkspacePanel panel={resolved.panel}/>
                 }
             } else {
-                console.log("failed to resolved.panel.template")
                 const panelStructure = em.get('client.builtinTemplates.routes.' + resolved.panel.builtin_template);
-                return panelStructure(resolved.panel, t, `/workspaces/${params.workspaceId}/${params.panelId}`);
+                return panelStructure(resolved.panel, t, `/workspaces/${params.workspaceId}/${params.panelId}`, isFullscreen);
             }
-        }*/
-    };
+        }
+    });
 
     function getSignalChildren() {
         return{
@@ -223,15 +221,13 @@ const getStructure = t => {
                         link: params => `/workspaces/${params.workspaceId}`,
                         panelRender: props => <WorkspacesPanelsOverview workspace={props.resolved.workspace}/>,
                         children: {
-                            ':panelId': {
-                                ...panelStructureSpec,
-                                children: {
-                                    'fullscreen': {
-                                        ...panelStructureSpec,
-                                        panelInFullScreen: true,
-                                        link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
-                                    }
-                                }
+                            ':panelId/fullscreen/*': {
+                                ...panelStructureSpec(true),
+                                panelInFullScreen: true,
+                                link: params => `/workspaces/${params.workspaceId}/${params.panelId}/fullscreen`,
+                            },
+                            ':panelId/*': {
+                                ...panelStructureSpec(false),
                             },
                         }
                     },

@@ -2,7 +2,7 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {Navigate, Route, Routes, useLocation, useNavigate, useParams} from "react-router-dom";
+import {Link, Navigate, Route, Routes, useLocation, useNavigate, useParams} from "react-router-dom";
 import {withAsyncErrorHandler, withErrorHandling} from "./error-handling";
 import axios from "../lib/axios";
 import {getUrl} from "./urls";
@@ -192,7 +192,7 @@ export function getRoutes(structure, parentRoute) {
 
             const route = {
                 path: (pathWithParams === '' ? '/' : pathWithParams),
-                exact: true,//!entry.structure && entry.exact !== false,
+                exact: !entry.structure && entry.exact !== false,
                 structure: entry.structure,
                 panelComponent: entry.panelComponent,
                 panelRender: entry.panelRender,
@@ -395,15 +395,12 @@ class SubRoute extends Component {
                 // TODO: update the following code for the new react router (v6), see also root-trusted.js (`getStructure`)
                 const subStructure = route.structure(resolved, permissions, params);
                 const routes = getRoutes(subStructure, route);
-                const childRoute = routes[0];
+                // in ReactRouter v6, absolute paths don't work in nested Routes (https://github.com/remix-run/react-router/discussions/9841), so we need to use relative paths here
+                routes.forEach(r => {
+                    r.path = r.path.replace(route.path, '');  // remove the parent route path
+                });
                 return (
-                    <Route
-                        key={childRoute.path}
-                        path={childRoute.path}
-                        element={renderRouteComponent(childRoute)}
-                    >
-                    </Route>
-                    /*<Routes>
+                    <Routes>
                         {routes.map(childRoute => (
                             <Route
                                 key={childRoute.path}
@@ -412,7 +409,8 @@ class SubRoute extends Component {
                             >
                             </Route>
                         ))}
-                    </Routes>*/
+                        <Route path="*" element={<NoMatch/>} />
+                    </Routes>
                 );
             } else {
                 return this.props.loadingMessageFn();
@@ -473,3 +471,7 @@ export const withPageHelpers = createComponentMixin({
         return {};
     }
 });
+
+export function NoMatch() {
+    return <div className={"p-3"}>Page not found. <Link to={"/"}>Back to Home</Link></div>;
+}
