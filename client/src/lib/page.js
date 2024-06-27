@@ -374,7 +374,7 @@ export class BeforeUnloadListeners {
 @withComponentMixins([
     withTranslation,
     withErrorHandling
-], ['onNavigationConfirmationDialog', 'shouldBlockNavigation'])
+], ['shouldBlockNavigation'])
 class SectionContentBase extends Component {
     constructor(props) {
         super(props);
@@ -385,7 +385,6 @@ class SectionContentBase extends Component {
 
         this.beforeUnloadListeners = new BeforeUnloadListeners();
         this.beforeUnloadHandler = ::this.onBeforeUnload;
-        this.historyUnblock = null;
     }
 
     static propTypes = {
@@ -398,17 +397,6 @@ class SectionContentBase extends Component {
             event.preventDefault();
             event.returnValue = '';
         }
-    }
-
-    onNavigationConfirmationDialog(message, callback) {
-        this.beforeUnloadListeners.shouldUnloadBeCancelledAsync().then(res => {
-            if (res) {
-                const allowTransition = window.confirm(message);
-                callback(allowTransition);
-            } else {
-                callback(true);
-            }
-        });
     }
 
     shouldBlockNavigation() {
@@ -534,19 +522,10 @@ export { SectionContent };
     withTranslation
 ])
 export class Section extends Component {
-    constructor(props) {
-        super(props);
-        this.getUserConfirmationHandler = ::this.onGetUserConfirmation;
-        this.sectionContent = null;
-    }
 
     static propTypes = {
         structure: PropTypes.oneOfType([PropTypes.object, PropTypes.func]).isRequired,
         root: PropTypes.string.isRequired
-    }
-
-    onGetUserConfirmation(message, callback) {
-        this.sectionContent.onNavigationConfirmationDialog(message, callback);
     }
 
     render() {
@@ -556,8 +535,8 @@ export class Section extends Component {
         }
 
         return (
-            <CustomRouter basename={getBaseDir()} getUserConfirmation={this.getUserConfirmationHandler}>
-                <SectionContent wrappedComponentRef={node => this.sectionContent = node} root={this.props.root} structure={structure} />
+            <CustomRouter basename={getBaseDir()}>
+                <SectionContent root={this.props.root} structure={structure} />
             </CustomRouter>
         );
     }
