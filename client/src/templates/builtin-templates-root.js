@@ -11,6 +11,7 @@ em.set('client.builtinTemplates.routes.hello', (panel, t, panelUrl, isFullscreen
         ':message': {
             link: params => `${panelUrl}/${params.message}`,
             panelRender: props => <HelloWorld panel={panel} panelUrl={panelUrl} message={props.params.message} />,  // message from url parameter
+            title: resolved => resolved.panel.name,
             panelInFullScreen: isFullscreen,
         }
     }
