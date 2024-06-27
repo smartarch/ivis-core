@@ -1,11 +1,11 @@
 'use strict';
 
 import em from './extension-manager';
-import React, {Component} from "react";
+import React, {Component, useRef} from "react";
 import i18n, {withTranslation} from './i18n';
 
 import PropTypes from "prop-types";
-import {BrowserRouter as Router, Link, Route, Routes} from "react-router-dom";
+import {createBrowserRouter, Link, Route, RouterProvider, Routes, unstable_usePrompt} from "react-router-dom";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
 import {withErrorHandling} from "./error-handling";
@@ -374,7 +374,7 @@ export class BeforeUnloadListeners {
 @withComponentMixins([
     withTranslation,
     withErrorHandling
-], ['onNavigationConfirmationDialog'])
+], ['onNavigationConfirmationDialog', 'shouldBlockNavigation'])
 class SectionContentBase extends Component {
     constructor(props) {
         super(props);
@@ -411,16 +411,16 @@ class SectionContentBase extends Component {
         });
     }
 
+    shouldBlockNavigation() {
+        return this.beforeUnloadListeners.shouldUnloadBeCancelled();
+    }
+
     componentDidMount() {
-        /* TODO: update this code for the new router (v6), possibly with https://reactrouter.com/en/main/hooks/use-blocker
         window.addEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock = this.props.navigate.block('Changes you made may not be saved. Are you sure you want to leave this page?');
-        */
     }
 
     componentWillUnmount() {
-        /*window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock();*/
+        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
     }
 
     componentDidUpdate(prevProps) {
@@ -519,7 +519,13 @@ function SectionContent(props) {
     const location = useLocation();
     const params = useParams();
 
-    return <SectionContentBase {...props} navigate={navigate} location={location} params={params} />;
+    const sectionContent = useRef();
+    unstable_usePrompt({
+        message: "Changes you made may not be saved. Are you sure you want to leave this page?",
+        when: () => sectionContent.current && sectionContent.current.shouldBlockNavigation()
+    });
+
+    return <SectionContentBase {...props} navigate={navigate} location={location} params={params} ref={sectionContent} />;
 }
 
 export { SectionContent };
@@ -550,11 +556,22 @@ export class Section extends Component {
         }
 
         return (
-            <Router basename={getBaseDir()} getUserConfirmation={this.getUserConfirmationHandler}>
+            <CustomRouter basename={getBaseDir()} getUserConfirmation={this.getUserConfirmationHandler}>
                 <SectionContent wrappedComponentRef={node => this.sectionContent = node} root={this.props.root} structure={structure} />
-            </Router>
+            </CustomRouter>
         );
     }
+}
+
+/** This is a hack to be able to use the React Router Data APIs (see https://reactrouter.com/en/main/routers/picking-a-router), such as useBlocker. The hack comes from https://github.com/backstage/backstage/issues/19681#issuecomment-1761603883 */
+function CustomRouter(props) {
+    const router = createBrowserRouter([
+        { path: "*", Component: () => <>{props.children}</> },
+      ], {
+        basename: props.basename
+    });
+
+    return <RouterProvider router={router} />;
 }
 
 export class Toolbar extends Component {
