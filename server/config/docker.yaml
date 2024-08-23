@@ -1,0 +1,27 @@
+www:
+  host: ivis-core-ivis-1
+
+  trustedPort: 8443
+  trustedPortIsHttps: false
+  sandboxPort: 8444
+  sandboxPortIsHttps: false
+  apiPort: 8445
+  apiPortIsHttps: false
+
+  trustedUrlBase: http://localhost:8443
+  sandboxUrlBase: http://localhost:8444
+
+mysql:
+  # when changing the MySQL configuration, also change it accordingly in `docker-compose.yml`
+  host: ivis-core-mariadb-1
+  user: ivis
+  password: ivis
+  database: ivis
+  port: 3306
+
+elasticsearch:
+  host: ivis-core-elasticsearch-1
+  port: 9200
+
+redis:
+  enabled: false

@@ -1,0 +1,65 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    environment:
+      # Note: if you need to change the MySQL credentials, also update them in the `/server/config/local-docker.yaml` file (create it if it does not exist) like this:
+      # ```yaml
+      # mysql:
+      #   user: "ivis"
+      #   database: "ivis"
+      #   password: "ivis"
+      # ```
+      MYSQL_ROOT_PASSWORD: ivis_root_passwd
+      MYSQL_DATABASE: ivis
+      MYSQL_USER: ivis
+      MYSQL_PASSWORD: ivis
+    ports:
+      - "3305:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  ivis:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: docker  # if you want to change the Node Env, you probably also need to create or update the corresponding configuration file in /server/config/
+    ports:
+      - "8443:8443"
+      - "8444:8444"
+      - "8445:8445"
+    depends_on:
+      - mariadb
+      - redis
+      - elasticsearch
+    volumes:
+      - ./server/knex/migrations:/app/knex/migrations
+    command: >
+      /bin/bash -c "
+      ./wait-for-it.sh ivis-core-mariadb-1:3306 --timeout=60 --strict &&
+      ./wait-for-it.sh ivis-core-elasticsearch-1:9200 --timeout=60 --strict &&
+      node /app/server/index.js
+      "
+
+volumes:
+  mariadb_data:
+  redis_data:
+  elasticsearch_data:

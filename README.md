@@ -29,6 +29,13 @@ IVIS-CORE has been realized on top of several technologies, in particular based 
 
 ## Quick Start
 
+This section describes several ways how to install IVIS:
+
+* [local installation with Docker](#local-installation-with-docker)
+* [public website secured by SSL](#installation-on-fresh-centos-8-centos-7-or-ubuntu-1804-lts-public-website-secured-by-ssl)
+* [local installation (primarily for development and testing)](#installation-on-fresh-centos-8-centos-7-or-ubuntu-1804-lts-local-installation)
+  * [debugger configuration](https://github.com/smartarch/ivis-core/wiki/Local-installation-for-development)
+
 ### Preparation
 The project creates three URL endpoints, which are referred to as "trusted", "sandbox" and "public". This allows IVIS
 to guarantee security and avoid XSS attacks in the multi-user settings. The function of these three endpoints is as follows:
@@ -41,6 +48,75 @@ The recommended deployment of IVIS is to use 3 DNS entries that all points to th
 - *sbox.ivis.example.com* - sandbox endpoint (CNAME record `sbox.ivis` under `example.com` domain that points to `ivis`)
 - *api.ivis.example.com* - public endpoint (CNAME record `api.ivis` under `example.com` domain that points to `ivis`)
 
+
+### Local installation with Docker
+
+**⚠️ Note that the Docker installation is considered EXPERIMENTAL at the moment and some features might not work.** 
+
+This will set up a locally accessible IVIS instance ran via Docker.
+
+All endpoints (trusted, sandbox, public) will provide only HTTP as follows (however, a proxy server can be set up to access the endpoints publicly):
+
+- http://localhost:8443 - trusted endpoint
+- http://localhost:8444 - sandbox endpoint
+- http://localhost:8445 - api endpoint
+
+1. Install Git
+
+   For CentOS 8 type:
+    ```
+    dnf install -y git
+    ```
+
+   For CentOS 7 type:
+    ```
+    yum install -y git
+    ```
+
+   For Ubuntu 18.04 LTS type
+    ```
+    apt-get install -y git
+    ```
+
+2. Download IVIS using Git: 
+    ```
+    git clone https://github.com/smartarch/ivis-core.git
+    cd ivis-core
+    ```
+   
+3. If necessary, update `ivis-core` configuration:
+
+   By default, the app is set to run on localhost on HTTP (via Docker). If you want to access it via a different URL and use HTTPS (you will also need to set up a proxy), create the `server/config/local-docker.yaml` file and set the necessary configuration:
+
+   ```yaml
+   www:
+     trustedPortIsHttps: true
+     sandboxPortIsHttps: true
+     apiPortIsHttps: true
+   
+     trustedUrlBase: https://ivis.example.com
+     sandboxUrlBase: https://sbox.ivis.example.com
+   ```
+   
+   Possibly also update other configuration (e.g., `mysql.password`). See [`server/config/docker.yaml`](server/config/docker.yaml) for default values.
+
+4. Build the Docker Images:
+
+   ```bash
+   docker-compose build
+   ```
+
+5. Start the Services:
+
+   ```bash
+   docker-compose up
+   ```
+
+6. Open the trusted endpoint: <http://localhost:8443>
+
+7. Authenticate as `admin`:`test`
+
+8. Update your password under Account/Profile
 
 ### Installation on fresh CentOS 8, CentOS 7 or Ubuntu 18.04 LTS (public website secured by SSL)
 

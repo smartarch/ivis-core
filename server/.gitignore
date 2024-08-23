@@ -2,4 +2,5 @@
 /files
 /config/development.yaml
 /config/production.yaml
+/config/local-*.yaml
 /lib/tasks/python/build/
