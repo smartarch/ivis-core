@@ -50,7 +50,6 @@ export default class List extends Component {
         columns.push({
             actions: data => {
                 const actions = [];
-
                 actions.push({
                     label: <Icon icon="edit" title={t('Edit')}/>,
                     link: `/settings/users/${data[0]}/edit`

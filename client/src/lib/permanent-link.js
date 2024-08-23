@@ -19,7 +19,7 @@ export function extractPermanentLink(location) {
     return {config, state};
 }
 
-export function extractPermanentLinkAndRedirect(location, history) {
+export function extractPermanentLinkAndRedirect(location, navigate) {
     const {config, state} = extractPermanentLink(location);
 
     const searchParams = new URLSearchParams(location.search);
@@ -37,7 +37,7 @@ export function extractPermanentLinkAndRedirect(location, history) {
     }
 
     if (anyChange) {
-        history.replace(location.pathname + '?' + searchParams.toString(), { permanentLinkConfig: config, permanentLinkState: state });
+        navigate(location.pathname + '?' + searchParams.toString(), { state: { permanentLinkConfig: config, permanentLinkState: state } });
     }
 }
 

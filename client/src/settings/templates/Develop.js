@@ -15,9 +15,9 @@ import {
     FormSendMethod,
     withForm
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
 import {
     withAsyncErrorHandler,
     withErrorHandling
@@ -117,6 +117,16 @@ export default class Develop extends Component {
             }
         ];
 
+        const saveCommand = {
+            name: 'save',
+            bindKey: {win: "Ctrl-S", "mac": "Cmd-S"},
+            exec: (editor) => {
+                this.save().then(
+                    () => editor.focus()
+                );
+            }
+        };
+
         templateTypes.jsx = {
             changedKeys: new Set(['jsx', 'scss', 'files', 'params']),
             tabs: [
@@ -125,13 +135,13 @@ export default class Develop extends Component {
                     default: true,
                     label: t('JSX'),
                     getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="jsx" mode="jsx"
-                                                 format="wide"/>
+                                                 format="wide" commands={[saveCommand]}/>
                 },
                 {
                     id: 'scss',
                     label: t('SCSS'),
                     getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="scss" mode="scss"
-                                                 format="wide"/>
+                                                 format="wide" commands={[saveCommand]}/>
                 },
                 {
                     id: 'files',
@@ -143,7 +153,7 @@ export default class Develop extends Component {
                     id: 'params',
                     label: t('Parameters'),
                     getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="params" mode="json"
-                                                 format="wide"/>
+                                                 format="wide" commands={[saveCommand]}/>
                 }
             ],
             dataIn: data => {

@@ -18,8 +18,8 @@ import {
     TextArea,
     withForm, withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
 import {withErrorHandling} from "../../lib/error-handling";
 import {
     NamespaceSelect,

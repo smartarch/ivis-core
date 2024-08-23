@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import PropTypes
     from "prop-types";
-import {withTranslation} from './i18n';
+
 import {
     requiresAuthenticatedUser,
     Title,
@@ -27,6 +27,7 @@ import {
 } from "./urls";
 import {withComponentMixins} from "./decorator-helpers";
 import {Panel} from "./panel";
+import {withTranslation} from "./i18n";
 
 @withComponentMixins([
     withTranslation,

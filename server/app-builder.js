@@ -30,6 +30,7 @@ const embedRest = require('./routes/rest/embed');
 const settingsRest = require('./routes/rest/settings');
 const liveAnimationRest = require('./routes/rest/live-animation');
 
+
 const jobsSse = require('./routes/sse/jobs');
 
 const embedApi = require('./routes/api/embed');
@@ -82,7 +83,7 @@ function createApp(type) {
     // Do not expose software used
     app.disable('x-powered-by');
 
-    if (type === AppType.SANDBOXED) {
+    if (type === AppType.SANDBOXED || type === AppType.API) {
         app.use(cors());
     }
 
@@ -111,7 +112,8 @@ function createApp(type) {
         app.use(cookieParser());
 
         if (config.redis.enabled) {
-            const RedisStore = require('connect-redis')(session);
+            const RedisStore = new require('connect-redis').default;
+            RedisStore.session = session;
 
             app.use(session({
                 store: new RedisStore(config.redis),
@@ -168,9 +170,8 @@ function createApp(type) {
 
         useWith404Fallback('/static-npm/fontawesome', express.static(path.join(__dirname, '..', 'client', 'node_modules', '@fortawesome', 'fontawesome-free', 'webfonts')));
         useWith404Fallback('/static-npm/jquery.min.js', express.static(path.join(__dirname, '..', 'client', 'node_modules', 'jquery', 'dist', 'jquery.min.js')));
-        useWith404Fallback('/static-npm/popper.min.js', express.static(path.join(__dirname, '..', 'client', 'node_modules', 'popper.js', 'dist', 'umd', 'popper.min.js')));
+        useWith404Fallback('/static-npm/popper.min.js', express.static(path.join(__dirname, '..', 'client', 'node_modules', '@popperjs', 'core', 'dist', 'umd', 'popper.min.js')));
         useWith404Fallback('/static-npm/bootstrap.min.js', express.static(path.join(__dirname, '..', 'client', 'node_modules', 'bootstrap', 'dist', 'js', 'bootstrap.min.js')));
-        useWith404Fallback('/static-npm/coreui.min.js', express.static(path.join(__dirname, '..', 'client', 'node_modules', '@coreui', 'coreui', 'dist', 'js', 'coreui.min.js')));
 
         app.all('/rest/*', (req, res, next) => {
             req.needsJSONResponse = true;
@@ -199,7 +200,6 @@ function createApp(type) {
         app.use('/rest', settingsRest);
         app.use('/rest', liveAnimationRest);
 
-
         app.use('/sse', jobsSse);
 
         if (type === AppType.SANDBOXED) {
@@ -213,7 +213,6 @@ function createApp(type) {
 
         app.use('/api', embedApi);
     }
-
     app.use('/', index.getRouter(type));
 
     // catch 404 and forward to error handler

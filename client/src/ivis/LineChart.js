@@ -54,7 +54,7 @@ function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, s
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslation,
 ])
 export class LineChart extends Component {
     constructor(props){

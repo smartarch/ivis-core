@@ -1,3 +1,6 @@
+@import "./variables.scss";
+
+@import "../../node_modules/bootstrap/scss/bootstrap";
 @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,400i,700,700i|Ubuntu:300,300i,400,400i,700,700i&subset=latin-ext');
 
 $font-family-sans-serif: 'Ubuntu', sans-serif;
@@ -5,9 +8,8 @@ $font-family-monospace: 'Ubuntu Mono', monospace;
 
 $fa-font-path: "../static-npm/fontawesome";
 $enable-print-styles: false;
+$sidebar-width: 200px;
 
-@import "./variables.scss";
-@import "../../node_modules/@coreui/coreui/scss/coreui.scss";
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/fontawesome.scss";
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/regular.scss";
 @import "../../node_modules/@fortawesome/fontawesome-free/scss/solid.scss";
@@ -45,8 +47,9 @@ body.ivis {
     display: flex;
     border-radius: 0;
     @include border-radius($breadcrumb-border-radius);
-    @include borders($breadcrumb-borders);
+    //@include borders($breadcrumb-borders);
     background-color: $breadcrumb-bg;
+    padding: 0 1rem;
 
     .breadcrumb {
       border: 0px none;
@@ -56,13 +59,20 @@ body.ivis {
     }
   }
 
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
   .app-header {
 
     .navbar {
       padding: 0 15px;
+      min-height: 56px;
 
       .navbar-brand {
-        width: $sidebar-width - 30px;
+        width: calc($sidebar-width - 30px);
 
         @include media-breakpoint-down(md) {
           // This is to keep the title and the menu buttons in order. Normally the brand is position: absolute which distorts the order
@@ -102,7 +112,8 @@ body.ivis {
 
       .nav-item {
         .nav-link {
-          padding: 0px;
+          padding-left: 0px;
+          padding-right: 0px;
         }
 
         @include media-breakpoint-up(lg) {
@@ -132,6 +143,37 @@ body.ivis {
 
     .nav-item {
       min-width: 0px;
+    }
+  }
+
+  .app-body {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+
+    .sidebar {
+      flex: 0 1 $sidebar-width;
+      padding: 0 1rem;
+      flex-direction: column;
+
+      .sidebar-header {
+        text-align: center;
+        padding: 0.5rem 0;
+      }
+
+      nav {
+        align-self: start;
+      }
+    }
+
+    .main {
+      flex-grow: 1;
+    }
+  }
+
+  @include media-breakpoint-down(lg) {
+    .app-body {
+      flex-direction: column;
     }
   }
 
@@ -183,3 +225,5 @@ body.ivis {
 .invalid-feedback {
   display: block;
 }
+
+

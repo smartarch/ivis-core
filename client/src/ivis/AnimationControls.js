@@ -2,7 +2,7 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {select, mouse} from "d3-selection";
+import {select} from "d3-selection";
 import {scaleLinear, scaleTime} from "d3-scale";
 import {format} from "d3-format";
 import {interpolateString} from "d3-interpolate";

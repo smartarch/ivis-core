@@ -54,7 +54,7 @@ const langCodes = {
 }
 
 function getLang(lng) {
-    return langCodes[lng];
+    return langCodes[lng] || langCodes['en-US'];
 }
 
 module.exports.convertToFake = convertToFake;

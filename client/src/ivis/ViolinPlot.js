@@ -3,7 +3,7 @@
 import React, {Component} from "react";
 import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
-import {select, event as d3Event} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
@@ -676,11 +676,11 @@ export class ViolinPlot extends Component {
     createChartCursor(xSize, ySize, xScale, yScale, signalSetsData) {
         const self = this;
 
-        const mouseMove = function () {
+        const mouseMove = function (event) {
             if (self.state.zoomInProgress)
                 return;
 
-            const containerPos = d3Selection.mouse(self.containerNode);
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const y = containerPos[1] - self.props.margin.top;
             const x = containerPos[0] - self.props.margin.left;
 
@@ -757,8 +757,8 @@ export class ViolinPlot extends Component {
         }
 
         this.cursorAreaSelection
-            .on('mouseenter', mouseMove)
-            .on('mousemove', mouseMove)
+            .on('mouseenter', (event) => mouseMove(event))
+            .on('mousemove', (event) => mouseMove(event))
             .on('mouseleave', mouseLeave);
     }
 
@@ -778,19 +778,19 @@ export class ViolinPlot extends Component {
         // noinspection DuplicatedCode
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             // noinspection JSUnresolvedVariable
-            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+            if (self.props.withTransition && event.sourceEvent && event.sourceEvent.type === "wheel") {
                 self.lastZoomCausedByUser = true;
-                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform(self), () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, event.transform, setZoomTransform(self), () => {
                     self.deselectPoints();
                 });
             } else {
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                     self.lastZoomCausedByUser = true;
                 // noinspection JSUnresolvedVariable
-                setZoomTransform(self)(d3Event.transform);
+                setZoomTransform(self)(event.transform);
             }
         };
 
@@ -814,14 +814,14 @@ export class ViolinPlot extends Component {
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(zoomExtent)
             .extent(zoomExtent)
-            .on("zoom", handleZoom)
+            .on("zoom", event => handleZoom(event))
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
             .wheelDelta(wheelDelta(2))
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button;
+                return !event.ctrlKey && !event.button;
             });
         this.svgContainerSelection.call(this.zoom);
     }

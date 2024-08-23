@@ -5,7 +5,7 @@ import React, { Component } from 'react';
 import { axisBottom, axisLeft } from 'd3-axis';
 import { scaleLinear, scaleBand } from 'd3-scale';
 import { min, max } from 'd3-array';
-import { select, event as d3Event } from 'd3-selection';
+import { select } from 'd3-selection';
 import 'd3-transition';
 import { brushX } from 'd3-brush';
 
@@ -72,9 +72,9 @@ export default class BarNavigator extends Component {
 
         const brush = brushX()
             .extent([[0, 0], [this.state.width - this.props.margin.left - this.props.margin.right, this.props.height - this.props.margin.top - this.props.margin.bottom]])
-            .on("end", function brushed() {
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
-                const sel = d3Event.selection || xScale.range();
+            .on("end", function brushed(event) {
+                if (event.sourceEvent && event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+                const sel = event.selection || xScale.range();
                 const xl = roundToBand(sel[0], false);
                 const xr = roundToBand(sel[1], true);
 

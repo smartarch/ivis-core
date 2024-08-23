@@ -30,7 +30,8 @@ export default class Overview extends Component {
     }
 
     static propTypes = {
-        workspace: PropTypes.object
+        workspace: PropTypes.object,
+        workspaceId : PropTypes.number
     }
 
     render() {

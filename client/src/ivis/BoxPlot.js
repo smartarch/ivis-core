@@ -381,8 +381,8 @@ export class BoxPlot extends Component {
     createChartCursor(xSize, ySize, xScale, yScale, signalSetsData) {
         const self = this;
 
-        const mouseMove = function () {
-            const containerPos = d3Selection.mouse(self.containerNode);
+        const mouseMove = function (event) {
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const y = containerPos[1] - self.props.margin.top;
             const x = containerPos[0] - self.props.margin.left;
 

@@ -1,20 +1,23 @@
 'use strict';
 
 import em from './extension-manager';
-import React, {Component} from "react";
+import React, {Component, useRef} from "react";
 import i18n, {withTranslation} from './i18n';
+
 import PropTypes from "prop-types";
-import {withRouter} from "react-router";
-import {BrowserRouter as Router, Link, Route, Switch} from "react-router-dom";
+import {createBrowserRouter, Link, Route, RouterProvider, Routes, unstable_usePrompt} from "react-router-dom";
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+
 import {withErrorHandling} from "./error-handling";
 import interoperableErrors from "../../../shared/interoperable-errors";
 import {ActionLink, Button, DismissibleAlert, DropdownActionLink, Icon} from "./bootstrap-components";
 import ivisConfig from "ivisConfig";
 import styles from "./styles.scss";
-import {getRoutes, renderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
+import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers, NoMatch} from "./page-common";
 import {getBaseDir} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
 import {getLang} from "../../../shared/langs";
+import _ from "lodash";
 
 export { withPageHelpers }
 
@@ -26,11 +29,12 @@ class Breadcrumb extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         params: PropTypes.object.isRequired,
-        resolved: PropTypes.object.isRequired
+        resolved: PropTypes.object.isRequired,
     }
 
     renderElement(entry, isActive) {
         const params = this.props.params;
+
         let title;
         if (typeof entry.title === 'function') {
             title = entry.title(this.props.resolved, params);
@@ -168,7 +172,7 @@ function getLoadingMessage(t) {
 function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content) {
     if (panelInFullScreen) {
         return (
-            <div key="app" className="app panel-in-fullscreen">
+            <div key="app" className="panel-in-fullscreen">
                 <div key="appBody" className="app-body">
                     <main key="main" className="main">
                         {content}
@@ -179,18 +183,18 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
 
     } else {
         return (
-            <div key="app" className={"app " + (showSidebar ? 'sidebar-lg-show' : '')}>
+            <div key="app" className="app">
                 <header key="appHeader" className="app-header">
                     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
                         {showSidebar &&
-                        <button className="navbar-toggler sidebar-toggler" data-toggle="sidebar-show" type="button">
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle sidebar">
                             <span className="navbar-toggler-icon"/>
                         </button>
                         }
 
                         <Link className="navbar-brand" to="/">{em.get('app.title')}</Link>
 
-                        <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#ivisMainNavbar" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#ivisMainNavbar" aria-controls="ivisMainNavbar" aria-expanded="false" aria-label="Toggle navigation">
                             <span className="navbar-toggler-icon"/>
                         </button>
 
@@ -200,9 +204,9 @@ function renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, sec
                     </nav>
                 </header>
 
-                <div key="appBody" className="app-body">
-                    {showSidebar &&
-                    <div key="sidebar" className="sidebar">
+                <div key="appBody" className="app-body navbar-expand-lg">
+                    {showSidebar && // TODO: fix sidebar collapse animation
+                    <div key="sidebar" className="sidebar text-bg-dark collapse navbar-collapse" id="sidebar">
                         {secondaryMenu}
                     </div>
                     }
@@ -238,8 +242,8 @@ class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired,
-        flashMessage: PropTypes.object
+        params: PropTypes.object.isRequired,
+        flashMessage: PropTypes.object,
     }
 
     registerSidebarAnimationListener() {
@@ -259,25 +263,26 @@ class PanelRoute extends Component {
     render() {
         const t = this.props.t;
         const route = this.props.route;
-        const params = this.props.match.params;
+        const params = this.props.params;
 
         const showSidebar = !!route.secondaryMenuComponent;
 
         const panelInFullScreen = this.state.panelInFullScreen;
 
         const render = (resolved, permissions) => {
+
             let primaryMenu = null;
             let secondaryMenu = null;
             let content = null;
 
             if (resolved && permissions) {
                 const compProps = {
-                    match: this.props.match,
                     location: this.props.location,
                     resolved,
                     permissions,
                     setPanelInFullScreen: this.setPanelInFullScreen,
-                    panelInFullScreen: this.state.panelInFullScreen
+                    panelInFullScreen: this.state.panelInFullScreen,
+                    params: _.omit(params, "*"),  // the trailing space in ':panelId/*' is matched incorrectly, so we remove it here
                 };
 
                 let panel;
@@ -332,11 +337,9 @@ class PanelRoute extends Component {
             return renderFrameWithContent(panelInFullScreen, showSidebar, primaryMenu, secondaryMenu, content);
         };
 
-
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+        return <Resolver key={route.path} route={route} render={render} location={this.props.location} params={this.props.params}/>;
     }
 }
-
 
 export class BeforeUnloadListeners {
     constructor() {
@@ -368,12 +371,11 @@ export class BeforeUnloadListeners {
     }
 }
 
-@withRouter
 @withComponentMixins([
     withTranslation,
     withErrorHandling
-], ['onNavigationConfirmationDialog'])
-export class SectionContent extends Component {
+], ['shouldBlockNavigation'])
+class SectionContentBase extends Component {
     constructor(props) {
         super(props);
 
@@ -381,17 +383,8 @@ export class SectionContent extends Component {
             flashMessageText: ''
         };
 
-        this.historyUnlisten = props.history.listen((location, action) => {
-            if (action === "REPLACE") return;
-            if (location.state && location.state.preserveFlashMessage) return;
-
-            // noinspection JSIgnoredPromiseFromCall
-            this.closeFlashMessage();
-        });
-
         this.beforeUnloadListeners = new BeforeUnloadListeners();
         this.beforeUnloadHandler = ::this.onBeforeUnload;
-        this.historyUnblock = null;
     }
 
     static propTypes = {
@@ -406,25 +399,24 @@ export class SectionContent extends Component {
         }
     }
 
-    onNavigationConfirmationDialog(message, callback) {
-        this.beforeUnloadListeners.shouldUnloadBeCancelledAsync().then(res => {
-            if (res) {
-                const allowTransition = window.confirm(message);
-                callback(allowTransition);
-            } else {
-                callback(true);
-            }
-        });
+    shouldBlockNavigation() {
+        return this.beforeUnloadListeners.shouldUnloadBeCancelled();
     }
 
     componentDidMount() {
         window.addEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock = this.props.history.block('Changes you made may not be saved. Are you sure you want to leave this page?');
     }
 
     componentWillUnmount() {
         window.removeEventListener('beforeunload', this.beforeUnloadHandler);
-        this.historyUnblock();
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.location === this.props.location) return;
+        if (this.props.location.state && this.props.location.state.preserveFlashMessage) return;
+
+        // noinspection JSIgnoredPromiseFromCall
+        this.closeFlashMessage();
     }
 
     setFlashMessage(severity, text) {
@@ -435,16 +427,16 @@ export class SectionContent extends Component {
     }
 
     navigateTo(path) {
-        this.props.history.push(path);
+        this.props.navigate(path);
     }
 
     navigateBack() {
-        this.props.history.goBack();
+        this.props.navigate(-1);
     }
 
     navigateToWithFlashMessage(path, severity, text) {
-        this.props.history.push(path, {preserveFlashMessage: true});
         this.setFlashMessage(severity, text);
+        this.props.navigate(path, { state: { preserveFlashMessage: true } });
     }
 
     ensureAuthenticated() {
@@ -483,52 +475,56 @@ export class SectionContent extends Component {
     }
 
     renderRoute(route) {
-        const render = props => {
-            let flashMessage;
-            if (this.state.flashMessageText) {
-                flashMessage = <DismissibleAlert severity={this.state.flashMessageSeverity} onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>;
-            }
-
-            return renderRoute(
-                route,
-                PanelRoute,
-                () => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t)),
-                flashMessage,
-                props
-            );
-        };
-
-        return <Route key={route.path} exact={route.exact} path={route.path} render={render} />
+        return <Route key={route.path} exact={route.exact} path={route.path} element={<RenderRoute
+            route={route}
+            panelRouteCtor={PanelRoute}
+            loadingMessageFn={() => renderFrameWithContent(false, false, null, null, getLoadingMessage(this.props.t))}
+            flashMessage={this.state.flashMessageText
+                ? <DismissibleAlert severity={this.state.flashMessageSeverity}
+                                    onCloseAsync={::this.closeFlashMessage}>{this.state.flashMessageText}</DismissibleAlert>
+                : null}
+        />}/>
     }
 
     render() {
         const routes = getRoutes(this.props.structure);
-
         return (
             <SectionContentContext.Provider value={this}>
-                <Switch>{routes.map(x => this.renderRoute(x))}</Switch>
+                <Routes>{routes.map(x => {
+                    return this.renderRoute(x);
+                })
+                }
+                <Route path="*" element={<NoMatch />} />
+                </Routes>
             </SectionContentContext.Provider>
         );
     }
 }
 
+function SectionContent(props) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const params = useParams();
+
+    const sectionContent = useRef();
+    unstable_usePrompt({
+        message: "Changes you made may not be saved. Are you sure you want to leave this page?",
+        when: () => sectionContent.current && sectionContent.current.shouldBlockNavigation()
+    });
+
+    return <SectionContentBase {...props} navigate={navigate} location={location} params={params} ref={sectionContent} />;
+}
+
+export { SectionContent };
+
 @withComponentMixins([
     withTranslation
 ])
 export class Section extends Component {
-    constructor(props) {
-        super(props);
-        this.getUserConfirmationHandler = ::this.onGetUserConfirmation;
-        this.sectionContent = null;
-    }
 
     static propTypes = {
         structure: PropTypes.oneOfType([PropTypes.object, PropTypes.func]).isRequired,
         root: PropTypes.string.isRequired
-    }
-
-    onGetUserConfirmation(message, callback) {
-        this.sectionContent.onNavigationConfirmationDialog(message, callback);
     }
 
     render() {
@@ -538,16 +534,27 @@ export class Section extends Component {
         }
 
         return (
-            <Router basename={getBaseDir()} getUserConfirmation={this.getUserConfirmationHandler}>
-                <SectionContent wrappedComponentRef={node => this.sectionContent = node} root={this.props.root} structure={structure} />
-            </Router>
+            <CustomRouter basename={getBaseDir()}>
+                <SectionContent root={this.props.root} structure={structure} />
+            </CustomRouter>
         );
     }
 }
 
+/** This is a hack to be able to use the React Router Data APIs (see https://reactrouter.com/en/main/routers/picking-a-router), such as useBlocker. The hack comes from https://github.com/backstage/backstage/issues/19681#issuecomment-1761603883 */
+function CustomRouter(props) {
+    const router = createBrowserRouter([
+        { path: "*", Component: () => <>{props.children}</> },
+      ], {
+        basename: props.basename
+    });
+
+    return <RouterProvider router={router} />;
+}
+
 export class Toolbar extends Component {
     static propTypes = {
-        className: PropTypes.string,
+        className: PropTypes.string
     };
 
     render() {
@@ -651,7 +658,7 @@ export class NavDropdown extends Component {
         icon: PropTypes.string,
         className: PropTypes.string,
         menuClassName: PropTypes.string
-    }
+    };
 
     render() {
         const props = this.props;
@@ -662,11 +669,11 @@ export class NavDropdown extends Component {
         return (
             <li className={className}>
                 {props.icon ?
-                    <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         <Icon icon={props.icon}/>{' '}{props.label}
                     </a>
                     :
-                    <a href="#" className="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <a href="#" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                         {props.label}
                     </a>
                 }
@@ -713,7 +720,7 @@ export function getLanguageChooser(t) {
     const currentLngCode = getLang(i18n.language).getShortLabel(t);
 
     const languageChooser = (
-        <NavDropdown menuClassName="dropdown-menu-right" label={currentLngCode}>
+        <NavDropdown menuClassName="dropdown-menu-end" label={currentLngCode}>
             {languageOptions}
         </NavDropdown>
     );

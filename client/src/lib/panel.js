@@ -43,12 +43,14 @@ export class Panel extends Component {
 
             menu = (
                 <div className={styles.panelMenu}>
-                    <ButtonDropdown menuClassName="dropdown-menu-right" label={<Icon icon="cog"/>}>
+                    <ButtonDropdown menuClassName="dropdown-menu-end" label={<Icon icon="cog"/>}>
                         {menuItems}
                     </ButtonDropdown>
                 </div>
             );
         }
+
+
 
         return (
             <div className="card ivis-panel">

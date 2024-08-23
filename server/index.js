@@ -60,17 +60,11 @@ async function initAndStart() {
 
         server.listen(port, host, callback);
     }
-
     const createServerAsync = bluebird.promisify(createServer);
-
-
     await knex.migrate.latest();
-
     await em.invokeAsync('knex.migrate');
-
     await shares.regenerateRoleNamesTable();
     await shares.rebuildPermissions();
-
     await savePdf.init();
     await builder.init();
     await indexer.init();
@@ -78,13 +72,10 @@ async function initAndStart() {
     await alertsHandler.init();
     await templates.compileAll();
     await tasks.compileAll();
-
     await em.invokeAsync('services.start');
-
     await createServerAsync(AppType.TRUSTED, 'trusted', config.www.host, config.www.trustedPort, config.www.trustedPortIsHttps, config.certs.www);
     await createServerAsync(AppType.SANDBOXED, 'sandbox', config.www.host, config.www.sandboxPort, config.www.sandboxPortIsHttps, config.certs.www);
     await createServerAsync(AppType.API, 'api', config.www.host, config.www.apiPort, config.www.apiPortIsHttps, config.certs.api);
-
     log.info('Service', 'All services started');
     appBuilder.setReady();
 }

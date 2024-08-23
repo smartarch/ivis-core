@@ -2,16 +2,14 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {withRouter} from "react-router";
-import {BrowserRouter as Router, Route, Switch} from "react-router-dom";
+import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
 import {withErrorHandling} from "./error-handling";
 import styles from "./styles-content.scss";
-import {getRoutes, renderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
+import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers} from "./page-common";
 import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
 import {withTranslation} from "./i18n";
-import jQuery from 'jquery';
 import {ThemeContext} from "./theme-context";
 import {Theme} from "../../../shared/themes";
 
@@ -41,29 +39,43 @@ class PanelRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired
+    }
+
+    componentDidMount() {
+        this.updateBodyClasses();
+    }
+
+    componentDidUpdate(prevProps) {
+        this.updateBodyClasses();
+    }
+
+    componentWillUnmount() {
+        document.body.classList.remove('inside-iframe', 'theme-dark');
+    }
+
+    updateBodyClasses() {
+        const { route, location } = this.props;
+
+        if (route.insideIframe) {
+            document.body.classList.add('inside-iframe');
+        } else {
+            document.body.classList.remove('inside-iframe');
+        }
+
+        let theme = getTheme(location.search);
+        if (theme === Theme.DARK) {
+            document.body.classList.add('theme-dark');
+        } else {
+            document.body.classList.remove('theme-dark');
+        }
     }
 
     render() {
-        const t = this.props.t;
-        const route = this.props.route;
-        const params = this.props.match.params;
-
-        if (route.insideIframe) {
-            jQuery(document.body).addClass('inside-iframe');
-        } else {
-            jQuery(document.body).removeClass('inside-iframe');
-        }
-
-        let theme = getTheme(this.props.location.search);
-        if (theme === Theme.DARK) {
-            jQuery(document.body).addClass('theme-dark');
-        }
+        const { t, route } = this.props;
 
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
                 const compProps = {
-                    match: this.props.match,
                     location: this.props.location,
                     resolved,
                     permissions
@@ -76,12 +88,11 @@ class PanelRoute extends Component {
                     panel = route.panelRender(compProps);
                 }
 
-
                 let cls = `container-fluid`;
 
                 return (
                     <div className={cls}>
-                        <ThemeContext.Provider value={theme}>
+                        <ThemeContext.Provider value={getTheme(this.props.location.search)}>
                             {panel}
                         </ThemeContext.Provider>
                     </div>
@@ -91,13 +102,10 @@ class PanelRoute extends Component {
                 return getLoadingMessage(t);
             }
         };
-
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match}/>;
+        return <Resolver key={route.path} route={route} render={render} params={this.props.params} location={this.props.location}/>;
     }
 }
 
-
-@withRouter
 @withComponentMixins([
     withTranslation,
     withErrorHandling
@@ -150,8 +158,17 @@ export class SectionContent extends Component {
     }
 
     renderRoute(route) {
-        const render = props => renderRoute(route, PanelRoute, () => getLoadingMessage(this.props.t), null, props);
-        return <Route key={route.path} exact={route.exact} path={route.path} render={render}/>
+        return (
+            <Route
+                key={route.path}
+                path={route.path}
+                element={<RenderRoute
+                    route={route}
+                    panelRouteCtor={PanelRoute}
+                    loadingMessageFn={() => getLoadingMessage(this.props.t)}
+                />}
+            />
+        );
     }
 
     render() {
@@ -159,7 +176,10 @@ export class SectionContent extends Component {
 
         return (
             <SectionContentContext.Provider value={this}>
-                <Switch>{routes.map(x => this.renderRoute(x))}</Switch>
+                <Routes>{
+                    routes.map(x => this.renderRoute(x))
+                }
+                </Routes>
             </SectionContentContext.Provider>
         );
     }

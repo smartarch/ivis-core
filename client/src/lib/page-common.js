@@ -2,16 +2,17 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import {Redirect, Route, Switch} from "react-router-dom";
+import {Link, Navigate, Route, Routes, useLocation, useNavigate, useParams} from "react-router-dom";
 import {withAsyncErrorHandler, withErrorHandling} from "./error-handling";
 import axios from "../lib/axios";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
-import {withTranslation} from "./i18n";
+
 import shallowEqual from "shallowequal";
 import {checkPermissions} from "./permissions";
+import {withTranslation} from "./i18n";
 
-async function resolve(route, match, prevResolverState) {
+async function resolve(route, params, prevResolverState) {
     const resolved = {};
     const permissions = {};
     const resolverState = {
@@ -34,6 +35,7 @@ async function resolve(route, match, prevResolverState) {
             for (const key of keysToGo) {
                 const resolveEntry = route.resolve[key];
 
+
                 let allDepsSatisfied = true;
                 let urlFn = null;
 
@@ -54,7 +56,7 @@ async function resolve(route, match, prevResolverState) {
                 }
 
                 if (allDepsSatisfied) {
-                    urlsToResolve.push(urlFn(match.params, resolved));
+                    urlsToResolve.push(urlFn(params, resolved));
                     keysToResolve.push(key);
                 }
             }
@@ -86,8 +88,9 @@ async function resolve(route, match, prevResolverState) {
                     if (url) {
                         return axios.get(getUrl(url));
                     } else {
-                        return Promise.resolve({data: null});
+                        return Promise.resolve({ data: null });
                     }
+
                 });
                 const resolvedArr = await Promise.all(promises);
 
@@ -279,11 +282,11 @@ export class Resolver extends Component {
         route: PropTypes.object.isRequired,
         render: PropTypes.func.isRequired,
         location: PropTypes.object,
-        match: PropTypes.object
+        params: PropTypes.object,
     }
 
     @withAsyncErrorHandler
-    async resolve(prevMatch) {
+    async resolve() {
         const props = this.props;
 
         if (Object.keys(props.route.resolve).length === 0 && Object.keys(props.route.checkPermissions).length === 0) {
@@ -304,7 +307,7 @@ export class Resolver extends Component {
                 });
             }
 
-            const {resolved, permissions, resolverState} = await resolve(props.route, props.match, prevResolverState);
+            const {resolved, permissions, resolverState} = await resolve(props.route, props.params, prevResolverState);
 
             if (!this.disregardResolve) { // This is to prevent the warning about setState on discarded component when we immediatelly redirect.
                 this.setState({
@@ -322,9 +325,10 @@ export class Resolver extends Component {
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.location.state !== prevProps.location.state || !shallowEqual(this.props.match.params, prevProps.match.params)) {
+        if (this.props.location.state !== prevProps.location.state ||
+            !shallowEqual(this.props.params, prevProps.params)) {
             // noinspection JSIgnoredPromiseFromCall
-            this.resolve(prevProps.route, prevProps.match);
+            this.resolve();
         }
     }
 
@@ -338,14 +342,14 @@ export class Resolver extends Component {
 }
 
 
-class RedirectRoute extends Component {
+class RedirectRouteClassComponent extends Component {
     static propTypes = {
-        route: PropTypes.object.isRequired
+        route: PropTypes.object.isRequired,
+        params: PropTypes.object.isRequired
     }
 
     render() {
-        const route = this.props.route;
-        const params = this.props.match.params;
+        const { route, params } = this.props;
 
         let link;
         if (typeof route.link === 'function') {
@@ -354,10 +358,14 @@ class RedirectRoute extends Component {
             link = route.link;
         }
 
-        return <Redirect to={link}/>;
+        return <Navigate to={link} replace />;
     }
 }
 
+const RedirectRoute = (props) => {
+    const params = useParams();
+    return <RedirectRouteClassComponent {...props} params={params} />;
+}
 
 @withComponentMixins([
     withTranslation
@@ -366,53 +374,69 @@ class SubRoute extends Component {
     static propTypes = {
         route: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        match: PropTypes.object.isRequired,
+        params: PropTypes.object.isRequired,
         flashMessage: PropTypes.object,
         panelRouteCtor: PropTypes.func.isRequired,
-        loadingMessageFn: PropTypes.func.isRequired
+        loadingMessageFn: PropTypes.func.isRequired,
     }
 
     render() {
-        const t = this.props.t;
+        const t = this.context;
         const route = this.props.route;
-        const params = this.props.match.params;
+        const params = this.props.params;
+        const location = this.props.location;
+
+        const renderRouteComponent = (route) => {
+            return <RenderRoute route={route} panelRouteCtor={this.props.panelRouteCtor} loadingMessageFn={this.props.loadingMessageFn} flashMessage={this.props.flashMessage} />;
+        };
 
         const render = (resolved, permissions) => {
             if (resolved && permissions) {
                 const subStructure = route.structure(resolved, permissions, params);
                 const routes = getRoutes(subStructure, route);
-
-                const _renderRoute = route => {
-                    const render = props => renderRoute(route, this.props.panelRouteCtor, this.props.loadingMessageFn, this.props.flashMessage, props);
-                    return <Route key={route.path} exact={route.exact} path={route.path} render={render} />
-                };
-
+                // in ReactRouter v6, absolute paths don't work in nested Routes (https://github.com/remix-run/react-router/discussions/9841), so we need to use relative paths here
+                routes.forEach(r => {
+                    r.path = r.path.replace(route.path, '');  // remove the parent route path
+                });
                 return (
-                    <Switch>{routes.map(x => _renderRoute(x))}</Switch>
+                    <Routes>
+                        {routes.map(childRoute => (
+                            <Route
+                                key={childRoute.path}
+                                path={childRoute.path}
+                                element={renderRouteComponent(childRoute)}
+                            >
+                            </Route>
+                        ))}
+                        <Route path="*" element={<NoMatch/>} />
+                    </Routes>
                 );
-
             } else {
                 return this.props.loadingMessageFn();
             }
         };
 
-        return <Resolver route={route} render={render} location={this.props.location} match={this.props.match} />;
+        return <Resolver key={route.path} route={route} render={render} params={params} location={location}/>;
     }
 }
 
-export function renderRoute(route, panelRouteCtor, loadingMessageFn, flashMessage, props) {
+export const RenderRoute = ({ route, panelRouteCtor, loadingMessageFn, flashMessage }) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const params = useParams();
+
+    const props = { navigate, location, params, flashMessage };
+
     if (route.structure) {
         return <SubRoute route={route} flashMessage={flashMessage} panelRouteCtor={panelRouteCtor} loadingMessageFn={loadingMessageFn} {...props}/>;
-
     } else if (!route.panelRender && !route.panelComponent && route.link) {
         return <RedirectRoute route={route} {...props}/>;
-
     } else {
         const PanelRoute = panelRouteCtor;
         return <PanelRoute route={route} flashMessage={flashMessage} {...props}/>;
     }
+};
 
-}
 
 export const SectionContentContext = React.createContext(null);
 export const withPageHelpers = createComponentMixin({
@@ -446,3 +470,7 @@ export const withPageHelpers = createComponentMixin({
         return {};
     }
 });
+
+export function NoMatch() {
+    return <div className={"p-3"}>Page not found. <Link to={"/"}>Back to Home</Link></div>;
+}

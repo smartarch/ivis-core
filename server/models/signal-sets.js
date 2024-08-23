@@ -4,7 +4,7 @@ const config = require('../lib/config');
 const signalStorage = require('./signal-storage');
 const indexer = require('../lib/indexers/' + config.indexer);
 const knex = require('../lib/knex');
-const hasher = require('node-object-hash')();
+const hasher = require('node-object-hash').hasher();
 const {enforce, filterObject} = require('../lib/helpers');
 const dtHelpers = require('../lib/dt-helpers');
 const interoperableErrors = require('../../shared/interoperable-errors');
@@ -485,7 +485,9 @@ async function getLastId(context, sigSet) {
     return lastId;
 }
 
-/* queries = [
+/** Query the data from signal sets. Basic query description is below, see also https://github.com/smartarch/ivis-core/wiki/Data-Access-from-Templates-(Queries) for more details.
+ *
+ * queries = [
     {
         params: {
             withId: <true returns also _id field>
@@ -539,7 +541,7 @@ async function getLastId(context, sigSet) {
 
         <OR>
 
-        docs: { // TODO: Not implemented yet
+        docs: {
             limit: <max no. of records>,
             sort: [
                 {
@@ -574,11 +576,11 @@ async function queryTx(tx, context, queries) {
         await shares.enforceEntityPermissionTx(tx, context, 'signalSet', sigSet.id, 'query');
 
         let substitutionOpts = setupSubstitutionOpts(sigSetQry.substitutionOpts);
-
         // Map from signal cid to signal
         const signalMap = {};
 
         const sigs = await tx('signals').where('set', sigSet.id);
+
         for (const sig of sigs) {
             sig.settings = JSON.parse(sig.settings);
             signalMap[sig.cid] = sig;
@@ -770,9 +772,11 @@ async function getAllowedSignals(templateParams, params) {
                         computeSetsPathMap(spec.children, params[spec.id], getFieldsetPrefix(prefix, spec));
                     } else {
                         let entryIdx = 0;
-                        for (const childParams of params[spec.id]) {
-                            computeSetsPathMap(spec.children, childParams, getFieldsetPrefix(prefix, spec, entryIdx));
-                            entryIdx += 1;
+                        if(params[spec.id] !== undefined) {
+                            for (const childParams of params[spec.id]) {
+                                computeSetsPathMap(spec.children, childParams, getFieldsetPrefix(prefix, spec, entryIdx));
+                                entryIdx += 1;
+                            }
                         }
                     }
                 }
@@ -811,9 +815,11 @@ async function getAllowedSignals(templateParams, params) {
                         computeAllowedSignals(spec.children, params[spec.id], getFieldsetPrefix(prefix, spec));
                     } else {
                         let entryIdx = 0;
-                        for (const childParams of params[spec.id]) {
-                            computeAllowedSignals(spec.children, childParams, getFieldsetPrefix(prefix, spec, entryIdx));
-                            entryIdx += 1;
+                        if(params[spec.id] !== undefined) {
+                            for (const childParams of params[spec.id]) {
+                                computeAllowedSignals(spec.children, childParams, getFieldsetPrefix(prefix, spec, entryIdx));
+                                entryIdx += 1;
+                            }
                         }
                     }
                 }

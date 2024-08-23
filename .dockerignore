@@ -1,0 +1,10 @@
+# Node.js
+**/node_modules
+**/package-lock.json
+
+# Build files
+**/dist
+
+# IVIS files
+**/server/lib/tasks/python/build/
+**/server/files

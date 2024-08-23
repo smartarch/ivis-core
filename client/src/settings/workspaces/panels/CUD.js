@@ -22,8 +22,9 @@ import {
     TextArea,
     withForm, withFormErrorHandlers
 } from "../../../lib/form";
-import "brace/mode/html";
-import "brace/mode/json";
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-json';
+
 import {
     withAsyncErrorHandler,
     withErrorHandling

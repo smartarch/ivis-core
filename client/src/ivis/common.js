@@ -113,7 +113,7 @@ export function brushHandlesTopBottom(group, selection, xSize) {
 
 /** https://github.com/d3/d3-zoom#zoom_wheelDelta with multiplied values */
 export function wheelDelta(multiplier = 2) {
-    return () => -d3Selection.event.deltaY * multiplier * (d3Selection.event.deltaMode === 1 ? 0.05 : d3Selection.event.deltaMode ? 1 : 0.002);
+    return (event) => -event.deltaY * multiplier * (event.deltaMode === 1 ? 0.05 : event.deltaMode ? 1 : 0.002);
 }
 
 export function transitionInterpolate(selection, prevTransform, newTransform, setZoomTransform, endCallback, duration = 150, prevZoomYScaleMultiplier, newZoomYScaleMultiplier) {

@@ -35,7 +35,6 @@ async function init() {
 
     const options = {
         cwd: path.join(__dirname, '..', '..'),
-        env: {NODE_ENV: process.env.NODE_ENV}
     };
 
     if (process.env.NODE_ENV && process.env.NODE_ENV === 'development') {
@@ -49,7 +48,7 @@ async function init() {
     const startedPromise = new Promise((resolve, reject) => {
         startedCallback = resolve;
     });
-
+;
     indexerProcess.on('message', msg => {
         if (msg) {
             switch (msg.type) {
@@ -74,7 +73,7 @@ async function init() {
 
     const sigSets = await signalSets.list();
     for (const sigSet of sigSets) {
-        // TODO non existing indices for computed singal sets are not handled yet
+        // TODO non existing indices for computed signal sets are not handled yet
         // it might cause problems. For example when clearing indices, starting ivis, jobs might expect index to exits.
         if (sigSet.type !== SignalSetType.COMPUTED) {
             await signalSets.index(contextHelpers.getAdminContext(), sigSet.id, IndexMethod.INCREMENTAL);
@@ -91,8 +90,8 @@ async function init() {
             }
         }
     }
-}
 
+}
 
 async function initPipelines() {
 
@@ -170,7 +169,6 @@ async function onInsertRecords(sigSetWithSigMap, records) {
         bulk.push({
             index: {
                 _index: indexName,
-                _type: '_doc',
                 _id: record.id
             }
         });
@@ -216,7 +214,6 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
     try {
         await elasticsearch.delete({
             index: indexName,
-            type: '_doc',
             id: existingRecordId
         });
     } catch (err) {
@@ -228,7 +225,6 @@ async function onUpdateRecord(sigSetWithSigMap, existingRecordId, record) {
 
     await elasticsearch.create({
         index: indexName,
-        type: '_doc',
         id: record.id,
         body: esDoc
     });
@@ -243,7 +239,6 @@ async function onRemoveRecord(sigSet, recordId) {
     try {
         await elasticsearch.delete({
             index: indexName,
-            type: '_doc',
             id: recordId
         });
     } catch (err) {

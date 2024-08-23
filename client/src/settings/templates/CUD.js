@@ -20,9 +20,10 @@ import {
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
+
 import {
     withAsyncErrorHandler,
     withErrorHandling
@@ -192,9 +193,8 @@ export default class CUD extends Component {
 
                     <ButtonRow>
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save')}/>
-                        {isEdit &&
                         <Button type="submit" className="btn-primary" icon="check" label={t('Save and leave')}
-                                onClickAsync={async () => await this.submitHandler(true)}/>}
+                                onClickAsync={async () => await this.submitHandler(true)}/>
                         {canDelete && <LinkButton className="btn-danger" icon="remove" label={t('Delete')}
                                                   to={`/settings/templates/${this.props.entity.id}/delete`}/>}
                     </ButtonRow>

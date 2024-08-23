@@ -4,9 +4,9 @@ import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {requiresAuthenticatedUser, withPageHelpers} from "../../lib/page";
 import {ACEEditor, Button, filterData, Form, FormSendMethod, withForm} from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/python";
-import "brace/mode/text";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-python';
+import 'ace-builds/src-noconflict/mode-text';
 import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
 import {Panel} from "../../lib/panel";
 import developStyles from "./Develop.scss";
@@ -261,6 +261,16 @@ export default class Develop extends Component {
             }
         };
 
+         const saveCommand = {
+            name: 'save',
+            bindKey: {win: "Ctrl-S", "mac": "Cmd-S"},
+            exec: (editor) => {
+                this.save().then(
+                    () => editor.focus()
+                );
+            }
+        };
+
         const tabs = []
         tabs.push(
             {
@@ -268,7 +278,7 @@ export default class Develop extends Component {
                 default: true,
                 label: t('Code'),
                 getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="code" mode={editorMode}
-                                             format="wide" readOnly={isReadOnly}/>
+                                             format="wide" readOnly={isReadOnly} commands={[saveCommand]}/>
             });
         if (!isReadOnly) {
             tabs.push(
@@ -286,7 +296,7 @@ export default class Develop extends Component {
                 id: 'params',
                 label: t('Parameters'),
                 getContent: () => <ACEEditor height={this.state.editorHeight + 'px'} id="params" mode="json"
-                                             format="wide" readOnly={isReadOnly}/>
+                                             format="wide" readOnly={isReadOnly} commands={[saveCommand]}/>
             }
         );
 

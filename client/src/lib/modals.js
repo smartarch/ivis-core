@@ -188,7 +188,7 @@ export class DeleteModalDialog extends Component {
             stateOwner={this.props.stateOwner}
             visible={this.props.visible}
             actionMethod={HTTPMethod.DELETE}
-            actionUrl={this.props.deleteUrl} 
+            actionUrl={this.props.deleteUrl}
             backUrl={this.props.backUrl}
             successUrl={this.props.successUrl}
             actionInProgressMsg={this.props.deletingMsg}
@@ -216,7 +216,7 @@ function _hide(owner, dontRefresh = false) {
         if (refreshTables) {
             refreshTables();
         } else {
-            owner.table.refresh();
+            owner.table?.refresh();
         }
     } else {
         // _hide is called twice: (1) at performing action, and at (2) success. Here we keep the refreshTables
@@ -250,7 +250,7 @@ export function tableAddDeleteButton(actions, owner, perms, deleteUrl, name, del
                     owner.tableRestActionDialogData = {
                         shown: true,
                         title: t('confirmDeletion'),
-                        message:t('areYouSureYouWantToDeleteName?', {name}),
+                        message: t('areYouSureYouWantToDeleteName?', {name}),
                         httpMethod: HTTPMethod.DELETE,
                         actionUrl: deleteUrl,
                         actionInProgressMsg: deletingMsg,

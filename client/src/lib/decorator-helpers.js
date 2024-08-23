@@ -14,10 +14,16 @@ export function createComponentMixin(opts) {
 export function withComponentMixins(mixins, delegateFuns, delegateStaticFuns) {
     const mixinsClosure = new Set();
     for (const mixin of mixins) {
-        console.assert(mixin);
+        console.assert(mixin, 'Mixin is falsy, expected an object.');
+
         mixinsClosure.add(mixin);
-        for (const dep of mixin.deps) {
-            mixinsClosure.add(dep);
+
+        if (mixin.deps && Array.isArray(mixin.deps)) {
+            for (const dep of mixin.deps) {
+                mixinsClosure.add(dep);
+            }
+        } else {
+            console.warn('Warning: mixin.deps is not an array or is missing:', mixin);
         }
     }
 

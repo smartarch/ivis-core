@@ -25,9 +25,9 @@ import {
 } from "./lib/bootstrap-components";
 import {getUrl} from "./lib/urls";
 import {withComponentMixins} from "./lib/decorator-helpers";
-import {withTranslation} from "./lib/i18n";
 import ivisConfig
     from "ivisConfig";
+import {withTranslation} from "./lib/i18n";
 
 @withComponentMixins([
     withTranslation,
@@ -73,7 +73,7 @@ export default class MainMenu extends Component {
                 <ul className="navbar-nav ivis-navbar-nav-right">
                     { ivisConfig.globalPermissions.showAdmin && <NavLink to="/settings">{t('Settings')}</NavLink> }
                     {getLanguageChooser(t)}
-                    <NavDropdown menuClassName="dropdown-menu-right" label="Account" icon="user">
+                    <NavDropdown menuClassName="dropdown-menu-end" label="Account" icon="user">
                         <DropdownLink to="/account/edit">{t('Profile')}</DropdownLink>
                         <DropdownLink to="/account/api">{t('API')}</DropdownLink>
                         <DropdownDivider/>

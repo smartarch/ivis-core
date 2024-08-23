@@ -20,8 +20,9 @@ import {
     TextArea,
     withForm, withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
+
 import {withErrorHandling} from "../../lib/error-handling";
 import {
     NamespaceSelect,
@@ -106,7 +107,7 @@ export default class CUD extends Component {
         const t = this.props.t;
 
         let sendMethod, url;
-        if (this.props.entity) {
+        if (this.props.entity && this.props.action === "edit") {
             sendMethod = FormSendMethod.PUT;
             url = `rest/workspaces/${this.props.entity.id}`
         } else {

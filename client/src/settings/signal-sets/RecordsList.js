@@ -15,7 +15,6 @@ import {withTranslation} from "../../lib/i18n";
 import PropTypes from "prop-types";
 import base64url from 'base64-url';
 
-
 @withComponentMixins([
     withTranslation,
     withErrorHandling,

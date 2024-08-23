@@ -32,7 +32,7 @@ function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, s
 }
 
 @withComponentMixins([
-    withTranslation
+    withTranslation,
 ])
 export class AreaChart extends Component {
     constructor(props){

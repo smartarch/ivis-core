@@ -749,7 +749,6 @@ export class DataAccessSession {
         const requestNo = this.requestNos[type];
 
         const results = await dataAccess.query(queries);
-
         if (requestNo == this.requestNos[type]) {
             return results;
         } else {
@@ -982,7 +981,6 @@ export class TimeSeriesLimitedPointsProvider extends Component {
         }
 
         const results = await dataAccessSession.getLatestMixed(queries);
-
         const data = {};
 
         if (results) {

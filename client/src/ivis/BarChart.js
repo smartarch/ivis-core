@@ -7,7 +7,7 @@ import * as d3Selection from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Zoom from "d3-zoom";
 import * as d3Scheme from "d3-scale-chromatic";
-import {event as d3Event, select} from "d3-selection";
+import {select} from "d3-selection";
 import PropTypes from "prop-types";
 import {withErrorHandling} from "../lib/error-handling";
 import {withComponentMixins} from "../lib/decorator-helpers";
@@ -203,15 +203,15 @@ export class StaticBarChart extends Component {
     createChartZoom(xSize, ySize) {
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             // noinspection JSUnresolvedVariable
-            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
-                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform, () => {
+            if (self.props.withTransition && event.sourceEvent && event.sourceEvent.type === "wheel") {
+                transitionInterpolate(select(self), self.state.zoomTransform, event.transform, setZoomTransform, () => {
                     self.deselectBars();
                 });
             } else {
                 // noinspection JSUnresolvedVariable
-                setZoomTransform(d3Event.transform);
+                setZoomTransform(event.transform);
             }
         };
 
@@ -240,14 +240,14 @@ export class StaticBarChart extends Component {
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(zoomExtent)
             .extent(zoomExtent)
-            .on("zoom", handleZoom)
+            .on("zoom", (event) => handleZoom(event))
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
             .wheelDelta(wheelDelta(2))
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button;
+                return !event.ctrlKey && !event.button;
             });
         this.svgContainerSelection.call(this.zoom);
     }
@@ -264,7 +264,6 @@ export class StaticBarChart extends Component {
             .data(data, d => d.label);
         const ySize = yScale.range()[0];
         const barWidth = xScale.bandwidth();
-        console.log(xScale.range())
 
         const selectBar = function (bar = null) {
             if (bar !== self.state.selection) {
@@ -285,7 +284,7 @@ export class StaticBarChart extends Component {
                 }
             }
 
-            const containerPos = d3Selection.mouse(self.containerNode);
+            const containerPos = d3Selection.pointer(self.containerNode);
             const mousePosition = {x: containerPos[0], y: containerPos[1]};
 
             self.setState({

@@ -31,17 +31,22 @@ export default class RunConsole extends Component {
 
     constructor(props) {
         super(props);
-
+        this._isMounted = false;
         this.state = {};
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.initRunEventSource(this.props.runId);
 
         this.setState({
             runStatus: RunStatus.INITIALIZATION,
             chunkCounter: 0
         });
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
     }
 
     initRunEventSource() {
@@ -107,10 +112,12 @@ export default class RunConsole extends Component {
                 data: `ERROR: Run has been stopped`
             });
 
-            this.setState({
-                runStatus: RunStatus.FAILED,
-                chunkCounter: this.state.chunkCounter + 1
-            });
+            if(this._isMounted) {
+                this.setState({
+                    runStatus: RunStatus.FAILED,
+                    chunkCounter: this.state.chunkCounter + 1
+                });
+            }
             this.closeRunEventSource();
         });
 

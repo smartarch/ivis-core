@@ -5,7 +5,7 @@ import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Format from "d3-format";
 import * as d3Selection from "d3-selection";
-import {event as d3Event, select} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Array from "d3-array";
 import * as d3Color from "d3-color";
 import * as d3Zoom from "d3-zoom";
@@ -646,8 +646,8 @@ export class HeatmapChart extends Component {
         const self = this;
         let selection, mousePosition;
 
-        const selectPoints = function () {
-            const containerPos = d3Selection.mouse(self.containerNode);
+        const selectPoints = function (event) {
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
 
@@ -697,8 +697,8 @@ export class HeatmapChart extends Component {
         };
 
         this.cursorAreaSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', ::this.deselectPoints);
     }
 
@@ -750,10 +750,10 @@ export class HeatmapChart extends Component {
         // noinspection DuplicatedCode
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             if (self.ignoreZoomEvents) return;
             // noinspection JSUnresolvedVariable
-            let newTransform = d3Event.transform;
+            let newTransform = event.transform;
             let newZoomYScaleMultiplier = self.state.zoomYScaleMultiplier;
             // check brush extents
             const [newBrushBottom, newBrushLeft, updated] = self.getBrushValuesFromZoomValues(newTransform, newZoomYScaleMultiplier);
@@ -761,7 +761,7 @@ export class HeatmapChart extends Component {
                 [newTransform, newZoomYScaleMultiplier] = self.getZoomValuesFromBrushValues(newBrushBottom, newBrushLeft);
 
             // noinspection JSUnresolvedVariable
-            if (d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel" && self.props.withTransition) {
+            if (event.sourceEvent && event.sourceEvent.type === "wheel" && self.props.withTransition) {
                 self.lastZoomCausedByUser = true;
                 self.ignoreZoomEvents = true;
                 transitionInterpolate(select(self), self.state.zoomTransform, newTransform, (t, y) => {
@@ -777,7 +777,7 @@ export class HeatmapChart extends Component {
                 }, 150, self.state.zoomYScaleMultiplier, newZoomYScaleMultiplier);
             } else {
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                     self.lastZoomCausedByUser = true;
 
                 setZoomTransform(self)(newTransform, newZoomYScaleMultiplier);
@@ -785,7 +785,7 @@ export class HeatmapChart extends Component {
                     self.zoom.transform(self.svgContainerSelection, newTransform);
 
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type === "brush" && (d3Event.sourceEvent.target === self.brushLeft || d3Event.sourceEvent.target === self.brushBottom)) return;
+                if (event.sourceEvent && event.sourceEvent.type === "brush" && (event.sourceEvent.target === self.brushLeft || event.sourceEvent.target === self.brushBottom)) return;
                 self.moveBrush(newTransform, newZoomYScaleMultiplier);
             }
         };
@@ -816,10 +816,10 @@ export class HeatmapChart extends Component {
             .scaleExtent([minZoom, this.props.zoomLevelMax])
             .translateExtent(translateExtent)
             .extent(zoomExtent)
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button && !this.state.brushInProgress;
+                return !event.ctrlKey && !event.button && !this.state.brushInProgress;
             })
             .on("zoom", handleZoom)
             .on("end", handleZoomEnd)
@@ -988,16 +988,16 @@ export class HeatmapChart extends Component {
         this.brushLeft
             .extent([[0, 0], [xSize, this.ySize]])
             .handleSize(20)
-            .on("brush", function () {
+            .on("brush", (event) => {
                 // noinspection JSUnresolvedVariable
-                const sel = d3Event.selection;
+                const sel = event.selection;
                 self.overviewLeftBrushSelection.call(brushHandlesTopBottom, sel, xSize);
                 // noinspection JSUnresolvedVariable
-                self.brushLeftValues = d3Event.selection;
+                self.brushLeftValues = event.selection;
 
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "zoom" && d3Event.sourceEvent.type !== "brush" && d3Event.sourceEvent.type !== "end") { // ignore brush by zoom
-                    if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && event.sourceEvent.type !== "zoom" && event.sourceEvent.type !== "brush" && event.sourceEvent.type !== "end") { // ignore brush by zoom
+                    if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                         self.lastZoomCausedByUser = true;
                     self.updateZoomFromBrush();
                 }
@@ -1029,16 +1029,16 @@ export class HeatmapChart extends Component {
         this.brushBottom
             .extent([[0, 0], [this.xSize, ySize]])
             .handleSize(20)
-            .on("brush", function () {
+            .on("brush", event => {
                 // noinspection JSUnresolvedVariable
-                const sel = d3Event.selection;
+                const sel = event.selection;
                 self.overviewBottomBrushSelection.call(brushHandlesLeftRight, sel, ySize);
                 // noinspection JSUnresolvedVariable
-                self.brushBottomValues = d3Event.selection;
+                self.brushBottomValues = event.selection;
 
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && d3Event.sourceEvent.type !== "zoom" && d3Event.sourceEvent.type !== "brush" && d3Event.sourceEvent.type !== "end") { // ignore brush by zoom
-                    if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && event.sourceEvent.type !== "zoom" && event.sourceEvent.type !== "brush" && event.sourceEvent.type !== "end") { // ignore brush by zoom
+                    if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                         self.lastZoomCausedByUser = true;
                     self.updateZoomFromBrush();
                 }

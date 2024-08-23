@@ -1,10 +1,11 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from './i18n';
+
 import {TreeTableSelect} from './form';
 import {withComponentMixins} from "./decorator-helpers";
 import ivisConfig from 'ivisConfig';
+import {withTranslation} from "./i18n";
 
 
 @withComponentMixins([

@@ -1,9 +1,9 @@
 'use strict';
 
 import React, {Component} from 'react';
-import {withTranslation} from './i18n';
+
 import axios, {HTTPMethod} from './axios';
-import Immutable from 'immutable';
+import {Map} from 'immutable';
 import PropTypes from 'prop-types';
 import interoperableErrors from '../../../shared/interoperable-errors';
 import {withPageHelpers} from './page'
@@ -14,11 +14,12 @@ import {Button} from "./bootstrap-components";
 import {SketchPicker} from 'react-color';
 
 import ACEEditorRaw from 'react-ace';
-import 'brace/theme/github';
-import 'brace/ext/searchbox';
+import 'ace-builds/src-noconflict/theme-github';
+import 'ace-builds/src-noconflict/ext-searchbox';
 
-import DayPicker from 'react-day-picker';
-import 'react-day-picker/lib/style.css';
+
+import {DayPicker} from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 import {
     birthdayYear,
     DateFormat,
@@ -34,6 +35,7 @@ import styles from "./styles.scss";
 import moment from "moment";
 import {getUrl} from "./urls";
 import {createComponentMixin, withComponentMixins} from "./decorator-helpers";
+import {withTranslation} from "./i18n";
 
 
 const FormState = {
@@ -76,6 +78,7 @@ class Form extends Component {
     constructor(props) {
         super(props);
 
+        this._isMounted = false;
         this.beforeUnloadHandlers = {
             handler: () => this.props.stateOwner.isFormChanged(),
             handlerAsync: async () => await this.props.stateOwner.isFormChangedAsync()
@@ -90,10 +93,12 @@ class Form extends Component {
     }
 
     componentDidMount() {
+        this._isMounted = true;
         this.registerBeforeUnloadHandlers(this.beforeUnloadHandlers);
     }
 
     componentWillUnmount() {
+        this._isMounted = false;
         this.deregisterBeforeUnloadHandlers(this.beforeUnloadHandlers);
     }
 
@@ -204,7 +209,7 @@ function wrapInput(id, htmlId, owner, format, rightContainerClass, label, help, 
     // wrapInput may be used also outside forms to make a kind of fake read-only forms
     let className;
     if (owner) {
-        className = 'form-group';
+        className = 'form-group mb-3';
     } else {
         className = styles.staticFormGroup;
     }
@@ -461,8 +466,9 @@ class CheckBox extends Component {
 
                         const inputClassName = owner.addFormValidationClass('form-check-input', id);
 
+                        const className = this.props.className !== undefined ? this.props.className : "";
                         return wrapInput(id, htmlId, owner, props.format, '', props.label, props.help,
-                            <div className={`form-group form-check my-2 ${this.props.className}`}>
+                            <div className={`form-group form-check my-2 ${className}`}>
                                 <input className={inputClassName}
                                        type="checkbox"
                                        checked={owner.getFormValue(id)}
@@ -1083,7 +1089,7 @@ class Dropdown extends Component {
             <select id={htmlId}
                     className={className}
                     aria-describedby={htmlId + '_help'}
-                    value={owner.getFormValue(id)}
+                    value={owner.getFormValue(id) || ''}
                     onChange={evt => owner.updateFormValue(id, evt.target.value)}
                     disabled={props.disabled}>
                 {options}
@@ -1539,7 +1545,8 @@ class ACEEditor extends Component {
         height: PropTypes.string,
         mode: PropTypes.string,
         format: PropTypes.string,
-        readOnly: PropTypes.bool
+        readOnly: PropTypes.bool,
+        commands: PropTypes.array, // ICommand[] (from react-ace)
     }
 
     render() {
@@ -1562,6 +1569,7 @@ class ACEEditor extends Component {
                 tabSize={2}
                 readOnly={props.readOnly}
                 setOptions={{useWorker: false}} // This disables syntax check because it does not always work well (e.g. in case of JS code in report templates)
+                commands={props.commands}
             />
         );
     }
@@ -1572,13 +1580,13 @@ const withForm = createComponentMixin({
     decoratorFn: (TargetClass, InnerClass) => {
         const proto = InnerClass.prototype;
 
-        const cleanFormState = Immutable.Map({
+        const cleanFormState = Map({
             state: FormState.Loading,
             isValidationShown: false,
             isDisabled: false,
             statusMessageText: '',
-            data: Immutable.Map(),
-            savedData: Immutable.Map(),
+            data: Map(),
+            savedData: Map(),
             isServerValidationRunning: false
         });
 
@@ -1601,11 +1609,11 @@ const withForm = createComponentMixin({
 
         function scheduleValidateForm(self) {
             setTimeout(() => {
-                self.setState(previousState => ({
-                    formState: previousState.formState.withMutations(mutState => {
-                        validateFormState(self, mutState);
-                    })
-                }));
+                    self.setState(previousState => ({
+                        formState: previousState.formState.withMutations(mutState => {
+                            validateFormState(self, mutState);
+                        })
+                    }));
             }, 0);
         }
 
@@ -1613,6 +1621,12 @@ const withForm = createComponentMixin({
             const settings = self.state.formSettings;
 
             if (!mutState.get('isServerValidationRunning') && settings.serverValidation) {
+
+                /*if(settings.serverValidation.changed.length === 0){
+                    mutState['data'].setIn(['cid', 'serverValidated'], true);
+                    mutState['data'].setIn(['cid', 'serverValidation'], true);
+                }*/
+
                 const payload = {};
                 let payloadNotEmpty = false;
 
@@ -1642,8 +1656,8 @@ const withForm = createComponentMixin({
 
                     axios.post(getUrl(settings.serverValidation.url), payload)
                         .then(response => {
-
                             if (self.isComponentMounted()) {
+
                                 self.setState(previousState => ({
                                     formState: previousState.formState.withMutations(mutState => {
                                         mutState.set('isServerValidationRunning', false);
@@ -1666,7 +1680,6 @@ const withForm = createComponentMixin({
                         })
                         .catch(error => {
                             if (self.isComponentMounted()) {
-                                console.log('Error in "validateFormState": ' + error);
 
                                 self.setState(previousState => ({
                                     formState: previousState.formState.set('isServerValidationRunning', false)
@@ -1704,7 +1717,7 @@ const withForm = createComponentMixin({
         proto.componentWillUnmount = function () {
             this._isComponentMounted = false;
             if (previousComponentWillUnmount) {
-                previousComponentDidMount.apply(this);
+                previousComponentWillUnmount.apply(this);
             }
         };
 
@@ -1773,10 +1786,12 @@ const withForm = createComponentMixin({
         };
 
         proto.validateAndSendFormValuesToURL = async function (method, url) {
+
             const settings = this.state.formSettings;
             await this.waitForFormServerValidated();
 
             if (this.isFormWithoutErrors()) {
+
                 if (settings.getPreSubmitUpdater) {
                     const preSubmitUpdater = await settings.getPreSubmitUpdater();
 
@@ -1826,7 +1841,7 @@ const withForm = createComponentMixin({
 
                     mutState.update('data', stateData => stateData.withMutations(mutStateData => {
                         for (const key in data) {
-                            mutStateData.set(key, Immutable.Map({
+                            mutStateData.set(key, Map({
                                 value: data[key]
                             }));
                         }
@@ -1897,44 +1912,46 @@ const withForm = createComponentMixin({
         };
 
         proto.updateFormValue = function (key, value) {
-            this.setState(previousState => {
-                const oldValue = previousState.formState.getIn(['data', key, 'value']);
+            if (this.isComponentMounted()) {
+                this.setState(previousState => {
+                    const oldValue = previousState.formState.getIn(['data', key, 'value']);
 
-                const onChangeBeforeValidationCallback = this.state.formSettings.onChangeBeforeValidation || {};
+                    const onChangeBeforeValidationCallback = this.state.formSettings.onChangeBeforeValidation || {};
 
-                const formState = previousState.formState.withMutations(mutState => {
-                    mutState.update('data', stateData => stateData.withMutations(mutStateData => {
-                        mutStateData.setIn([key, 'value'], value);
+                    const formState = previousState.formState.withMutations(mutState => {
+                        mutState.update('data', stateData => stateData.withMutations(mutStateData => {
+                            mutStateData.setIn([key, 'value'], value);
 
-                        if (typeof onChangeBeforeValidationCallback === 'object') {
-                            if (onChangeBeforeValidationCallback[key]) {
-                                onChangeBeforeValidationCallback[key](mutStateData, key, oldValue, value);
+                            if (typeof onChangeBeforeValidationCallback === 'object') {
+                                if (onChangeBeforeValidationCallback[key]) {
+                                    onChangeBeforeValidationCallback[key](mutStateData, key, oldValue, value);
+                                }
+                            } else {
+                                onChangeBeforeValidationCallback(mutStateData, key, oldValue, value);
                             }
-                        } else {
-                            onChangeBeforeValidationCallback(mutStateData, key, oldValue, value);
+                        }));
+
+                        validateFormState(this, mutState);
+                    });
+
+                    let newState = {
+                        formState
+                    };
+
+
+                    const onChangeCallback = this.state.formSettings.onChange || {};
+
+                    if (typeof onChangeCallback === 'object') {
+                        if (onChangeCallback[key]) {
+                            onChangeCallback[key](newState, key, oldValue, value);
                         }
-                    }));
-
-                    validateFormState(this, mutState);
-                });
-
-                let newState = {
-                    formState
-                };
-
-
-                const onChangeCallback = this.state.formSettings.onChange || {};
-
-                if (typeof onChangeCallback === 'object') {
-                    if (onChangeCallback[key]) {
-                        onChangeCallback[key](newState, key, oldValue, value);
+                    } else {
+                        onChangeCallback(newState, key, oldValue, value);
                     }
-                } else {
-                    onChangeCallback(newState, key, oldValue, value);
-                }
 
-                return newState;
-            });
+                    return newState;
+                });
+            }
         };
 
         proto.getFormValue = function (name) {
@@ -2051,7 +2068,9 @@ const withForm = createComponentMixin({
         };
 
         proto.hideFormValidation = function () {
-            this.setState(previousState => ({formState: previousState.formState.set('isValidationShown', false)}));
+            if(proto.isComponentMounted()) {
+                this.setState(previousState => ({formState: previousState.formState.set('isValidationShown', false)}));
+            }
         };
 
         proto.isFormWithoutErrors = function () {
@@ -2071,28 +2090,36 @@ const withForm = createComponentMixin({
         };
 
         proto.setFormStatusMessage = function (severity, text) {
-            this.setState(previousState => ({
-                formState: previousState.formState.withMutations(map => {
-                    map.set('statusMessageText', text);
-                    map.set('statusMessageSeverity', severity);
-                })
-            }));
+            if(this.isComponentMounted()) {
+                this.setState(previousState => ({
+                    formState: previousState.formState.withMutations(map => {
+                        map.set('statusMessageText', text);
+                        map.set('statusMessageSeverity', severity);
+                    })
+                }));
+            }
         };
 
         proto.clearFormStatusMessage = function () {
+            if(this.isComponentMounted()){
             this.setState(previousState => ({
                 formState: previousState.formState.withMutations(map => {
                     map.set('statusMessageText', '');
                 })
             }));
+            }
         };
 
         proto.enableForm = function () {
-            this.setState(previousState => ({formState: previousState.formState.set('isDisabled', false)}));
+            if(this.isComponentMounted()) {
+                this.setState(previousState => ({formState: previousState.formState.set('isDisabled', false)}));
+            }
         };
 
         proto.disableForm = function () {
-            this.setState(previousState => ({formState: previousState.formState.set('isDisabled', true)}));
+            if(this.isComponentMounted()) {
+                this.setState(previousState => ({formState: previousState.formState.set('isDisabled', true)}));
+            }
         };
 
         proto.isFormDisabled = function () {

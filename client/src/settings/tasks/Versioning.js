@@ -175,7 +175,7 @@ export default class Versioning extends Component {
                 ],
             },
             content: (
-                <div className="form-group row">
+                <div className="form-group row mb-3">
                     <label className="col-sm-2 col-form-label">Message</label>
                     <div className="col-sm-10 ">
                         <textarea id="message"

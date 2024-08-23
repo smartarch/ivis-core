@@ -17,9 +17,9 @@ import {
     withForm,
     withFormErrorHandlers
 } from "../../lib/form";
-import "brace/mode/json";
-import "brace/mode/jsx";
-import "brace/mode/scss";
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-jsx';
+import 'ace-builds/src-noconflict/mode-scss';
 import {withAsyncErrorHandler, withErrorHandling} from "../../lib/error-handling";
 import {NamespaceSelect, validateNamespace} from "../../lib/namespace";
 import {DeleteModalDialog, ImportExportModalDialog} from "../../lib/modals";
@@ -34,8 +34,6 @@ import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
 import {withTranslation} from "../../lib/i18n";
 import {TaskSource} from "../../../../shared/tasks"
-import {getVirtualNamespaceId} from "../../../../shared/namespaces"
-
 import {
     fetchBuiltinTasks
 } from "../../lib/builtin-tasks";
@@ -135,6 +133,11 @@ export default class CUD extends Component {
                     const defaultTask = this.getDefaultBuiltinTask();
                     state.formState = state.formState.setIn(['data', 'task', 'value'], defaultTask.id);
                     state.formState = state.formState.setIn(['data', 'taskParams', 'value'], defaultTask.settings.params);
+                    state.formState = state.formState.withMutations(mutState => {
+                        mutState.update('data', stateData => stateData.withMutations(mutStateData => {
+                            this.paramTypes.adopt(defaultTask.settings.params, mutStateData);
+                        }))
+                    })
                 }
             }
         }

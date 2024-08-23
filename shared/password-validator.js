@@ -1,6 +1,6 @@
 'use strict';
 
-const util = require('util');
+//const util = require('util');
 const owaspPasswordStrengthTest = require('owasp-password-strength-test');
 
 function passwordValidator(t) {

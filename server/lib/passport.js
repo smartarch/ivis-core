@@ -3,6 +3,17 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 
+
+/*function csurf (options) {
+    return function csrf (req, res, next) {
+        req.csrfToken = function csrfToken () {
+            return "x"
+        }
+
+        next()
+    }
+}*/
+
 const csrf = require('csurf');
 
 const users = require('../models/users');
@@ -13,7 +24,6 @@ const contextHelpers = require('./context-helpers');
 module.exports.csrfProtection = csrf({
     cookie: true
 });
-
 
 module.exports.loggedIn = (req, res, next) => {
     if (!req.user) {
@@ -71,9 +81,19 @@ module.exports.setupRegularAuth = app => {
     app.use(passport.session());
 };
 
-module.exports.restLogout = (req, res) => {
+/*module.exports.restLogout = (req, res) => {
     req.logout();
     res.json();
+};*/
+
+module.exports.restLogout = function(req, res) {
+    req.logout(function(err) {
+        if (err) {
+            console.error(err);
+            return res.status(500).send({error: 'Logout failed'});
+        }
+        res.json();
+    });
 };
 
 module.exports.restLogin = (req, res, next) => {

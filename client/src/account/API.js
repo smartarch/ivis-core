@@ -68,7 +68,7 @@ export default class API extends Component {
             <Panel title={t('API')}>
                 <div className="card mb-3">
                     <div className="card-body">
-                        <div className="float-right">
+                        <div className="float-end">
                             <Button label={this.state.accessToken ? t('resetAccessToken') : t('generateAccessToken')} icon="redo" className="btn-info" onClickAsync={::this.resetAccessToken} />
                         </div>
                         {accessTokenMsg}

@@ -15,17 +15,17 @@ import TestWorkspacePanel
 const graphSpecs = [
     {
         label: "Temperature",
-        signalCid: "temperature",
+        signalCid: "s",
         yScaleMin: 20,
         yScaleMax: 40
     },
     {
         label: "CO2",
-        signalCid: "co2"
+        signalCid: "s"
     },
     {
         label: "Humidity",
-        signalCid: "humidity"
+        signalCid: "s"
     }
 ];
 
@@ -149,19 +149,19 @@ export default class SamplePanel extends Component {
                 {
                     "label": "Teplotní senzor v altanu\n",
                     "color": rgb(219, 0, 0),
-                    "sigSet": "4776e6ed003f003e",
+                    "sigSet": "Sise1",
                     "enabled": true
                 },
                 {
                     "label": "Teplota, Vlhkost",
                     "color": rgb(144, 19, 254),
-                    "sigSet": "a81758fffe0301b4",
+                    "sigSet": "Sise1",
                     "enabled": true
                 },
                 {
                     "label": "Teplota, Vlhkost, Síla signálu",
                     "color": rgb(139, 87, 42),
-                    "sigSet": "a81758fffe0301be",
+                    "sigSet": "Sise1",
                     "enabled": false
                 }
             ]

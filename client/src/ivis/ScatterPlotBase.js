@@ -5,7 +5,7 @@ import * as d3Axis from "d3-axis";
 import * as d3Scale from "d3-scale";
 import * as d3Array from "d3-array";
 import * as d3Selection from "d3-selection";
-import {event as d3Event, select} from "d3-selection";
+import {select} from "d3-selection";
 import * as d3Brush from "d3-brush";
 import * as d3Regression from "d3-regression";
 import * as d3Shape from "d3-shape";
@@ -1080,9 +1080,9 @@ export class ScatterPlotBase extends Component {
      * Should only be called when setting state to noData or similar situation, i.e. no data are rendered */
     clearChart() {
         this.brushParentSelection
-            .on('mouseenter', null)
-            .on('mousemove', null)
-            .on('mouseleave', null);
+            ?.on('mouseenter', null)
+            ?.on('mousemove', null)
+            ?.on('mouseleave', null);
 
         this.zoom = null;
         this.globalRegressions = [];
@@ -1470,8 +1470,8 @@ export class ScatterPlotBase extends Component {
         let selections = this.state.selections;
         let mousePosition;
 
-        const selectPoints = function () {
-            const containerPos = d3Selection.mouse(self.containerNode);
+        const selectPoints = function (event) {
+            const containerPos = d3Selection.pointer(event,self.containerNode);
             const x = containerPos[0] - self.props.margin.left;
             const y = containerPos[1] - self.props.margin.top;
 
@@ -1529,21 +1529,23 @@ export class ScatterPlotBase extends Component {
         };
 
         this.brushParentSelection
-            .on('mouseenter', selectPoints)
-            .on('mousemove', selectPoints)
+            .on('mouseenter', (event) => selectPoints(event))
+            .on('mousemove', (event) => selectPoints(event))
             .on('mouseleave', ::this.deselectPoints);
     }
 
     deselectPoints() {
-        this.cursorSelectionX.attr('visibility', 'hidden');
-        this.cursorSelectionY.attr('visibility', 'hidden');
+        this.cursorSelectionX?.attr('visibility', 'hidden');
+        this.cursorSelectionY?.attr('visibility', 'hidden');
 
-        for (let i = 0; i < this.props.config.signalSets.length; i++) {
-            const signalSetCidIndex = this.props.config.signalSets[i].cid + "-" + i;
-            const signalSetConfig = this.props.config.signalSets[i];
+        if (this.dotHighlightSelections) {
+            for (let i = 0; i < this.props.config.signalSets.length; i++) {
+                const signalSetCidIndex = this.props.config.signalSets[i].cid + "-" + i;
+                const signalSetConfig = this.props.config.signalSets[i];
 
-            const drawHighlightDot = this.props.drawHighlightDot || ScatterPlotBase.drawHighlightDot;
-            drawHighlightDot(this, null, this.dotHighlightSelections[signalSetCidIndex], this.xScale, this.yScale, this.sScale, this.cScales[i], signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape);
+                const drawHighlightDot = this.props.drawHighlightDot || ScatterPlotBase.drawHighlightDot;
+                drawHighlightDot(this, null, this.dotHighlightSelections[signalSetCidIndex], this.xScale, this.yScale, this.sScale, this.cScales[i], signalSetConfig, signalSetConfig.dotShape || ScatterPlotBase.defaultDotShape);
+            }
         }
 
         this.setState({
@@ -1562,22 +1564,22 @@ export class ScatterPlotBase extends Component {
             const ySize = this.props.height - this.props.margin.top - this.props.margin.bottom;
             const brush = d3Brush.brush()
                 .extent([[0, 0], [xSize, ySize]])
-                .filter(() => {
+                .filter((event) => {
                     // noinspection JSUnresolvedVariable
-                    return !d3Event.button // enable brush when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
+                    return !event.button // enable brush when ctrl is pressed, modified version of default brush filter (https://github.com/d3/d3-brush#brush_filter)
                 })
                 .on("start", function () {
                     self.setState({
                         zoomInProgress: true
                     });
                 })
-                .on("end", function () {
+                .on("end", function (event) {
                     if (self.props.withZoom)
                         self.setState({
                             zoomInProgress: false
                         });
                     // noinspection JSUnresolvedVariable
-                    const sel = d3Event.selection;
+                    const sel = event.selection;
 
                     if (sel) {
                         const xMin = self.xScale.invert(sel[0][0]);
@@ -1631,20 +1633,20 @@ export class ScatterPlotBase extends Component {
     createChartZoom(xSize, ySize) {
         const self = this;
 
-        const handleZoom = function () {
+        const handleZoom = function (event) {
             // noinspection JSUnresolvedVariable
-            if (self.props.withTransition && d3Event.sourceEvent && d3Event.sourceEvent.type === "wheel") {
+            if (self.props.withTransition && event.sourceEvent && event.sourceEvent.type === "wheel") {
                 self.lastZoomCausedByUser = true;
-                transitionInterpolate(select(self), self.state.zoomTransform, d3Event.transform, setZoomTransform(self), () => {
+                transitionInterpolate(select(self), self.state.zoomTransform, event.transform, setZoomTransform(self), () => {
                     self.deselectPoints();
                 });
             } else {
                 // noinspection JSUnresolvedVariable
-                if (d3Event.sourceEvent && ZoomEventSources.includes(d3Event.sourceEvent.type))
+                if (event.sourceEvent && ZoomEventSources.includes(event.sourceEvent.type))
                     self.lastZoomCausedByUser = true;
                 // noinspection JSUnresolvedVariable
                 self.setState({
-                    zoomTransform: d3Event.transform
+                    zoomTransform: event.transform
                 });
             }
         };
@@ -1671,12 +1673,12 @@ export class ScatterPlotBase extends Component {
             .scaleExtent([this.props.zoomLevelMin, this.props.zoomLevelMax])
             .translateExtent(translateExtent)
             .extent(zoomExtent)
-            .filter(() => {
-                if (d3Event.type === "wheel" && !d3Event.shiftKey)
+            .filter((event) => {
+                if (event.type === "wheel" && !event.shiftKey)
                     return false;
-                return !d3Event.ctrlKey && !d3Event.button && !this.state.brushInProgress;
+                return !event.ctrlKey && !event.button && !this.state.brushInProgress;
             })
-            .on("zoom", handleZoom)
+            .on("zoom", (event) => handleZoom(event))
             .on("end", handleZoomEnd)
             .on("start", handleZoomStart)
             .interpolate(d3Interpolate.interpolate)

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IVIS embed example</title>
+</head>
+<body>
+
+<div id="embedded-panel"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script type="text/javascript" src="../dist/ivis.js"></script>
+
+<script type="text/javascript" async>
+    const ivisApiUrlBase = "http://localhost:8082/";
+    const ivisSandboxUrlBase = "http://localhost:8081/";
+    const apiAccessToken = "SET_YOUR_ACCESS_TOKEN_HERE";
+    const templateId = 1;
+    /* assuming the following definition of template parameters:
+    [{
+        "id": "label",
+        "label": "Label",
+        "type": "string"
+    }]
+    */
+    const parameters = {
+        "label": "Test"
+    }
+
+    axios.post(`${ivisApiUrlBase}api/embedded-template-token`, {
+        templateId: templateId,
+        renewableBySandbox: true,
+        params: parameters,
+    }, {
+        headers: {'access-token': apiAccessToken},
+    }).then((response) => {
+        const restrictedAccessToken = response.data;
+        IVIS.embedTemplate('embedded-panel', ivisSandboxUrlBase, templateId, { params: parameters }, restrictedAccessToken);
+    })
+</script>
+
+
+</body>
+</html>
+
+

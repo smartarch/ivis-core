@@ -498,7 +498,7 @@ class QueryProcessor {
 
                     elsAgg.date_histogram = {
                         ...this.getField(field),
-                        interval: getElsInterval(moment.duration(agg.computedStep || 'PT0.001S' /* FIXME - this is  a hack, find better way to handle situations when there is no interval */)),
+                        fixed_interval : getElsInterval(moment.duration(agg.computedStep || 'PT0.001S' /* FIXME - this is  a hack, find better way to handle situations when there is no interval */)),
                         offset: getElsInterval(moment.duration(agg.computedOffset)),
                         min_doc_count: agg.minDocCount
                     };

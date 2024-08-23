@@ -1,13 +1,13 @@
 'use strict';
 
-import React, {Component} from "react";
+import React, {Component, useEffect} from "react";
 import PropTypes from "prop-types";
 import {Panel} from "../../lib/panel";
 import {requiresAuthenticatedUser} from "../../lib/page";
 import WorkspacePanelContent from "./WorkspacePanelContent";
 import styles from "../../lib/styles.scss";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-import {withRouter} from "react-router-dom";
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
     extractPermanentLinkAndRedirect,
     getPermanentLinkConfigFromLocationState,
@@ -17,11 +17,10 @@ import {
 
 import memoize from "memoize-one";
 
-@withRouter
 @withComponentMixins([
     requiresAuthenticatedUser
 ])
-export default class WorkspacePanel extends Component {
+class WorkspacePanelBase extends Component {
     constructor(props) {
         super(props);
 
@@ -31,7 +30,9 @@ export default class WorkspacePanel extends Component {
     }
 
     static propTypes = {
-        panel: PropTypes.object
+        panel: PropTypes.object,
+        navigate: PropTypes.func.isRequired,
+        location: PropTypes.object.isRequired,
     }
 
     panel = memoize(
@@ -58,14 +59,6 @@ export default class WorkspacePanel extends Component {
         });
     }
 
-    componentDidMount() {
-        extractPermanentLinkAndRedirect(this.props.location, this.props.history);
-    }
-
-    componentDidUpdate() {
-        extractPermanentLinkAndRedirect(this.props.location, this.props.history);
-    }
-
     render() {
         if (needsToExtractPermanentLinkAndRedirect(this.props.location)) {
             return null; // This will be handled by componentDidMount / componentDidUpdate and retried
@@ -88,3 +81,17 @@ export default class WorkspacePanel extends Component {
         }
     }
 }
+
+function WorkspacePanel(props) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const params = useParams();
+
+    useEffect(() => {
+        extractPermanentLinkAndRedirect(location, navigate);
+    }, [location]);
+
+    return <WorkspacePanelBase {...props} navigate={navigate} location={location} params={params} />;
+}
+
+export default WorkspacePanel;

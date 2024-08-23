@@ -31,7 +31,7 @@ const handlerExec = em.get('task-handler.exec', path.join(__dirname, '..', 'serv
 
 const LOG_ID = 'Task-handler-lib';
 const INDEX_JOBS = 'jobs';
-const TYPE_JOBS = '_doc';
+const TYPE_JOBS = '_docx';
 const STATE_FIELD = 'state';
 
 const tasksDir = path.join(__dirname, '..', 'files', 'task-content');
@@ -279,16 +279,15 @@ async function initIndices() {
         if (!exists) {
             let settings = {
                 "mappings": {
-                    [TYPE_JOBS]: {
                         "properties": {
                             [STATE_FIELD]: {
                                 "type": "object",
                                 "enabled": false
                             }
                         }
-                    }
                 }
             };
+
             // create index
             await esClient.indices.create({index: INDEX_JOBS, body: settings});
         }

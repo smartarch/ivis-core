@@ -13,8 +13,8 @@ import {
     TableSelect,
     TextArea
 } from "../lib/form";
-import "brace/mode/html";
-import "brace/mode/json";
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-json';
 import moment from "moment";
 import {TableSelectMode} from "../lib/table";
 import styles from "./ParamTypes.scss";
@@ -857,8 +857,10 @@ export default class ParamTypes {
                     if (spec.children) {
                         const result = [];
 
-                        for (const childConfig of value) {
-                            result.push(upcastChild(childConfig));
+                        if(value !== undefined) {
+                            for (const childConfig of value) {
+                                result.push(upcastChild(childConfig));
+                            }
                         }
 
                         return result;
