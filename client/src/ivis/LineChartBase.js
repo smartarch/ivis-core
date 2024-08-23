@@ -12,11 +12,10 @@ import {rgb} from "d3-color";
 import PropTypes from "prop-types";
 import {DataPathApproximator} from "./DataPathApproximator";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {cursorAccessMixin} from "./CursorContext";
 import _ from "lodash";
-import {withTranslation} from "../lib/i18n";
 
 
 const SelectedState = {

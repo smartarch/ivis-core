@@ -10,9 +10,8 @@ import {
 } from "../lib/bootstrap-components";
 import _ from "lodash";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {rangeAccessMixin} from "./RangeContext";
 import {withTranslation} from "../lib/i18n";
+import {rangeAccessMixin} from "./RangeContext";
 
 /* helper function to split nanoseconds into readable values */
 function getSeconds(value) {

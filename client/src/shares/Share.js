@@ -26,7 +26,6 @@ import {Panel} from "../lib/panel";
 import {getUrl} from "../lib/urls";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
 import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([

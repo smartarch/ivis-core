@@ -16,9 +16,8 @@ import {
     tableRestActionDialogRender
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
-import {withErrorHandling} from "../../lib/error-handling";
 import {withTranslation} from "../../lib/i18n";
+import {withErrorHandling} from "../../lib/error-handling";
 
 @withComponentMixins([
     withTranslation,

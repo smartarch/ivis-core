@@ -27,9 +27,8 @@ import {
     tableRestActionDialogInit
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
-import styles from "./List.scss";
 import {withTranslation} from "../../lib/i18n";
+import styles from "./List.scss";
 
 
 @withComponentMixins([

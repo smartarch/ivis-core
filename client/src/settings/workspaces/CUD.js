@@ -35,9 +35,8 @@ import ivisConfig
 import moment
     from "moment";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
-import {getBuiltinTemplateName} from "../../lib/builtin-templates";
 import {withTranslation} from "../../lib/i18n";
+import {getBuiltinTemplateName} from "../../lib/builtin-templates";
 
 @withComponentMixins([
     withTranslation,

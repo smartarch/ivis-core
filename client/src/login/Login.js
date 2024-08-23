@@ -19,9 +19,8 @@ import URL
 import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import em from '../lib/extension-manager';
 import {withTranslation} from "../lib/i18n";
+import em from '../lib/extension-manager';
 
 
 export const LoginContainer = () => {

@@ -12,9 +12,8 @@ import {StaticLegend} from "./Legend";
 import styles
     from './PieChart.scss';
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 
 export const LegendPosition = {
     NONE: 0,

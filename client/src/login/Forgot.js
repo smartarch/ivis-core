@@ -13,7 +13,6 @@ import {
 import {Panel} from '../lib/panel';
 import {withErrorHandling} from '../lib/error-handling';
 import {withComponentMixins} from "../lib/decorator-helpers";
-
 import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([

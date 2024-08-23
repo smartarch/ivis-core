@@ -27,11 +27,9 @@ import {
     tableRestActionDialogInit
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import styles from "../tasks/List.scss";
 import {TaskSource} from "../../../../shared/tasks";
-import {withTranslation} from "../../lib/i18n";
-
 
 @withComponentMixins([
     withTranslation,

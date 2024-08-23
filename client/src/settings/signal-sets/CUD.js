@@ -32,10 +32,9 @@ import ivisConfig
 import em
     from "../../lib/extension-manager";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import {SignalSetType, SignalSetKind} from "../../../../shared/signal-sets"
 import {getSignalSetKindsLabels} from "../../lib/signal-sets-helpers";
-import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

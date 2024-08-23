@@ -37,7 +37,6 @@ import {Panel} from "../../lib/panel";
 import ivisConfig
     from "ivisConfig";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
 import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([

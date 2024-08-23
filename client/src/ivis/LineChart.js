@@ -11,9 +11,8 @@ import tooltipStyles from "./Tooltip.scss";
 import {Icon} from "../lib/bootstrap-components";
 import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData, isAgg) {
     const isAvg = signalData.avg !== null;

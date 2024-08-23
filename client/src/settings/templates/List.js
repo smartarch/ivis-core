@@ -30,7 +30,6 @@ import {
     tableRestActionDialogRender
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
 import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([

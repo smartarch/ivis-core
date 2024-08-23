@@ -7,10 +7,9 @@ import * as d3Color from "d3-color";
 import * as d3Shape from "d3-shape";
 import {select} from "d3-selection";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import * as d3Scale from "d3-scale";
-import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

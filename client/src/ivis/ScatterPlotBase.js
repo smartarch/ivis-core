@@ -19,7 +19,7 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {Tooltip} from "./Tooltip";
 import {Button, CheckBox, Form, InputField, withForm} from "../lib/form";
 import styles from "./CorrelationCharts.scss";
@@ -28,7 +28,6 @@ import {areZoomTransformsEqual, ConfigDifference, distance, extentWithMargin, ge
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapes, dotShapeNames} from "./dot_shapes";
 import {withPageHelpers} from "../lib/page-common";
-import {withTranslation} from "../lib/i18n";
 
 function compareConfigs(conf1, conf2) {
     let diffResult = ConfigDifference.NONE;

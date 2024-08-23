@@ -21,10 +21,9 @@ import {
     tableRestActionDialogRender
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import {checkPermissions} from "../../lib/permissions";
 import {HTTPMethod} from "../../lib/axios";
-import {withTranslation} from "../../lib/i18n";
 
 const {getVirtualNamespaceId} = require("../../../../shared/namespaces");
 

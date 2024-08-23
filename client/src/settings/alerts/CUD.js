@@ -30,10 +30,9 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {RelativeTime} from "../../lib/bootstrap-components";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import testTrigger from "../../lib/alerts-trigger-tester";
 import { checkCondition, ConditionState } from "../../lib/alerts-condition-checker";
-import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

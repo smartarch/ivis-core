@@ -6,9 +6,8 @@ import {DataAccessSession} from "./DataAccess";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {timeIntervalDifference} from "./common";
 import {withTranslation} from "../lib/i18n";
+import {timeIntervalDifference} from "./common";
 
 @withComponentMixins([
     withTranslation,

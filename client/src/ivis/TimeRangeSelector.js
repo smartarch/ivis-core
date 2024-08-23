@@ -25,10 +25,9 @@ import _
     from "lodash";
 import {IntervalSpec} from "./TimeInterval";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {ThemeContext} from "../lib/theme-context";
 import {Theme} from "../../../shared/themes"
-import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

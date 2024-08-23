@@ -16,7 +16,7 @@ import tooltipStyles from "./Tooltip.scss";
 import * as dateMath from "../lib/datemath";
 import {Icon} from "../lib/bootstrap-components";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {areZoomTransformsEqual, ConfigDifference, setZoomTransform, transitionInterpolate, wheelDelta} from "./common";
 import * as d3Zoom from "d3-zoom";
 import commonStyles from "./commons.scss";
@@ -26,7 +26,6 @@ import {rangeAccessMixin} from "./RangeContext";
 import {cursorAccessMixin} from "./CursorContext";
 import moment from "moment";
 import _ from "lodash";
-import {withTranslation} from "../lib/i18n";
 
 export function createBase(base, self) {
     self.base = base;

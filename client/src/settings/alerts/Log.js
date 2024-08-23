@@ -17,13 +17,12 @@ import {
     tableRestActionDialogRender
 } from "../../lib/modals";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import {Button, RelativeTime} from "../../lib/bootstrap-components";
 import {CSVLink} from "react-csv";
 import axios from "../../lib/axios";
 import {getUrl} from "../../lib/urls";
 import moment from "moment";
-import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

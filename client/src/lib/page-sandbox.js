@@ -2,7 +2,6 @@
 
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
 import {withErrorHandling} from "./error-handling";
 import styles from "./styles-content.scss";
@@ -10,10 +9,9 @@ import {getRoutes, RenderRoute, Resolver, SectionContentContext, withPageHelpers
 import {getBaseDir} from "./urls";
 import {parentRPC} from "./untrusted";
 import {withComponentMixins} from "./decorator-helpers";
-
+import {withTranslation} from "./i18n";
 import {ThemeContext} from "./theme-context";
 import {Theme} from "../../../shared/themes";
-import {withTranslation} from "./i18n";
 
 export {withPageHelpers}
 

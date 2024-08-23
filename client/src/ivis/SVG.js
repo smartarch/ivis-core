@@ -4,9 +4,8 @@ import PropTypes from "prop-types";
 import {withAsyncErrorHandler, withErrorHandling} from "../lib/error-handling";
 import axios from "../lib/axios";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {select} from "d3-selection";
 import {withTranslation} from "../lib/i18n";
+import {select} from "d3-selection";
 
 @withComponentMixins([
     withTranslation,

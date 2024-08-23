@@ -34,7 +34,6 @@ import Preview
 import Files
     from "../../lib/files";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
 import {withTranslation} from "../../lib/i18n";
 
 const SaveState = {

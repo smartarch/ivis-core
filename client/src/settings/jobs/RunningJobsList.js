@@ -17,9 +17,8 @@ import {
 import moment from "moment";
 import {getUrl} from "../../lib/urls";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
-import {getRunStatuses} from './states';
 import {withTranslation} from "../../lib/i18n";
+import {getRunStatuses} from './states';
 
 
 @withComponentMixins([

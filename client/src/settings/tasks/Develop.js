@@ -16,11 +16,10 @@ import Files from "../../lib/files";
 import Versioning from "./Versioning";
 import {TaskType, TaskSource} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import axios from "../../lib/axios";
 import {getUrl} from "../../lib/urls";
 import {RunStatus} from "../../../../shared/jobs";
-import {withTranslation} from "../../lib/i18n";
 
 const SaveState = {
     SAVED: 0,

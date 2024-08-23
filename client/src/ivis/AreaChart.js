@@ -16,9 +16,8 @@ import tooltipStyles
     from "./Tooltip.scss";
 import {format as d3Format} from "d3-format";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 function getSignalValuesForDefaultTooltip(tooltipContent, sigSetConf, sigConf, sigSetCid, sigCid, signalData) {
     const numberFormat = d3Format('.3f');

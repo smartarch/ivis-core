@@ -38,9 +38,8 @@ import {
     getTypesBySource
 } from "../../../../../shared/signals"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
-
-import {SignalSetType} from "../../../../../shared/signal-sets"
 import {withTranslation} from "../../../lib/i18n";
+import {SignalSetType} from "../../../../../shared/signal-sets"
 
 function isPainless(source) {
     return source === SignalSource.DERIVED;

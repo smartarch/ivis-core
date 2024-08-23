@@ -5,11 +5,10 @@ import {Button} from "../lib/bootstrap-components";
 import {Table, TableSelectMode} from "../lib/table";
 import formStyles from "../lib/styles.scss";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {getSignalTypes} from "../settings/signal-sets/signals/signal-types";
 import moment from "moment";
 import memoize from "memoize-one";
-import {withTranslation} from "../lib/i18n";
 
 const Type = {
     SIGNAL_SET: 'signalSet',

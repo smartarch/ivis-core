@@ -4,11 +4,10 @@ import React, {Component} from "react";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {ScatterPlotBase} from "./ScatterPlotBase";
 import {PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {dotShapeNames} from "./dot_shapes";
-import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

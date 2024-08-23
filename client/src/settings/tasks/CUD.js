@@ -25,10 +25,9 @@ import {Panel} from "../../lib/panel";
 import ivisConfig from "ivisConfig";
 import {TaskType, subtypesByType} from "../../../../shared/tasks";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
+import {withTranslation} from "../../lib/i18n";
 import {getSubtypeLabel} from "./types";
 import {getWizardsForType, WizardType} from "./wizards";
-import {withTranslation} from "../../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

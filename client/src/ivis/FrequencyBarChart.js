@@ -5,12 +5,11 @@ import * as d3Scheme from "d3-scale-chromatic";
 import {withErrorHandling} from "../lib/error-handling";
 import PropTypes from "prop-types";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color, PropType_d3Color_Required} from "../lib/CustomPropTypes";
 import {StaticBarChart} from "./BarChart";
 import {FrequencyDataLoader} from "./FrequencyDataLoader";
 import StatusMsg from "./StatusMsg";
-import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([
     withTranslation,

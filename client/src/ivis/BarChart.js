@@ -11,12 +11,11 @@ import {select} from "d3-selection";
 import PropTypes from "prop-types";
 import {withErrorHandling} from "../lib/error-handling";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
+import {withTranslation} from "../lib/i18n";
 import {PropType_d3Color, PropType_d3Color_Required, PropType_NumberInRange} from "../lib/CustomPropTypes";
 import {Tooltip} from "./Tooltip";
 import {areZoomTransformsEqual, extentWithMargin, transitionInterpolate, wheelDelta} from "./common";
 import styles from "./CorrelationCharts.scss";
-import {withTranslation} from "../lib/i18n";
 
 class TooltipContent extends Component {
     constructor(props) {

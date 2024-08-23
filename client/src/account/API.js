@@ -15,7 +15,6 @@ import {Button} from '../lib/bootstrap-components';
 import {getUrl} from "../lib/urls";
 import {Panel} from "../lib/panel";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
 import {withTranslation} from "../lib/i18n";
 
 @withComponentMixins([

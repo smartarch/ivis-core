@@ -25,7 +25,6 @@ import interoperableErrors
     from '../../../shared/interoperable-errors';
 import {getUrl} from "../lib/urls";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
 import {withTranslation} from "../lib/i18n";
 
 const ResetTokenValidationState = {

@@ -15,9 +15,8 @@ import PropTypes
 import tooltipStyles
     from "./Tooltip.scss";
 import {withComponentMixins} from "../lib/decorator-helpers";
-
-import {PropType_d3Color} from "../lib/CustomPropTypes";
 import {withTranslation} from "../lib/i18n";
+import {PropType_d3Color} from "../lib/CustomPropTypes";
 
 
 @withComponentMixins([

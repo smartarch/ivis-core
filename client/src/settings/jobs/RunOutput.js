@@ -11,9 +11,8 @@ import {
     withErrorHandling
 } from "../../lib/error-handling";
 import {withComponentMixins} from "../../lib/decorator-helpers";
-
-import RunConsole from "./RunConsole";
 import {withTranslation} from "../../lib/i18n";
+import RunConsole from "./RunConsole";
 
 @withComponentMixins([
     withTranslation,

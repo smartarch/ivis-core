@@ -45,7 +45,7 @@ import {getUrl} from "../../../lib/urls";
 import ParamTypes
     from "../../ParamTypes"
 import {withComponentMixins} from "../../../lib/decorator-helpers";
-
+import {withTranslation} from "../../../lib/i18n";
 import styles from "../../../lib/styles.scss";
 import {
     getBuiltinTemplates,
@@ -53,7 +53,6 @@ import {
     anyBuiltinTemplate,
     getBuiltinTemplate
 } from "../../../lib/builtin-templates";
-import {withTranslation} from "../../../lib/i18n";
 
 @withComponentMixins([
     withTranslation,
