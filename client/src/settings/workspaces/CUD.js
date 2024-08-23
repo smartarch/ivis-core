@@ -108,7 +108,6 @@ export default class CUD extends Component {
         const t = this.props.t;
 
         let sendMethod, url;
-        console.log("sumbit")
         if (this.props.entity && this.props.action === "edit") {
             sendMethod = FormSendMethod.PUT;
             url = `rest/workspaces/${this.props.entity.id}`

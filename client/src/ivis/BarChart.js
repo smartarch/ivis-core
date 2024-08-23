@@ -265,7 +265,6 @@ export class StaticBarChart extends Component {
             .data(data, d => d.label);
         const ySize = yScale.range()[0];
         const barWidth = xScale.bandwidth();
-        console.log(xScale.range())
 
         const selectBar = function (bar = null) {
             if (bar !== self.state.selection) {

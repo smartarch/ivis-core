@@ -376,13 +376,11 @@ export class TimeBasedChartBase extends Component {
 
     @withAsyncErrorHandler
     async fetchData() {
-        console.log("fetch data");
         const t = this.props.t;
         const newState = { loading: true }
         if (this.props.displayLoadingTextWhenUpdating)
             newState.statusMsg = t('Loading...');
         this.setState(newState);
-        console.log("before try");
 
         try {
             let results = null;
@@ -398,11 +396,9 @@ export class TimeBasedChartBase extends Component {
                 results = await this.dataAccessSession.getLatestMixed(queries);
             }
 
-            console.log("before if");
             if (results) {
                 // This converts NaNs and Infinity to null. D3 can handle nulls in data by omitting the data point
                 for (const resultSet of results) {
-                    console.log("for");
                     for (const sigSetCid in resultSet) {
                         const sigSetData = resultSet[sigSetCid];
 
@@ -418,25 +414,21 @@ export class TimeBasedChartBase extends Component {
                         };
 
                         if (sigSetData.prev) {
-                            console.log("if1");
                             processSignals(sigSetData.prev.data);
                         }
 
                         if (sigSetData.main) {
-                            console.log("if2");
                             for (const mainData of sigSetData.main) {
                                 processSignals(mainData.data);
                             }
                         }
 
                         if (sigSetData.next) {
-                            console.log("if3");
                             processSignals(sigSetData.next.data);
                         }
                     }
                 }
 
-                console.log("set state");
                 this.setState({signalSetsData: null}, () =>
                     this.setState({
                         statusMsg: "",
@@ -444,12 +436,8 @@ export class TimeBasedChartBase extends Component {
                         loading: false
                     })
                 );
-                console.log("setState after");
-
             }
         } catch (err) {
-            console.log("caught error");
-            console.log(err);
             if (err instanceof interoperableErrors.TooManyPointsError) {
                 this.setState({
                     statusMsg: t('Too many data points.')

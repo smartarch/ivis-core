@@ -25,7 +25,6 @@ import {withTranslation} from "../../lib/i18n";
 ])
 export default class Overview extends Component {
     constructor(props) {
-        console.log("overview constructor");
         super(props);
 
         this.state = {};

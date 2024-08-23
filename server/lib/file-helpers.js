@@ -14,7 +14,6 @@ const multer = require('multer')({
 
 function installUploadHandler(router, url, replacementBehavior, type, subType, transformResponseFn) {
     router.postAsync(url, passport.loggedIn, multer.array('files[]'), async (req, res) => {
-        console.log("file-helpers");
         return res.json(await files.createFiles(req.context, type || req.params.type, subType || req.params.subType, castToInteger(req.params.entityId), req.files, replacementBehavior, transformResponseFn));
     });
 }

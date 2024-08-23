@@ -86,7 +86,6 @@ function WorkspacePanel(props) {
     const navigate = useNavigate();
     const location = useLocation();
     const params = useParams();
-    console.log("Obtained hooks for workspace panel");
 
     useEffect(() => {
         extractPermanentLinkAndRedirect(location, navigate);

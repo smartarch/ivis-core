@@ -56,7 +56,6 @@ export default class MainMenu extends Component {
 
         const workspaces = [];
         for (const ws of this.props.resolved.workspacesVisible) {
-            console.log(ws.id);
             workspaces.push(
                 <NavLink key={ws.id} to={'/workspaces/' + ws.id + (ws.default_panel ? '/' + ws.default_panel : '')}>{ws.name}</NavLink>
             );

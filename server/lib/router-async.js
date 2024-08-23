@@ -10,7 +10,6 @@ function replaceLastBySafeHandler(handlers) {
     const lastHandler = handlers[handlers.length - 1];
     const ret = handlers.slice();
     ret[handlers.length - 1] = (req, res, next) => lastHandler(req, res, next).catch(error => {
-        console.log("error caught");
         next(error)
     });
     return ret;

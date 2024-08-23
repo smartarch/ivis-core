@@ -160,7 +160,6 @@ export default class CUD extends Component {
     render() {
         const t = this.props.t;
         const isEdit = !!this.props.entity;
-        console.log("is edit" + isEdit);
         const canDelete = isEdit && this.props.entity.permissions.includes('delete');
 
         const typeOptions = [

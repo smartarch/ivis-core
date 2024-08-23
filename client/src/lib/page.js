@@ -454,7 +454,6 @@ class SectionContentBase extends Component {
     }
 
     errorHandler(error) {
-        console.log("Handling error");
         if (error instanceof interoperableErrors.NotLoggedInError) {
             if (window.location.pathname !== '/login') { // There may be multiple async requests failing at the same time. So we take the pathname only from the first one.
                 this.navigateTo('/login?next=' + encodeURIComponent(window.location.pathname));

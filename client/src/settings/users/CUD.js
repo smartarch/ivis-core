@@ -165,7 +165,6 @@ export default class CUD extends Component {
 
     @withFormErrorHandlers
     async submitHandler(submitAndLeave) {
-        console.log("submit handler in CUD in users");
         const t = this.props.t;
 
         let sendMethod, url;

@@ -98,13 +98,10 @@ export default class RecordsCUD extends Component {
     }
 
     localValidateFormValues(state) {
-        console.log("localValidateFormValues recordsCUD")
         const t = this.props.t;
 
         const idValue = state.getIn(['id', 'value']);
 
-        console.log(this.state);
-        console.log("sate");
         const idServerValidation = state.getIn(['id', 'serverValidation']);
         state.setIn(['id', 'error'], null);
         if (!this.state.autoId && !idValue) {
@@ -161,7 +158,6 @@ export default class RecordsCUD extends Component {
         const submitSuccessful = await this.validateAndSendFormValuesToURL(sendMethod, url);
 
         if (submitSuccessful) {
-            console.log(`/settings/signal-sets/${sigSetId}/records`)
             this.navigateToWithFlashMessage(`/settings/signal-sets/${sigSetId}/records`, 'success', t('Record saved'));
         } else {
             this.enableForm();
