@@ -69,6 +69,7 @@ body.ivis {
 
     .navbar {
       padding: 0 15px;
+      min-height: 56px;
 
       .navbar-brand {
         width: calc($sidebar-width - 30px);
